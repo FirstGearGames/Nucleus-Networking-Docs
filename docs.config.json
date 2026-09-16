@@ -4,7 +4,7 @@
   "logo": "",
   "versions": ["v4"],
   "defaultVersion": "v4",
-  "github": { "repo": "https://github.com/FirstGearGames/nucleus-docs", "branch": "main", "contentDir": "content" },
+  "github": { "repo": "https://github.com/FirstGearGames/nucleus-networking-docs", "branch": "main", "contentDir": "content" },
   "nav": [
     { "label": "Discord", "href": "https://discord.gg/fishnet" },
     { "label": "Asset Store", "href": "https://assetstore.unity.com/packages/tools/network/fish-net-networking-evolved-207815" }
