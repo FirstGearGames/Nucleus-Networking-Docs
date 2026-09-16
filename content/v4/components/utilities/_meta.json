@@ -1,0 +1,14 @@
+[
+  {
+    "slug": "pingdisplay",
+    "title": "PingDisplay"
+  },
+  {
+    "slug": "bandwidthdisplay",
+    "title": "BandwidthDisplay"
+  },
+  {
+    "slug": "authenticator",
+    "title": "Authenticator"
+  }
+]

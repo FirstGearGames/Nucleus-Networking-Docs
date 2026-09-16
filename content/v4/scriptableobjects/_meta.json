@@ -1,0 +1,18 @@
+[
+  {
+    "slug": "observerconditions",
+    "title": "ObserverConditions",
+    "type": "folder",
+    "defaultOpen": false
+  },
+  {
+    "slug": "spawnableprefabs",
+    "title": "SpawnablePrefabs",
+    "type": "folder",
+    "defaultOpen": false
+  },
+  {
+    "slug": "levelloggingconfiguration",
+    "title": "LevelLoggingConfiguration"
+  }
+]

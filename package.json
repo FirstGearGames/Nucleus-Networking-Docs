@@ -1,0 +1,15 @@
+{
+  "name": "nucleus-docs",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Fish-Net / Nucleus documentation content. Rendered by the FreeDoc software (github.com/FirstGearGames/FreeDoc).",
+  "scripts": {
+    "fetch-renderer": "degit FirstGearGames/FreeDoc/fishnet-docs .freedoc --force",
+    "build": "npm run fetch-renderer && node build.js",
+    "dev": "npm run fetch-renderer && cross-env DOCS_ROOT=. node .freedoc/preview-server.js"
+  },
+  "devDependencies": {
+    "cross-env": "^7.0.3",
+    "degit": "^2.8.4"
+  }
+}

@@ -1,0 +1,11 @@
+[
+  {
+    "slug": "playflow-cloud",
+    "title": "PlayFlow Cloud (Recommended)",
+    "type": "folder"
+  },
+  {
+    "slug": "getting-started-with-aws",
+    "title": "Getting Started with AWS"
+  }
+]

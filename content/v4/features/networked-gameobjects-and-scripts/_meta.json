@@ -1,0 +1,16 @@
+[
+  {
+    "slug": "networkobjects",
+    "title": "NetworkObjects",
+    "type": "folder"
+  },
+  {
+    "slug": "network-behaviour-guides",
+    "title": "NetworkBehaviour"
+  },
+  {
+    "slug": "spawning",
+    "title": "Spawning and Despawning",
+    "type": "folder"
+  }
+]

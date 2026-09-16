@@ -1,0 +1,11 @@
+[
+  {"slug":"installing-fish-networking","title":"Installing Fish-Networking"},
+  {"slug":"getting-connected","title":"Getting Connected"},
+  {"slug":"preparing-your-player","title":"Preparing Your Player"},
+  {"slug":"moving-your-player-around","title":"Moving Your Player Around"},
+  {"slug":"spawning-and-despawning-items","title":"Spawning and Despawning Items"},
+  {"slug":"using-syncvars-to-sync-colors","title":"Using SyncVars to Sync Colors"},
+  {"slug":"setting-up-a-camera","title":"Setting Up a Camera","type":"folder","defaultOpen":false},
+  {"slug":"connecting-to-remote-devices","title":"Connecting to Remote Devices"},
+  {"slug":"commonly-used-guides","title":"Beyond the Basics"}
+]

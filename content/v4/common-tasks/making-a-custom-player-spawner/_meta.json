@@ -1,0 +1,18 @@
+[
+  {
+    "slug": "manually",
+    "title": "Spawning Players Manually"
+  },
+  {
+    "slug": "spawning-selected-player",
+    "title": "Spawning Selected Player"
+  },
+  {
+    "slug": "set-player-number",
+    "title": "Spawning Players When Set Number of Players Joined"
+  },
+  {
+    "slug": "on-scene-load",
+    "title": "Spawning Players on Scene Load"
+  }
+]
