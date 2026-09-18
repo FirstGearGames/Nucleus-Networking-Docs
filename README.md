@@ -1,7 +1,7 @@
 # Nucleus / Fish-Net documentation content
 
-This repository holds **only the documentation content**. The site is rendered by the FreeDoc
-software (https://github.com/FirstGearGames/FreeDoc), which is pulled in at build time. Keeping
+This repository holds **only the documentation content**. The site is rendered by the ZeroDocs
+software (https://github.com/FirstGearGames/ZeroDocs), which is pulled in at build time. Keeping
 content and software apart means doc edits and pull requests never touch the software repo.
 
 ## What lives here
@@ -15,19 +15,19 @@ content and software apart means doc edits and pull requests never touch the sof
 ## Editing
 
 Edit Markdown under `content/` and open a pull request. CI runs the content-scan and renderer
-security checks (from FreeDoc) on every PR; a merge triggers a redeploy.
+security checks (from ZeroDocs) on every PR; a merge triggers a redeploy.
 
 ## Build locally
 
 ```bash
 npm install
-npm run build      # fetches the FreeDoc renderer into .freedoc/ and renders to out/
+npm run build      # fetches the ZeroDocs renderer into .freedoc/ and renders to out/
 ```
 
 Live preview with instant edits:
 
 ```bash
-npm run dev        # runs the FreeDoc preview server against this repo's content
+npm run dev        # runs the ZeroDocs preview server against this repo's content
 ```
 
 ## Hosting (Cloudflare Pages)
@@ -43,5 +43,5 @@ Every merge auto-rebuilds and redeploys. Host on a domain separate from any auth
 
 ## Pinning the renderer version
 
-`npm run fetch-renderer` pulls the latest FreeDoc `main`. To pin a specific release, change the
-`fetch-renderer` script to `degit FirstGearGames/FreeDoc/fishnet-docs#<tag-or-commit> .freedoc --force`.
+`npm run fetch-renderer` pulls the latest ZeroDocs `main`. To pin a specific release, change the
+`fetch-renderer` script to `degit FirstGearGames/ZeroDocs/fishnet-docs#<tag-or-commit> .freedoc --force`.
