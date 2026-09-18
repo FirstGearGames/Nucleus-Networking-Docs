@@ -4,9 +4,9 @@
   "private": true,
   "description": "Fish-Net / Nucleus documentation content. Rendered by the ZeroDocs software (github.com/FirstGearGames/ZeroDocs).",
   "scripts": {
-    "fetch-renderer": "degit FirstGearGames/ZeroDocs/fishnet-docs .freedoc --force",
+    "fetch-renderer": "degit FirstGearGames/ZeroDocs .zerodocs --force",
     "build": "npm run fetch-renderer && node build.js",
-    "dev": "npm run fetch-renderer && cross-env DOCS_ROOT=. node .freedoc/preview-server.js"
+    "dev": "npm run fetch-renderer && cross-env DOCS_ROOT=. node .zerodocs/preview-server.js"
   },
   "devDependencies": {
     "cross-env": "^7.0.3",

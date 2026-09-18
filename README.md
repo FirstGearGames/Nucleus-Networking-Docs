@@ -21,7 +21,7 @@ security checks (from ZeroDocs) on every PR; a merge triggers a redeploy.
 
 ```bash
 npm install
-npm run build      # fetches the ZeroDocs renderer into .freedoc/ and renders to out/
+npm run build      # fetches the ZeroDocs renderer into .zerodocs/ and renders to out/
 ```
 
 Live preview with instant edits:
@@ -44,4 +44,4 @@ Every merge auto-rebuilds and redeploys. Host on a domain separate from any auth
 ## Pinning the renderer version
 
 `npm run fetch-renderer` pulls the latest ZeroDocs `main`. To pin a specific release, change the
-`fetch-renderer` script to `degit FirstGearGames/ZeroDocs/fishnet-docs#<tag-or-commit> .freedoc --force`.
+`fetch-renderer` script to `degit FirstGearGames/ZeroDocs#<tag-or-commit> .zerodocs --force`.

@@ -1,0 +1,24 @@
+name: Build
+
+# Every pull request and push must render cleanly with the ZeroDocs renderer
+# before it can be deployed. Also runs the advisory content scan so a reviewer
+# sees any edit containing a construct the renderer will neutralize.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install (degit + cross-env)
+        run: npm install
+      - name: Fetch renderer + build the site
+        run: npm run build
+      - name: Content tripwire (advisory)
+        run: node .zerodocs/scripts/content-scan.js ./content || true
