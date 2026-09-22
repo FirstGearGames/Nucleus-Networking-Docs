@@ -1,14 +1,12 @@
 {
-  "title": "Fish-Net: Networking Evolved",
-  "description": "Documentation for Fish-Net Pro, the high-performance Unity networking solution.",
+  "title": "Nucleus Networking",
+  "description": "Documentation for Nucleus, a .NET networking engine with a Unity integration.",
   "logo": "",
-  "versions": ["v4"],
-  "defaultVersion": "v4",
+  "versions": ["v1"],
+  "defaultVersion": "v1",
   "github": { "repo": "https://github.com/FirstGearGames/nucleus-networking-docs", "branch": "main", "contentDir": "content" },
   "nav": [
-    { "label": "Download PDF", "href": "/static/downloads/latest.pdf" },
-    { "label": "Discord", "href": "https://discord.gg/fishnet" },
-    { "label": "Asset Store", "href": "https://assetstore.unity.com/packages/tools/network/fish-net-networking-evolved-207815" }
+    { "label": "Download PDF", "href": "/static/downloads/latest.pdf" }
   ],
   "theme": {
     "_comment": "Edit these colors to restyle the entire docs site. All callout boxes, links, and accents derive from these values.",

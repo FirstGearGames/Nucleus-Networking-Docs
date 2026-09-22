@@ -1,0 +1,46 @@
+[
+  {
+    "slug": "networked-type-attributes",
+    "title": "Networked Type Attributes"
+  },
+  {
+    "slug": "compression-accuracy-and-registrations",
+    "title": "Compression, Accuracy and Per-Type Registrations"
+  },
+  {
+    "slug": "how-a-value-reaches-the-wire",
+    "title": "How a Value Reaches the Wire"
+  },
+  {
+    "slug": "type-identity-and-bundles",
+    "title": "Type Identity on the Wire: Bundles and the Registry"
+  },
+  {
+    "slug": "what-the-generator-emits",
+    "title": "What the Generator Emits"
+  },
+  {
+    "slug": "source-generator-setup",
+    "title": "Wiring the Source Generator into a .NET Project"
+  },
+  {
+    "slug": "generator-diagnostics",
+    "title": "Generator Errors and Warnings"
+  },
+  {
+    "slug": "packet-shapes",
+    "title": "The Shapes on the Wire"
+  },
+  {
+    "slug": "writer-and-reader",
+    "title": "Writer and Reader"
+  },
+  {
+    "slug": "external-network-types",
+    "title": "Reaching Types You Cannot Annotate"
+  },
+  {
+    "slug": "custom-serializers",
+    "title": "Writing a Custom Serializer"
+  }
+]

@@ -1,0 +1,26 @@
+[
+  {
+    "slug": "how-a-value-reaches-the-wire",
+    "title": "How a Value Reaches the Wire"
+  },
+  {
+    "slug": "code-generation-in-unity",
+    "title": "Code Generation in Unity"
+  },
+  {
+    "slug": "generator-diagnostics",
+    "title": "Generator Errors and Warnings"
+  },
+  {
+    "slug": "packet-shapes",
+    "title": "The Shapes on the Wire"
+  },
+  {
+    "slug": "bundle-ids-for-unity-assemblies",
+    "title": "Bundle Ids for Unity Assemblies"
+  },
+  {
+    "slug": "unity-and-system-numerics-types",
+    "title": "Unity Types and System.Numerics"
+  }
+]

@@ -1,0 +1,50 @@
+[
+  {
+    "slug": "rpc-targets",
+    "title": "Choosing Who Receives a Call"
+  },
+  {
+    "slug": "channels-and-delivery-guarantees",
+    "title": "Channels and What Is Guaranteed"
+  },
+  {
+    "slug": "system-rpcs",
+    "title": "System RPCs"
+  },
+  {
+    "slug": "typed-messages",
+    "title": "Typed Messages"
+  },
+  {
+    "slug": "rpc-self-delivery",
+    "title": "Seeing Your Own Call: RpcSelfDelivery"
+  },
+  {
+    "slug": "rpc-send-access",
+    "title": "Who May Send a Call, and How Many"
+  },
+  {
+    "slug": "rpc-handler-registration",
+    "title": "Handler Registration and Scope"
+  },
+  {
+    "slug": "state-message-or-call",
+    "title": "State, a Message, or a Call?"
+  },
+  {
+    "slug": "message-and-call-timing",
+    "title": "When a Message or Call Reaches Its Handler"
+  },
+  {
+    "slug": "rpc-relay-and-moderation",
+    "title": "Judging and Refusing a Relayed Call"
+  },
+  {
+    "slug": "server-message-fanout",
+    "title": "Sending a Message to Many Peers"
+  },
+  {
+    "slug": "messaging-troubleshooting",
+    "title": "Messages and Calls That Do Not Arrive"
+  }
+]

@@ -1,0 +1,34 @@
+[
+  {
+    "slug": "input-components",
+    "title": "Input components"
+  },
+  {
+    "slug": "controlling-a-system",
+    "title": "Reading who controls a system"
+  },
+  {
+    "slug": "prediction-history-and-predicted-members",
+    "title": "Predicted members and prediction history"
+  },
+  {
+    "slug": "reconciliation",
+    "title": "Reconciliation and replay"
+  },
+  {
+    "slug": "the-control-model",
+    "title": "What control means"
+  },
+  {
+    "slug": "transferring-control",
+    "title": "Assigning and releasing control"
+  },
+  {
+    "slug": "controller-retention",
+    "title": "Controller retention"
+  },
+  {
+    "slug": "when-prediction-is-worth-it",
+    "title": "When prediction is worth its cost"
+  }
+]

@@ -1,0 +1,38 @@
+[
+  {
+    "slug": "synapse-transport-component",
+    "title": "Synapse Transport component"
+  },
+  {
+    "slug": "transport-manager-component",
+    "title": "Transport Manager component"
+  },
+  {
+    "slug": "how-transports-work",
+    "title": "How transports work"
+  },
+  {
+    "slug": "blitz-relay-transport-component",
+    "title": "Blitz Relay Transport component"
+  },
+  {
+    "slug": "hosting-topologies",
+    "title": "Choosing a hosting topology"
+  },
+  {
+    "slug": "headless-server-build",
+    "title": "Building a headless Unity server"
+  },
+  {
+    "slug": "connecting-across-networks",
+    "title": "Connecting across networks"
+  },
+  {
+    "slug": "simulating-bad-connections-unity",
+    "title": "Simulating a bad connection in the editor"
+  },
+  {
+    "slug": "relay-sessions",
+    "title": "Hosting and joining a relay session"
+  }
+]
