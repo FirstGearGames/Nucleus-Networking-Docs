@@ -2,7 +2,7 @@
 title: "Reference & Project Meta"
 ---
 
-Lookup pages: type and component references, configuration, compatibility, licensing and support.
+Lookup pages: type and component references, configuration, compatibility, and support.
 
 - [API type reference](./api-type-reference)
 - [Compatibility](./compatibility)
@@ -11,7 +11,6 @@ Lookup pages: type and component references, configuration, compatibility, licen
 - [Editor menus and authoring tools](./editor-menus-and-tools)
 - [Versioning, upgrading and release notes](./versioning-and-upgrading)
 - [Installing and updating Nucleus in Unity](./installing-and-updating-in-unity)
-- [Licensing and confidentiality](./licensing-and-confidentiality)
 - [FishNet to Nucleus name map](./fishnet-name-map)
 - [Performance and benchmarks](./performance-and-benchmarks)
 - [Project assets and loaders](./project-assets-and-loaders)

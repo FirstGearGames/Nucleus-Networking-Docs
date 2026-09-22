@@ -60,5 +60,3 @@ A server does not re-measure a remote client's link itself once bootstrapped; it
 ## Quoting a figure
 
 A bandwidth number is meaningless without its world: tick rate, object count, transmission mode, edition, and transport all change the result, so state all five whenever a figure leaves the test log. A Free build costs more than Pro on plain replication - Pro packs values more tightly - but that difference is a black box here; this page does not explain how the packing works.
-
-Publishing a measured figure outside the engine's own test output is governed by [Licensing and confidentiality](licensing-and-confidentiality.md). Check that page before quoting a number publicly.
