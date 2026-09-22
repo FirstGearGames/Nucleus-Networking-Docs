@@ -1,0 +1,18 @@
+[
+  {
+    "slug": "code-generation-in-unity",
+    "title": "Code Generation in Unity"
+  },
+  {
+    "slug": "generator-diagnostics",
+    "title": "Generator Errors and Warnings"
+  },
+  {
+    "slug": "bundle-ids-for-unity-assemblies",
+    "title": "Bundle Ids for Unity Assemblies"
+  },
+  {
+    "slug": "unity-and-system-numerics-types",
+    "title": "Unity Types and System.Numerics"
+  }
+]

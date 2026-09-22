@@ -1,0 +1,42 @@
+[
+  {
+    "type": "separator",
+    "title": "Start Here"
+  },
+  {
+    "slug": "start-here",
+    "title": "Start Here",
+    "type": "folder",
+    "defaultOpen": true
+  },
+  {
+    "type": "separator",
+    "title": "Unity"
+  },
+  {
+    "slug": "unity",
+    "title": "Unity",
+    "type": "folder",
+    "defaultOpen": false
+  },
+  {
+    "type": "separator",
+    "title": "Core API"
+  },
+  {
+    "slug": "core-api",
+    "title": "Core API",
+    "type": "folder",
+    "defaultOpen": false
+  },
+  {
+    "type": "separator",
+    "title": "Reference & Project Meta"
+  },
+  {
+    "slug": "reference",
+    "title": "Reference & Project Meta",
+    "type": "folder",
+    "defaultOpen": false
+  }
+]

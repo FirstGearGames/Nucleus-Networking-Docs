@@ -1,0 +1,38 @@
+[
+  {
+    "slug": "proxies-and-smoothing",
+    "title": "Objects this peer does not control"
+  },
+  {
+    "slug": "the-control-model",
+    "title": "What control means"
+  },
+  {
+    "slug": "writing-an-input-component-unity",
+    "title": "Sending player input from Unity"
+  },
+  {
+    "slug": "control-in-unity-scripts",
+    "title": "Control in a Unity script"
+  },
+  {
+    "slug": "transferring-control-in-unity",
+    "title": "Giving a client control of an object"
+  },
+  {
+    "slug": "prediction-settings-in-unity",
+    "title": "Prediction settings on the Unity manager"
+  },
+  {
+    "slug": "when-prediction-is-worth-it",
+    "title": "When prediction is worth its cost"
+  },
+  {
+    "slug": "controller-retention-in-unity",
+    "title": "Keeping a player's objects across a disconnect"
+  },
+  {
+    "slug": "reconcile-in-unity",
+    "title": "Replaying a correction in Unity"
+  }
+]

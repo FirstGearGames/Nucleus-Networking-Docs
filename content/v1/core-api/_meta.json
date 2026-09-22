@@ -1,0 +1,68 @@
+[
+  {
+    "slug": "core",
+    "title": "Core, Managers and the Tick Loop",
+    "type": "folder",
+    "defaultOpen": false
+  },
+  {
+    "slug": "systems",
+    "title": "Systems, Objects and Spawning",
+    "type": "folder",
+    "defaultOpen": false
+  },
+  {
+    "slug": "state",
+    "title": "Replicated State and Change Callbacks",
+    "type": "folder",
+    "defaultOpen": false
+  },
+  {
+    "slug": "control",
+    "title": "Control, Inputs and Prediction",
+    "type": "folder",
+    "defaultOpen": false
+  },
+  {
+    "slug": "messaging",
+    "title": "Messaging and Remote Calls",
+    "type": "folder",
+    "defaultOpen": false
+  },
+  {
+    "slug": "interest",
+    "title": "Interest Management and Scaling",
+    "type": "folder",
+    "defaultOpen": false
+  },
+  {
+    "slug": "scenes",
+    "title": "Networked Scenes, Content Bundles and Persistence",
+    "type": "folder",
+    "defaultOpen": false
+  },
+  {
+    "slug": "physics",
+    "title": "Physics Synchronization",
+    "type": "folder",
+    "defaultOpen": false
+  },
+  {
+    "slug": "transports",
+    "title": "Transports, Connectivity and Hosting",
+    "type": "folder",
+    "defaultOpen": false
+  },
+  {
+    "slug": "wire",
+    "title": "Serialization, Codegen and the Wire",
+    "type": "folder",
+    "defaultOpen": false
+  },
+  {
+    "slug": "diagnostics",
+    "title": "Diagnostics and Troubleshooting",
+    "type": "folder",
+    "defaultOpen": false
+  }
+]
