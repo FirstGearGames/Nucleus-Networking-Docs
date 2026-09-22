@@ -4,9 +4,9 @@ title: "Reading serialization history (and the raw-packet test hook)"
 
 ## When the log has run out
 
-Some faults only show up as "the client has the wrong value" with nothing in the log to explain why. Before guessing, ask the authority two separate questions: what did it decide to serialize, and — far more rarely — what actually left the socket. These are answered by different tools, and conflating them wastes time.
+Some faults only show up as "the client has the wrong value" with nothing in the log to explain why. Before guessing, ask the server two separate questions: what did it decide to serialize, and — far more rarely — what actually left the socket. These are answered by different tools, and conflating them wastes time.
 
-## What the authority believes it sent
+## What the server believes it sent
 
 `SystemManager` keeps a rolling history of which `NetworkSystem` ids it serialized as changed or spawned, per tick, bounded by `SystemManager.SerializationHistoryTickCount`. Anything older than that window is gone; there is no going further back.
 

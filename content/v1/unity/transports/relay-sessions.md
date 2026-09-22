@@ -62,11 +62,11 @@ A surviving peer that is elected next adopts the world it had been receiving as 
 
 `IsHostMigrationEnabled` (on by default) is what makes `Migration` exist at all; without it, `StartHostingSessionAsync`, `JoinSessionAsync` and `SurrenderHostingSession` all fail and log an error telling you to drive the CoreManager directly instead.
 
-Turning it on also sets `ClientManager.DisconnectResetMode` to `RetainReceivedWorld` for you. That's a client-side setting: it decides, at the moment this peer's link to the authority drops, whether the world it received is thrown away or kept. Migration needs it kept, because the peer that gets elected next has to adopt what it was already receiving rather than starting from nothing.
+Turning it on also sets `ClientManager.DisconnectResetMode` to `RetainReceivedWorld` for you. That's a client-side setting: it decides, at the moment this peer's link to the server drops, whether the world it received is thrown away or kept. Migration needs it kept, because the peer that gets elected next has to adopt what it was already receiving rather than starting from nothing.
 
 `RetainReceivedWorld` is settable in a free build, but adopting the retained world is Pro-only. In a free build the setting has nowhere to go: nothing turns a retained world into a served one, so a free peer elected to host still starts empty.
 
-Watch `SystemManager.RespawnWorldOnReconnectEnabled` too. If it's set, it defeats retention outright regardless of `DisconnectResetMode` - the world is dropped and rebuilt from the new authority's own account instead of kept.
+Watch `SystemManager.RespawnWorldOnReconnectEnabled` too. If it's set, it defeats retention outright regardless of `DisconnectResetMode` - the world is dropped and rebuilt from the new server's own account instead of kept.
 
 ## Services you have to run yourself
 

@@ -39,15 +39,15 @@ if (ReferenceEquals(networkMember, ActiveSwitchIndex))
 
 ## Authority-side only
 
-`ValidateStateWrite` is never consulted on a client, and never for the authority's own writes. A client running it would be vetoing the value it's being told to hold; a server judging its own write would be asking permission from the code that just made the decision.
+`ValidateStateWrite` is never consulted on a client, and never for the server's own writes. A client running it would be vetoing the value it's being told to hold; a server judging its own write would be asking permission from the code that just made the decision.
 
 A component that doesn't implement `IStateWriteValidator<T0>` for a given type isn't consulted at all — it pays a single type test on the apply path, nothing more.
 
 ## What Decline does on the wire
 
-Declining doesn't unwind anything. The bits for the value were already consumed off the stream before the validator ran, so the stream stays aligned regardless of the outcome. Nothing about a declined value is relayed onward — the other observers are never told about a value the authority didn't take.
+Declining doesn't unwind anything. The bits for the value were already consumed off the stream before the validator ran, so the stream stays aligned regardless of the outcome. Nothing about a declined value is relayed onward — the other observers are never told about a value the server didn't take.
 
-On the client whose write was declined, the member keeps showing that client's own value for the duration of the convergence window, then reverts to the authority's value once the window closes. That reversion costs no traffic: the authority's value never moved, so there's nothing new to send. It's picked up from the read baseline the decode already advanced.
+On the client whose write was declined, the member keeps showing that client's own value for the duration of the convergence window, then reverts to the server's value once the window closes. That reversion costs no traffic: the server's value never moved, so there's nothing new to send. It's picked up from the read baseline the decode already advanced.
 
 ## A declined write is not a violation
 

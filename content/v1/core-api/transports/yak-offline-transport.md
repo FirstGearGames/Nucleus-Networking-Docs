@@ -41,7 +41,7 @@ await synapse.ConnectAsync(Invoker.Server);
 await synapse.ConnectAsync(Invoker.Client);
 ```
 
-The world the peer was already running survives the swap: started systems keep their state and their ids, because the swap only replaces the transport underneath an authority that was never anything but its own server. A second peer can then join over the real socket and receive that same retained world, as if the host had been on Synapse from the start.
+The world the peer was already running survives the swap: started systems keep their state and their ids, because the swap only replaces the transport underneath a server that was never anything but its own server. A second peer can then join over the real socket and receive that same retained world, as if the host had been on Synapse from the start.
 
 ## When to use Yak
 

@@ -34,7 +34,7 @@ The types worth knowing when chasing desync:
 - `InvalidStateAckViolation` - a peer acknowledged a tick above anything ever sent to it.
 - `RetentionExceededViolation` - a peer's acknowledged tick fell beyond the retention window and had to be re-served the whole world. A single raise is ordinary heavy loss; chronic raises mean the peer's latency exceeds `SystemManager.StateRetentionMilliseconds`, or it's deliberately withholding acknowledgments.
 - `RecoveryUnconfirmedViolation` - consecutive recoveries were served to a Connection without it ever confirming one.
-- `UnauthorizedSpawnViolation` - a client's full serialize named a system identifier the authority doesn't hold, which would have spawned an object on the authority.
+- `UnauthorizedSpawnViolation` - a client's full serialize named a system identifier the server doesn't hold, which would have spawned an object on the server.
 
 If a symptom in rungs 1-3 has a matching raise, that's your subsystem, directly. **If nothing is raised at all**, the fault sits in something the violation pipeline doesn't police: a legitimate interest decision, ordinary loss inside the retention window, an interpolation lag, or a prediction mismatch that's still a well-formed packet. Absence of a violation is evidence, not a dead end.
 

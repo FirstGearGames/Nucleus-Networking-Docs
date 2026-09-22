@@ -24,19 +24,19 @@ A `State` packet's body is not one thing — it is a sequence of framed subpacke
 | `Full` | Full-serialized system state, used for spawns and resyncs. |
 | `Controller` | Controller changes, as a list of `(SystemId, ControllerConnectionId, ControllerRetentionToken)` entries. |
 | `Input` | Tick-aligned input from the controlling client. Only ever sent client→server, never replicated downstream. |
-| `Reconcile` | Server→controller state correction carrying the authoritative full state for a system at the current tick. |
+| `Reconcile` | Server→controller state correction carrying the server's full state for a system at the current tick. |
 | `Ack` | A standalone acknowledgment carrying the receiver's highest fully-applied tick that carried state. Written only when that value has advanced and there's no other outbound traffic to piggyback it on. |
 | `Recovery` | Targeted loss recovery: the served-through tick followed by absolute full values for each recovered system's changed components. Systems spawned since the acknowledged tick ride `Full` instead. |
-| `Despawn` | System despawns, as a count followed by the stopped systems' Ids. Authority-only; written after that tick's state subpackets. |
+| `Despawn` | System despawns, as a count followed by the stopped systems' Ids. Server-only; written after that tick's state subpackets. |
 | `WriteAccess` | Who may write a system's state, as `(SystemId, access, may-this-connection-write)` entries. Server→client only. |
 | `RpcAccess` | Who may send a system a remote call, as `(SystemId, access, may-this-connection-send)` entries. Server→client only. |
 | `DeltaRelayed` | Delta-serialized state the sender is passing on from another peer, rather than a change it made itself. |
 | `DeltaAbsolute` | Delta-serialized state whose changed members carry self-contained absolute values (not baseline-encoded), for a change the sender made itself. |
 | `DeltaAbsoluteRelayed` | Same as `DeltaAbsolute`, but relayed from another peer. |
-| `RosterAdd` | Peer-roster additions, as a count followed by added peers' `Connection.Id`s. Authority-only; written ahead of every other kind. |
-| `RosterRemove` | Peer-roster removals, as a count followed by departed peers' `Connection.Id`s. Authority-only; written after that tick's despawns. |
-| `SceneMove` | A system's scene changing, as a count followed by `(SystemId, SceneHandle)` entries. Authority-only, to established observers only. |
-| `Reparent` | A system's parent changing, as a count followed by `(SystemId, ParentId)` entries. Authority-only, to established observers only. |
+| `RosterAdd` | Peer-roster additions, as a count followed by added peers' `Connection.Id`s. Server-only; written ahead of every other kind. |
+| `RosterRemove` | Peer-roster removals, as a count followed by departed peers' `Connection.Id`s. Server-only; written after that tick's despawns. |
+| `SceneMove` | A system's scene changing, as a count followed by `(SystemId, SceneHandle)` entries. Server-only, to established observers only. |
+| `Reparent` | A system's parent changing, as a count followed by `(SystemId, ParentId)` entries. Server-only, to established observers only. |
 
 `DeltaAbsolute`/`DeltaAbsoluteRelayed` exist because a plain `Delta` can't say two things a receiver needs and can't re-derive: whether the payload is baseline-encoded or self-contained, and whether the sender authored the change or is relaying somebody else's. Carrying those as the subpacket kind rather than as per-system bits pays for itself once enough systems share the same answer in a tick.
 
@@ -50,10 +50,10 @@ A tick's segments are rejoined into one `Reader` before any of this is read. Wit
 
 An RPC packet carries an `RpcRoute` naming where the call is headed, packed into two bits by the generated serializer:
 
-- **Server** — a client's call to the authority; it stops there.
-- **Observers** — a call to every connection observing the system. Legal in both directions: from the authority it *is* the fan-out; from a client it's a request for one, admitted and judged by the authority's handlers before going out to the other observers.
-- **Target** — the authority's call to a single observing connection. Authority-only; one arriving from a client is discarded and logged, since no engine path produces it.
-- **TargetRelay** — a client's call to a single connection it named, passed on once the authority admits it. The authority rewrites the route to `Target` before forwarding, so the recipient can't tell a routed call from one addressed to it directly.
+- **Server** — a client's call to the server; it stops there.
+- **Observers** — a call to every connection observing the system. Legal in both directions: from the server it *is* the fan-out; from a client it's a request for one, admitted and judged by the server's handlers before going out to the other observers.
+- **Target** — the server's call to a single observing connection. Server-only; one arriving from a client is discarded and logged, since no engine path produces it.
+- **TargetRelay** — a client's call to a single connection it named, passed on once the server admits it. The server rewrites the route to `Target` before forwarding, so the recipient can't tell a routed call from one addressed to it directly.
 
 Direction is validated against the sender's role on receipt, not inferred from which link the packet arrived on — a host holds connections in both directions, so the role has to be checked explicitly.
 

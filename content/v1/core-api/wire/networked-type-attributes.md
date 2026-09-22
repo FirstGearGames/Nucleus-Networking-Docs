@@ -34,8 +34,8 @@ It is an attribute rather than a constructor argument, and the reason is perform
 
 Two consequences follow from that:
 
-- **The value is the constructed default on every peer but the authority.** Nothing ever arrives to populate it, so reading one on a client returns the type's default rather than what the server holds.
-- **A peer promoted to authority by adoption never received these values.** It holds the defaults rather than what the previous authority had, and saving from it writes those defaults over whatever the store already held. Server-only state does not survive a handover.
+- **The value is the constructed default on every peer but the server.** Nothing ever arrives to populate it, so reading one on a client returns the type's default rather than what the server holds.
+- **A peer promoted to server by adoption never received these values.** It holds the defaults rather than what the previous server had, and saving from it writes those defaults over whatever the store already held. Server-only state does not survive a handover.
 
 ### Custom serializer attributes
 

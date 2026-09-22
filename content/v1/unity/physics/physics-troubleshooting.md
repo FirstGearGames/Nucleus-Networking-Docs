@@ -34,7 +34,7 @@ A snap is not always a bug. It legitimately fires on:
 
 - A respawn, where the body's old and new positions have nothing to do with each other.
 - A proxy that lost and then recovered its received state, where the buffered pose is stale by more than the threshold.
-- Any other large miss between the projected pose and the authoritative one.
+- Any other large miss between the projected pose and the server's actual pose.
 
 If bodies are snapping on ordinary corrections rather than these cases, raise `_teleportDistance` (or set it to zero to disable teleporting outright) so more of the divergence range blends instead.
 
@@ -52,7 +52,7 @@ Call `ProjectedRigidbody.NotifySceneChanged()` right after the move. It deregist
 
 ## A NetworkTransform and a ProjectedRigidbody on the same object
 
-`ProjectedRigidbody` follows a non-authority body as a proxy: it either adopts the first received state, follows a remote-input proxy on the interpolation buffer as a kinematic body, or runs the convergence follower. When a remote-controlled proxy follows the interpolation buffer, `RefreshRemoteInputProxy` forces the rigidbody kinematic (`Rigidbody.isKinematic = true`) for as long as that role holds, restoring the original flag when it ends.
+`ProjectedRigidbody` follows a non-server body as a proxy: it either adopts the first received state, follows a remote-input proxy on the interpolation buffer as a kinematic body, or runs the convergence follower. When a remote-controlled proxy follows the interpolation buffer, `RefreshRemoteInputProxy` forces the rigidbody kinematic (`Rigidbody.isKinematic = true`) for as long as that role holds, restoring the original flag when it ends.
 
 Putting a `NetworkTransform` on the same object as a `ProjectedRigidbody` means two components are both trying to move the same transform from replicated state: the `ProjectedRigidbody` drives the physics body (kinematically, while it is a remote-input proxy), and the `NetworkTransform` drives the same transform independently. Use one or the other for a given object's pose, not both.
 

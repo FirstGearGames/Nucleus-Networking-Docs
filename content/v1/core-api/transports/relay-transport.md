@@ -12,7 +12,7 @@ title: "The relay transport"
 |---|---|
 | `RelayEndPoint` | The relay to carry this session. Defaults to loopback on `DefaultRelayPort` (7770). |
 | `ConnectionKey` | The key the relay admits peers with. This is the relay operator's key, not a player's. |
-| `RoomCode` | The room to join, and once the authority connects, the room the relay named for it. Set it before connecting a client (a joining peer reads it); read it after connecting a server (the authority's side writes it once the relay assigns a room). |
+| `RoomCode` | The room to join, and once the server connects, the room the relay named for it. Set it before connecting a client (a joining peer reads it); read it after connecting a server (the server's side writes it once the relay assigns a room). |
 | `HostedRoomCode` | The room this peer is itself hosting, or empty when its own hosting side isn't up. Distinct from `RoomCode`, which for a peer that only joined answers with the room it was told to join, not one it hosts. |
 | `MaximumClients` | How many clients the room this peer creates will hold. Defaults to `DefaultMaximumClients` (16). Used only when `ServerConfiguration.MaximumConnections` hasn't been set — a relayed room has to be given a real size when it's made, unlike a listening transport where "unset" can mean no limit. |
 | `RelayHandshakeTimeoutMilliseconds` | How long to wait for the relay to answer a handshake before giving up. Defaults to 10000. |

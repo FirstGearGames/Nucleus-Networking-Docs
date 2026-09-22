@@ -4,7 +4,7 @@ title: "Refusing a scene load"
 
 ## What a validator does
 
-`ISceneLoadValidator` gives the authority a chance to refuse a client before it is ever asked to load a scene instance:
+`ISceneLoadValidator` gives the server a chance to refuse a client before it is ever asked to load a scene instance:
 
 ```csharp
 public interface ISceneLoadValidator
@@ -13,7 +13,7 @@ public interface ISceneLoadValidator
 }
 ```
 
-- `connection` is the client the authority is about to ask.
+- `connection` is the client the server is about to ask.
 - `sceneHandle` identifies the live scene instance.
 - `sceneId` identifies the scene asset that instance was opened from.
 
@@ -30,7 +30,7 @@ sceneManager.UnregisterSceneLoadValidator(myValidator);
 
 ## Several validators, first refusal wins
 
-Any number of validators may be registered. When `RequestSceneLoad` is about to ask a client into a scene, the authority walks the registered list in order and stops at the first one that returns `false`. If none are registered, or none refuse, the request proceeds. There's no voting and no override: one refusal is final, and validators after it aren't even asked.
+Any number of validators may be registered. When `RequestSceneLoad` is about to ask a client into a scene, the server walks the registered list in order and stops at the first one that returns `false`. If none are registered, or none refuse, the request proceeds. There's no voting and no override: one refusal is final, and validators after it aren't even asked.
 
 This means validator order can matter if two validators disagree about edge cases, but it never matters for the common case of independent entitlement checks — each one only needs to say yes or no about its own rule.
 
@@ -38,7 +38,7 @@ This means validator order can matter if two validators disagree about edge case
 
 A refusal happens before the request is sent. Nothing crosses the wire: no rejection message, no scene reference, no acknowledgment that a scene existed at all. From the client's point of view a refused scene is indistinguishable from one that was never offered.
 
-This is deliberate, not an oversight to work around. It's what makes `ISceneLoadValidator` the right place for entitlement rules — a party requirement, a ticket, a subscription, a ban — where the answer has to come from the authority and can't be inferred or forged by a client that was told "no" and why.
+This is deliberate, not an oversight to work around. It's what makes `ISceneLoadValidator` the right place for entitlement rules — a party requirement, a ticket, a subscription, a ban — where the answer has to come from the server and can't be inferred or forged by a client that was told "no" and why.
 
 ## Where a validator is the wrong tool
 

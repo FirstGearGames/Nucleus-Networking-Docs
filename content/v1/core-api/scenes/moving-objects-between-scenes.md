@@ -4,7 +4,7 @@ title: "Moving and carrying objects between scenes"
 
 ## Moving a system to another scene
 
-`SystemManager.EnsureMoveSystemToScene(NetworkSystem networkSystem, uint destinationSceneHandle)` is the one call that moves a spawned object between scene instances. It is authority-only, and it returns `false` without moving anything if the system is not started and registered, if it is a scene object or has no platform identity (only a dynamically spawned object carries a scene handle to move), or if `destinationSceneHandle` is `NetworkSystem.UnsetSceneHandle`.
+`SystemManager.EnsureMoveSystemToScene(NetworkSystem networkSystem, uint destinationSceneHandle)` is the one call that moves a spawned object between scene instances. It is server-only, and it returns `false` without moving anything if the system is not started and registered, if it is a scene object or has no platform identity (only a dynamically spawned object carries a scene handle to move), or if `destinationSceneHandle` is `NetworkSystem.UnsetSceneHandle`.
 
 ```csharp
 coreManager.SystemManager.EnsureMoveSystemToScene(asteroid, destinationSceneHandle);
@@ -16,7 +16,7 @@ If `networkSystem` belongs to a group, every member is restamped with the new sc
 
 `NetworkSystem.SceneHandle` names the scene instance the system currently belongs to. `NetworkSystem.UnsetSceneHandle` (zero) means the scene every peer already booted into - the boot scene needs no handle, since nothing has to carry a client into a scene it already holds.
 
-`NetworkSystem.SceneChanged` fires whenever the handle changes: on the authority as it performs the move, and on a client as it applies the change.
+`NetworkSystem.SceneChanged` fires whenever the handle changes: on the server as it performs the move, and on a client as it applies the change.
 
 ```csharp
 networkSystem.SceneChanged += (previousSceneHandle, currentSceneHandle) =>

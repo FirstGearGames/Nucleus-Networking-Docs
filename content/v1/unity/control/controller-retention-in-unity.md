@@ -40,7 +40,7 @@ An object whose record expires, is evicted, or is redeemed by someone else is de
 
 ## What none of this does on a client
 
-Controller retention is authority bookkeeping: the Unity System Manager fields, the `NetworkSystemObject` override, and the `NetworkPlayerSpawner` Disconnect Mode all govern what the authority does when a controller disconnects. A plain client can have every one of these fields set — they're serialized on the prefab and the scene components either way — but none of them does anything on a client. A client never decides retention for an object it doesn't control the fate of.
+Controller retention is server bookkeeping: the Unity System Manager fields, the `NetworkSystemObject` override, and the `NetworkPlayerSpawner` Disconnect Mode all govern what the server does when a controller disconnects. A plain client can have every one of these fields set — they're serialized on the prefab and the scene components either way — but none of them does anything on a client. A client never decides retention for an object it doesn't control the fate of.
 
 ## Where to go next
 

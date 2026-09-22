@@ -18,7 +18,7 @@ Referencing a Pro type in a Free build is a compile error naming a type that doe
 
 ## The one wire consequence
 
-Pro packs replicated lengths more tightly than Free, which writes every length exactly. A Free build costs more bandwidth on plain replication than a Pro build serializing the same data. The served interval itself is written identically in every edition, specifically so a Free client can decode a Pro server without knowing which edition produced the packet.
+Pro packs replicated lengths more tightly than Free, which writes every length exactly. This is the one place the edition split forks the wire format itself: a Free peer and a Pro peer encode this layer differently, so they cannot understand each other's packets at it. Every peer in a session — the server and every client — has to be built from the same edition. Mixing Free and Pro peers doesn't just cost more bandwidth, it corrupts what the mismatched side reads. This isn't a per-world toggle; it's fixed by which edition built each peer.
 
 ## The one enum that isn't compiled out
 

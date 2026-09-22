@@ -4,7 +4,7 @@ title: "Swept projection targets"
 
 ## The seam
 
-`PhysicsConvergence.Step` computes where a proxy body should be this step by projecting the latest authoritative snapshot forward. By default that projection is the closed-form `TrajectoryProjector`, which has no idea what geometry exists between the body's old position and its new one. Set `PhysicsConvergence.TargetProvider` to an `IProjectionTargetProvider` and the follower defers to it instead — `ComputeTarget` receives the body, the remote snapshot, the tick delta, the ticks to project, and the resolved `GravityProjection`, and hands back the `PhysicsSnapshot` to steer onto. The controller doesn't know or care how the target was produced.
+`PhysicsConvergence.Step` computes where a proxy body should be this step by projecting the latest server snapshot forward. By default that projection is the closed-form `TrajectoryProjector`, which has no idea what geometry exists between the body's old position and its new one. Set `PhysicsConvergence.TargetProvider` to an `IProjectionTargetProvider` and the follower defers to it instead — `ComputeTarget` receives the body, the remote snapshot, the tick delta, the ticks to project, and the resolved `GravityProjection`, and hands back the `PhysicsSnapshot` to steer onto. The controller doesn't know or care how the target was produced.
 
 ```csharp
 public interface IProjectionTargetProvider

@@ -4,7 +4,7 @@ title: "Sending player input from Unity"
 
 > **Driving the core API directly?** See [Input components](../../core-api/control/input-components)
 
-An input component is the one channel a client is allowed to push data upstream on: once per tick, the client that controls a system writes its intent, and the framework sends it to the authority. This page builds one for a keyboard or gamepad and wires it into a MonoBehaviour.
+An input component is the one channel a client is allowed to push data upstream on: once per tick, the client that controls a system writes its intent, and the framework sends it to the server. This page builds one for a keyboard or gamepad and wires it into a MonoBehaviour.
 
 ## Declare the component
 
@@ -75,7 +75,7 @@ private void Update()
 
 Only the controlling client should write; a system that isn't controlled locally has nothing to send.
 
-## React to input on the authority
+## React to input on the server
 
 Subscribe to `InputReceived(uint tick)` to act on the validated value. The fields already hold the (possibly corrected) value by the time the event fires:
 
@@ -99,8 +99,8 @@ protected override void OnSystemUnlinked()
 
 ## Forwarding and corrections
 
-`ForwardingEnabled` (true by default) controls whether the authority forwards this component's validated inputs to the system's observers. When it's on, a remote observer receives the same values through its own `InputReceived`, so presentation — audio, animation — can react to another player's actions. The controller itself doesn't receive its own inputs back through `InputReceived`; instead, if validation rejected or modified what it sent, the controller gets `InputCorrected(uint tick)`, and the corrected values are already written into the input members' ring history at that tick before the callback fires, so a later replay from that tick uses the validated inputs.
+`ForwardingEnabled` (true by default) controls whether the server forwards this component's validated inputs to the system's observers. When it's on, a remote observer receives the same values through its own `InputReceived`, so presentation — audio, animation — can react to another player's actions. The controller itself doesn't receive its own inputs back through `InputReceived`; instead, if validation rejected or modified what it sent, the controller gets `InputCorrected(uint tick)`, and the corrected values are already written into the input members' ring history at that tick before the callback fires, so a later replay from that tick uses the validated inputs.
 
-Override `ValidateInputs` on the authority side to enforce game rules — mutate the fields to correct them and return whether the input was accepted unchanged. Returning `false` is what triggers the forward to `InputCorrected`.
+Override `ValidateInputs` on the server side to enforce game rules — mutate the fields to correct them and return whether the input was accepted unchanged. Returning `false` is what triggers the forward to `InputCorrected`.
 
 For the serialization contract behind `Write`/`Read` and server-side validation in more depth, see [Input components](../../core-api/control/input-components).

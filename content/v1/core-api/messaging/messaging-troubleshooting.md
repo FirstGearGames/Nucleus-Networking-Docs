@@ -28,8 +28,8 @@ So when a call goes nowhere, check interest before framing: does the receiver st
 
 `RpcSelfDelivery` defaults to `None`, meaning the sender does not see its own call at all. A sender that expects immediate local feedback and gets nothing has not lost a call; it never asked to see it.
 
-- `RpcSelfDelivery.Immediate` runs the sender's own handlers at the send site, before the call has gone anywhere. It runs even if the authority later refuses the call.
-- `RpcSelfDelivery.OnDelivery` runs the sender's handlers only once the call has actually been delivered (and not at all if refused). On the authority's own send this behaves like `Immediate`, since the authority is the delivery point.
+- `RpcSelfDelivery.Immediate` runs the sender's own handlers at the send site, before the call has gone anywhere. It runs even if the server later refuses the call.
+- `RpcSelfDelivery.OnDelivery` runs the sender's handlers only once the call has actually been delivered (and not at all if refused). On the server's own send this behaves like `Immediate`, since the server is the delivery point.
 
 If a sender's own handler never fires, check what `RpcSelfDelivery` the send asked for.
 
@@ -37,8 +37,8 @@ If a sender's own handler never fires, check what `RpcSelfDelivery` the send ask
 
 Three separate gates can refuse a client's call, in order:
 
-1. **`RpcAccess` and `IsRpcSendPermitted`.** `NetworkSystem.IsRpcSendPermitted` checks the sender against `RpcAccess == RpcSendAccess.AnyClient` (or against being the system's controller) — the same check applies to a remote client's call and to a host's own client half calling its own authority. `CanLocalClientSendRpc` is a separate, earlier gate on the sending side: it lets a client queue a call upstream at all even when it is not the controller, and does not enter the authority's admission check. If the system's access does not admit the sender, the receive is refused. On the authority, a refusal in `DispatchReceivedRpcPacket` raises `RpcSendPermissionViolation` with the `SystemId` of the addressed system.
-2. **An authority handler returning `RpcRelayAction.Cancel`.** `TypedRpcHandler<T0>.InvokeHandlers` runs every registered handler and folds their answers: any single `Cancel` settles it, and no later `Relay` can overturn it. A handler that throws is treated as `Cancel` too — the throw counts as a refusal to relay, and the handler collection logs it, but the remaining handlers still receive the call.
+1. **`RpcAccess` and `IsRpcSendPermitted`.** `NetworkSystem.IsRpcSendPermitted` checks the sender against `RpcAccess == RpcSendAccess.AnyClient` (or against being the system's controller) — the same check applies to a remote client's call and to a host's own client half calling its own server half. `CanLocalClientSendRpc` is a separate, earlier gate on the sending side: it lets a client queue a call upstream at all even when it is not the controller, and does not enter the server's admission check. If the system's access does not admit the sender, the receive is refused. On the server, a refusal in `DispatchReceivedRpcPacket` raises `RpcSendPermissionViolation` with the `SystemId` of the addressed system.
+2. **A server handler returning `RpcRelayAction.Cancel`.** `TypedRpcHandler<T0>.InvokeHandlers` runs every registered handler and folds their answers: any single `Cancel` settles it, and no later `Relay` can overturn it. A handler that throws is treated as `Cancel` too — the throw counts as a refusal to relay, and the handler collection logs it, but the remaining handlers still receive the call.
 3. **`MaximumInboundRpcsPerConnectionPerDrain`.** `RpcManager.DeserializePackets` bounds how many calls one connection may deliver in a single drain (default 64). Once a connection exceeds it, `RpcFloodViolation` is raised (once per drain) with the received and allowed counts, and the rest of that drain's calls from that connection are dropped.
 
 `RpcSendPermissionViolation` and `RpcFloodViolation` tell these two failure modes apart: a permission violation means the system's access rule rejected the sender; a flood violation means the sender delivered more calls in one drain than the bound admits.
@@ -47,7 +47,7 @@ Three separate gates can refuse a client's call, in order:
 
 The engine already prevents every double-fire shape a naive host implementation could produce. The actual symptom to watch for with a host is different: with `RpcSelfDelivery.Immediate` on an addressed send, the host's client half runs a copy of calls addressed to *other* players, not only the ones addressed to itself.
 
-This falls out of what a host is: one peer running both the authority and a client. A call routed to another connection is relayed by the authority half; if that call was sent with `Immediate` self-delivery, the sender's own handlers already ran at the send site, on the same process the authority is running on. The host's client half is not a separate machine, so it sees the immediate copy of every call its authority half sends, not just the ones meant for it. Check the target of the call, not whether it "happened twice."
+This falls out of what a host is: one peer running both the server and a client. A call routed to another connection is relayed by the server half; if that call was sent with `Immediate` self-delivery, the sender's own handlers already ran at the send site, on the same process the server is running on. The host's client half is not a separate machine, so it sees the immediate copy of every call its server half sends, not just the ones meant for it. Check the target of the call, not whether it "happened twice."
 
 ## A message type the receiver never registered
 

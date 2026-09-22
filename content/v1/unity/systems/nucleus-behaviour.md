@@ -87,7 +87,7 @@ See the tick-loop pages for what each step means and when it runs.
 
 ## CanStartSystem
 
-`protected virtual bool CanStartSystem => true` controls whether the authority may start the required system as soon as it is rented. It's read once, when the required system is declared, so a later change to it has no effect, and it's ignored on a receiving client, which is handed a system that already started elsewhere. Override it to return false for an object that must write its opening state before the spawn is announced, then start the system itself.
+`protected virtual bool CanStartSystem => true` controls whether the server may start the required system as soon as it is rented. It's read once, when the required system is declared, so a later change to it has no effect, and it's ignored on a receiving client, which is handed a system that already started elsewhere. Override it to return false for an object that must write its opening state before the spawn is announced, then start the system itself.
 
 ## A script that needs an undeclared system
 

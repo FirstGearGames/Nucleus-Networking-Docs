@@ -46,7 +46,7 @@ private void OnReconcileRequired(uint rewoundTick)
 }
 ```
 
-`rewoundTick` is the local tick authoritative values were rewound onto - replay forward from here. It is `NetworkLoopManager.UnsetTick` when the correction was a snap with no replay target (a full apply with no processed-input echo to rewind against); skip the replay in that case.
+`rewoundTick` is the local tick the server's values were rewound onto - replay forward from here. It is `NetworkLoopManager.UnsetTick` when the correction was a snap with no replay target (a full apply with no processed-input echo to rewind against); skip the replay in that case.
 
 ## Replay each invalidated tick
 

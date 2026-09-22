@@ -21,9 +21,9 @@ You never write the serialization for these fields yourself. The class is `parti
 
 A `NetworkSystem` is the thing that gets spawned and despawned; the components attached to it are what carry state. A system can carry more than one component, which is what the spawning APIs below are generic over.
 
-## Spawn on the authority
+## Spawn on the server
 
-The authority rents a system and attaches the components it needs in one call:
+The server rents a system and attaches the components it needs in one call:
 
 ```csharp
 NetworkSystem? matchSystem = NetworkSystemPool.Rent<NetworkSystem, MatchClockComponent>(coreManager, canStartSystem: true);
@@ -53,7 +53,7 @@ NetworkSystemWatch? watch = NetworkSystemPool.Watch<NetworkSystem, MatchClockCom
 {
     if (acquiredSystem.TryGetComponent(out MatchClockComponent clock))
     {
-        // acquiredSystem is this peer's own instance, already carrying the authority's state.
+        // acquiredSystem is this peer's own instance, already carrying the server's state.
     }
 });
 ```

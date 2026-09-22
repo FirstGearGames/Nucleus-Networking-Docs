@@ -46,7 +46,7 @@ A system carries several identifiers, and each answers a different question:
 - **`PrefabBundleId`** — the content bundle that owns the prefab named by `PlatformId`. Only meaningful for a dynamically spawned prefab; a scene object doesn't use it.
 - **`GroupId`** — the `NetworkSystemGroup` this system belongs to, or unset if it isn't grouped.
 - **`ParentId`** — the `Id` of the system this one is parented to (a crate riding a vehicle, a weapon in a hand), or `UnsetParentId` if it sits at the root of its scene.
-- **`SceneHandle`** — the live scene instance the system belongs to, or `UnsetSceneHandle` if it belongs to whatever scene the peer booted into rather than one the authority opened.
+- **`SceneHandle`** — the live scene instance the system belongs to, or `UnsetSceneHandle` if it belongs to whatever scene the peer booted into rather than one the server opened.
 - **`IsSceneObject`** — true when `PlatformId` identifies a scene object that already exists on every peer, rather than a prefab a receiver must instantiate.
 
 ## Role reads

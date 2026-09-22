@@ -6,7 +6,7 @@ title: "Scene visibility: what a client in a scene can see"
 
 `SceneManager` owns a `SceneInterestCondition` called `SpawnGate`. It has `Capabilities => InterestEffect.Spawn`, and `SceneManager` registers it as a default condition on startup through `InterestManager.AddDefaultCondition`, so it applies to every `NetworkSystem` without any per-game setup. A game that wants to arbitrate scene membership itself can pull it back out with `InterestManager.RemoveDefaultConditions`.
 
-The rule it enforces: a `NetworkSystem` whose `SceneHandle` names a live scene instance is withheld from a `Connection` that does not hold that scene. `NetworkSystem.UnsetSceneHandle` (a system that belongs to no authority-opened scene) is exempt and is always held by everyone, so a world that never opens a scene pays almost nothing for this gate being on.
+The rule it enforces: a `NetworkSystem` whose `SceneHandle` names a live scene instance is withheld from a `Connection` that does not hold that scene. `NetworkSystem.UnsetSceneHandle` (a system that belongs to no server-opened scene) is exempt and is always held by everyone, so a world that never opens a scene pays almost nothing for this gate being on.
 
 ## Spawning and ongoing replication
 
@@ -18,7 +18,7 @@ So "the gate only restricts spawning" is only true for a client that fully holds
 
 The condition abstains for `connection.IsLocalPeer`, returning `InterestResult.None` immediately. This is not a host's own player connection — `IsLocalPeer` is true for an emulated `Connection` and for any peer sharing an in-memory Transport (test setups, most commonly), and it is deliberately distinct from `Connection.IsHostLoopback`, which is what actually names a host's own client half. A host's own client is evaluated by this gate like any other connection; it is placed by the same scene protocol and holds a real membership record.
 
-What differs for a host's client is how that record is used: the result is surfaced through `NetworkSystem.HostInterestMembership` rather than acted on, which is what lets a host hide an object its client half would not have been sent without actually withholding anything from itself as the authority.
+What differs for a host's client is how that record is used: the result is surfaced through `NetworkSystem.HostInterestMembership` rather than acted on, which is what lets a host hide an object its client half would not have been sent without actually withholding anything from itself as the server.
 
 ## Carried systems
 

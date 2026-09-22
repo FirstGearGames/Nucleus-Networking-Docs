@@ -47,7 +47,7 @@ A second script on the same GameObject calls `RequireSystem` for its own composi
 
 ## How the spawn side ties them together
 
-On the authority, `NetworkSystemObject.EnsureGroup` lazily rents a `NetworkSystemGroup` the first time a dynamic prefab's system is rented, and every later rent against that marker adds to the same group, so every member shares one non-unset `GroupId`.
+On the server, `NetworkSystemObject.EnsureGroup` lazily rents a `NetworkSystemGroup` the first time a dynamic prefab's system is rented, and every later rent against that marker adds to the same group, so every member shares one non-unset `GroupId`.
 
 `UnitySystemSpawnHandler.OnDynamicSystemSpawned` is what ties that GroupId back to a single GameObject on a receiver. It keeps a map of the marker hosting each active group, keyed by `GroupId`. The first member of a group to arrive finds nothing registered, so it instantiates the prefab and registers its marker against the group. A later member arriving with the same GroupId finds that marker already registered and links onto it instead of instantiating a second prefab.
 

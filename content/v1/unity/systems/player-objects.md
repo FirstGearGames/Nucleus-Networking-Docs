@@ -4,11 +4,11 @@ title: "Player objects"
 
 ## What it does
 
-`NetworkPlayerSpawner` is a `MonoBehaviour` that gives every authenticated client one object of its own. On the authority it spawns one prefab per client, hands that client control of the spawned object, and keeps a connection-to-object relationship so the rest of the game can ask which object belongs to whom.
+`NetworkPlayerSpawner` is a `MonoBehaviour` that gives every authenticated client one object of its own. On the server it spawns one prefab per client, hands that client control of the spawned object, and keeps a connection-to-object relationship so the rest of the game can ask which object belongs to whom.
 
 The engine itself has no player concept, and this component does not add one. A player object is an ordinary networked object that happens to be controlled by one client, so everything the engine already does for a controlled object — replication, interest, input routing, write permission, controller retention — applies unchanged. What this component adds is the one decision the engine deliberately leaves out: whether an object needs creating for a given client at all.
 
-Only the authority spawns. The component observes its role from the transport (`IsServerStarted`) rather than assuming it, because a server start can fail.
+Only the server spawns. The component observes its role from the transport (`IsServerStarted`) rather than assuming it, because a server start can fail.
 
 ## Inspector fields
 
@@ -51,7 +51,7 @@ public event PlayerObjectReclaimedHandler PlayerObjectReclaimed;
 public event PlayerObjectDespawnedHandler PlayerObjectDespawned;
 ```
 
-- **`PlayerObjectSpawned(Connection connection, NetworkSystemObject playerNetworkSystemObject)`** — raised on the authority when a client is given a newly created object, after that client has been made its controller.
+- **`PlayerObjectSpawned(Connection connection, NetworkSystemObject playerNetworkSystemObject)`** — raised on the server when a client is given a newly created object, after that client has been made its controller.
 - **`PlayerObjectReclaimed(Connection connection, NetworkSystemObject playerNetworkSystemObject)`** — raised when a client is given an object that already existed, whether redeemed from a retention record or found already under that client's control after this peer adopted a world. The object carries whatever state it had when its previous controller left, so anything a game resets for a fresh player has to run here too, and has to be safe to run on a used object.
 - **`PlayerObjectDespawned(NetworkSystemObject playerNetworkSystemObject)`** — raised when a player object leaves the world, whether because its player left under `NetworkPlayerDisconnectMode.Despawn` or because the retention record holding it lapsed unredeemed.
 
@@ -59,7 +59,7 @@ public event PlayerObjectDespawnedHandler PlayerObjectDespawned;
 
 `Awake` resolves the component's managers from the bound `CoreManager`, subscribes to `ClientAuthenticated` and the connection state-change events, and then — only if `IsServerStarted` is already true — sweeps every currently active, authenticated client and calls `EnsurePlayerObject` on each.
 
-That sweep exists because an event does not fire retroactively. A peer that was a client before it became the authority already holds connections that authenticated before this component's subscription existed, and an emulated or in-memory connection is authenticated the moment it connects, never passed to the authenticator, so it raises no event at all. Without the adopt pass those clients would never be given an object. The same sweep runs again whenever the local connection's authority state flips on, and authority going off clears every relationship this spawner is holding, since the objects belonged to the session that just ended.
+That sweep exists because an event does not fire retroactively. A peer that was a client before it became the server already holds connections that authenticated before this component's subscription existed, and an emulated or in-memory connection is authenticated the moment it connects, never passed to the authenticator, so it raises no event at all. Without the adopt pass those clients would never be given an object. The same sweep runs again whenever the local connection's server role turns on, and losing that role clears every relationship this spawner is holding, since the objects belonged to the session that just ended.
 
 ## Writing your own spawner
 

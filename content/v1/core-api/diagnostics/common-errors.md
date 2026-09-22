@@ -31,7 +31,7 @@ This guard is compiled only in `DEBUG`. A Release build has no such check and fa
 
 `"[Caller] touched the loop-owned collection [Name] on thread [X] while a network loop step is executing on thread [Y]. This work must run on the network loop thread; touching the collection off the loop races the loop and can silently corrupt it."`
 
-**Cause.** An async continuation resumed off the loop thread and then touched a collection the loop owns without locking — chiefly the system routing table or the authority's open-scene table. The loop mutates and enumerates these with no lock of its own, so a foreign thread touching them races the loop's reads and writes and can tear the collection or drop an entry.
+**Cause.** An async continuation resumed off the loop thread and then touched a collection the loop owns without locking — chiefly the system routing table or the server's open-scene table. The loop mutates and enumerates these with no lock of its own, so a foreign thread touching them races the loop's reads and writes and can tear the collection or drop an entry.
 
 **Fix.** Switch back onto the loop before touching loop-owned state, rather than acting from wherever the continuation resumed.
 
@@ -60,9 +60,9 @@ Every violation logs through this same shape, keyed by its type name. Look up `T
 - `RetentionExceededViolation` — an acked tick fell beyond the retention window, forcing a full-world recovery.
 - `RpcFloodViolation` — more remote calls arrived in one drain than the receiver admits.
 - `RpcSendPermissionViolation` — a remote call was sent without permission (often a well-behaved client racing a permission revocation).
-- `UnauthorizedSpawnViolation` — a client sent a full serialize for a system Id the authority doesn't hold.
+- `UnauthorizedSpawnViolation` — a client sent a full serialize for a system Id the server doesn't hold.
 - `UncontrolledStateChangeViolation` — a Connection sent state for a system it doesn't control.
-- `UnexpectedBundleRequestViolation` / `UnexpectedSceneRequestViolation` — a client sent a request only the server/authority ever sends.
+- `UnexpectedBundleRequestViolation` / `UnexpectedSceneRequestViolation` — a client sent a request only the server ever sends.
 - `UnsolicitedBundleReportViolation` / `UnsolicitedSceneReportViolation` — a client reported a load or unload it was never asked to make.
 
 Each violation has a default `ViolationAction` (`Log`, `Ignore`, or `Kick`) and a registered handler can override it per Connection. The action only governs the Connection consequence — the offending operation itself is always rejected regardless of what the action does.

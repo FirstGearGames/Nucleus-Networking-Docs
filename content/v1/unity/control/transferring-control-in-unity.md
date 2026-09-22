@@ -22,7 +22,7 @@ Passing `null` returns control to the server.
 - `_playerPrefab` - the networked prefab spawned for each client. It needs a `NetworkSystemObject` marker.
 - `_spawnPoints` - the poses new objects are placed on, taken in turn and wrapping when exhausted. Leave this empty to spawn every player on the spawner's own transform.
 
-On the authority, each authenticated client gets exactly one object of this prefab. When a fresh spawn is needed, the spawner calls `Instantiate(_playerPrefab, spawnPose.position, spawnPose.rotation)` and then hands the client control with `SetController`. The spawner only ever creates objects while its peer is the authority; a client never spawns one for itself.
+On the server, each authenticated client gets exactly one object of this prefab. When a fresh spawn is needed, the spawner calls `Instantiate(_playerPrefab, spawnPose.position, spawnPose.rotation)` and then hands the client control with `SetController`. The spawner only ever creates objects while its peer is the server; a client never spawns one for itself.
 
 ## What each peer sees
 
@@ -63,7 +63,7 @@ This is easy to miss on a host, because the host's own client is often the same 
 - `EnsurePlayerObject(Connection connection)` - the only way an object is created for a client. Idempotent: a client that already has one is a no-op.
 - `TryGetPlayerObject(uint connectionId, out NetworkSystemObject playerNetworkSystemObject)` and the `TryGetPlayerObject(Connection connection, ...)` overload - look up the object this spawner holds for a client.
 - `PlayerObjectCount` - how many clients this spawner currently holds an object for.
-- `PlayerObjectSpawned` - raised on the authority when a client is given a newly created object, after control has been assigned.
+- `PlayerObjectSpawned` - raised on the server when a client is given a newly created object, after control has been assigned.
 - `PlayerObjectReclaimed` - raised when a client is given an object that already existed, whether redeemed from a retention record or found already under that client's control after a world adoption. The object may carry state from its previous controller, so any per-player reset a game needs must run here as well as on `PlayerObjectSpawned`.
 - `PlayerObjectDespawned` - raised when a player object leaves the world, whether its player disconnected under `NetworkPlayerDisconnectMode.Despawn` or a retention record lapsed unredeemed.
 

@@ -6,7 +6,7 @@ title: "NetworkAnimator"
 
 `NetworkAnimator` replicates a GameObject's `Animator` across peers. Parameters are the primary channel: the peer driving the object reads its float, int, bool and trigger parameters, its layer weights and its playback speed, and every other peer applies those values and lets its own `Animator` run its own state machine from them.
 
-The layer state — each layer's current state hash and normalized time — rides on top as a correction, not as the primary replication path. It costs nothing between transitions, because a hash only changes when a layer transitions. It serves two purposes: a peer whose state machine branched differently from the controller is pulled back onto the authority's state, and a peer that joins mid-session opens each layer on the reported state and phase instead of at the controller's entry state.
+The layer state — each layer's current state hash and normalized time — rides on top as a correction, not as the primary replication path. It costs nothing between transitions, because a hash only changes when a layer transitions. It serves two purposes: a peer whose state machine branched differently from the controller is pulled back onto the server's state, and a peer that joins mid-session opens each layer on the reported state and phase instead of at the controller's entry state.
 
 Add `NetworkAnimator` to the same GameObject as the `Animator` it should replicate; it requires a `NetworkSystemObject`.
 
@@ -35,8 +35,8 @@ public enum StateCorrectionInterval : byte
 
 Controls how often the replicated normalized time of each layer is refreshed while no layer is transitioning. The state hash costs nothing between transitions since it doesn't change, but the phase advances every tick a clip plays, so refreshing it on a cadence means a character idling in a loop pays for that idle forever.
 
-- **Disabled** (default) — the phase only updates on a transition. A joining peer opens a looping state at the point the authority entered it, not the point the authority has since reached.
-- **Always** — refreshed every tick. The most expensive tier; a follower's phase tracks the authority's exactly rather than merely opening near it.
+- **Disabled** (default) — the phase only updates on a transition. A joining peer opens a looping state at the point the server entered it, not the point the server has since reached.
+- **Always** — refreshed every tick. The most expensive tier; a follower's phase tracks the server's exactly rather than merely opening near it.
 - **Short** — refreshed at most every 250ms.
 - **Long** — refreshed at most once a second, for a loop a joiner only needs to open roughly in the right place.
 
@@ -55,7 +55,7 @@ When enabled (the default), `Animator.applyRootMotion` is cleared on every peer 
 
 ## API
 
-All writing methods are silently no-ops on a peer that doesn't drive the object — the same script runs on every peer, and a call that's authoritative on the controller is inert everywhere else.
+All writing methods are silently no-ops on a peer that doesn't drive the object — the same script runs on every peer, and a call that has effect on the controller is inert everywhere else.
 
 ```csharp
 public float Speed { get; set; }
@@ -81,7 +81,7 @@ public void Play(int stateNameHash, int layerIndex = 0, float normalizedTime = 0
 public void CrossFade(int stateNameHash, float normalizedTransitionDuration, int layerIndex = 0);
 ```
 
-`Speed` maps to `Animator.speed`, the whole animator's playback rate, distinct from any parameter a controller happens to name "Speed". `Play` and `CrossFade` drive the local animator on the controller; the resulting state reaches every other peer through the replicated layer state, not through the fade itself — a follower is corrected onto the destination state at the authority's reported phase rather than told to blend into it, so the fade `CrossFade` would have played is the authority's alone.
+`Speed` maps to `Animator.speed`, the whole animator's playback rate, distinct from any parameter a controller happens to name "Speed". `Play` and `CrossFade` drive the local animator on the controller; the resulting state reaches every other peer through the replicated layer state, not through the fade itself — a follower is corrected onto the destination state at the server's reported phase rather than told to blend into it, so the fade `CrossFade` would have played is the server's alone.
 
 ## Triggers must go through SetTrigger
 

@@ -14,7 +14,7 @@ CoreManager coreManager = unityCoreManager.CoreManager;
 WorldPersistenceManager worldPersistenceManager = coreManager.WorldPersistenceManager;
 ```
 
-Both `SaveAsync` and `LoadAsync` are refused unless `TransportManager.IsServerStarted` is true. A client holds a copy of the authority's world, not one of its own, so persistence only runs on the authority.
+Both `SaveAsync` and `LoadAsync` are refused unless `TransportManager.IsServerStarted` is true. A client holds a copy of the server's world, not one of its own, so persistence only runs on the server.
 
 ## Registering a store
 

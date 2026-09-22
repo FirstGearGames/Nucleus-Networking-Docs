@@ -22,8 +22,8 @@ A second, unrelated cause produces the same symptom for a parented object: `Unit
 
 Two different timeouts produce this, and they are not the same failure:
 
-- `SceneManager.LoadRequestTimeoutSeconds` (default 180 seconds, zero or less waits indefinitely) is how long the authority waits for a client to answer a scene load request. If the client never answers, the authority treats it as a failure, logs a warning naming the scene handle and the timeout, and raises `ClientSceneLoadFailed`.
-- On the client, nothing completes if the loader never calls back. A custom `ISceneLoader.LoadSceneAsync` implementation has to eventually call `SceneManager.NotifySceneLoaded` (or fail through `NotifySceneLoadFailed`) — a loader that awaits something that never resolves leaves the load hanging until the authority's own timeout catches it.
+- `SceneManager.LoadRequestTimeoutSeconds` (default 180 seconds, zero or less waits indefinitely) is how long the server waits for a client to answer a scene load request. If the client never answers, the server treats it as a failure, logs a warning naming the scene handle and the timeout, and raises `ClientSceneLoadFailed`.
+- On the client, nothing completes if the loader never calls back. A custom `ISceneLoader.LoadSceneAsync` implementation has to eventually call `SceneManager.NotifySceneLoaded` (or fail through `NotifySceneLoadFailed`) — a loader that awaits something that never resolves leaves the load hanging until the server's own timeout catches it.
 
 If the load is stuck client-side with no timeout firing at all, check that the loader in use actually reports back through `NotifySceneLoaded`.
 
@@ -37,12 +37,12 @@ The two are deliberately distinct outcomes because the remedy differs. A `Failed
 
 Four violations cover unexpected scene and bundle messages, and all default to a kick:
 
-- **`UnsolicitedSceneReportViolation`** — a client reported a scene load or release the authority never asked for. Carries `SceneHandle` and `IsLoadReported` (true for a claimed load, false for a claimed release).
-- **`UnexpectedSceneRequestViolation`** — a client sent a scene load request, a message that only ever travels authority to client. Carries `SceneHandle` and `IsLoadRequested`.
+- **`UnsolicitedSceneReportViolation`** — a client reported a scene load or release the server never asked for. Carries `SceneHandle` and `IsLoadReported` (true for a claimed load, false for a claimed release).
+- **`UnexpectedSceneRequestViolation`** — a client sent a scene load request, a message that only ever travels server to client. Carries `SceneHandle` and `IsLoadRequested`.
 - **`UnsolicitedBundleReportViolation`** — a client reported a bundle load or unload the server never asked for, or does not record it holding. Carries `BundleId` and `IsLoadReported`.
 - **`UnexpectedBundleRequestViolation`** — a client sent the server a bundle load request, a message that only the server sends. Carries `BundleId`.
 
-All four are a client trying to drive placement or content that only the authority is allowed to drive. A well-behaved client cannot produce any of them, so seeing one means a modified or malicious client, not a legitimate race — including the unset scene handle, which is never requested and never recorded held, and which reports as unsolicited too.
+All four are a client trying to drive placement or content that only the server is allowed to drive. A well-behaved client cannot produce any of them, so seeing one means a modified or malicious client, not a legitimate race — including the unset scene handle, which is never requested and never recorded held, and which reports as unsolicited too.
 
 ## Prefabs silently never spawn for one client
 

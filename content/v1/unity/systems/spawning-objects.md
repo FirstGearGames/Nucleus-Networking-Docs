@@ -41,8 +41,8 @@ NetworkSystem system = NetworkSystemObjectPool.Rent<NetworkSystem, UnityLocalTra
 The call resolves its `CoreManager` from `NucleusUnity`, so nothing is passed in. Internally it branches on the calling peer's situation:
 
 - **A wire spawn is staging.** The integration is mid-`Instantiate` for an incoming spawn, and the rent returns the system the wire already built rather than constructing a new one.
-- **A client scene object.** The system is built locally, unstarted, and parked by scene identifier until the authority's spawn binds it.
-- **The authority.** The system is rented and started with the marker's platform identity, which is what replicates it to observers.
+- **A client scene object.** The system is built locally, unstarted, and parked by scene identifier until the server's spawn binds it.
+- **The server.** The system is rented and started with the marker's platform identity, which is what replicates it to observers.
 
 ## The marker, and renting more than once
 
@@ -58,22 +58,22 @@ What is refused is a rent whose composition does not match a staged wire spawn: 
 
 ## Despawning
 
-`NetworkSystemObject.Despawn()` despawns the object on the authority. It stops every system linked to the marker, which replicates the despawn to observers, and requests the systems return to their pool once the stop completes:
+`NetworkSystemObject.Despawn()` despawns the object on the server. It stops every system linked to the marker, which replicates the despawn to observers, and requests the systems return to their pool once the stop completes:
 
 ```csharp
 _networkSystemObject.Despawn();
 ```
 
-A call with no linked system is a no-op. Only the authority may despawn a replicated system — a client call is refused. On the receiving side, a dynamic prefab's GameObject returns to the prefab pool for reuse; a scene object's GameObject is destroyed, since it is a fixed instance rather than a poolable one.
+A call with no linked system is a no-op. Only the server may despawn a replicated system — a client call is refused. On the receiving side, a dynamic prefab's GameObject returns to the prefab pool for reuse; a scene object's GameObject is destroyed, since it is a fixed instance rather than a poolable one.
 
 ## Where the object lands
 
 A spawn arrives as a full serialization that is deserialized before the prefab instantiates, so the framework reads the spawned system's pose before creating the GameObject rather than moving it into place afterward. If the system carries a `UnityTransformComponentBase`, its `ReplicatedPosition`, `ReplicatedRotation`, and `LocalScale` supply the instantiate pose. If the system carries no transform component, the prefab's own authored transform is used instead. Either way, the instance is produced already positioned — there is no frame where it sits at the origin waiting to be moved.
 
-A system whose position is driven by a controller — a `ProjectedRigidbody` another peer simulates — is not placed by `Instantiate` at all. The controlling peer builds its own copy from the prefab and asserts the prefab's pose back within a tick, so an authority-chosen spawn point set through `Instantiate` is overwritten almost immediately. Derive or publish the spawn point so the controlling peer can place itself.
+A system whose position is driven by a controller — a `ProjectedRigidbody` another peer simulates — is not placed by `Instantiate` at all. The controlling peer builds its own copy from the prefab and asserts the prefab's pose back within a tick, so a server-chosen spawn point set through `Instantiate` is overwritten almost immediately. Derive or publish the spawn point so the controlling peer can place itself.
 
 ## Two things you won't find
 
-There is no separate `Spawn` call for an object already sitting in a loaded scene — the same `Rent` or `RequireSystem` call that spawns a dynamic prefab also resolves a scene object, built locally and bound once the authority's spawn arrives.
+There is no separate `Spawn` call for an object already sitting in a loaded scene — the same `Rent` or `RequireSystem` call that spawns a dynamic prefab also resolves a scene object, built locally and bound once the server's spawn arrives.
 
 There is no per-spawn payload parameter on `Rent` or `RequireSystem`. A NetworkComponent's fields carry current state, not one-time spawn arguments, so a late-joining observer's first read is simply the last value written, not a message it missed.

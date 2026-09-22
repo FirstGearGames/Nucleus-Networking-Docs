@@ -69,7 +69,7 @@ Matching is by **composition, not type**. Nearly every rent asks for a plain `Ne
 
 ## A worked sample
 
-The authority rents and starts a match clock with no engine object:
+The server rents and starts a match clock with no engine object:
 
 ```csharp
 public class MatchClock : INetworkLoopStepCallback
@@ -135,7 +135,7 @@ public class MatchReadout
 }
 ```
 
-Both sides drive the same real loop: the authority's `MatchClock` ticks `SecondsRemaining` down every `EarlyFixedUpdate`, and `MatchReadout.MatchSystem` reads the replicated value off the very system the watch handed it, on whichever peer it runs on. Neither side special-cases which peer it is.
+Both sides drive the same real loop: the server's `MatchClock` ticks `SecondsRemaining` down every `EarlyFixedUpdate`, and `MatchReadout.MatchSystem` reads the replicated value off the very system the watch handed it, on whichever peer it runs on. Neither side special-cases which peer it is.
 
 ## When to use SystemManager.SystemStarted instead
 

@@ -8,12 +8,12 @@ title: "Scene events and observers"
 
 | Event | Delegate | Raised on | When |
 |---|---|---|---|
-| `SceneLoadRequested` | `SceneLoadRequestedHandler(uint sceneHandle, ushort sceneId, bool isLoadRequested)` | client | The authority asks the client to load or release a scene, before the loader is consulted. |
-| `SceneLoadStateChanged` | `SceneLoadStateChangedHandler(Connection connection, uint sceneHandle, bool isLoaded)` | authority | A client's answer changes which scenes it holds. |
-| `SceneLoaded` | `SceneLoadedHandler(uint sceneHandle, ushort sceneId)` | whichever peer did the loading | This peer's own scene load finishes, after the outcome has been reported to the authority. Raised on an authority loading its own copy too. |
+| `SceneLoadRequested` | `SceneLoadRequestedHandler(uint sceneHandle, ushort sceneId, bool isLoadRequested)` | client | The server asks the client to load or release a scene, before the loader is consulted. |
+| `SceneLoadStateChanged` | `SceneLoadStateChangedHandler(Connection connection, uint sceneHandle, bool isLoaded)` | server | A client's answer changes which scenes it holds. |
+| `SceneLoaded` | `SceneLoadedHandler(uint sceneHandle, ushort sceneId)` | whichever peer did the loading | This peer's own scene load finishes, after the outcome has been reported to the server. Raised on a server loading its own copy too. |
 | `SceneUnloaded` | `SceneUnloadedHandler(uint sceneHandle, ushort sceneId)` | whichever peer did the unloading | This peer's own scene release finishes, after the report is sent. |
-| `SceneLoadFailed` | `SceneLoadFailedHandler(uint sceneHandle, ushort sceneId)` | local peer | This peer's own load fails, after the failure has been reported to the authority. |
-| `ClientSceneLoadFailed` | `ClientSceneLoadFailedHandler(Connection connection, uint sceneHandle)` | authority | A client reports it could not load a scene, after the pending request has been cancelled. |
+| `SceneLoadFailed` | `SceneLoadFailedHandler(uint sceneHandle, ushort sceneId)` | local peer | This peer's own load fails, after the failure has been reported to the server. |
+| `ClientSceneLoadFailed` | `ClientSceneLoadFailedHandler(Connection connection, uint sceneHandle)` | server | A client reports it could not load a scene, after the pending request has been cancelled. |
 | `SceneLoadProgressed` | `SceneLoadProgressedHandler(uint sceneHandle, ushort sceneId, float progress)` | local peer | This peer's own load advances, for a loading screen. Purely local; progress never reaches the wire. |
 
 ```csharp
@@ -52,13 +52,13 @@ A registered `ISceneLoader` reports automatically. A game driving its own loadin
 - `NotifySceneLoaded(uint sceneHandle, uint systemId = NetworkSystem.UnsetId)` — this client now holds the scene instance.
 - `NotifySceneUnloaded(uint sceneHandle)` — this client has released a scene instance.
 - `NotifySceneLoadFailed(uint sceneHandle, uint systemId = NetworkSystem.UnsetId)` — this client could not load a scene instance.
-- `NotifySceneLoadProgress(uint sceneHandle, ushort sceneId, float progress)` — reports progress through a load, purely local. Nothing is sent; the authority learns only whether the scene did or did not load, never how far along it got.
+- `NotifySceneLoadProgress(uint sceneHandle, ushort sceneId, float progress)` — reports progress through a load, purely local. Nothing is sent; the server learns only whether the scene did or did not load, never how far along it got.
 
-All three report methods are safe to call from any thread, and each is only sent in answer to a request the authority actually made — a self-driven load the authority never asked for loads locally and stays silent.
+All three report methods are safe to call from any thread, and each is only sent in answer to a request the server actually made — a self-driven load the server never asked for loads locally and stays silent.
 
 ## Clearing a stuck client
 
-A reported failure latches, so the authority stops asking a client that cannot fetch the content. Re-arm it once whatever blocked the load has been addressed:
+A reported failure latches, so the server stops asking a client that cannot fetch the content. Re-arm it once whatever blocked the load has been addressed:
 
 ```csharp
 bool cleared = sceneManager.ClearSceneLoadFailure(connection, sceneHandle);
@@ -79,9 +79,9 @@ A client reports one of four outcomes for a scene instance it was asked to load 
 
 ## Violations
 
-A client that answers about a scene it was never asked about did not merely send a stray message — it is trying to place or remove itself from scenes on its own authority, which is how it would serve itself content it was never admitted to. The authority drives every load and release itself, so these settle as violations rather than ordinary reports.
+A client that answers about a scene it was never asked about did not merely send a stray message — it is trying to place or remove itself from scenes on its own, which is how it would serve itself content it was never admitted to. The server drives every load and release itself, so these settle as violations rather than ordinary reports.
 
 - **UnsolicitedSceneReportViolation** — a client reports loading a scene it was never asked to load, or releasing one it was never asked to release. Carries `SceneHandle` and `IsLoadReported` (true for a claimed load, false for a claimed release).
-- **UnexpectedSceneRequestViolation** — a client sends a scene load request, the message that only ever travels authority to client. Carries `SceneHandle` and `IsLoadRequested`.
+- **UnexpectedSceneRequestViolation** — a client sends a scene load request, the message that only ever travels server to client. Carries `SceneHandle` and `IsLoadRequested`.
 
 Both default to a kick.

@@ -4,7 +4,7 @@ title: "Judging and Refusing a Relayed Call"
 
 ## Overview
 
-An RPC handler on the authority does not just react to a call - it can decide whether that call goes any further. Every handler returns an `RpcRelayAction`, and the authority applies that verdict before writing a single byte to the peers the call would otherwise reach.
+An RPC handler on the server does not just react to a call - it can decide whether that call goes any further. Every handler returns an `RpcRelayAction`, and the server applies that verdict before writing a single byte to the peers the call would otherwise reach.
 
 ```csharp
 public enum RpcRelayAction : byte
@@ -14,9 +14,9 @@ public enum RpcRelayAction : byte
 }
 ```
 
-`Relay` is zero. A handler that returns nothing meaningful, or that has no opinion about relaying, defaults to `Relay` - a handler with no opinion cannot accidentally suppress a relay. `Cancel` keeps the call on the authority instead of passing it on to the system's other observers.
+`Relay` is zero. A handler that returns nothing meaningful, or that has no opinion about relaying, defaults to `Relay` - a handler with no opinion cannot accidentally suppress a relay. `Cancel` keeps the call on the server instead of passing it on to the system's other observers.
 
-The verdict never travels. It is a decision the authority makes locally, before anything is written, so a receiving peer has nothing to decode for it and no bit width is reserved for it on the wire.
+The verdict never travels. It is a decision the server makes locally, before anything is written, so a receiving peer has nothing to decode for it and no bit width is reserved for it on the wire.
 
 ## Veto folding
 
@@ -56,11 +56,11 @@ public enum RpcDisposition : byte
 }
 ```
 
-- **`Recipient`** - the call was addressed to this peer, whose part is to act on it. An authority admitting a client's fan-out reads as this too, since it is one of the observers the call is for, even as its verdict also decides whether the call travels on.
-- **`Origin`** - this peer sent the call and is seeing its own copy, either as the authority's local invoke or as an echo a client asked for.
-- **`Routing`** - the call is passing through this peer to someone else, and was never addressed here. This only happens on the authority, and only while it carries a client's targeted call on to the client that call named.
+- **`Recipient`** - the call was addressed to this peer, whose part is to act on it. A server admitting a client's fan-out reads as this too, since it is one of the observers the call is for, even as its verdict also decides whether the call travels on.
+- **`Origin`** - this peer sent the call and is seeing its own copy, either as the server's local invoke or as an echo a client asked for.
+- **`Routing`** - the call is passing through this peer to someone else, and was never addressed here. This only happens on the server, and only while it carries a client's targeted call on to the client that call named.
 
-A handler that sees `Routing` still runs, and still gets a vote. That is deliberate: a call the authority has not read is a call it cannot judge. A handler in this position judges the call and returns a verdict without applying whatever effect it would normally apply for a call addressed to it. `RpcContext.TargetConnection` names which connection the routed call is bound for - it is set only while `Disposition` is `Routing`, and is null otherwise.
+A handler that sees `Routing` still runs, and still gets a vote. That is deliberate: a call the server has not read is a call it cannot judge. A handler in this position judges the call and returns a verdict without applying whatever effect it would normally apply for a call addressed to it. `RpcContext.TargetConnection` names which connection the routed call is bound for - it is set only while `Disposition` is `Routing`, and is null otherwise.
 
 ## Cancel does not unwind what already happened
 

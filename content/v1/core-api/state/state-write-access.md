@@ -28,7 +28,7 @@ public bool SetWriteAccess(StateWriteAccess stateWriteAccess)
 
 It's server-only; a client call is rejected. Widening a system's own permission state through a client call would make the permission client-settable, so the guard exists at the entry point rather than downstream. It also refuses to widen a system that holds a collection member (see below).
 
-The current setting is readable from `WriteAccess`. On the client side, the read that matters is `CanLocalClientWriteState`: whether the authority most recently told this client it may write. It's a capability hint the authority pushes down, not something the client derives locally, and it's always `false` on the server.
+The current setting is readable from `WriteAccess`. On the client side, the read that matters is `CanLocalClientWriteState`: whether the server most recently told this client it may write. It's a capability hint the server pushes down, not something the client derives locally, and it's always `false` on the server.
 
 ## Access widens permission, it never replaces observation
 
@@ -42,11 +42,11 @@ The consequence worth repeating: losing interest in a system silently removes wr
 
 ## Nothing travels as a grant
 
-The authority enforces every write from its own copy of `WriteAccess`. A client is told only which access is in force and whether it personally may write (`CanLocalClientWriteState`); it is never handed anything resembling a permission token. A forged or replayed "I may write" claim from a client is inert, because the server never trusts the client's own read of its permission - it re-checks against `WriteAccess` on every incoming write.
+The server enforces every write from its own copy of `WriteAccess`. A client is told only which access is in force and whether it personally may write (`CanLocalClientWriteState`); it is never handed anything resembling a permission token. A forged or replayed "I may write" claim from a client is inert, because the server never trusts the client's own read of its permission - it re-checks against `WriteAccess` on every incoming write.
 
 ## The echo-withholding window
 
-A client that writes state upstream would otherwise receive its own write back as a correction and stutter on it. To prevent that, a losing or contested write is shown locally for a window before the authority's value is accepted:
+A client that writes state upstream would otherwise receive its own write back as a correction and stutter on it. To prevent that, a losing or contested write is shown locally for a window before the server's value is accepted:
 
 ```csharp
 public uint StateWriteConvergenceDeadlineTicks = UnsetConvergenceDeadlineTicks;

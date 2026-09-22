@@ -33,7 +33,7 @@ public class HillTimer : NucleusBehaviour<HillTimerComponent>
 
 `Component` is only safe to use from the lifecycle hooks `NucleusBehaviourBase` raises once a system is linked: `OnSystemLinked`, `OnServerStarted`, `OnClientStarted` (and their `OnServerStopped` / `OnClientStopped` / `OnSystemUnlinked` counterparts). A write attempted from `Awake`, or from any point before the system links, has nowhere to go — `Component` is still null, so it isn't a matter of the write being ignored, it's a `NullReferenceException` waiting to happen.
 
-`OnSystemLinked` fires once, when the system arrives, whether that happens before, after, or exactly as this peer's own role starts. `OnServerStarted` and `OnClientStarted` fire once each, whenever that peer's role comes up while a system is linked — including immediately, if the role was already up at link time. A component that arms itself on `OnSystemLinked` for the authority alone still needs a role check, because every peer's copy of the behaviour links the system, not just the authority's:
+`OnSystemLinked` fires once, when the system arrives, whether that happens before, after, or exactly as this peer's own role starts. `OnServerStarted` and `OnClientStarted` fire once each, whenever that peer's role comes up while a system is linked — including immediately, if the role was already up at link time. A component that arms itself on `OnSystemLinked` for the server alone still needs a role check, because every peer's copy of the behaviour links the system, not just the server's:
 
 ```csharp
 protected override void OnSystemLinked()
