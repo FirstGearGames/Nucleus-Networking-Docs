@@ -69,11 +69,6 @@ These read the same in Nucleus as in FishNet; no rename to look up.
 - `IsClientStarted`
 - `IsHostStarted`
 
-## Plausible names that do not exist
-
-- `IsAuthority` — not a Nucleus member. Use `IsController(ControllerType.Server)` or `IsController(ControllerType.Client)` depending on which role you mean, or `ControllerType.AnyController` for either.
-- `IsHostOwnClient` / `IsHostOwnServer` — not Nucleus members. Check `IsServerStarted` and `IsClientStarted` directly.
-
 ## No migration tool
 
 There is no automated FishNet-to-Nucleus converter. Port code by hand, using this map to find the replacement concept, then write it in Nucleus's own shape rather than FishNet's.
