@@ -2,26 +2,6 @@
 title: "Technical limitations"
 ---
 
-## Permanent design limits
-
-These are not gaps waiting to be filled. Each is a deliberate boundary, and no configuration or future release moves it.
-
-### Delta serialization is scoped on purpose
-
-Delta serializers exist for numerics, quaternions, collections, nullables and generated composites. A type outside that set throws when the generator is asked to build a delta serializer for it, rather than falling back to a guess at how to encode a change. Silently mis-encoding a type nobody validated is worse than a build-time error naming exactly which type needs a full serializer instead.
-
-### Tick rate is fixed for the session
-
-`TickRate` is supplied once to `NetworkLoopManager`'s constructor, clamped to `MinimumTickRate` (5) through `MaximumTickRate` (128), and never exposed with a setter. Every rate-derived value in the engine, the loop provider's tick interval, the state retention window, each member's send interval in ticks, is baked from it once at construction. Changing the rate mid-session would leave all of those derivations describing a rate the loop no longer runs at, so there is no supported way to do it. Pick the rate before the `CoreManager` is built.
-
-### One loop drives one manager
-
-`NetworkLoopManager.InvokeNetworkLoopStep` claims the step with an interlocked compare-exchange against the thread currently running one. A second thread trying to drive the same loop while a step is in progress is turned away rather than run, and the rejection is logged (throttled to once per `SecondDriverReportIntervalSeconds`, 60 seconds) rather than silently dropped. A reentrant call from the thread that already holds the step still runs normally. Two update sources — for example a custom `INetworkLoopStepProvider` alongside a manually driven step — cannot share one `CoreManager`.
-
-### Free and Pro differ by file presence, not by flag
-
-`Nucleus.csproj` drops every `*.Pro.cs` file from compilation when built with `-p:NucleusEdition=Free`. Nothing is conditionally compiled and no preprocessor symbol distinguishes the editions; what a build contains is decided entirely by which files are on disk. Bit-packing brackets are the one setting that forks the wire between editions: Free and Pro pack differently, so a Free peer and a Pro peer exchanging state must both build the same edition. What the packing difference costs or saves is edition-specific and not part of this page.
-
 ## Defined but inert
 
 Some names exist in the engine but nothing wires them up yet. Treat them as documentation of intent, not as working settings.
