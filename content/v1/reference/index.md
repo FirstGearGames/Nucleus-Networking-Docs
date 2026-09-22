@@ -2,7 +2,7 @@
 title: "Reference & Project Meta"
 ---
 
-Lookup pages: type and component references, configuration, compatibility, and support.
+Lookup pages: type and component references, configuration, and compatibility.
 
 - [API type reference](./api-type-reference)
 - [Compatibility](./compatibility)
@@ -13,5 +13,4 @@ Lookup pages: type and component references, configuration, compatibility, and s
 - [Installing and updating Nucleus in Unity](./installing-and-updating-in-unity)
 - [FishNet to Nucleus name map](./fishnet-name-map)
 - [Project assets and loaders](./project-assets-and-loaders)
-- [Support and reporting a problem](./support-and-reporting-a-problem)
 - [CodeBoost reference](./codeboost-reference)
