@@ -53,7 +53,7 @@ The return value reports only what this peer can see. `true` means the call was 
 
 ## Guarding the send
 
-Address checks and role checks belong to `NucleusBehaviourBase`, not to hand-written comparisons against connections or transport state. `EnsureIsController(ControllerType)` reports whether this peer controls the linked system, and logs a warning once per call site when it does not:
+Address checks and role checks belong to `NucleusBehaviourBase`, not to hand-written comparisons against connections or transport state. `EnsureIsController(ControllerType)` reports whether this peer controls the linked system, and logs a warning on every failing call:
 
 ```csharp
 private void OnFireButton()

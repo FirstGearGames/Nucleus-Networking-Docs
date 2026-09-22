@@ -41,7 +41,7 @@ private void RequestFire()
 }
 ```
 
-The warning names the calling member and is logged once per call site, not once per call, so a guard checked every frame does not flood the console. Reach for these over the plain checks whenever a silent no-op would be confusing to debug later; reach for the plain checks when a peer failing the condition is an expected, frequent path rather than a mistake.
+The warning names the calling member and is logged on every failing call - it is not throttled, so a guard checked every frame floods the console the moment it fails. `RequestFire` above is a one-off call from an input handler, where a failure is worth logging loudly because it means something is actually wrong. Reach for the loud forms there; reach for the plain `IsController` / `IsStarted` in a per-frame or per-tick hook, where a non-controlling peer failing the check is the normal, expected path rather than a mistake.
 
 ## Reacting to control changing
 
