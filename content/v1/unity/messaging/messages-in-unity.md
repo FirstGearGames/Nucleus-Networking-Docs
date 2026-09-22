@@ -63,7 +63,7 @@ if (NucleusUnity.BoundCoreManager.TransportManager.TryGetServerConnection(out Co
     serverConnection.SendMessage(Channel.Reliable, new DamageAlertMessage());
 ```
 
-On the authority side, sending to one or many clients uses the server-side connection helpers covered in [Sending a Message to Many Peers](../../core-api/messaging/server-message-fanout).
+On the server side, sending to one or many clients uses the server-side connection helpers covered in [Sending a Message to Many Peers](../../core-api/messaging/server-message-fanout).
 
 ## The generator prerequisite
 

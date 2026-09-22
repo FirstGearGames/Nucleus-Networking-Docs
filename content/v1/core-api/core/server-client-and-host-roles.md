@@ -54,7 +54,7 @@ if (networkSystem.IsServerStarted)
 
 `IsAuthority` was removed. It conflated two different questions, and the roles above answer them separately:
 
-- **"Is this peer the authority?"** - `IsServerStarted`. The server is always the authority.
+- **"Is this peer the server?"** - `IsServerStarted`. The server is always the server.
 - **"Does this peer control this system?"** - `NetworkSystem.IsController(ControllerType controllerType)`. This is a method, not a bool property, because control is checked against a specific role:
 
 ```csharp

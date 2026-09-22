@@ -4,7 +4,7 @@ title: "Parents, children and hierarchy"
 
 > **Using Unity?** See [Carrying and re-parenting objects](../../unity/systems/reparenting-objects).
 
-A NetworkSystem can be attached to another so the two move together and replicate as a unit. The link is authority-only, the child follows a strict eligibility rule, and a receiver sees the identifier before it can see the object it names.
+A NetworkSystem can be attached to another so the two move together and replicate as a unit. The link is server-only, the child follows a strict eligibility rule, and a receiver sees the identifier before it can see the object it names.
 
 ## Setting a parent
 
@@ -20,7 +20,7 @@ Passing `null` for the parent detaches the system and returns it to the root of 
 CoreManager.SystemManager.EnsureSetSystemParent(crateSystem, parentNetworkSystem: null);
 ```
 
-The call only succeeds on the authority. A client calling it is refused and logged, and nothing else in the engine reparents a started system.
+The call only succeeds on the server. A client calling it is refused and logged, and nothing else in the engine reparents a started system.
 
 ## Eligibility
 
@@ -50,7 +50,7 @@ public bool IsParentResolved { get; }
 public event ParentChangedHandler ParentChanged;
 ```
 
-`IsParentResolved` is true once the system holds a live reference to the parent `ParentId` names; it is false both for an unparented system and for one whose parent identifier has arrived but the parent itself has not been resolved yet. `ParentChanged` fires on both ends, the authority as it reparents and a client as it applies the change, and carries the Ids rather than the systems:
+`IsParentResolved` is true once the system holds a live reference to the parent `ParentId` names; it is false both for an unparented system and for one whose parent identifier has arrived but the parent itself has not been resolved yet. `ParentChanged` fires on both ends, the server as it reparents and a client as it applies the change, and carries the Ids rather than the systems:
 
 ```csharp
 void OnParentChanged(uint previousParentId, uint currentParentId)

@@ -4,7 +4,7 @@ title: "Content bundles in Unity"
 
 > **Driving the core API directly?** See [The content bundle protocol](../../core-api/scenes/content-bundle-protocol).
 
-Content bundles let you ship a set of networked prefabs outside the base build and load them into a running game as an asset bundle. Clients that have not yet loaded a bundle simply do not receive spawns for the prefabs it ships — the authority withholds them until the bundle is loaded and registered.
+Content bundles let you ship a set of networked prefabs outside the base build and load them into a running game as an asset bundle. Clients that have not yet loaded a bundle simply do not receive spawns for the prefabs it ships — the server withholds them until the bundle is loaded and registered.
 
 ## Shard your prefabs
 
@@ -61,7 +61,7 @@ Normally a prefab's required content is read straight from the shard it shipped 
 - **Required Bundle Override Enabled** (`_requiredBundleOverrideEnabled`) — turns the override on. Left off, the requirement comes from the prefab's own `PrefabBundleId`.
 - **Required Bundle Id** (`_requiredBundleId`) — the bundle identifier required when the override is enabled.
 
-`NetworkSystemObject.RequiredBundleId` resolves between the two: the override value when enabled, otherwise `PrefabBundleId`. This never changes the prefab's own wire identity — that stays `PrefabBundleId` paired with `PrefabId` — it only changes which bundle must be loaded before the authority will spawn it.
+`NetworkSystemObject.RequiredBundleId` resolves between the two: the override value when enabled, otherwise `PrefabBundleId`. This never changes the prefab's own wire identity — that stays `PrefabBundleId` paired with `PrefabId` — it only changes which bundle must be loaded before the server will spawn it.
 
 ## Pro only
 

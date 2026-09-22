@@ -41,7 +41,7 @@ Three fields are stamped by editor tooling and shown read-only in the inspector,
 | `RequiredBundleId` | `ushort` | The override when `_requiredBundleOverrideEnabled` is set, otherwise `PrefabBundleId`. |
 | `SceneObjectId` | `uint` | This object's identifier within its scene, or zero when it is not a scene object. |
 | `IsSceneObject` | `bool` | True when `SceneObjectId != 0`. |
-| `PredictedSpawnPolicy` | `Nucleus.Systems.PredictedSpawnPolicy` | What a client may do to this object ahead of the authority agreeing, as authored on the prefab. |
+| `PredictedSpawnPolicy` | `Nucleus.Systems.PredictedSpawnPolicy` | What a client may do to this object ahead of the server agreeing, as authored on the prefab. |
 
 ## Events
 
@@ -52,7 +52,7 @@ Three fields are stamped by editor tooling and shown read-only in the inspector,
 
 ## Despawn and reverse lookup
 
-`Despawn()` stops every system linked to this object on the authority, replicating the despawn to observers; a call with no linked system is a no-op. It is the pooling counterpart to destroying the GameObject, which despawns network-wide through `OnDestroy`.
+`Despawn()` stops every system linked to this object on the server, replicating the despawn to observers; a call with no linked system is a no-op. It is the pooling counterpart to destroying the GameObject, which despawns network-wide through `OnDestroy`.
 
 `NetworkSystemObject.TryGetLinked(NetworkSystem, out NetworkSystemObject)` is the reverse of `System`: given a `NetworkSystem` handed to game code by the engine, it resolves the marker linked to it, or returns false if none is linked.
 

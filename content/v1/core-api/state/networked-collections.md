@@ -92,7 +92,7 @@ This is why a mutator that ran and then refilled a collection back to its previo
 
 ## The upstream-write exception
 
-Operations are an encoding against what the receiver already holds, so they only work where the sender knows what that receiver's previous state was. A client's upstream write breaks that assumption — nothing downstream serves recovery for an upstream delta — so a client writing a collection member, and the authority relaying that write for the tick, both carry the whole collection as an absolute rather than as operations. The encoding rides as the delta's subpacket kind rather than a bit in the body, so the receiver always knows which shape to expect before decoding.
+Operations are an encoding against what the receiver already holds, so they only work where the sender knows what that receiver's previous state was. A client's upstream write breaks that assumption — nothing downstream serves recovery for an upstream delta — so a client writing a collection member, and the server relaying that write for the tick, both carry the whole collection as an absolute rather than as operations. The encoding rides as the delta's subpacket kind rather than a bit in the body, so the receiver always knows which shape to expect before decoding.
 
 ## Reading the previous state
 

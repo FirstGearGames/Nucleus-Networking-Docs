@@ -24,7 +24,7 @@ Nucleus does not pick a topology for you. A `CoreManager` can run its server hal
 
 There is no host-only code path in the engine. A host is a `CoreManager` with a server started and a client started in the same process, talking to each other. `HostPairing` describes exactly this: two independent sockets, one process, each computed from the other's address. Under `HostPairing.Endpoint` the two halves exchange real datagrams over loopback like any other server/client pair; under `HostPairing.Local` they're paired in process without ever putting a packet on the wire. Either way, it's the same server and the same client code every other topology runs.
 
-That has one direct consequence for trust: the host's `CoreManager` is the authority. It runs the same server logic a dedicated server would, with the same say over what's true. Hosting doesn't relax that — it just means the authority is sitting in a player's process instead of yours.
+That has one direct consequence for trust: the host's `CoreManager` is the server. It runs the same server logic a dedicated server would, with the same say over what's true. Hosting doesn't relax that — it just means the server is sitting in a player's process instead of yours.
 
 ## Reachability
 
@@ -34,7 +34,7 @@ A relayed room needs neither. `RelayTransport` carries the session through a Bli
 
 ## The relay doesn't change who's in charge
 
-Relaying usually gets blamed for handing control to whoever the relay trusts, or for adding a man-in-the-middle that could tamper with state. That doesn't happen here, because the relay only replaces the transport's addressing — it's still one peer's `CoreManager` acting as the server. The host authenticates and simulates exactly as it would over a direct connection; the relay just forwards its packets under a room code instead of a socket address. Nothing on the wire becomes client-authoritative by being relayed, and no other peer gains authority it wouldn't have had directly against that same host.
+Relaying usually gets blamed for handing control to whoever the relay trusts, or for adding a man-in-the-middle that could tamper with state. That doesn't happen here, because the relay only replaces the transport's addressing — it's still one peer's `CoreManager` acting as the server. The host authenticates and simulates exactly as it would over a direct connection; the relay just forwards its packets under a room code instead of a socket address. Nothing on the wire becomes client-authoritative by being relayed, and no other peer gains any capability it wouldn't have had directly against that same host.
 
 ## Session lifetime
 
@@ -47,7 +47,7 @@ What this repo ships for surviving that is a relay-plus-directory pairing: `ISes
 Weigh a topology on these, not on habit:
 
 - **Cost.** A dedicated server is a machine you run and pay for continuously. A host costs you nothing directly — the player's machine and connection carry it. A relay costs whoever runs the relay server, continuously, whether or not it's you.
-- **Trust.** All three have one authoritative `CoreManager`. What differs is whose process it runs in, and whether you trust that process's operator (yourself, or a player) to run honest server logic.
+- **Trust.** All three have exactly one `CoreManager`, and it is the server. What differs is whose process it runs in, and whether you trust that process's operator (yourself, or a player) to run honest server logic.
 - **Latency.** A dedicated server sits somewhere fixed, generally central. A host's latency is whatever every other peer's connection to that one player looks like — good for the host, variable for everyone else. A relay adds the extra hop through the relay server on top of the host's own connection.
 - **Persistence.** A dedicated server's world persists independent of players. A plain host's world dies with the host's process. A relayed room with the directory pairing can hand the session to a new host, and Pro can carry the world state across that handover.
 - **Who keeps a machine running.** A dedicated server asks you to. A host asks a player to, for as long as the session needs to exist. A relay asks whoever operates the relay to keep a lightweight forwarding service up, plus (for a survivable session) a directory.

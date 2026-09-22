@@ -8,7 +8,7 @@ title: "NetworkTransform or ProjectedRigidbody"
 
 `NetworkTransform` makes every non-controlling peer a **pose follower**. The controller writes position, rotation, and scale each tick; every other peer applies the received values onto the transform through the interpolation buffer, animated one tick behind fact. Velocity is never synchronized — a proxy has no physical motion of its own, it is just redrawn along the received path.
 
-`ProjectedRigidbody` keeps every peer **simulating**. The controller's `Rigidbody` steps normally and the stepped result is captured for replication. Every other peer's `Rigidbody` also steps — real collision response, real physics — while the convergence follower (`PhysicsConvergence`) steers it toward the authoritative snapshot, blending a diverged position or rotation back once it passes a threshold instead of teleporting onto it.
+`ProjectedRigidbody` keeps every peer **simulating**. The controller's `Rigidbody` steps normally and the stepped result is captured for replication. Every other peer's `Rigidbody` also steps — real collision response, real physics — while the convergence follower (`PhysicsConvergence`) steers it toward the server's snapshot, blending a diverged position or rotation back once it passes a threshold instead of teleporting onto it.
 
 Pick by what a proxy needs to do: look right, or behave right. A pose follower is cheaper and never fights local physics. A converging body can be bumped, land on, or collide with on every peer, because it's actually simulating there.
 

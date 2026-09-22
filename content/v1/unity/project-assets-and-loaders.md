@@ -51,13 +51,13 @@ Assigning `null` restores `DefaultNetworkPrefabPool`. A project that never touch
 
 ### NetworkSceneManifest
 
-A `ScriptableObject` (`Nucleus/Network Scene Manifest` in the Create menu) mapping the scene identifiers the authority names on the wire to the scene assets a peer loads them from, and the content bundle each scene ships in. It is also the identifier registry itself: a prefab is stamped on the prefab asset, but a scene has no comparable place to carry one, so the entry keyed by the scene's GUID is where the identifier lives.
+A `ScriptableObject` (`Nucleus/Network Scene Manifest` in the Create menu) mapping the scene identifiers the server names on the wire to the scene assets a peer loads them from, and the content bundle each scene ships in. It is also the identifier registry itself: a prefab is stamped on the prefab asset, but a scene has no comparable place to carry one, so the entry keyed by the scene's GUID is where the identifier lives.
 
 `_sceneEntries` holds the list, exposed as `Entries`; each entry is a `SceneEntry`:
 
 | Field | Purpose |
 |---|---|
-| `SceneId` | The identifier the authority names this scene by on the wire. |
+| `SceneId` | The identifier the server names this scene by on the wire. |
 | `SceneGuid` | The scene asset's GUID — what the identifier is really keyed to. |
 | `ScenePath` | The scene asset's path, handed to Unity's loader. |
 | `RequiredBundleId` | The content bundle the scene ships in; the base build's identifier means it ships in the player. |
@@ -78,7 +78,7 @@ public bool TryGetScene(uint sceneHandle, out Scene scene);
 public bool TryGetSceneHandle(Scene scene, out uint sceneHandle);
 ```
 
-`TryGetScene` turns the authority's scene instance handle into the live Unity `Scene`; it answers false while the scene is still loading. `TryGetSceneHandle` is the inverse, for code holding a scene or object that needs to know which instance it belongs to — a true result with `NetworkSystem.UnsetSceneHandle` means the peer loaded that scene itself and no instance will ever claim it.
+`TryGetScene` turns the server's scene instance handle into the live Unity `Scene`; it answers false while the scene is still loading. `TryGetSceneHandle` is the inverse, for code holding a scene or object that needs to know which instance it belongs to — a true result with `NetworkSystem.UnsetSceneHandle` means the peer loaded that scene itself and no instance will ever claim it.
 
 The correlation between a handle and its `Scene` is tracked internally; these two methods are the supported way to read it.
 

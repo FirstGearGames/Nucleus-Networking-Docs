@@ -43,7 +43,7 @@ That pairing is the whole of what separates the two decisions:
 
 ### The adoption trap
 
-A peer promoted to authority by adoption never received `ReplicationIgnore`-marked values — nothing was ever sent to it for them. It holds the constructed defaults, not whatever the previous authority had. Saving a world from that peer writes those defaults over whatever the store already held for those members. This is specific to `ReplicationIgnoreAttribute`; a `WorldStateIgnore` member behaves the same on every peer regardless of authority, because no peer ever saves it.
+A peer promoted to server by adoption never received `ReplicationIgnore`-marked values — nothing was ever sent to it for them. It holds the constructed defaults, not whatever the previous server had. Saving a world from that peer writes those defaults over whatever the store already held for those members. This is specific to `ReplicationIgnoreAttribute`; a `WorldStateIgnore` member behaves the same on every peer regardless of role, because no peer ever saves it.
 
 ## Choosing between them
 

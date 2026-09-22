@@ -6,9 +6,9 @@ title: "The host interest report"
 
 ## What it answers
 
-A host runs the authority and a client in the same process, so it already holds every object in the world. That leaves it no way to know what its own client half would actually have been sent, unless something resolves the question and hands back an answer. `InterestManager.HostInterestEnabled` does that: turned on, the interest pass also resolves the host's own client against the registered conditions, exactly as it would a remote client.
+A host runs the server and a client in the same process, so it already holds every object in the world. That leaves it no way to know what its own client half would actually have been sent, unless something resolves the question and hands back an answer. `InterestManager.HostInterestEnabled` does that: turned on, the interest pass also resolves the host's own client against the registered conditions, exactly as it would a remote client.
 
-The answer is a report, never a decision. A host is the authority, and nothing is culled, no observer is dropped, and no despawn is written for it because of this resolution. The object goes on existing, replicating, and being controllable exactly as it always did. All that changes is that the engine now tells you what a client in the host's position would be holding.
+The answer is a report, never a decision. A host is the server, and nothing is culled, no observer is dropped, and no despawn is written for it because of this resolution. The object goes on existing, replicating, and being controllable exactly as it always did. All that changes is that the engine now tells you what a client in the host's position would be holding.
 
 ## Reading the report
 

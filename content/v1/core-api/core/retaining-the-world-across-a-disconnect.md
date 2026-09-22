@@ -4,7 +4,7 @@ title: "Keeping the world across a disconnect"
 
 ## Choosing what a dropped client does with its world
 
-When a client's link to the authority drops, `ClientManager.DisconnectResetMode` decides what happens to the world that client was holding:
+When a client's link to the server drops, `ClientManager.DisconnectResetMode` decides what happens to the world that client was holding:
 
 ```csharp
 coreManager.ClientManager.DisconnectResetMode = DisconnectResetMode.RetainReceivedWorld;
@@ -12,10 +12,10 @@ coreManager.ClientManager.DisconnectResetMode = DisconnectResetMode.RetainReceiv
 
 `DisconnectResetMode` has two values:
 
-- **`ClearReceivedWorld`** (the default): despawns every `NetworkSystem` the authority sent and releases every networked scene it placed the client in. The next session starts from nothing.
+- **`ClearReceivedWorld`** (the default): despawns every `NetworkSystem` the server sent and releases every networked scene it placed the client in. The next session starts from nothing.
 - **`RetainReceivedWorld`**: leaves every received `NetworkSystem` started and every networked scene loaded, exactly as they stood when the link dropped.
 
-`RetainReceivedWorld` only makes sense for a peer that means to keep the world rather than discard it — one that disconnects from a host and intends to start its own server to carry on hosting what it was just shown. A retained world is still stamped with the departed authority's identifiers, so it's only usable once this peer adopts it as its own (see below). Any other client that reconnects elsewhere drops everything it's holding and rebuilds from whatever the new authority sends, regardless of this setting — retention only ever survives until the next link comes up.
+`RetainReceivedWorld` only makes sense for a peer that means to keep the world rather than discard it — one that disconnects from a host and intends to start its own server to carry on hosting what it was just shown. A retained world is still stamped with the departed server's identifiers, so it's only usable once this peer adopts it as its own (see below). Any other client that reconnects elsewhere drops everything it's holding and rebuilds from whatever the new server sends, regardless of this setting — retention only ever survives until the next link comes up.
 
 The field itself is present and settable in every edition. In a Free build it simply does nothing: the branches that honor `RetainReceivedWorld` live in the Pro partials (`ClientManager.Adoption.Pro.cs`, `ServerManager.Adoption.Pro.cs`, `SceneManager.Adoption.Pro.cs`), and a Free client always clears its world on disconnect regardless of how the field is set.
 
@@ -35,9 +35,9 @@ void OnAuthorityAdopted(uint adoptedSystemCount, uint adoptedSceneCount)
 }
 ```
 
-`AdoptRetainedWorld()` returns `true` when a world was adopted, and `false` when this peer holds nothing it was sent. It fires `AuthorityAdopted(uint adoptedSystemCount, uint adoptedSceneCount)` on success, so a game can re-attach whatever it only does for objects it owns once this peer becomes their authority.
+`AdoptRetainedWorld()` returns `true` when a world was adopted, and `false` when this peer holds nothing it was sent. It fires `AuthorityAdopted(uint adoptedSystemCount, uint adoptedSceneCount)` on success, so a game can re-attach whatever it only does for objects it owns once this peer becomes the server for them.
 
-**Call it after the link has dropped and before starting the server.** `AdoptRetainedWorld()` refuses to run once `TransportManager.IsServerStarted` is true, because being the authority changes the meaning of the interest pass, the recovery pass, and the scene and bundle request handlers from the instant the server socket connects.
+**Call it after the link has dropped and before starting the server.** `AdoptRetainedWorld()` refuses to run once `TransportManager.IsServerStarted` is true, because being the server changes the meaning of the interest pass, the recovery pass, and the scene and bundle request handlers from the instant the server socket connects.
 
 Adoption keeps every identifier the world already has and raises the allocators past them, rather than renumbering. Renumbering would surface as the entire world despawning and respawning, since an identifier is the only name an object has.
 
@@ -45,7 +45,7 @@ Adoption keeps every identifier the world already has and raises the allocators 
 
 ## Skipping the reconcile on reconnect
 
-A retained world normally reconciles against the new authority as an ordinary deserialize: identifiers this peer already holds apply in place, and the objects never blink. Setting `SystemManager.RespawnWorldOnReconnectEnabled` skips that reconcile entirely — the world is dropped and rebuilt from the authority's own account of it instead, at the cost of a spawn per object, but without carrying over anything from a reign the authority never heard of. When this is set, `RetainReceivedWorld` no longer changes how reconnecting behaves.
+A retained world normally reconciles against the new server as an ordinary deserialize: identifiers this peer already holds apply in place, and the objects never blink. Setting `SystemManager.RespawnWorldOnReconnectEnabled` skips that reconcile entirely — the world is dropped and rebuilt from the server's own account of it instead, at the cost of a spawn per object, but without carrying over anything from a reign the server never heard of. When this is set, `RetainReceivedWorld` no longer changes how reconnecting behaves.
 
 ## Telling survivors where to regroup
 

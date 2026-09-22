@@ -4,7 +4,7 @@ title: "PhysicsConvergence"
 
 > **Using Unity?** See [ProjectedRigidbody](../../unity/physics/projected-rigidbody).
 
-`PhysicsConvergence` is the per-body follower behind Projected physics sync. It takes the latest authoritative snapshot, projects it to now, rides its velocity, and blends or teleports a diverged pose back onto it. Call `Step` once per physics step for each proxy body, before the engine simulates.
+`PhysicsConvergence` is the per-body follower behind Projected physics sync. It takes the latest server snapshot, projects it to now, rides its velocity, and blends or teleports a diverged pose back onto it. Call `Step` once per physics step for each proxy body, before the engine simulates.
 
 ## Step
 
@@ -12,7 +12,7 @@ title: "PhysicsConvergence"
 public void Step(IPhysicsBody physicsBody, in PhysicsSnapshot remotePhysicsSnapshot, float tickDelta, float ticksToProject)
 ```
 
-Reads the body's current position, rotation and velocity, plus `remotePhysicsSnapshot` (the last snapshot received from the authority), `tickDelta` (the duration of one tick), and `ticksToProject` (how many ticks that snapshot lags local time). Writes the body's `LinearVelocity`, `AngularVelocity`, and, on a blend or teleport, its `Position` and `Rotation`.
+Reads the body's current position, rotation and velocity, plus `remotePhysicsSnapshot` (the last snapshot received from the server), `tickDelta` (the duration of one tick), and `ticksToProject` (how many ticks that snapshot lags local time). Writes the body's `LinearVelocity`, `AngularVelocity`, and, on a blend or teleport, its `Position` and `Rotation`.
 
 Call `Step` before your own world step for that tick, so the follower's velocity and any position/rotation write are in place before the engine integrates. If `physicsBody.IsKinematic`, `Step` returns immediately without touching the body.
 
@@ -59,4 +59,4 @@ By default `Step` projects the snapshot with a closed-form trajectory. Setting `
 
 ## Locally predicted bodies
 
-`IsLocallyPredicted`, `PredictionMaximumProjectionSeconds`, and `PredictionCorrectionRate` only apply to a body this peer is driving with its own input rather than following from the authority. See [locally predicted bodies](../physics/locally-predicted-bodies).
+`IsLocallyPredicted`, `PredictionMaximumProjectionSeconds`, and `PredictionCorrectionRate` only apply to a body this peer is driving with its own input rather than following from the server. See [locally predicted bodies](../physics/locally-predicted-bodies).

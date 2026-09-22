@@ -16,7 +16,7 @@ Add `ProjectedRigidbody` to a GameObject that has a `Rigidbody`. That's the whol
 
 You never rent or spawn anything by hand. In its own `Awake`, `ProjectedRigidbody` calls `NetworkSystemObjectPool.RequireSystem<NetworkSystem, NetworkPhysicsComponent>`, declaring that this object needs a system carrying a replicated `NetworkPhysicsComponent`. Once that requirement is satisfied, three properties are populated for you to read:
 
-- `NetworkSystem` — the system this body belongs to; its controller state decides authority.
+- `NetworkSystem` — the system this body belongs to; its controller state decides which peer's simulation is treated as ground truth.
 - `PhysicsComponent` — the replicated `NetworkPhysicsComponent` this body captures into or converges from.
 - `Body` — a `UnityPhysicsBody`, the adapter wrapping your `Rigidbody`.
 
@@ -26,7 +26,7 @@ Nothing else needs wiring. No manual `RequireSystem` call, no manual component l
 
 Exactly one peer simulates this body for real: the one where `NetworkSystem.IsController(ControllerType.AnyController)` is true. Every tick, that peer's `Rigidbody` steps normally, and the stepped result is captured into `PhysicsComponent` for replication.
 
-Every other peer's `Rigidbody` does not run free simulation. Instead it follows: it adopts the first state it receives outright (so a freshly spawned proxy doesn't glide in from the prefab pose), then either follows the interpolation buffer as a kinematic body (for a proxy driven by a remote controller's own inputs) or runs the convergence follower against the freshest snapshot, projected forward toward present time. The Rigidbody on a non-controlling peer is still a real, simulated body doing collision response — it's being steered toward the authoritative target, not teleported onto it.
+Every other peer's `Rigidbody` does not run free simulation. Instead it follows: it adopts the first state it receives outright (so a freshly spawned proxy doesn't glide in from the prefab pose), then either follows the interpolation buffer as a kinematic body (for a proxy driven by a remote controller's own inputs) or runs the convergence follower against the freshest snapshot, projected forward toward present time. The Rigidbody on a non-controlling peer is still a real, simulated body doing collision response — it's being steered toward the server's target, not teleported onto it.
 
 ## Smoothing the render without touching physics
 

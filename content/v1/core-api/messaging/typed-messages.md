@@ -34,7 +34,7 @@ The handler shape:
 public delegate void MessageReceivedHandler<T0>(in MessageContext messageContext, T0 message) where T0 : IMessage, new();
 ```
 
-It returns nothing. A call's handler answers whether the authority may pass the call on; a message is never passed on, so there is no verdict for a handler to give.
+It returns nothing. A call's handler answers whether the server may pass the call on; a message is never passed on, so there is no verdict for a handler to give.
 
 ```csharp
 private void OnChatMessage(in MessageContext messageContext, ChatMessage message)
@@ -68,7 +68,7 @@ public readonly struct MessageContext
 
 - `Channel` — the channel the message travelled on.
 - `SenderConnection` — the peer that sent it. **Never null**, unlike a call's `RpcContext.SenderConnection`: every message reaches a handler either off a link, where the receive pass names the connection it arrived on, or through this peer's own loopback delivery, which resolves the connection the receiving half would have seen.
-- `IsSenderServer` — whether the authority sent this. On a host, this is the only honest way to tell which half a message is from: a host is both roles at once, so its own `TransportManager.IsServerStarted` says nothing about any particular message.
+- `IsSenderServer` — whether the server sent this. On a host, this is the only honest way to tell which half a message is from: a host is both roles at once, so its own `TransportManager.IsServerStarted` says nothing about any particular message.
 
 ## What happens when the type isn't registered
 

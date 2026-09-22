@@ -4,7 +4,7 @@ title: "ProjectedRigidbody"
 
 > **Driving the core API directly?** See [PhysicsConvergence](../../core-api/physics/physics-convergence).
 
-`ProjectedRigidbody` is a `MonoBehaviour` that drives physics sync for one rigidbody. It requires a `Rigidbody` and a `NetworkSystemObject`, declares its need for the `NetworkSystem` carrying that body's replicated `NetworkPhysicsComponent`, and steps the body each tick: proxies adopt, follow the interpolation buffer, or run its `PhysicsConvergence` follower before the world simulates, and the authority captures the stepped result afterward.
+`ProjectedRigidbody` is a `MonoBehaviour` that drives physics sync for one rigidbody. It requires a `Rigidbody` and a `NetworkSystemObject`, declares its need for the `NetworkSystem` carrying that body's replicated `NetworkPhysicsComponent`, and steps the body each tick: proxies adopt, follow the interpolation buffer, or run its `PhysicsConvergence` follower before the world simulates, and the server captures the stepped result afterward.
 
 ## Runtime surface
 
@@ -15,7 +15,7 @@ title: "ProjectedRigidbody"
 | `RemoteExtrapolationEnabled` | `bool` (default `true`) | On, a remote-controlled proxy extrapolates forward from its last received state — more current, but overshoots on sudden input changes. Off, it interpolates between received states in remote time — smooth, never overshoots, always a step behind. |
 | `Body` | `UnityPhysicsBody` (read-only) | The adapter around the attached `Rigidbody`. |
 | `PhysicsComponent` | `NetworkPhysicsComponent` (read-only) | The replicated physics component this body captures into or converges from. |
-| `NetworkSystem` | `NetworkSystem` (read-only) | The system this body belongs to; its controller state decides authority. |
+| `NetworkSystem` | `NetworkSystem` (read-only) | The system this body belongs to; its controller state decides which peer's simulation is treated as ground truth. |
 
 ## Divergence thresholds
 
@@ -29,7 +29,7 @@ These gate both the predicted and the proxy correction paths.
 How a body over its threshold corrects splits by role:
 
 - **Blend Per Tick** (`_blendPerTick`) — the fraction of the remaining gap a *proxy* closes per tick while over threshold. A predicted body ignores this.
-- **Prediction Correction Rate** (`_predictionCorrectionRate`, default `0.1`) — how aggressively a *predicted* body (one whose `Convergence.IsLocallyPredicted` is set) corrects toward the authority: the fraction of the gap taken off per tick, once past Position Threshold. Higher snaps back harder and sooner; lower lets the prediction ride looser. Only the locally-controlled driver's own body sets `IsLocallyPredicted`, so this field only ever acts on that body.
+- **Prediction Correction Rate** (`_predictionCorrectionRate`, default `0.1`) — how aggressively a *predicted* body (one whose `Convergence.IsLocallyPredicted` is set) corrects toward the server: the fraction of the gap taken off per tick, once past Position Threshold. Higher snaps back harder and sooner; lower lets the prediction ride looser. Only the locally-controlled driver's own body sets `IsLocallyPredicted`, so this field only ever acts on that body.
 - **Blend Mode** (`_blendMode`, `ConvergenceBlendMode.Position` or `.Velocity`) — how the closing fraction is applied. `Position` writes the pose directly toward the target each step, identical to `Velocity` in free space, but bypasses the solver, so a blend into geometry penetrates and depenetrates rather than resolving as a contact. `Velocity` applies the same closing fraction as a solver-integrated velocity bias, so contacts, stacks, and other bodies are never disrupted — a blend against geometry becomes a bounded press instead of a penetration.
 
 ## Residual fields
@@ -60,7 +60,7 @@ The maths behind each of these values, and the full settings surface, live on th
 `ProjectedRigidbody` exposes three public methods, all already called for you by the `PhysicsSimulationDriver` and the spawn handler:
 
 - `PreSimulate(float stepDelta)` — the pre-step half of a tick-aligned world step. Proxies adopt, follow, or run the follower here; authorities do their work post-step.
-- `PostSimulate(uint tick)` — the post-step half. An authority captures the freshly stepped state into its replicated component, and the step-pose window advances for the smoothed visual's render interpolation.
+- `PostSimulate(uint tick)` — the post-step half. A server captures the freshly stepped state into its replicated component, and the step-pose window advances for the smoothed visual's render interpolation.
 - `NotifySceneChanged()` — re-resolves the physics driver after this body's `GameObject` moves to another scene. A scene move fires no disable or enable, and the driver is cached at enable, so without this the body keeps stepping the world it left.
 
 You will not normally call any of these directly.

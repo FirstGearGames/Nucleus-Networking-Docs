@@ -55,7 +55,7 @@ A message delivered this way is never serialized. Under `Immediate` its handler 
 
 ## Callbacks a host raises for itself
 
-`TransportManager.PeerConnectionDiscovered` and `PeerConnectionDropped` normally hand a client a stand-in Connection (`Connection.IsPeerStandIn` true) for a peer it was told about. On a host these events instead name the authority's own live roster entry for a joining or leaving peer — `IsPeerStandIn` reads false, because the Connection carries a real link rather than a bare identity. A host is told through `RaiseHostPeerConnectionDiscovered` / `RaiseHostPeerConnectionDropped` rather than through the roster, because the roster message it writes to its own client is the one discarded on its own loopback.
+`TransportManager.PeerConnectionDiscovered` and `PeerConnectionDropped` normally hand a client a stand-in Connection (`Connection.IsPeerStandIn` true) for a peer it was told about. On a host these events instead name the server's own live roster entry for a joining or leaving peer — `IsPeerStandIn` reads false, because the Connection carries a real link rather than a bare identity. A host is told through `RaiseHostPeerConnectionDiscovered` / `RaiseHostPeerConnectionDropped` rather than through the roster, because the roster message it writes to its own client is the one discarded on its own loopback.
 
 Neither event is ever raised for the host's own client. No client is told about itself.
 

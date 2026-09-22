@@ -15,7 +15,7 @@ A `NetworkSystem` carries two kinds of identity: the network Id every peer agree
 | `SetRequiredBundleId(ushort)` | method | Overrides `RequiredBundleId` without touching `PrefabBundleId`, so the wire identity of the prefab is unaffected. |
 | `UnsetRequiredBundleId` | `const ushort` | `ushort.MaxValue`, **not** `0` like the other Unset constants — zero is a valid requirement, naming the base build. |
 | `IsSceneObject` | `bool` | True when `PlatformId` identifies a scene object rather than a dynamically spawned prefab. |
-| `SceneHandle` | `uint` | The live scene instance this system belongs to. `UnsetSceneHandle` (`0`) when it belongs to no authority-opened scene. |
+| `SceneHandle` | `uint` | The live scene instance this system belongs to. `UnsetSceneHandle` (`0`) when it belongs to no server-opened scene. |
 | `GroupId` | `uint` | The Id of the `NetworkSystemGroup` this system belongs to. `UnsetGroupId` (`0`) when ungrouped. |
 | `ParentId` | `uint` | The `Id` of the system this one is parented to. `UnsetParentId` (an alias of `UnsetId`) when parented to nothing. |
 
@@ -26,7 +26,7 @@ if (system.RequiredBundleId != NetworkSystem.UnsetRequiredBundleId)
 }
 ```
 
-`RequiredBundleId` is authority-side only: it feeds interest resolution and is never replicated, so reading or setting it costs no bandwidth.
+`RequiredBundleId` is server-side only: it feeds interest resolution and is never replicated, so reading or setting it costs no bandwidth.
 
 ## Lifecycle
 
@@ -70,7 +70,7 @@ if (system.IsServerStarted)
 |---|---|
 | `ComponentCount` | The number of `NetworkComponent`s attached to this system. |
 | `TryGetComponent<T0>(out T0 component)` | Retrieves a contained `NetworkComponent` of type `T0`, such as a transform component. Returns false when none is attached. |
-| `GroupMemberCount` | The number of members this system's group currently holds. Zero for an ungrouped system. On the authority this is the live group count; on a receiver it is the count the full header carried. |
+| `GroupMemberCount` | The number of members this system's group currently holds. Zero for an ungrouped system. On the server this is the live group count; on a receiver it is the count the full header carried. |
 
 ```csharp
 if (system.TryGetComponent(out MyTransformComponent transform))

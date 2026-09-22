@@ -45,7 +45,7 @@ public readonly struct SceneObjectKey : IEquatable<SceneObjectKey>
 }
 ```
 
-`SceneHandle` is the live scene instance the object belongs to (or `NetworkSystem.UnsetSceneHandle` when the peer is in whatever scene it booted into rather than one the authority opened). `SceneObjectId` is the id stamped on the object, unique only inside its one scene. Both halves are required to look a scene object up correctly.
+`SceneHandle` is the live scene instance the object belongs to (or `NetworkSystem.UnsetSceneHandle` when the peer is in whatever scene it booted into rather than one the server opened). `SceneObjectId` is the id stamped on the object, unique only inside its one scene. Both halves are required to look a scene object up correctly.
 
 ## Group handling
 
@@ -53,10 +53,10 @@ public readonly struct SceneObjectKey : IEquatable<SceneObjectKey>
 
 ## The rest of the contract
 
-- `OnSystemSceneChanged(NetworkSystem networkSystem, uint newSceneHandle)` — the system moved to a different authority-opened scene; relocate its linked object into that scene rather than rebuilding it. Must be idempotent, since a redundant re-delivery can invoke it for a move already applied.
+- `OnSystemSceneChanged(NetworkSystem networkSystem, uint newSceneHandle)` — the system moved to a different server-opened scene; relocate its linked object into that scene rather than rebuilding it. Must be idempotent, since a redundant re-delivery can invoke it for a move already applied.
 - `OnSystemParentChanged(NetworkSystem childNetworkSystem, NetworkSystem parentNetworkSystem)` — the system's parent changed; re-seat the linked object under the new parent's linked object, or back to the scene root when `parentNetworkSystem` is null. What the re-seat must preserve depends on the space the object's transform replicates in, which the handler reads from the object itself. Also idempotent.
-- `OnSystemDespawned(NetworkSystem networkSystem, bool isObjectKept)` — the system stopped, on the authority once its despawn has serialized to observers, or on a receiver when the authority's despawn applies. `isObjectKept` is true when an interest condition stopped the system for this peer alone and the authority wants the engine object retained rather than reclaimed: release the link, but keep the object and register it against `networkSystem`'s `Id` so a later re-entry spawn links onto it instead of building a second one. `false` is every ordinary despawn, where the handler releases every link it holds and destroys the object (unless the object's own destruction is what initiated the stop).
-- `OnRetainedObjectReleased(uint systemId)` — the counterpart to a kept object: the authority has now culled the system outright, or despawned it for everyone, so the object parked under `systemId` should be reclaimed exactly as an ordinary despawn would. Called for every despawn naming an id this peer no longer routes, so it must be a no-op when nothing is retained under that id.
+- `OnSystemDespawned(NetworkSystem networkSystem, bool isObjectKept)` — the system stopped, on the server once its despawn has serialized to observers, or on a receiver when the server's despawn applies. `isObjectKept` is true when an interest condition stopped the system for this peer alone and the server wants the engine object retained rather than reclaimed: release the link, but keep the object and register it against `networkSystem`'s `Id` so a later re-entry spawn links onto it instead of building a second one. `false` is every ordinary despawn, where the handler releases every link it holds and destroys the object (unless the object's own destruction is what initiated the stop).
+- `OnRetainedObjectReleased(uint systemId)` — the counterpart to a kept object: the server has now culled the system outright, or despawned it for everyone, so the object parked under `systemId` should be reclaimed exactly as an ordinary despawn would. Called for every despawn naming an id this peer no longer routes, so it must be a no-op when nothing is retained under that id.
 
 ## Failure modes the handler owns
 

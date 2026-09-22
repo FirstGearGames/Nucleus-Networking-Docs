@@ -4,7 +4,7 @@ title: "Replicate a physics body"
 
 > **Using Unity?** See [Replicate a rigidbody](../../unity/physics/replicate-a-rigidbody).
 
-`NetworkPhysicsComponent` replicates a simulated body's position and rotation through the normal member pipeline. The authority captures its body into the component after it steps; every other peer rebuilds a snapshot from the component and steps a convergence follower toward it before it steps. Neither side needs an engine object — this page uses nothing but plain C# and `IPhysicsBody`.
+`NetworkPhysicsComponent` replicates a simulated body's position and rotation through the normal member pipeline. The server captures its body into the component after it steps; every other peer rebuilds a snapshot from the component and steps a convergence follower toward it before it steps. Neither side needs an engine object — this page uses nothing but plain C# and `IPhysicsBody`.
 
 ## Getting the component
 
@@ -29,7 +29,7 @@ NetworkSystemPool.Watch<NetworkSystem, NetworkPhysicsComponent>(
 
 The watch matches on composition — any `NetworkSystem` carrying a `NetworkPhysicsComponent` — not on an identifier learned in advance.
 
-## The authority half: capture
+## The server half: capture
 
 After your own world step, call `CaptureBody`:
 
@@ -85,7 +85,7 @@ public class PhysicsDriver : INetworkLoopStepCallback
 }
 ```
 
-`EarlyFixedUpdate` is before the world step; `LateFixedUpdate` is after it. A follower converges on the early side so the step it is about to take integrates the corrected velocity; the authority captures on the late side so what goes out describes the tick that just ran.
+`EarlyFixedUpdate` is before the world step; `LateFixedUpdate` is after it. A follower converges on the early side so the step it is about to take integrates the corrected velocity; the server captures on the late side so what goes out describes the tick that just ran.
 
 ## Priming a freshly observed body
 

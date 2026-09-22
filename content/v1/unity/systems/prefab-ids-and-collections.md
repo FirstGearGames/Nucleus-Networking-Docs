@@ -35,7 +35,7 @@ Run the rebuild whenever you:
 - `EnsureClaimBundle(bundleId, collection)` claims a bundle identifier for a collection before its prefabs register. A second collection trying to claim a bundle identifier already owned by a different loaded collection is an error.
 - `Register(bundleId, localId, prefab)` adds a prefab under its `(bundle id, local id)` identity.
 - `TryGet(bundleId, localId, out prefab)` resolves the prefab registered for an identity.
-- `TryGetPredictedSpawnPolicy(bundleId, localId, out predictedSpawnPolicy)` resolves what a client may do to that prefab ahead of the authority, from the policy recorded at registration.
+- `TryGetPredictedSpawnPolicy(bundleId, localId, out predictedSpawnPolicy)` resolves what a client may do to that prefab ahead of the server, from the policy recorded at registration.
 - `ReleaseBundle(bundleId, collection)` releases a bundle identifier when its collection unloads.
 
 The base build ships bundle zero. Each content shard claims and registers its own bundle identifier when its content loads, so separately built content never collides — as long as every shard declares a unique `NetworkBundle` identifier on its assembly.

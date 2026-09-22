@@ -46,8 +46,8 @@ It is an attribute rather than a constructor argument because the exclusion is d
 ### The three consequences
 
 - **The member never enters the per-tick change examination.** It pays for no delta projection, no tolerance comparison, no send interval, and no transmission mode. A tick on which only ignored members changed produces no packet. `NetworkComponent.OnMembersChanged` still fires under `MemberChangeDirection.Write` on the peer that made the change, so server code reacts to it normally.
-- **The value is the constructed default on every peer but the authority.** Nothing ever arrives on the wire to populate it, so reading it on a client returns the type's default, not what the server holds.
-- **A peer promoted to authority by adoption holds those defaults too**, because it never received the real values. Saving from a newly adopted authority writes those defaults over whatever the store already held.
+- **The value is the constructed default on every peer but the server.** Nothing ever arrives on the wire to populate it, so reading it on a client returns the type's default, not what the server holds.
+- **A peer promoted to server by adoption holds those defaults too**, because it never received the real values. Saving from a newly adopted server writes those defaults over whatever the store already held.
 
 ## See also
 

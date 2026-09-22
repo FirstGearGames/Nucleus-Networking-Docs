@@ -4,7 +4,7 @@ title: "An object is missing, or will not go away"
 
 ## A client receives objects from a scene it never loaded
 
-No rule gates scenes by default in a way you can see failing: an ungated spawn is not an error anywhere on the authority, it simply lands in the wrong scene on the client. The Unity inspector for `UnityInterestManager` warns about exactly this when its rule list has no scene rule registered: "No rule gates scenes. A client will receive objects from scenes it never loaded, which puts them in the wrong scene rather than raising an error, and several open instances of one scene cannot be told apart by distance."
+No rule gates scenes by default in a way you can see failing: an ungated spawn is not an error anywhere on the server, it simply lands in the wrong scene on the client. The Unity inspector for `UnityInterestManager` warns about exactly this when its rule list has no scene rule registered: "No rule gates scenes. A client will receive objects from scenes it never loaded, which puts them in the wrong scene rather than raising an error, and several open instances of one scene cannot be told apart by distance."
 
 Fix: add the scene rule to the world's interest conditions unless you are arbitrating scene membership with a rule of your own.
 

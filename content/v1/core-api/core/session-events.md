@@ -56,8 +56,8 @@ public delegate void PeerConnectionChangedHandler(Connection connection);
 
 These are about *other* peers, not this connection's own session. They fire once a `Connection` for that other peer becomes available or is about to go away, and they mean something different depending on role:
 
-- On a client, `PeerConnectionDiscovered` fires from `TryAddPeerConnection` when the authority reports a new peer. The `Connection` handed out is a stand-in — an identity with no live link behind it (`Connection.IsPeerStandIn` is true).
-- On a host, the same event fires from `RaiseHostPeerConnectionDiscovered`, called once the server side of `ApproveClient` has already admitted the peer. The `Connection` is the authority's own entry for that peer, so `IsPeerStandIn` is false. It is never raised for the host's own client, since no client is ever told about itself this way.
+- On a client, `PeerConnectionDiscovered` fires from `TryAddPeerConnection` when the server reports a new peer. The `Connection` handed out is a stand-in — an identity with no live link behind it (`Connection.IsPeerStandIn` is true).
+- On a host, the same event fires from `RaiseHostPeerConnectionDiscovered`, called once the server side of `ApproveClient` has already admitted the peer. The `Connection` is the server's own entry for that peer, so `IsPeerStandIn` is false. It is never raised for the host's own client, since no client is ever told about itself this way.
 
 `PeerConnectionDropped` mirrors this exactly, firing from `TryRemovePeerConnection` on a client or `RaiseHostPeerConnectionDropped` on a host, in both cases while the entry is still held. Anything that referenced a stand-in must drop that reference inside this handler: the instance returns to its pool immediately afterward, and the next peer to connect can be handed that same object.
 

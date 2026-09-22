@@ -36,7 +36,7 @@ With Kinematic Management Enabled on, an attached `Rigidbody` is held kinematic 
 
 ## Projected Physics Bodies
 
-`NetworkTransform` interpolates a received pose; it does not run local physics on non-controllers. For a rigidbody that should simulate locally on every peer and converge toward the authoritative state instead of just following it, use `ProjectedRigidbody`.
+`NetworkTransform` interpolates a received pose; it does not run local physics on non-controllers. For a rigidbody that should simulate locally on every peer and converge toward the server's state instead of just following it, use `ProjectedRigidbody`.
 
 ## See Also
 

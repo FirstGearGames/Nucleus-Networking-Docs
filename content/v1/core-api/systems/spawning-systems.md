@@ -38,7 +38,7 @@ bool stopped = coreManager.SystemManager.EnsureStopSystem(networkSystem, isPoolR
 
 An accepted stop transitions the system to `Stopping` immediately, serializes a despawn to observers, then completes: the system transitions to `Stopped`, leaves routing, releases its Id, and the registered spawn handler is notified. A wire-constructed system always returns to its pool once that happens; a locally rented system stays owned by the code that rented it unless `isPoolReturnRequestedOnDespawn` asks the framework to recycle it too.
 
-Only the authority stops a replicated system. A pure client's stop request is refused. A peer with no started transport (offline usage) can stop its own systems freely.
+Only the server stops a replicated system. A pure client's stop request is refused. A peer with no started transport (offline usage) can stop its own systems freely.
 
 ## Shorthands
 
@@ -110,7 +110,7 @@ coreManager.SystemManager.UnknownSystemDeltaReceived += (connection, systemId) =
 coreManager.SystemManager.EnsureMoveSystemToScene(networkSystem, destinationSceneHandle);
 ```
 
-This is the one path that moves a spawned object between scenes — nothing in interest, physics, or scene loading calls it on its own. It's authority-only, and only for a started, dynamically spawned system (not a scene object) that carries a platform identity. The move restamps the system's scene handle in place, preserving its Id, controller, access and group, then re-evaluates interest so a peer no longer in the destination scene is despawned and a peer newly in it is served a full. See the scenes category for how scene instances and handles work.
+This is the one path that moves a spawned object between scenes — nothing in interest, physics, or scene loading calls it on its own. It's server-only, and only for a started, dynamically spawned system (not a scene object) that carries a platform identity. The move restamps the system's scene handle in place, preserving its Id, controller, access and group, then re-evaluates interest so a peer no longer in the destination scene is despawned and a peer newly in it is served a full. See the scenes category for how scene instances and handles work.
 
 ## Two things worth knowing
 

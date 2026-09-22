@@ -50,7 +50,7 @@ if (transportManager.TryGetConnection(storedHandle, out Connection connection))
 
 `TryGetServerConnection(out Connection connection)` returns this peer's own server-socket connection, and `TryGetLocalClientConnection(out Connection connection)` returns this peer's own client connection — a pure server has none and returns `false`.
 
-`ActiveConnections` is the read-only collection of every `Connection` currently known to this peer. What it holds depends on who is asking: on the authority it is the connected remote clients; on a client it is peer stand-ins the authority reported (never the local client itself, which `TryGetLocalClientConnection` answers for).
+`ActiveConnections` is the read-only collection of every `Connection` currently known to this peer. What it holds depends on who is asking: on the server it is the connected remote clients; on a client it is peer stand-ins the server reported (never the local client itself, which `TryGetLocalClientConnection` answers for).
 
 ## Channel and transmission unit
 

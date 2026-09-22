@@ -23,11 +23,11 @@ public partial class DemoScoreComponent : NetworkComponent
 
 One trip across the network looks like this:
 
-1. **Written on the authority.** The peer that owns the object and decides its truth (the authority, usually the server) sets `Score.Value` during `EarlyStateWrite`. `NetworkMember<T0>.Value` is the current value; setting it also rotates the value ring so the value it replaces becomes readable as `PreviousValue`.
+1. **Written on the server.** The peer that owns the object and decides its truth (the server, usually the server) sets `Score.Value` during `EarlyStateWrite`. `NetworkMember<T0>.Value` is the current value; setting it also rotates the value ring so the value it replaces becomes readable as `PreviousValue`.
 2. **Change detection notices it.** A member does not serialize just because it exists. Setting `Value` flags the member as changed for this tick, and only changed members are considered for sending.
 3. **Serialized during the tick's write steps.** During `LateStateWrite`, the framework walks every system with changed members and serializes them.
 4. **Travels as part of one combined packet.** Nucleus does not send one packet per member or per component. A tick's outgoing state for a connection is written into a single combined stream, flushed to the transport at `LateVariableUpdate`.
-5. **Applied on the receiver before that peer's own tick work runs.** The receiving peer reads and deserializes incoming packets early (`EarlyVariableUpdate`), then applies the contained state during `LateStateUpdate` — both steps ahead of `EarlyFixedUpdate`, `VariableUpdate`, and that peer's own `EarlyStateWrite`. Game code on the receiver reading `Score.Value` during its own tick sees the value the authority wrote, not something stale from before the packet arrived.
+5. **Applied on the receiver before that peer's own tick work runs.** The receiving peer reads and deserializes incoming packets early (`EarlyVariableUpdate`), then applies the contained state during `LateStateUpdate` — both steps ahead of `EarlyFixedUpdate`, `VariableUpdate`, and that peer's own `EarlyStateWrite`. Game code on the receiver reading `Score.Value` during its own tick sees the value the server wrote, not something stale from before the packet arrived.
 
 ## Snapshot, then delta
 

@@ -42,7 +42,7 @@ CoreManager.ServerManager.SendMessageToScene(Channel.Reliable, new SomeMessage()
 
 ## The refusal on a peer with no server
 
-Each of these calls opens with `EnsureIsServerStarted`. On a peer that has not started a server, the call does nothing and logs an error naming the method that refused. This is a loud refusal rather than a silent no-op: a send from a peer that is not the authority would otherwise walk an empty or stand-in-only connection set and go quietly nowhere, which reads as a lost message rather than as a call that was never valid.
+Each of these calls opens with `EnsureIsServerStarted`. On a peer that has not started a server, the call does nothing and logs an error naming the method that refused. This is a loud refusal rather than a silent no-op: a send from a peer that is not the server would otherwise walk an empty or stand-in-only connection set and go quietly nowhere, which reads as a lost message rather than as a call that was never valid.
 
 ## The client direction
 

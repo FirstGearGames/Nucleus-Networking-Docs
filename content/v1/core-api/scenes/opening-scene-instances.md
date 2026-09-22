@@ -4,7 +4,7 @@ title: "Opening and closing scene instances"
 
 ## Opening an instance
 
-`SceneManager.TryOpenScene(ushort sceneId, SceneScope sceneScope, out uint sceneHandle, SceneReplacePolicy sceneReplacePolicy = SceneReplacePolicy.Released)` opens a live instance of a scene on the authority and returns a handle for it. There is an awaitable form, `OpenSceneAsync(ushort sceneId, SceneScope sceneScope, SceneReplacePolicy sceneReplacePolicy = SceneReplacePolicy.Released)`, which does the same thing and completes once the scene has loaded.
+`SceneManager.TryOpenScene(ushort sceneId, SceneScope sceneScope, out uint sceneHandle, SceneReplacePolicy sceneReplacePolicy = SceneReplacePolicy.Released)` opens a live instance of a scene on the server and returns a handle for it. There is an awaitable form, `OpenSceneAsync(ushort sceneId, SceneScope sceneScope, SceneReplacePolicy sceneReplacePolicy = SceneReplacePolicy.Released)`, which does the same thing and completes once the scene has loaded.
 
 ```csharp
 if (sceneManager.TryOpenScene(myDungeonSceneId, SceneScope.Connections, out uint sceneHandle))

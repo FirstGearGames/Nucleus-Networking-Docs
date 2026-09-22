@@ -18,7 +18,7 @@ A peer's messages reach their handlers in the order they were sent, regardless o
 
 A host is one `CoreManager` holding both the server and client roles. When one half addresses a message or call to the other, `TransportManager.HostLoopbackDelivery` decides when that delivery runs. Only `HostLoopbackDelivery.Immediate` is settable from game code: the receiving half's handlers run at the send site, before the send call returns, on whatever loop step the sender happened to be on.
 
-`HostLoopbackDelivery.Deferred` exists in the enum but is refused with a logged reason when a game tries to set it. It's kept only so the engine's own tests can measure what the alternative would cost — handlers running one step later, at `EarlyVariableUpdate` on the following frame, the same step a real remote peer's copy would land on. Deferred delivery is message-only; a call is always dispatched at the send site because its delivery has to run the authority's own admission (resolve the system, check the sender's permission, decide relay) inline.
+`HostLoopbackDelivery.Deferred` exists in the enum but is refused with a logged reason when a game tries to set it. It's kept only so the engine's own tests can measure what the alternative would cost — handlers running one step later, at `EarlyVariableUpdate` on the following frame, the same step a real remote peer's copy would land on. Deferred delivery is message-only; a call is always dispatched at the send site because its delivery has to run the server's own admission (resolve the system, check the sender's permission, decide relay) inline.
 
 ## Re-entrancy
 
@@ -26,4 +26,4 @@ Because `Immediate` runs a handler at the send site, a handler that sends someth
 
 ## A handler throw costs only its own payload
 
-Both `MessageManager` and `RpcManager` wrap each individual message or call dispatch in its own `try`/`catch`, not the whole batch. A handler that throws is logged and the payload is dropped; every other message or call in the same drain — from the same sender, in the same frame — still reaches its own handler. A batch-wide guard would have cost a client everything the authority sent that frame over one bad payload; the per-payload boundary is why it doesn't.
+Both `MessageManager` and `RpcManager` wrap each individual message or call dispatch in its own `try`/`catch`, not the whole batch. A handler that throws is logged and the payload is dropped; every other message or call in the same drain — from the same sender, in the same frame — still reaches its own handler. A batch-wide guard would have cost a client everything the server sent that frame over one bad payload; the per-payload boundary is why it doesn't.

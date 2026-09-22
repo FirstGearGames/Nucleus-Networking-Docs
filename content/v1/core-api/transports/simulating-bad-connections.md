@@ -34,8 +34,8 @@ Loss is applied on each peer's outbound side. A request and its reply each roll 
 
 The engine has its own answers to a lossy link — redundancy, targeted recovery, and a retention window — so the point of testing under loss isn't to watch things break, it's to confirm the repair actually runs. Watch for:
 
-- Convergence: does the peer eventually end up holding exactly what the authority holds, even with packets dropped along the way?
-- Recovery activity: did the authority actually serve a repair, or did the run get lucky and lose nothing? A test that asserts convergence without also asserting a recovery happened can pass on a clean run and prove nothing about the repair path.
+- Convergence: does the peer eventually end up holding exactly what the server holds, even with packets dropped along the way?
+- Recovery activity: did the server actually serve a repair, or did the run get lucky and lose nothing? A test that asserts convergence without also asserting a recovery happened can pass on a clean run and prove nothing about the repair path.
 
 ## Reading the result back
 
@@ -49,6 +49,6 @@ These read back what the simulator produced, so they're a good sanity check that
 
 ## How the engine's own suites do it
 
-`SynapseLiveIntervalDropRecoveryTests` is a working example of the pattern: set `Synapse.SimulatedPacketLossChance` before bringing the pair up, run enough rounds that loss is actually likely to hit, assert both that the peer converges on the authority's value and that a recovery was actually served, then reset the knob to zero in a `finally`.
+`SynapseLiveIntervalDropRecoveryTests` is a working example of the pattern: set `Synapse.SimulatedPacketLossChance` before bringing the pair up, run enough rounds that loss is actually likely to hit, assert both that the peer converges on the server's value and that a recovery was actually served, then reset the knob to zero in a `finally`.
 
 `Nucleus.Tests.Integrations.Initialization` also resets `Synapse.SimulatedPacketLossChance = 0` in its shared per-test setup, precisely to guard against the case above: a test that times out and never reaches its own `finally`.

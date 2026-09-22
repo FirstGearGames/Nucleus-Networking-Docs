@@ -32,9 +32,9 @@ if (unitySceneManager.NucleusSceneManager.TryOpenScene(sceneId, SceneScope.Conne
 }
 ```
 
-`TryOpenScene` only opens the instance on the authority - it records the handle and, for `SceneScope.Connections`, places nobody. Nothing loads on a client until you ask for it with `RequestSceneLoad(connection, sceneHandle)`, which is the step that actually tells that connection to load the scene.
+`TryOpenScene` only opens the instance on the server - it records the handle and, for `SceneScope.Connections`, places nobody. Nothing loads on a client until you ask for it with `RequestSceneLoad(connection, sceneHandle)`, which is the step that actually tells that connection to load the scene.
 
-Skip `RequestSceneLoad` and nothing goes wrong loudly: the instance exists on the authority, but no client was ever told to load it, so the scene simply never appears on the other end. There's no error for it, because from the engine's side you never asked.
+Skip `RequestSceneLoad` and nothing goes wrong loudly: the instance exists on the server, but no client was ever told to load it, so the scene simply never appears on the other end. There's no error for it, because from the engine's side you never asked.
 
 ## Join placement only covers new joins
 

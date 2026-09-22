@@ -21,7 +21,7 @@ NetworkSystemGroup group = ...;
 group.Initialize(coreManager);
 ```
 
-`Initialize` rents a fresh `GroupId` from the `SystemManager`. A client predicting a spawn under a group id it did not rent itself — because the authority already leased one and told the client what it is — uses `InitializeAdopted` instead, which stores the given id rather than renting a new one:
+`Initialize` rents a fresh `GroupId` from the `SystemManager`. A client predicting a spawn under a group id it did not rent itself — because the server already leased one and told the client what it is — uses `InitializeAdopted` instead, which stores the given id rather than renting a new one:
 
 ```csharp
 group.InitializeAdopted(coreManager, groupId);
@@ -63,7 +63,7 @@ group.Despawn();
 
 ## Reading membership
 
-`NetworkSystem.GroupMemberCount` reports how many systems the group holds. On the authority it reads the group's live member count, so it grows as members are added. On a receiver, which builds no `NetworkSystemGroup` of its own, it reports the count carried on the full header the first member arrived with.
+`NetworkSystem.GroupMemberCount` reports how many systems the group holds. On the server it reads the group's live member count, so it grows as members are added. On a receiver, which builds no `NetworkSystemGroup` of its own, it reports the count carried on the full header the first member arrived with.
 
 That received count is what lets a receiver wait for the whole set instead of acting the moment the first member shows up: it knows how many systems to expect for a given `GroupId` before it treats the object as fully arrived.
 

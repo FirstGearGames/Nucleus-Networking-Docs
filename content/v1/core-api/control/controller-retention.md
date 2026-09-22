@@ -25,7 +25,7 @@ A system and its group both leave their override unset by default, so an unconfi
 
 `ControllerRetentionToken` is a readonly struct with `Id` and `Generation`, plus `IsValid` (true when `Id` is not the unset value). It is opaque: nothing in it addresses anything on the wire, it is meaningful only to the peer that issued it, and it is safe to store beside an account record. It is a token rather than the departed connection's id on purpose - ids are rented from a pool and handed out again, so a stored id would eventually name somebody else's retention. `Generation` is what makes a stale token fail rather than alias: a record's identifier reissued later is a different token, and only the current one resolves.
 
-When a connection is first given control of something retained, the authority reserves a token for it and delivers it once, reliably, over `ControllerRetentionTokenNotice`. On the client, `SystemManager.LocalControllerRetentionToken` holds the token reserved for this session, and `SystemManager.LocalControllerRetentionTokenReceived` fires when it arrives. That is the moment to persist it somewhere that outlives the session, because the connection carrying it is the one whose loss the token exists to survive.
+When a connection is first given control of something retained, the server reserves a token for it and delivers it once, reliably, over `ControllerRetentionTokenNotice`. On the client, `SystemManager.LocalControllerRetentionToken` holds the token reserved for this session, and `SystemManager.LocalControllerRetentionTokenReceived` fires when it arrives. That is the moment to persist it somewhere that outlives the session, because the connection carrying it is the one whose loss the token exists to survive.
 
 ## Reclaiming
 
@@ -56,7 +56,7 @@ Every reason but `Reclaimed` leaves the objects uncontrolled and nothing relatin
 
 ## Security
 
-The framework never decides that a returning peer is the same player who left. That is why a token is issued rather than an identity matched: `TryReclaimController` trusts whatever token it is handed and only refuses one that fails to resolve. Getting the token from a departed player back to the authority is the game's business, not the engine's - present it through whatever channel the game's own authentication already trusts, and store it against a server-determined identity rather than in place of one. A server that accepts a token straight off the wire with no identity check behind it is trusting whatever a client hands it.
+The framework never decides that a returning peer is the same player who left. That is why a token is issued rather than an identity matched: `TryReclaimController` trusts whatever token it is handed and only refuses one that fails to resolve. Getting the token from a departed player back to the server is the game's business, not the engine's - present it through whatever channel the game's own authentication already trusts, and store it against a server-determined identity rather than in place of one. A server that accepts a token straight off the wire with no identity check behind it is trusting whatever a client hands it.
 
 ## Unity
 

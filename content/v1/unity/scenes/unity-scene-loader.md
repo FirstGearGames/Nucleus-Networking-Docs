@@ -4,7 +4,7 @@ title: "UnitySceneLoader component"
 
 > **Driving the core API directly?** See [Registering a scene loader](../../core-api/scenes/scene-loader-api).
 
-`UnitySceneLoader` is the shipped `ISceneLoader` implementation for Unity: it maps the scene identifiers an authority sends to scene assets, loads them additively, and reports back so withheld spawns can land. Add it to a GameObject alongside (or reachable from) the integration's CoreManager and it registers itself automatically.
+`UnitySceneLoader` is the shipped `ISceneLoader` implementation for Unity: it maps the scene identifiers a server sends to scene assets, loads them additively, and reports back so withheld spawns can land. Add it to a GameObject alongside (or reachable from) the integration's CoreManager and it registers itself automatically.
 
 ## Inspector fields
 
@@ -25,7 +25,7 @@ With Local Physics on, each scene loads with `LocalPhysicsMode.Physics3D` instea
 `NetworkSceneLoader` is the abstract `MonoBehaviour` that implements `ISceneLoader`. `UnitySceneLoader` derives from it. It owns:
 
 - `LoadSceneAsync(uint sceneHandle, ushort sceneId)` and `UnloadSceneAsync(uint sceneHandle)` — abstract, asynchronous, and may take as long as needed; the network loop never blocks on them.
-- `MaximumConcurrentScenes` — a `virtual uint` defaulting to `SceneManager.UnlimitedConcurrentScenes`, because Unity loads scenes additively and holds as many as memory allows. Override it only if a replacement loading pipeline genuinely can't hold every scene the authority asks for concurrently.
+- `MaximumConcurrentScenes` — a `virtual uint` defaulting to `SceneManager.UnlimitedConcurrentScenes`, because Unity loads scenes additively and holds as many as memory allows. Override it only if a replacement loading pipeline genuinely can't hold every scene the server asks for concurrently.
 - `_automaticRegistrationEnabled` and `Initialize(CoreManager)` — registration is deliberately on `Awake`, not `Start`, so game code that loads scenes from its own `Start` always finds a loader already registered.
 
 ## Extension points

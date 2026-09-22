@@ -77,7 +77,7 @@ bool loaded = await coreManager.BundleManager.LoadBundleAsync(bundleId);
 bool unloaded = await coreManager.BundleManager.UnloadBundleAsync(bundleId);
 ```
 
-This is the route for content a peer decides it needs on its own — an authority hotloading a zone it is about to spawn
+This is the route for content a peer decides it needs on its own — a server hotloading a zone it is about to spawn
 from, or a client preloading ahead of a gate. It runs through the registered `IBundleLoader` and reports the outcome to
 the server when the peer is a client. This is also the call a bundle-backed scene load makes to bring its content in.
 

@@ -18,7 +18,7 @@ Check that the Nucleus source generator is wired into the project as an analyzer
 
 ### Why can I see my object but not drive it
 
-Observing and controlling are separate questions. Interest decides whether a connection is sent an object's state at all; control is a separate assignment made by the authority over who is allowed to drive it. Being registered as an observer never implies being the controller. See the control assignment page.
+Observing and controlling are separate questions. Interest decides whether a connection is sent an object's state at all; control is a separate assignment made by the server over who is allowed to drive it. Being registered as an observer never implies being the controller. See the control assignment page.
 
 ## Timing
 

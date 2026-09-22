@@ -6,7 +6,7 @@ title: "Input components"
 
 ## Overview
 
-A `NetworkInputComponent` is a tick-aligned input channel attached to a `NetworkSystem`. Subclass it, declare the fields you want to send, and the framework serializes them upstream from the controlling client every tick. On the authority, the deserialized values are validated before anything reacts to them, and validated inputs can be forwarded back out to observers for presentation.
+A `NetworkInputComponent` is a tick-aligned input channel attached to a `NetworkSystem`. Subclass it, declare the fields you want to send, and the framework serializes them upstream from the controlling client every tick. On the server, the deserialized values are validated before anything reacts to them, and validated inputs can be forwarded back out to observers for presentation.
 
 ## Adding and retrieving a component
 
@@ -45,9 +45,9 @@ public virtual void Read(Reader reader)
 
 An override **replaces** the default rather than adding to it. If you override `Write` or `Read` and still want registered members serialized, call `base.Write(writer)` / `base.Read(reader)` yourself — otherwise those members stop travelling over the wire. `Read` must consume exactly what `Write` produced, and in the same order.
 
-## Validating inputs on the authority
+## Validating inputs on the server
 
-Override `ValidateInputs` on the authority to enforce game rules against a tick's deserialized input:
+Override `ValidateInputs` on the server to enforce game rules against a tick's deserialized input:
 
 ```csharp
 protected virtual bool ValidateInputs(uint tick) => true;
@@ -62,9 +62,9 @@ public event InputReceivedHandler InputReceived;   // delegate void InputReceive
 public event InputCorrectedHandler InputCorrected;  // delegate void InputCorrectedHandler(uint tick)
 ```
 
-`InputReceived` fires whenever an input payload has been applied to the fields — on the authority after `ValidateInputs` runs for the controller's tick, and on a remote observer after a forwarded, validated payload is applied. Read the fields inside the handler; they're already updated.
+`InputReceived` fires whenever an input payload has been applied to the fields — on the server after `ValidateInputs` runs for the controller's tick, and on a remote observer after a forwarded, validated payload is applied. Read the fields inside the handler; they're already updated.
 
-On a host, which controls the system it authorities for, `InputReceived` is always raised for that tick. `InputCorrected` is raised alongside it only when `ValidateInputs` returned `false` for that tick — never unconditionally. On a remote (non-host) controller, `InputCorrected` fires when the authority forwards a correction, and the corrected values land in the member's ring history at the corrected tick so a later replay uses the validated inputs.
+On a host, which is the server for the system it controls, `InputReceived` is always raised for that tick. `InputCorrected` is raised alongside it only when `ValidateInputs` returned `false` for that tick — never unconditionally. On a remote (non-host) controller, `InputCorrected` fires when the server forwards a correction, and the corrected values land in the member's ring history at the corrected tick so a later replay uses the validated inputs.
 
 ## Forwarding to observers
 
@@ -72,7 +72,7 @@ On a host, which controls the system it authorities for, `InputReceived` is alwa
 public bool ForwardingEnabled = true;
 ```
 
-When `ForwardingEnabled` is true, the authority includes the component in the forwarded Input subpacket sent to the system's delta observers each tick. Remote observers receive the validated values through their own `InputReceived`, letting them drive presentation (audio, animation) from the controller's actions; the controller itself receives only the correction flag, surfaced through `InputCorrected`. A component with `ForwardingEnabled` false is validated and raises events locally but is never sent to observers.
+When `ForwardingEnabled` is true, the server includes the component in the forwarded Input subpacket sent to the system's delta observers each tick. Remote observers receive the validated values through their own `InputReceived`, letting them drive presentation (audio, animation) from the controller's actions; the controller itself receives only the correction flag, surfaced through `InputCorrected`. A component with `ForwardingEnabled` false is validated and raises events locally but is never sent to observers.
 
 ## Pooling
 

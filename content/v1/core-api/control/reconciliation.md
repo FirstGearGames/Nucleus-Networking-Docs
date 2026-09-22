@@ -4,7 +4,7 @@ title: "Reconciliation and replay"
 
 > **Using Unity?** See [Replaying a correction in Unity](../../unity/control/reconcile-in-unity).
 
-A predicted member on a controller can diverge from the authority: the local prediction and the server's outcome disagree beyond wire tolerance, or the ring history is too shallow to still hold the echoed tick. When that happens the member is rewound to the authoritative value and the owning `NetworkSystem` asks game code to replay forward from the rewind point. Reconciliation is this rewind-and-replay contract.
+A predicted member on a controller can diverge from the server: the local prediction and the server's outcome disagree beyond wire tolerance, or the ring history is too shallow to still hold the echoed tick. When that happens the member is rewound to the server's value and the owning `NetworkSystem` asks game code to replay forward from the rewind point. Reconciliation is this rewind-and-replay contract.
 
 ## ReconcileRequired
 
@@ -44,7 +44,7 @@ Re-simulate strictly past ticks (everything before the current one) through this
 
 ## Where the corrected value lands
 
-The rewind that triggers `ReconcileRequired` writes the authoritative value into the echoed tick's own ring slot. Every ring slot for a later tick — the predictions built on top of the now-wrong state — is cleared, because they were computed from a value the replay is about to overwrite. The ring's head parks on the corrected slot, so the member's current value reads as the authoritative one until the replay moves it forward again.
+The rewind that triggers `ReconcileRequired` writes the server's value into the echoed tick's own ring slot. Every ring slot for a later tick — the predictions built on top of the now-wrong state — is cleared, because they were computed from a value the replay is about to overwrite. The ring's head parks on the corrected slot, so the member's current value reads as the server's value until the replay moves it forward again.
 
 This is what makes `rewoundTick` a correct place to resume from: nothing later in the ring can still be trusted, and the corrected slot is the last one that can.
 
@@ -54,7 +54,7 @@ Landing the corrected value is not the end of the job. The replay has to carry t
 
 ## SendReconcile
 
-`SendReconcile(Connection)` is the authority side of a forced, full-state correction — the server pushes a system's complete current state to one connection outright, rather than waiting for the controller's own prediction to drift out of tolerance on its own.
+`SendReconcile(Connection)` is the server side of a forced, full-state correction — the server pushes a system's complete current state to one connection outright, rather than waiting for the controller's own prediction to drift out of tolerance on its own.
 
 ```csharp
 public void SendReconcile(Connection connection)
@@ -70,7 +70,7 @@ public void SendReconcile(Connection connection)
 }
 ```
 
-Only the authority can call it; a client attempting to reconcile a system is refused with a logged error, and nothing is queued — a reconcile is the one kind of correction that must never travel upstream, since accepting one from a client would let it overwrite any system on the authority outright.
+Only the server can call it; a client attempting to reconcile a system is refused with a logged error, and nothing is queued — a reconcile is the one kind of correction that must never travel upstream, since accepting one from a client would let it overwrite any system on the server outright.
 
 A server reaches for this when it needs to force a correction outside the normal predicted-member compare — for example, after a gameplay event that invalidates a controller's prediction in a way the ordinary tolerance check would not catch (a teleport, a respawn, an out-of-band state change the client had no input to predict). On arrival, the receiving system applies the full state and then calls `NotifyReconcileRequired` itself, so `ReconcileRequired` fires even for systems whose predicted members had nothing to compare against.
 

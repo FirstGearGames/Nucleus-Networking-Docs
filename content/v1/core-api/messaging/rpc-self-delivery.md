@@ -31,15 +31,15 @@ The sender does not see its own call. This is the default, and it's what a call 
 
 ### Immediate
 
-The sender's own handlers run at the send site, before the call has gone anywhere. This is what makes a client-fired effect feel instant. The price is that it runs whether or not the call survives: a client's call can still be refused by the authority afterward, and `Immediate` has already run by then. Use it where responsiveness matters more than being right.
+The sender's own handlers run at the send site, before the call has gone anywhere. This is what makes a client-fired effect feel instant. The price is that it runs whether or not the call survives: a client's call can still be refused by the server afterward, and `Immediate` has already run by then. Use it where responsiveness matters more than being right.
 
 ### OnDelivery
 
-The sender sees the call once it has actually been delivered, and not at all if it was refused. For effects that must agree on when something happens, or whether it happens at all, a client asking for `OnDelivery` sees its own call only if the authority passed it on. A refusal then reads as nothing happening, rather than as an effect that has to be undone.
+The sender sees the call once it has actually been delivered, and not at all if it was refused. For effects that must agree on when something happens, or whether it happens at all, a client asking for `OnDelivery` sees its own call only if the server passed it on. A refusal then reads as nothing happening, rather than as an effect that has to be undone.
 
-The authority is itself the delivery point. Asking for `OnDelivery` on an authority's own send is treated the same as `Immediate`, resolved at the point of send rather than at the call site. That collapse is what lets one `SendRpc` call read the same on both peers instead of branching on role, the same way `RpcTarget.To` does for the destination.
+The server is itself the delivery point. Asking for `OnDelivery` on a server's own send is treated the same as `Immediate`, resolved at the point of send rather than at the call site. That collapse is what lets one `SendRpc` call read the same on both peers instead of branching on role, the same way `RpcTarget.To` does for the destination.
 
-`OnDelivery` is meaningless with `RpcTarget.Server`, and the engine refuses the send outright rather than silently downgrading it: a call addressed to the authority is not passed on anywhere, so there is nothing for it to come back from.
+`OnDelivery` is meaningless with `RpcTarget.Server`, and the engine refuses the send outright rather than silently downgrading it: a call addressed to the server is not passed on anywhere, so there is nothing for it to come back from.
 
 ```csharp
 if (isOnDelivery && isAddressedToAuthority)
@@ -56,7 +56,7 @@ A host runs both a server and a client in the same process, sharing one handler 
 
 ### Immediate with RpcTarget.Server is refused
 
-On a host, a call addressed to `RpcTarget.Server` is already invoked locally as part of the send: the host's client half asks its own authority, and that ask runs the handlers right there. Asking for `Immediate` on top of that would run the handlers a second time, so the engine refuses the send and logs why:
+On a host, a call addressed to `RpcTarget.Server` is already invoked locally as part of the send: the host's client half asks its own server half, and that ask runs the handlers right there. Asking for `Immediate` on top of that would run the handlers a second time, so the engine refuses the send and logs why:
 
 ```csharp
 if (isServerStarted && isAddressedToAuthority && rpcSelfDelivery is RpcSelfDelivery.Immediate)
@@ -97,6 +97,6 @@ public enum RpcDisposition : byte
 }
 ```
 
-`Origin` means this peer sent the call and is seeing its own copy: a local invoke as the authority, or the echo a client asked for through `RpcSelfDelivery.OnDelivery`. A handler reading `Origin` knows the effect is one this peer caused rather than one done to it, which is the distinction an effect that must not fire for its own author needs.
+`Origin` means this peer sent the call and is seeing its own copy: a local invoke as the server, or the echo a client asked for through `RpcSelfDelivery.OnDelivery`. A handler reading `Origin` knows the effect is one this peer caused rather than one done to it, which is the distinction an effect that must not fire for its own author needs.
 
-`Recipient` is the ordinary case, a call meant for the peer reading it. `Routing` is authority-only, and marks a call passing through on its way to a client it names elsewhere, never meant for the authority itself.
+`Recipient` is the ordinary case, a call meant for the peer reading it. `Routing` is server-only, and marks a call passing through on its way to a client it names elsewhere, never meant for the server itself.

@@ -2,7 +2,7 @@
 title: "What Nucleus is"
 ---
 
-Nucleus is a networking engine for authoritative multiplayer games. Its core is engine-agnostic C#, and Unity is one integration layer on top of it, not a dependency it needs.
+Nucleus is a networking engine for server-authoritative multiplayer games. Its core is engine-agnostic C#, and Unity is one integration layer on top of it, not a dependency it needs.
 
 ## The shape of the product
 
@@ -30,7 +30,7 @@ public partial class ChangeDetectionStateComponent : NetworkComponent
 
 A `NetworkMember<T0>` is the unit of replication. Nothing above it — the `NetworkComponent`, the `NetworkSystem` — carries wire values directly.
 
-**The authority decides, clients propose.** One side of a connection is authoritative over an object's state; every other peer receives what the authority decided rather than simulating its own version. A client that wants to affect authoritative state sends a request; it doesn't write the value itself.
+**The server decides, clients propose.** One side of a connection controls an object's state; every other peer receives what the server decided rather than simulating its own version. A client that wants to affect that state sends a request; it doesn't write the value itself.
 
 **Interest decides what a peer can see.** Visibility isn't global. What a given connection is allowed to see of a given object is resolved per object, per connection, through the interest system (`InterestManager`, `IInterestCondition` and their implementations). A NetworkSystem existing doesn't mean every peer receives it.
 

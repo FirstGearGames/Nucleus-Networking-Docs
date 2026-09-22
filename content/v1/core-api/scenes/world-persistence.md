@@ -6,7 +6,7 @@ title: "Saving and loading a world"
 
 ## WorldPersistenceManager
 
-`CoreManager.WorldPersistenceManager` writes the authority's world to a store and builds it back. Register a store first:
+`CoreManager.WorldPersistenceManager` writes the server's world to a store and builds it back. Register a store first:
 
 ```csharp
 coreManager.WorldPersistenceManager.SetWorldStore(myWorldStore);
@@ -40,7 +40,7 @@ Await it from anywhere other than the thread that itself drives the network loop
 
 ## Authority only
 
-Both `SaveAsync` and `LoadAsync` are refused on a peer whose server is not started. A client holds a copy of the authority's world, not one of its own, so there is nothing on a client worth saving and nothing a client can build without an authority behind it.
+Both `SaveAsync` and `LoadAsync` are refused on a peer whose server is not started. A client holds a copy of the server's world, not one of its own, so there is nothing on a client worth saving and nothing a client can build without a server behind it.
 
 ## What a save keeps
 

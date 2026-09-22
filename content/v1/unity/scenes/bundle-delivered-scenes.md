@@ -4,7 +4,7 @@ title: "Addressables-delivered scenes"
 
 ## What delivery mode means
 
-Every scene the authority can send a peer to is one row in the project's `NetworkSceneManifest`, built by `Nucleus/Rebuild Network Scene Manifest`. Each `NetworkSceneManifest.SceneEntry` carries a `SceneDeliveryMode`, derived from the project rather than chosen by hand:
+Every scene the server can send a peer to is one row in the project's `NetworkSceneManifest`, built by `Nucleus/Rebuild Network Scene Manifest`. Each `NetworkSceneManifest.SceneEntry` carries a `SceneDeliveryMode`, derived from the project rather than chosen by hand:
 
 - `SceneDeliveryMode.BuildSettings` — the scene ships inside the player and is opened by path. This is the default for any scene not marked Addressable, and it is what every scene mapped before delivery modes existed still reads as.
 - `SceneDeliveryMode.Addressables` — the scene is an Addressables entry, opened through Addressables, which resolves and fetches whatever carries it.

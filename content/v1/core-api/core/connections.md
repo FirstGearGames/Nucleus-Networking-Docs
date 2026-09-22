@@ -21,7 +21,7 @@ Because instances are pooled, a `Connection` reference is only valid for the ins
 | `IsConnected` | `true` when `LocalState == LocalConnectionState.Connected`. |
 | `IsAuthenticated` | `true` when this side is a client that has authenticated, or when `IsServer`, or when `IsEmulated`. |
 | `IsEmulated` | `true` for a connection that uses no socket, such as a fake or test peer. |
-| `IsPeerStandIn` | `true` when this Connection names a peer the authority told a client about, rather than a link this peer itself holds. A stand-in carries identity only; there is no socket behind it. |
+| `IsPeerStandIn` | `true` when this Connection names a peer the server told a client about, rather than a link this peer itself holds. A stand-in carries identity only; there is no socket behind it. |
 | `IsHostLoopback` | `true` when this Connection is one half of a host's own loopback pair (the same peer at both ends). |
 
 ## ConnectionHandle
@@ -63,7 +63,7 @@ If the original connection has been recycled, or its Id reissued to a different 
 
 `TransportManager` exposes the active set and several lookups:
 
-- `ActiveConnections` — the connections currently known to this peer. On the authority this is the remote clients; on a client it is the peer stand-ins the authority has reported (never the local client itself).
+- `ActiveConnections` — the connections currently known to this peer. On the server this is the remote clients; on a client it is the peer stand-ins the server has reported (never the local client itself).
 - `TryGetConnection(uint id, out Connection connection)` — resolves this peer's own Connection for an Id.
 - `TryGetConnection(ConnectionHandle handle, out Connection connection)` — resolves a handle, failing if the generation is stale.
 - `TryGetLocalClientConnection(out Connection connection)` — this peer's own connection as a client.

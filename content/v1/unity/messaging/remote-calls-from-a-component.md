@@ -49,7 +49,7 @@ public struct AddScoreRpc : IRpc
 bool sent = NetworkSystem.SendRpc(RpcTarget.Server, Channel.Reliable, new AddScoreRpc { Amount = 1 });
 ```
 
-The return value reports only what this peer can see. `true` means the call was queued, or was invoked locally; it does not mean the call was delivered, and a client routing a call through the authority has no way to know that it arrived. `false` means nothing was sent, most often because the local client does not hold the access this call's target requires. Call `SendRpc` from wherever the game decides to act: input handling, a UI callback, or a script method fired by an animation event.
+The return value reports only what this peer can see. `true` means the call was queued, or was invoked locally; it does not mean the call was delivered, and a client routing a call through the server has no way to know that it arrived. `false` means nothing was sent, most often because the local client does not hold the access this call's target requires. Call `SendRpc` from wherever the game decides to act: input handling, a UI callback, or a script method fired by an animation event.
 
 ## Guarding the send
 

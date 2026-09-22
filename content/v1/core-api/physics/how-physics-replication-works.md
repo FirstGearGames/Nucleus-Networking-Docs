@@ -8,7 +8,7 @@ Every physics body Nucleus replicates follows the same loop, regardless of which
 
 The controlling peer simulates the body normally and, once per tick, captures the stepped result: world position, world rotation, and a set of condition flags. That capture rides the wire as ordinary replicated members, alongside the tick it was captured at.
 
-Every other peer holds a proxy for that body. Each physics step, the proxy rebuilds the latest authoritative snapshot from those members, projects it forward by however many ticks old it is, and converges its own simulated body onto the projected result. The proxy is never teleported onto the raw received pose; it is steered toward a moving target that accounts for the snapshot's age.
+Every other peer holds a proxy for that body. Each physics step, the proxy rebuilds the latest server snapshot from those members, projects it forward by however many ticks old it is, and converges its own simulated body onto the projected result. The proxy is never teleported onto the raw received pose; it is steered toward a moving target that accounts for the snapshot's age.
 
 ## Velocity is derived, not sent
 

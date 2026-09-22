@@ -4,7 +4,7 @@ title: "Server notices"
 
 ## What a server notice is
 
-A server notice is a struct the authority raises about this client, delivered through a channel separate from ordinary message handlers. It exists because some things the server tells a client have to survive the disconnect they are explaining: an ordinary message handler is registered against a live connection, and by the time a refusal reaches the client, that connection is already going down. Notices are dispatched locally on the client and never travel the wire as their own packet type.
+A server notice is a struct the server raises about this client, delivered through a channel separate from ordinary message handlers. It exists because some things the server tells a client have to survive the disconnect they are explaining: an ordinary message handler is registered against a live connection, and by the time a refusal reaches the client, that connection is already going down. Notices are dispatched locally on the client and never travel the wire as their own packet type.
 
 Every notice type implements `IServerNotice`, a marker interface with no members, and is a struct so dispatch never boxes it.
 
