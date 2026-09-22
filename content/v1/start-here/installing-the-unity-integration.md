@@ -50,7 +50,3 @@ The integration only compiles under the editor or Unity 2021.3 and newer. That m
 The `Unity` folder is the integration itself — managers, components, everything that talks to `UnityEngine`. It has no `defineConstraints`, so it compiles as soon as it's in your project.
 
 `Blitz Relay`, `Newfarm Client`, and `Newfarm Migration` are separate assemblies alongside it. The Blitz Relay assembly is special: its `.asmdef` declares `"defineConstraints": ["BLITZ_RELAY"]`, so that assembly only compiles when the `BLITZ_RELAY` scripting define is set in your project. The Unity integration assembly itself carries no such constraint — it references Blitz Relay unconditionally, but the relay code only builds in when you opt in with that define.
-
-## What doesn't exist yet
-
-There is no `.unitypackage`, no UPM package, no Asset Store listing, and no git-URL install. The only supported install method is copying the `Assets/Nucleus` folder from the distributed build into your project as described above.

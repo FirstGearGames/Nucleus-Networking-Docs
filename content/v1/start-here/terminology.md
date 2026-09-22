@@ -26,7 +26,7 @@ public enum Invoker : byte
 
 - **NetworkSystem** — the replicated entity. It holds NetworkComponents, is created and destroyed as a unit, and is what spawns, despawns, and is observed.
 - **NetworkComponent** — a container of replicated data attached to a NetworkSystem. Your own code writes NetworkComponent subclasses to declare what a system replicates.
-- **NetworkMember\<T0\>** — one replicated value inside a NetworkComponent, declared as a field:
+- **NetworkMember<T0>** — one replicated value inside a NetworkComponent, declared as a field:
 
 ```csharp
 public readonly NetworkMember<int> X = new();
@@ -110,11 +110,3 @@ Every scene load is additive, so the same scene asset can be opened more than on
 - `SceneHandle` (`uint`) — which live, currently-open copy of it.
 
 The id names the asset; only the handle names one particular loaded instance of it.
-
-## Names that don't exist
-
-These read plausibly, and turn up in old samples or posts describing other engines, but are not Nucleus API:
-
-- **IsAuthority** — not a member anywhere in Nucleus. Use `IsServerStarted` to ask whether the local peer is the server, or `IsController(ControllerType)` to ask whether it controls a specific system.
-- **IsHostOwnClient**, **IsHostOwnServer** — removed from the engine; nothing to migrate to, because nothing needs a name for "the host's own half."
-- **NetworkObject** — not a Nucleus type. The replicated entity is `NetworkSystem`. In the Unity integration, `NetworkSystemObject` is the component that links a GameObject to one, but it is not one-to-one with `NetworkSystem`: a single GameObject can link several systems.

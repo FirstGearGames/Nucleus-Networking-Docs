@@ -38,22 +38,9 @@ A `NetworkMember<T0>` is the unit of replication. Nothing above it — the `Netw
 
 There is no reliable channel underneath replication quietly retransmitting every state change until it lands. Acknowledgment rides the packet header of the traffic already flowing, and recovery is targeted at what a peer is actually missing rather than a blanket retransmit. If you're used to a reliable-by-default RPC layer, read the reliability and redundancy docs before assuming state "just arrives" — here, arriving is something the system has to actively account for, not a channel guarantee you get for free.
 
-## What Nucleus does not do
-
-Stated up front so it isn't discovered mid-project:
-
-- **No lag compensation or server-side rewind.** There's no world-rewind primitive in the engine to validate a shot against what the shooter saw. (Pieces of this — server-side rewind, lag-compensated queries, projectile catch-up compensation — are planned or partially built; the rewind primitive itself is not.)
-- **No matchmaking or lobby service.** Nucleus connects peers; finding and browsing sessions is not in scope.
-- **No voice chat.**
-- **No WebGL or browser target.** There is no browser-reachable transport.
-- **No LAN discovery.**
-- **No networked character controller.** Nucleus ships the prediction and physics primitives a controller would be built on, not a ready kinematic controller.
-
 ## Where the pieces live
 
 - `Nucleus/` — the engine-agnostic core: systems, components, members, serializers, interest, transports.
 - `Nucleus.Integrations.Unity/` — the Unity layer: MonoBehaviours, inspector-facing components, and the demos.
 - `Nucleus.Integrations.BlitzRelay/` and `Nucleus.Integrations.Newfarm/` — the other integration layers.
 - `Nucleus.Tests/` — the body of runnable, core-only examples. Reading a component or a test here shows working core code with no engine attached.
-
-Across the shipped feature set, that's 289 features across 17 areas, with another 18 planned and 5 archived or deliberately-scoped entries listed alongside them. The "does not do" section above isn't drawn from that list — it's drawn from a separate register, the competitive feature-gap comparison's Declined bucket, 39 of the 85 tracked gaps the project has closed to work on purpose rather than left open by oversight.
