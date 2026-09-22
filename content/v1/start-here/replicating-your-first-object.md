@@ -77,7 +77,7 @@ public class FirstObjectController : NucleusBehaviour<FirstObjectComponent>
 
     private void Update()
     {
-        if (!EnsureIsController(ControllerType.Client) || !EnsureIsStarted(Invoker.Client))
+        if (!IsController(ControllerType.Client) || !IsStarted(Invoker.Client))
             return;
 
         // Safe to act on the object here: this peer controls it and the client role is up.
@@ -91,7 +91,7 @@ public class FirstObjectController : NucleusBehaviour<FirstObjectComponent>
 - `CoreManager` — resolved in `Awake`.
 - `IsController(ControllerType controllerType)` — false until a system is linked, otherwise the system's own answer.
 - `IsStarted(Invoker invoker)` — whether this peer's server or client role is started, meaningful only once a system is linked.
-- `EnsureIsController(ControllerType controllerType)` and `EnsureIsStarted(Invoker invoker)` — the same checks, but log a warning once per call site when they fail, instead of failing silently.
+- `EnsureIsController(ControllerType controllerType)` and `EnsureIsStarted(Invoker invoker)` — the same checks, but log a warning on every failing call instead of failing silently. `Update()` above uses the plain forms deliberately: it runs every frame, and a non-controlling or not-yet-started peer failing the check there is the normal case, not a bug. Reach for the loud forms in one-off code — a button handler, an RPC — where a failure means something is actually wrong.
 
 ## The lifecycle hooks
 

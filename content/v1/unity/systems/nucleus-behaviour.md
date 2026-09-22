@@ -34,12 +34,12 @@ Both have loud counterparts that log instead of failing silently:
 - `EnsureIsController(ControllerType controllerType, [CallerMemberName] string callerMemberName = null)`
 - `EnsureIsStarted(Invoker invoker, [CallerMemberName] string callerMemberName = null)`
 
-Each returns the same answer as its plain counterpart, and when that answer is false, logs a warning naming the calling member (supplied automatically via `[CallerMemberName]`) once per call site rather than every frame.
+Each returns the same answer as its plain counterpart, and when that answer is false, logs a warning naming the calling member (supplied automatically via `[CallerMemberName]`) - on every failing call, not throttled. Reach for the loud form where a failure means a real bug worth surfacing loudly: a one-off action like handling a button press or an RPC, not a per-tick callback. A per-tick write like `OnEarlyStateWrite` runs every tick on every peer, so a non-controlling peer failing the check is the normal, expected case, not a bug - use the plain form there so it doesn't spam the log every tick:
 
 ```csharp
 protected override void OnEarlyStateWrite(StepDelta stepDelta)
 {
-    if (!EnsureIsController(ControllerType.AnyController))
+    if (!IsController(ControllerType.AnyController))
         return;
 
     // Safe to write controlled state here.

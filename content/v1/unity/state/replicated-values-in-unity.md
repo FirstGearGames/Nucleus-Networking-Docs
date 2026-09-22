@@ -49,12 +49,12 @@ protected override void OnSystemLinked()
 
 `IsController(ControllerType)` reports whether this peer controls the linked system; `IsStarted(Invoker)` reports whether a named role (`Invoker.Server` or `Invoker.Client`) is up, for a behaviour whose system has linked. Both answer false while no system is linked, so they're safe to call anywhere, unlike reading `Component` directly.
 
-When a failed guard is a bug rather than an expected outcome, use the loud forms instead: `EnsureIsController(ControllerType)` and `EnsureIsStarted(Invoker)` return the same answer but also log a warning, once per call site, when the check fails. Reach for these in code that must never run on the wrong peer — reserve the quiet `IsController` / `IsStarted` for branches where "not yet" is a normal, expected state.
+When a failed guard is a bug rather than an expected outcome, use the loud forms instead: `EnsureIsController(ControllerType)` and `EnsureIsStarted(Invoker)` return the same answer but also log a warning on every failing call - not throttled, so calling one from a per-tick hook floods the log on every peer that doesn't pass. Reach for the loud forms in one-off code that must never run on the wrong peer - a button handler, an RPC. A per-tick write like the one below runs on every peer every tick, and a non-controlling peer failing the check there is the normal, expected outcome, not a bug, so use the quiet form:
 
 ```csharp
 protected override void OnEarlyFixedUpdate(StepDelta stepDelta)
 {
-    if (!EnsureIsController(ControllerType.Server))
+    if (!IsController(ControllerType.Server))
         return;
 
     Component.SecondsRemaining.Value = Mathf.Max(Component.SecondsRemaining.Value - _secondsPerTick, 0f);
