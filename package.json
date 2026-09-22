@@ -6,6 +6,7 @@
   "scripts": {
     "fetch-renderer": "degit FirstGearGames/ZeroDocs .zerodocs --force",
     "build": "npm run fetch-renderer && node build.js",
+    "build:pdf": "npm run fetch-renderer && node build-pdf.js",
     "dev": "npm run fetch-renderer && cross-env DOCS_ROOT=. node .zerodocs/preview-server.js"
   },
   "devDependencies": {

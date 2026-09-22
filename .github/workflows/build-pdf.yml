@@ -1,0 +1,52 @@
+name: Build PDF
+
+# Regenerates static/downloads/*.pdf and commits the result, but debounced:
+# this repo takes public PRs, and Cloudflare Pages already builds a preview
+# for every one of them (see build.yml) - this workflow never runs on a PR,
+# only on push to main, and even there waits 5 minutes before actually
+# building. The concurrency group + cancel-in-progress means a burst of
+# merges collapses into a single run: each new push cancels the previous
+# run's sleep, so only the last one in a quiet window ever reaches the build
+# step. That commit-back then triggers Cloudflare's normal redeploy, which is
+# how the new PDF actually reaches the live site.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'content/**'
+      - 'docs.config.json'
+
+concurrency:
+  group: build-pdf-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  build-pdf:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Debounce (5 minutes)
+        run: sleep 300
+
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install (degit + cross-env)
+        run: npm install
+      - name: Fetch renderer + build the PDFs
+        run: npm run build:pdf
+
+      - name: Commit the regenerated PDFs, if changed
+        run: |
+          if git status --porcelain static/downloads | grep -q .; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add static/downloads
+            git commit -m "Regenerate the documentation PDF [skip ci]"
+            git push
+          else
+            echo "No PDF changes."
+          fi
