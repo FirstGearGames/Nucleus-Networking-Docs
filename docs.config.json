@@ -11,6 +11,7 @@
   "theme": {
     "_comment": "Edit these colors to restyle the entire docs site. All callout boxes, links, and accents derive from these values.",
     "primary":  "#2563eb",
+    "primaryDark": "#7db8f7",
     "success":  "#22c55e",
     "info":     "#3b82f6",
     "warning":  "#f59e0b",
