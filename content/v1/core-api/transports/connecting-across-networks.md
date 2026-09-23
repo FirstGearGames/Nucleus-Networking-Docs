@@ -34,10 +34,10 @@ Work through these in order; each one only matters once the ones above it are ru
 
 ## Reading which layer failed
 
-The connection's `LocalConnectionState` tells you where it stopped:
+`LocalConnectionState` alone can't tell you where it stopped. A `Synapse` client reports `Connected` as soon as it has sent its handshake, before the server has answered, and a link that fails for any reason ends at `Disconnected`; the shipped transports never set `Error` or `TimedOut`. The sign that the server actually answered and accepted the client is `ClientManager.LocalClientAuthenticated`, so read the two together:
 
-- **Stuck at `Connecting`, never reaches `Connected`.** The client's packets aren't reaching the server at all. This is a routing/reachability problem: wrong address, wrong port, firewall, or missing port forward.
-- **Reaches `Connected`, then drops to `TimedOut`.** The initial handshake worked — the path was open at least once — but traffic stopped flowing after that. This points at something intermittent: a NAT mapping that expired, a firewall rule that only blocks certain packet patterns, or a real network interruption. It's a different problem than never connecting at all, so don't go back to checking the port or the forward.
+- **Drops to `Disconnected` without `LocalClientAuthenticated` ever firing.** The client's packets aren't reaching the server at all. The client waits out `Configuration.ConnectedTimeoutSeconds` (15 seconds by default) and then drops. This is a routing/reachability problem: wrong address, wrong port, firewall, or missing port forward. A server that refuses the client drops it straight away instead, and `ClientManager.LastAuthenticationDenialReason` holds the reason it gave.
+- **`LocalClientAuthenticated` fired, then the link dropped to `Disconnected`.** The initial handshake worked, so the path was open at least once, but traffic stopped flowing after that. This points at something intermittent: a NAT mapping that expired, a firewall rule that only blocks certain packet patterns, or a real network interruption. It's a different problem than never connecting at all, so don't go back to checking the port or the forward.
 
 ## When to stop fighting NAT
 

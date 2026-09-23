@@ -170,7 +170,7 @@ These write and read a `Connection` reference by id. Treat that id as a claim, n
 
 ## Reading values back
 
-A `Reader` mirrors the writer's typed reads one for one (`ReadInt8`, `ReadSingle`, `ReadString`, `ReadDelta<T0>`, and so on), each taking the matching `CompressionLevel` or `DeltaCheckMode` context the write used. Beyond the per-value reads, a `Reader` carries:
+A `Reader` mirrors the writer's typed reads one for one (`ReadInt8`, `ReadSingle`, `ReadString`, `ReadDelta<T0>`, and so on). A full read takes the `CompressionLevel` the write used. A delta read takes the previous value and no `DeltaCheckMode`; its compression level is `Reader.DeltaCompressionLevel`. Pass the level explicitly on both sides rather than relying on the defaults, because they do not always match: `WriteString` defaults to `Loose` while `ReadString` defaults to `Uncompressed`, and `ReadQuaternion` has no default level at all. Beyond the per-value reads, a `Reader` carries:
 
 ```csharp
 CoreManager CoreManager { get; }

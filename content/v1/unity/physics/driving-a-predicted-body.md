@@ -1,5 +1,5 @@
 ---
-title: "Driving a body you control"
+title: "Driving a predicted body"
 ---
 
 > **Driving the core API directly?** See [Locally predicted bodies](../../core-api/physics/locally-predicted-bodies.md).
@@ -8,13 +8,15 @@ A body a client drives directly - a player's own physics character, for example 
 
 ## Turning prediction on
 
-`ProjectedRigidbody.Convergence` is a `PhysicsConvergence`. Set `Convergence.IsLocallyPredicted` to `true` on the peer driving the body, and back to `false` when control leaves:
+`ProjectedRigidbody.Convergence` is a `PhysicsConvergence`. Set `Convergence.IsLocallyPredicted` to `true` on the peer steering the body with its own input, and back to `false` when it stops:
 
 ```csharp
 projectedRigidbody.Convergence.IsLocallyPredicted = true;
 ```
 
-While it is set, the follower keeps the velocity your own simulation produced instead of overwriting it with the server's projected velocity, so your input is never washed out. It only trims a position or rotation error once that error passes the follower's threshold. Clear the flag the moment this peer stops driving the body - a proxy left with `IsLocallyPredicted` set has no input of its own to trust.
+The flag only has an effect on a peer that is not the body's controller. `ProjectedRigidbody` runs its follower only where `NetworkSystem.IsController(ControllerType.AnyController)` is false; on the controlling peer the body simulates freely and its result is sent, so there is nothing to predict. The pattern the flag is for is the one the PhysicsBallMover demo uses: the server controls and simulates the body, and one client steers it through its own input channel while applying the same input to its local copy.
+
+While it is set, the follower only trims a position or rotation error once that error passes its threshold, and never teleports the body. It does not keep the velocity your own simulation produced: every step it sets the body's velocity from its projected target, as it does for any proxy. For your input to show up at once, the target has to include it; the PhysicsBallMover demo assigns `Convergence.TargetProvider` a provider that does. Clear the flag the moment this peer stops driving the body - a proxy left with `IsLocallyPredicted` set has no input of its own to trust.
 
 ## Applying force on the right cadence
 
@@ -50,7 +52,7 @@ Higher values snap the body back to the server harder and sooner. Lower values l
 
 ## Remote-input proxies
 
-On every other peer, this same body is a proxy, not a predicted body - it is driven by a remote controller's input rather than this peer's own. By default (`RemoteExtrapolationEnabled = true`) such a proxy extrapolates its motion forward from the last received state, riding nearer to present time at the cost of overshooting on abrupt input changes: a stopping body slides on a little, then corrects once the slower state arrives.
+A body a client controls outright (its `ControllerConnectionId` is set) is a different case: on every other peer it is a proxy driven by that remote controller's input, not a predicted body. By default (`RemoteExtrapolationEnabled = true`) such a proxy extrapolates its motion forward from the last received state, riding nearer to present time at the cost of overshooting on abrupt input changes: a stopping body slides on a little, then corrects once the slower state arrives.
 
 Set `RemoteExtrapolationEnabled` to `false` on a body driven by a remote controller and its proxy copy instead follows the received state on the interpolation buffer as a kinematic body - always a step behind, but smooth and free of overshoot. This only takes effect once the system also has a `ControllerConnectionId` set (unset, the body has no remote controller to speak of, and none of this applies).
 

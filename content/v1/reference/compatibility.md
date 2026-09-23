@@ -4,7 +4,7 @@ title: "Compatibility"
 
 ## Runtime
 
-Nucleus's core targets `netstandard2.1`, with nullable reference types enabled and unsafe blocks allowed. Anything that implements netstandard2.1 runs it: .NET Core 3.0 and later, .NET 5 through 9, Mono, and Unity. The core has no engine dependency, so this is one axis independent of the Unity integration below.
+Nucleus's core targets `netstandard2.1`, with nullable reference types enabled and unsafe blocks allowed. Anything that implements netstandard2.1 runs it: .NET 5 and later, Mono, and Unity, plus .NET Core 3.x with two additions to the consuming project, a `PackageReference` to `System.Runtime.CompilerServices.Unsafe` 5.0.0 (which `CodeBoost.dll` depends on) and `<LangVersion>9.0</LangVersion>` (the generated code uses module initializers). The core has no engine dependency, so this is one axis independent of the Unity integration below.
 
 ## Unity integration
 
@@ -20,7 +20,7 @@ A few integration paths are gated behind package presence, and only compile in w
 |---|---|---|
 | `com.unity.addressables` 1.19+ | `NUCLEUS_ADDRESSABLES` | Addressables-based asset loading |
 | `Unity.ResourceManager` | — | Referenced alongside Addressables |
-| Relay transport | `BLITZ_RELAY` | The Blitz Relay transport |
+| Relay transport | `BLITZ_RELAY` | The Blitz Relay transport (Pro only) |
 
 Without these packages installed, the corresponding code simply isn't compiled in — no stub, no runtime check.
 

@@ -34,6 +34,8 @@ public enum LocalConnectionState : byte
 
 `Disconnected` is the zero value, so a `Connection` nothing has touched yet reads as down rather than as some other state. The values are not written to the wire and nothing orders them numerically; the walk from `Disconnecting` to `Disconnected` doesn't mean less than `Connecting` to `Connected`, it just names the state passed through.
 
+The shipped transports never set `Error` or `TimedOut`. A connect that fails and a link that drops later both end at `Disconnected`.
+
 `RemoteConnectionState` describes what this peer believes about the other side of a link, and only has two values:
 
 ```csharp
@@ -66,7 +68,7 @@ public readonly struct ConnectionStateChange
 }
 ```
 
-`ConnectionLocalStateChanged` fires when a `Connection.LocalState` changes - a socket this peer owns starting, connecting, or dropping. This is the one that answers "did my own client connect": subscribe to it and check `Invoker.Client` alongside `LocalConnectionState.Connected`.
+`ConnectionLocalStateChanged` fires when a `Connection.LocalState` changes - a socket this peer owns starting, connecting, or dropping. Check `Invoker.Client` alongside `LocalConnectionState.Connected` to see your own client socket come up, but that is not the same as the server accepting it: a `Synapse` client reaches `Connected` as soon as it has sent its handshake, before the server has answered. To know your own client has actually joined, use `ClientManager.LocalClientAuthenticated`, which fires once the server has accepted it and assigned its `Id`, or read `TransportManager.IsClientStarted`, which is only true once the client is both connected and authenticated.
 
 `ConnectionRemoteStateChanged` fires when a `Connection.RemoteState` changes - this peer's belief about the far side of a link. On a server this is the event that answers "did a client arrive or leave". `ConnectionStateChange.IsRemoteStateChange` tells a shared handler which of the two events it's looking at without needing separate methods for each.
 

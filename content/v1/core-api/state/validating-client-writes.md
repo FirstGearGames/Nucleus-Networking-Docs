@@ -4,11 +4,13 @@ title: "Judging and arbitrating client writes"
 
 ## Declining a value
 
-A client is allowed to write a `NetworkMember<T0>` at all — that question is settled by `StateWriteAccess` before the payload is even read. What the value should be is a separate question, and it can only be asked once the value is decoded. To answer it, implement `IStateWriteValidator<T0>` on the `NetworkComponent` that owns the member and return a `StateWriteAction` from `ValidateStateWrite`:
+Whether a client may write a `NetworkMember<T0>` at all is settled by control (and, in Pro, by `StateWriteAccess`) before the payload is even read. What the value should be is a separate question, and it can only be asked once the value is decoded. To answer it, implement `IStateWriteValidator<T0>` on the `NetworkComponent` that owns the member and return a `StateWriteAction` from `ValidateStateWrite`:
 
 ```csharp
-public partial class ContestedSwitchComponent : NetworkComponent, IStateWriteValidator<uint>
+public partial class SwitchBankComponent : NetworkComponent, IStateWriteValidator<uint>
 {
+    private const uint SwitchCount = 3;
+
     public readonly NetworkMember<uint> ActiveSwitchIndex = new();
 
     public StateWriteAction ValidateStateWrite(NetworkMember<uint> networkMember, uint proposedValue, Connection writingClientConnection) =>

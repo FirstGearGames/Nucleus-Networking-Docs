@@ -70,8 +70,8 @@ public readonly struct MessageContext
 - `SenderConnection` — the peer that sent it. **Never null**, unlike a call's `RpcContext.SenderConnection`: every message reaches a handler either off a link, where the receive pass names the connection it arrived on, or through this peer's own loopback delivery, which resolves the connection the receiving half would have seen.
 - `IsSenderServer` — whether the server sent this. On a host, this is the only honest way to tell which half a message is from: a host is both roles at once, so its own `TransportManager.IsServerStarted` says nothing about any particular message.
 
-## What happens when the type isn't registered
+## What happens when the type's hash is refused
 
-`SendMessage<T0>` checks the type against the message registry before anything else, ahead of the loopback branch. If the type isn't known, it logs an error and returns without sending, on every peer alike — host included. There is no quiet no-op on any one peer.
+A type needs no registration to be sent: its wire hash is worked out from its full name. `SendMessage<T0>` looks that hash up before anything else, ahead of the loopback branch. If the hash is refused, because another message type this peer has used hashes to the same value or the type has no full name, it logs an error and returns without sending, on every peer alike, host included. There is no quiet no-op on any one peer. See [Messages and Calls That Do Not Arrive](./messaging-troubleshooting.md) for the fix.
 
 Separately, the receiving side gates on authentication: if `IsAuthenticationRequired` is `true` and the sender isn't authenticated, the message is refused and the sender is disconnected through `ServerManager.KickClient`, not merely dropped.

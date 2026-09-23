@@ -51,7 +51,7 @@ transportManager.HostLoopbackDelivery = HostLoopbackDelivery.Deferred;
 
 `Immediate` (the default, and the only value a game may set) runs the receiving half's handlers at the send site, before the send call returns — the same shape every other callback in the engine already uses. `Deferred` would run those handlers a tick later, at the loop step a genuinely remote copy lands on; it exists only so the engine's own tests can measure that alternative, reached through an internal setter game code cannot call.
 
-A message delivered this way is never serialized. Under `Immediate` its handler runs synchronously at the send site, inside `MessageManager.DeliverLocalMessage`, with nothing queued. `Deferred` queues it instead, and `MessageManager.DrainPendingLocalMessages` runs that queue at `NetworkLoopSteps.EarlyVariableUpdate`, the same step a wire copy would be read on.
+A message delivered this way is never serialized. Under `Immediate` its handler runs synchronously at the send site, with nothing queued. `Deferred` queues it instead, and the queue is run at `NetworkLoopSteps.EarlyVariableUpdate`, the same step a wire copy would be read on.
 
 ## Callbacks a host raises for itself
 

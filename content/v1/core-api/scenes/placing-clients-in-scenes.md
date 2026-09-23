@@ -26,7 +26,7 @@ uint requestedCount = coreManager.SceneManager.RequestSceneLoad(connections, sce
 
 `RequestSceneUnload(Connection connection, uint sceneHandle)` asks a client to release a scene instance it holds, or is on its way into. The scene a client booted into (`NetworkSystem.UnsetSceneHandle`) cannot be released this way; every peer is considered to be in it and none can report leaving it.
 
-The client stops being served that scene's objects immediately, not when it confirms the release. `RequestSceneUnload` calls `SystemManager.RemoveSceneObservers` for the connection before the unload message even goes out, so the interest gate withholds anything new for that scene right away, and existing observers are torn down as part of the call rather than left standing until the client answers.
+The client stops being served that scene's objects immediately, not when it confirms the release. `RequestSceneUnload` marks the client as leaving and drops it as an observer of that scene's systems before the unload message even goes out, so the interest gate withholds anything new for that scene right away, and existing observers are torn down as part of the call rather than left standing until the client answers.
 
 ## Replacing what a connection holds
 

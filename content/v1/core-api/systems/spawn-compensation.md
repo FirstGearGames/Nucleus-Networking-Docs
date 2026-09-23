@@ -28,7 +28,7 @@ Calling it a second time restarts the schedule rather than adding to it. `Cancel
 CancelSpawnCompensation();
 ```
 
-Nothing about the compensation goes on the wire — each peer resolves its own budget from its own role and its own measured link, so an object that never uses it costs nothing for the objects that do.
+Each peer resolves its own budget from its own role and its own measured link, so the schedule itself never goes on the wire. The one figure that does is how much catch-up the server already spent, carried on the object's spawn so a remote client can add it to its own (see Bounds below). An object that never compensates sends no figure.
 
 ## Choosing a scope
 
@@ -37,7 +37,7 @@ Nothing about the compensation goes on the wire — each peer resolves its own b
 - `None` — nobody compensates; the object starts its life at the tick it was built on.
 - `Authority` — the server catches the object up through the latency a client's spawn *request* spent reaching it. Only a client-predicted spawn has lost any time getting to the server; the server's own spawns are on time by definition and this scope compensates nothing for them.
 - `RemoteClients` — every client other than the one that predicted the spawn catches the object up through its own downstream latency.
-- `All` — both hops compensate. They stack, so an object can arrive on a remote client displaced by both budgets; each hop is capped on its own, so the total is bounded at twice the cap rather than unbounded.
+- `All`: both hops compensate. They stack: a remote client is owed what the server already spent plus its own delivery delay, and the two together are held to the one cap.
 
 Whichever scope is declared, the peer that predicted the spawn never compensates: it has been simulating the object since the tick it spawned it, so it is already exactly as far ahead as the budget would carry it.
 
@@ -72,7 +72,7 @@ How much a peer can be asked to compensate is capped, in milliseconds:
 CoreManager.SystemManager.MaximumSpawnCompensationMilliseconds = 300;
 ```
 
-The cap bounds one peer's own catch-up, not the round trip an object may have taken through both hops of `SpawnCompensationScope.All`; each hop is clamped against it separately.
+The cap bounds the whole of one peer's catch-up, counted across every hop the object travelled. Under `SpawnCompensationScope.All`, a remote client adds what the server already spent to its own delay and holds the sum to the cap, so an object that crossed two links is displaced no further than one that crossed a single slow link. Because a schedule is never longer than its budget, the cap also bounds how long a catch-up runs.
 
 `NetworkSystem.MaximumTransmittedSpawnCompensationTicks` is 63 — the most ticks of already-spent server-side compensation the wire can carry when it tells a remote client how much of the object's age the server already accounted for. A budget larger than that is clamped to 63 ticks for transmission, independent of the millisecond cap.
 

@@ -71,7 +71,7 @@ Events:
 - `Rejoined(string credential)` — raised on a surviving peer once it has rejoined the session where it moved.
 - `Abandoned(string reason)` — raised when the session could not be carried on, whether the directory refused it or no peer would host it.
 
-The half that makes a handover mean anything — carrying the game world across it rather than starting the new host empty — is Pro. It lives in `ClientManager.Adoption.Pro.cs` and `SceneManager.Adoption.Pro.cs`: a client kept with `DisconnectResetMode.RetainReceivedWorld` retains the world it had when its link dropped, and the newly promoted server adopts that retained world as its own to serve. Without Pro, `NewfarmHostMigration` still finds the new host and reconnects everyone to it; it just doesn't carry state across the move.
+The half that makes a handover mean anything, carrying the game world across it rather than starting the new host empty, is Pro. It lives in `ClientManager.Adoption.Pro.cs` and `SceneManager.Adoption.Pro.cs`: a client kept with `DisconnectResetMode.RetainReceivedWorld` retains the world it had when its link dropped, and the newly promoted server adopts that retained world as its own to serve. `NewfarmHostMigration` itself needs Pro as well: when it promotes a peer it calls `ServerManager.AdoptRetainedWorld`, which a free build does not have. The `Nucleus.Integrations.Newfarm` assembly therefore does not compile against a free `Nucleus.dll`, and neither does `Nucleus.Integrations.BlitzRelay`, which references it.
 
 ## Assembly boundary
 

@@ -26,7 +26,7 @@ An object normally links to one system. Several systems link to the same marker 
 
 ## Stamped identity fields
 
-Three fields are stamped by editor tooling and shown read-only in the inspector, never edited by hand: a scene object's `Scene Object Id`, or a prefab's `Prefab Id` and `Prefab Bundle Id` pair. The inspector shows one or the other depending on `IsSceneObject`, never all three at once.
+Three fields are stamped by editor tooling and shown read-only in the inspector: a scene object's `Scene Object Id`, or a prefab's `Prefab Id` and `Prefab Bundle Id` pair. The one hand edit is clearing a duplicated prefab's `_prefabId` to `0` in its `.prefab` file; see [Prefab identity and the prefab collection](./prefab-ids-and-collections.md). The inspector shows one or the other depending on `IsSceneObject`, never all three at once.
 
 ## Runtime read surface
 

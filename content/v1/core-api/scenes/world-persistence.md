@@ -28,7 +28,7 @@ bool saved = await coreManager.WorldPersistenceManager.SaveAsync();
 
 `LoadAsync` despawns and rebuilds the routing table, which only the network loop thread may touch. Because the store's load can resolve on any thread, `LoadAsync` marshals itself back onto the loop before it starts rebuilding.
 
-This means the call from the thread that drives the loop must never simply `await` it. Awaiting from that thread blocks the loop from ever draining, the marshal never resolves, and the load deadlocks permanently. The caller must keep the loop being driven, the normal way the host application drives it, for as long as the returned task is outstanding.
+This means the thread that drives the loop must never block on it. Blocking that thread on the task (`.Result`, `.Wait()`) stops the loop from ever draining, the marshal never resolves, and the load deadlocks permanently. An ordinary `await` does not block: it hands the thread back, so the loop keeps being driven and the load finishes. The caller must keep the loop being driven, the normal way the host application drives it, for as long as the returned task is outstanding.
 
 ```csharp
 Task<bool> loadTask = coreManager.WorldPersistenceManager.LoadAsync();
@@ -36,7 +36,7 @@ Task<bool> loadTask = coreManager.WorldPersistenceManager.LoadAsync();
 bool loaded = await loadTask;
 ```
 
-Await it from anywhere other than the thread that itself drives the network loop, and this is all it takes; the loop keeps running on its own and the task resolves once the build finishes. Only the loop-driving thread has to take care not to block on it directly.
+Await it from any thread, the loop-driving one included, and this is all it takes; the loop keeps running and the task resolves once the build finishes. What the loop-driving thread must not do is block on the task, or await it inside the code that would otherwise go on to drive the next tick.
 
 ## Authority only
 
@@ -68,7 +68,7 @@ If no `ISceneLoader` is registered on `SceneManager`, a load logs a warning and 
 
 ## Scenes are reopened before objects are rebuilt
 
-A load closes all currently open scenes, then reopens each scene the saved world names before rebuilding any object into it. If a named scene cannot be opened, the store itself decides what happens next through its failure action: it can either let the load continue without that scene's objects, or fail the load outright, in which case no partial world is left standing.
+A load closes all currently open scenes, then reopens each scene the saved world names before rebuilding any object into it. If a named scene cannot be opened, the store itself decides what happens next through its failure action: it can either let the load continue without that scene's objects, or fail the load outright, in which case no saved object is built. The world the load replaced does not come back either, because it was cleared before the saved scenes were read, so a failed load leaves an empty world.
 
 ## Whole-world only
 

@@ -8,7 +8,7 @@ title: "Violations"
 
 A violation is a rejected protocol fault from a peer: writing state it doesn't control, sending a malformed delta, acknowledging a tick it was never sent, answering a report it wasn't awaiting, and similar. The offending operation is always rejected, regardless of what you decide to do about the Connection. `ViolationManager` only controls the consequence for the peer, not whether the bad data gets applied.
 
-By default the framework logs a warning and moves on. If you want misbehaving clients kicked, or you want to feed violations into your own audit system, you register with `ViolationManager`.
+By default almost every violation is silent. Most types are raised with `Ignore`, so the fault is rejected and nothing is logged; the scene-protocol faults (and, in Pro, the bundle-protocol faults) kick the offender, and only `PacketTransformRejectedViolation` (Pro) logs a warning. To see violations at all, register an `IViolationObserver`. If you want misbehaving clients kicked, or you want to feed violations into your own audit system, you register with `ViolationManager`.
 
 ## The pipeline
 
@@ -52,7 +52,7 @@ public delegate ViolationAction ViolationHandler<T0>(ViolationContext<T0> violat
 - `Ignore` — no log, no consequence, Connection stays intact.
 - `Kick` — disconnects the Connection.
 
-`ViolationManager.DefaultAction` is `Log`. Each violation type is raised with its own default, which overrides `DefaultAction` when no handler is registered for that type: most types default to `Ignore`, and the bundle- and scene-protocol faults (unsolicited bundle/scene reports, unexpected bundle/scene load requests) default to `Kick`. A registered handler can still return whatever action it wants regardless of that per-raise default.
+`ViolationManager.DefaultAction` is `Log`. Each violation type is raised with its own default, which overrides `DefaultAction` when no handler is registered for that type: most types default to `Ignore`, and the bundle- and scene-protocol faults (unsolicited bundle/scene reports, unexpected bundle/scene load requests) default to `Kick`. Only `PacketTransformRejectedViolation` (Pro) is raised without a default of its own, so it is the one type that falls back to `DefaultAction` and logs. A registered handler can still return whatever action it wants regardless of that per-raise default.
 
 ## Watching without deciding
 

@@ -20,7 +20,7 @@ protected override void OnEarlyStateWrite(StepDelta stepDelta)
 }
 ```
 
-`IsController(ControllerType controllerType)` returns false whenever no system is linked yet, and otherwise the system's own answer. `EnsureIsController` is the loud version of the same check — it returns the same bool but logs a warning on every failing call, not throttled. Neither of them stops the hook from running; a script that doesn't call one of them on a non-controlling peer does its writing work anyway, against state it doesn't own.
+`IsController(ControllerType controllerType)` returns false whenever no system is linked yet, and otherwise the system's own answer. `EnsureIsController` is the loud version of the same check: it returns the same bool but also logs a warning the first time it fails from a given calling member. Neither of them stops the hook from running; a script that doesn't call one of them on a non-controlling peer does its writing work anyway, against state it doesn't own.
 
 `IsStarted(Invoker)` is a separate axis entirely — server-started or client-started — and answers independently of who controls the object. A host can be `IsStarted(Invoker.Server)` and still not be the controller of a client-controlled object.
 

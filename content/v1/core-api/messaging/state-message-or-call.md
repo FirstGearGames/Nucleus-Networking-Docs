@@ -28,9 +28,9 @@ This is usually what decides between the three: does a newly-arrived peer need t
 
 ## Wire-type hashes are per mechanism
 
-Messages and calls each keep their own registry of type hashes, resolved once per type and cached. Two message types (or two call types) landing on the same hash is refused at registration, naming both types, rather than silently letting one type's body be decoded as the other's. A collision between a message type and a call type cannot happen this way, because the two registries are separate; it can only happen within one mechanism.
+Messages and calls each keep their own registry of type hashes, resolved once per type and cached. Two message types (or two call types) landing on the same hash are caught the first time the second one is used, whether to send it or to register a handler for it, and an error names both types. From then on both types are refused, rather than silently letting one type's body be decoded as the other's. A collision between a message type and a call type cannot happen this way, because the two registries are separate; it can only happen within one mechanism.
 
-The same protection holds on receive: a hash the registry does not recognize as belonging to a live type is treated as unaddressable, and the packet is skipped rather than guessed at.
+The same protection holds on receive: a message or call whose hash two types collide on is skipped rather than guessed at. A hash with no handler registered is not an error: a message is skipped because nothing is there to decode it, and a call is not decoded, though the server still relays it.
 
 ## Picking one
 

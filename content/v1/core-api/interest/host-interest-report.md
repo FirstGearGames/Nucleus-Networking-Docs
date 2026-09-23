@@ -42,13 +42,10 @@ A system leaving the world, or the host's client half dropping its link, returns
 
 Resolving the host's own client costs the host connection an ordinary condition pass per evaluated pair, the same one every remote client already pays. A world pays that cost for an answer it may have nothing to do with, so the report stays off until a game asks for it. Turn it on in a host world that should see what its players see, and leave it alone on a dedicated-server build, which has no client half to answer for.
 
+The switch is read on every interest pass, not once at startup, so a world can turn it on or off mid-session. Turning it off returns each system's membership to `InterestMembership.Streamed`, and raises that change, as the system is next resolved.
+
 ## Which conditions can honestly differ for a host
 
-A condition that is structurally meaningless for a host still exempts itself. The bundle gate is the clearest case: a host's own client shares the process with the server and so already holds every content bundle the server loaded, so `BundleInterestCondition` abstains for it:
-
-```csharp
-if (connection.IsLocalPeer || connection.IsHostLoopback)
-    return InterestResult.None;
-```
+A condition that is structurally meaningless for a host still exempts itself. The bundle gate is the clearest case: a host's own client shares the process with the server and so already holds every content bundle the server loaded, so `BundleInterestCondition` abstains for it. It abstains for any Connection with `IsHostLoopback` set, and for one on a local, in-process transport such as Yak.
 
 The scene condition is not one of those. A host is placed in scene instances by the same protocol as any other client and records the instances it was placed in, so the scene gate reads a host's real scene records and settles against them the same way it would for a remote client. What resolves honestly for a host is what can honestly differ for it: position and scene above all.

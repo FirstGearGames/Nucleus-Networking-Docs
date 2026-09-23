@@ -51,7 +51,7 @@ This line is throttled to at most once per minute per manager, because the incid
 
 `"Violation [TypeName] from Connection [...]"`, sometimes followed by `"...settled on a kick, but this peer is not a server; the kick is not enforced."` or `"Disconnecting Connection [...] for violation [TypeName]."`
 
-Every violation logs through this same shape, keyed by its type name. Look up `TypeName` in the violation reference for the payload fields it carries and what triggered it:
+A violation writes one of these lines only when its settled action is `Log` or `Kick`. Most types default to `Ignore` and write nothing, so register an `IViolationObserver` to see those. Look up `TypeName` in the violation reference for the payload fields it carries and what triggered it:
 
 - `EmptyCollectionDeltaViolation` — a collection member delta declaring no operations; a compliant sender can't produce one.
 - `InvalidStateAckViolation` — a Connection acknowledged a state tick above the local tick.

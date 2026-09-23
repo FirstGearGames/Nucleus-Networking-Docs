@@ -10,7 +10,7 @@ Every counter lives on `TransportManager`, off the process's `CoreManager`. Thre
 
 - From a component that already sits next to `UnityCoreManager`: read its `CoreManager` property.
 - From any plain `MonoBehaviour`: `NucleusUnity.BoundCoreManager`, the CoreManager the integration bound at startup.
-- From a `NucleusBehaviourBase` subclass (or the generic `NucleusBehaviour<TComponent0>` it backs): the behaviour already exposes a `CoreManager` property, resolved in `Awake`.
+- From a script deriving from `NucleusBehaviour` or `NucleusBehaviour<TComponent0>`: the behaviour already exposes a `CoreManager` property, resolved in `Awake`.
 
 Once you have a `CoreManager`, its `TransportManager` property holds the counters and connection lists this page covers.
 
@@ -20,19 +20,30 @@ Once you have a `CoreManager`, its `TransportManager` property holds the counter
 
 ```csharp
 using Nucleus.Connections;
-using Nucleus.Integrations.Unity.Systems;
+using Nucleus.Integrations.Unity;
+using Nucleus.Managers.Core;
 using Nucleus.Managers.NetworkLoop;
 using Nucleus.Managers.Transports;
-using Nucleus.Systems;
 using UnityEngine;
 
-public class NetworkStatsReadout : NucleusBehaviourBase
+public class NetworkStatsReadout : MonoBehaviour, INetworkLoopStepCallback
 {
+    private CoreManager _coreManager;
     private long _lastBytesSent;
     private long _lastBytesReceived;
     private long _elapsedMilliseconds;
 
-    protected override void OnLateVariableUpdate(StepDelta stepDelta)
+    private void OnEnable()
+    {
+        _coreManager = NucleusUnity.BoundCoreManager;
+        _coreManager?.NetworkLoopManager.RegisterNetworkLoopStepCallbacks(this);
+    }
+
+    private void OnDisable() => _coreManager?.NetworkLoopManager.UnregisterNetworkLoopStepCallbacks(this);
+
+    public NetworkLoopSteps GetNetworkLoopSteps() => NetworkLoopSteps.LateVariableUpdate;
+
+    public void OnNetworkLoopStep(NetworkLoopSteps networkLoopStep, StepDelta stepDelta)
     {
         _elapsedMilliseconds += stepDelta.Delta;
 
@@ -41,7 +52,7 @@ public class NetworkStatsReadout : NucleusBehaviourBase
 
         _elapsedMilliseconds = 0;
 
-        TransportManager transportManager = CoreManager.TransportManager;
+        TransportManager transportManager = _coreManager.TransportManager;
 
         long bytesSent = transportManager.TotalBytesSent;
         long bytesReceived = transportManager.TotalBytesReceived;
@@ -54,17 +65,26 @@ public class NetworkStatsReadout : NucleusBehaviourBase
 
         Debug.Log($"Up: {sentPerSecond} B/s, Down: {receivedPerSecond} B/s");
 
-        foreach (Connection connection in transportManager.ActiveConnections)
-            Debug.Log($"RTT: {connection.RoundTripTimeMilliseconds} ms, Loss: {connection.PacketLossPercentage:P1}");
+        if (transportManager.IsServerStarted)
+        {
+            // A server holds one live link per client.
+            foreach (Connection connection in transportManager.ActiveConnections)
+                Debug.Log($"Client {connection.Id} RTT: {connection.RoundTripTimeMilliseconds} ms, Loss: {connection.PacketLossPercentage:F1}%");
+        }
+        else if (transportManager.IsClientStarted && transportManager.TryGetServerConnection(out Connection serverConnection))
+        {
+            // A client's link figures live on the connection that stands for the server.
+            Debug.Log($"Server RTT: {serverConnection.RoundTripTimeMilliseconds} ms, Loss: {serverConnection.PacketLossPercentage:F1}%");
+        }
     }
 }
 ```
 
-`NucleusBehaviourBase` requires a `NetworkSystemObject` on the same GameObject, so this readout needs one nearby even though it does not use the linked system.
+The readout is a plain `MonoBehaviour` that registers itself with the network loop while it is enabled, not a `NucleusBehaviour`: a `NucleusBehaviour` only receives loop steps while a networked system is linked to it, and a readout for the whole process has no system of its own. `PacketLossPercentage` already runs from 0 to 100, so it prints with `F1` rather than `P1`, which would multiply it by 100 again. A client reads its own link from `TryGetServerConnection` rather than `ActiveConnections`: on a client that collection holds stand-ins for the other players, which have no link of their own to measure.
 
 ## Sample on a loop step, not `Update`
 
-Take the reading from a `NucleusBehaviourBase` per-step virtual (`OnLateVariableUpdate` above, or any of the others `NucleusBehaviourBase` exposes) rather than Unity's `Update`. The network loop's own steps run serialization and deserialization at defined points in the tick; a plain `Update` callback has no guaranteed order relative to those steps and can read a counter mid-update. A loop-step virtual only fires when the framework has finished the work for that step.
+Take the reading from a network loop step (`LateVariableUpdate` above, or any other `NetworkLoopSteps` value) rather than Unity's `Update`. The network loop's own steps run serialization and deserialization at defined points in the tick; a plain `Update` callback has no guaranteed order relative to those steps and can read a counter mid-update. A loop-step callback only fires when the framework has finished the work for that step.
 
 ## Sample content, not shipped API
 
@@ -78,6 +98,6 @@ It compiles into the `Nucleus.Integrations.Unity.Demos` assembly, not the `Nucle
 
 ## Other routes worth knowing
 
-- `TransportManager.ActiveConnections` lists every connection this peer currently has open, for a per-connection round-trip time and loss readout like the one above.
-- `TransportManager.GetLocalConnections(Invoker.Server)` (or `Invoker.Client`) narrows that to one role's connections when a host process needs to separate its two roles.
+- `TransportManager.ActiveConnections` lists every connected client on a server, for a per-connection round-trip time and loss readout like the one above. On a client it lists stand-ins for the other players, which carry no link figures.
+- `TransportManager.GetLocalConnections(Invoker.Server)` (or `Invoker.Client`) returns this peer's own connection for that role on each added transport. On a client, the `Invoker.Server` entry is the one holding the server link's round-trip time and loss, the same connection `TryGetServerConnection` returns.
 - `SystemManager.StartedSystemCount` is the started-object count the shipped per-object provider divides bandwidth by; use it for the same kind of estimate in your own readout.

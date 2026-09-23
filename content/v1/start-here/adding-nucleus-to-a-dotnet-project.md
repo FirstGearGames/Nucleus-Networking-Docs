@@ -6,55 +6,45 @@ title: "Adding Nucleus to a .NET project"
 
 ## Reference Nucleus
 
-There is no NuGet package for Nucleus — no `PackageId`, no nuspec — so `dotnet add package` is not the route. Consume it one of two ways:
+There is no NuGet package for Nucleus (no `PackageId`, no nuspec), so `dotnet add package` is not the route. Nucleus ships as prebuilt DLLs: `Nucleus.dll`, `CodeBoost.dll`, and `SynapseSocket.dll`, plus the source generator `Nucleus.CodeAnalysis.SourceGenerators.dll` (the Unity integration's `Assets/Nucleus` folder holds the same set). Copy all four, from one release, into your solution, for example a `lib/Nucleus` folder, and reference the three runtime DLLs from your `.csproj`:
 
-- **Project reference.** Add a `ProjectReference` to `Nucleus/Nucleus.csproj` from your own `.csproj`. This is the simplest path inside the Nucleus repo or a checkout beside it.
-- **Built DLLs.** Build Nucleus and reference the output set directly: `Nucleus.dll`, `CodeBoost.dll`, and `SynapseSocket.dll`. A Release build lands them at:
-
+```xml
+<ItemGroup>
+    <Reference Include="Nucleus"><HintPath>..\lib\Nucleus\Nucleus.dll</HintPath></Reference>
+    <Reference Include="CodeBoost"><HintPath>..\lib\Nucleus\CodeBoost.dll</HintPath></Reference>
+    <Reference Include="SynapseSocket"><HintPath>..\lib\Nucleus\SynapseSocket.dll</HintPath></Reference>
+</ItemGroup>
 ```
-.artifacts/Nucleus/bin/Release/netstandard2.1/
-```
 
-That path comes from `Nucleus/Directory.Build.props`, which redirects the project's `bin`/`obj` into a shared `.artifacts` directory at the repo root rather than under `Nucleus/bin`.
-
-Nucleus targets `netstandard2.1`, so any .NET Core 3.0+, .NET 5–9, or Mono host can reference it.
+Nucleus targets `netstandard2.1`, so a .NET 5 or later host (or Mono) can reference it as is. A .NET Core 3.x host can too, with two additions: a `PackageReference` to `System.Runtime.CompilerServices.Unsafe` version 5.0.0, which `CodeBoost.dll` depends on at a newer version than .NET Core 3.x ships, and `<LangVersion>9.0</LangVersion>`, because the generated code uses module initializers, a C# 9 feature, and .NET Core 3.x projects default to C# 8.
 
 ## Reference the source generator
 
 This step is not optional, and skipping it fails silently: the project still compiles, but nothing replicates.
 
-Nucleus generates its `Write`/`Read` serializer methods and module-initializer registration at compile time. For the generator to run over *your* project's types, your `.csproj` needs its own analyzer reference to `Nucleus.CodeAnalysis.SourceGenerators.csproj`, with `OutputItemType="Analyzer"` and `ReferenceOutputAssembly="false"` — the same pattern `Nucleus.Game/Nucleus.Game.csproj` uses:
+Nucleus generates its `Write`/`Read` serializer methods and module-initializer registration at compile time. For the generator to run over *your* project's types, your `.csproj` needs its own `Analyzer` item for `Nucleus.CodeAnalysis.SourceGenerators.dll`:
 
 ```xml
 <ItemGroup>
-    <ProjectReference Include="..\Nucleus.CodeAnalysis.SourceGenerators\Nucleus.CodeAnalysis.SourceGenerators.csproj"
-                      OutputItemType="Analyzer"
-                      ReferenceOutputAssembly="false" />
+    <Analyzer Include="..\lib\Nucleus\Nucleus.CodeAnalysis.SourceGenerators.dll" />
 </ItemGroup>
 ```
 
-`OutputItemType="Analyzer"` runs the project as a Roslyn analyzer/generator instead of linking its assembly. `ReferenceOutputAssembly="false"` keeps its own output out of your build. Without both, a `NetworkComponent` partial in your project gets no generated `Write`/`Read` and no module-initializer registration — the type just never serializes.
+An `Analyzer` item runs the DLL as a Roslyn source generator over your project instead of linking it as a reference. Without it, a `NetworkComponent` partial in your project gets no generated `Write`/`Read` and no module-initializer registration: the type just never serializes. Add it to every project that declares networked types.
 
-## Keep generated output visible, not stale
+## Check the generated output
 
-Add `EmitCompilerGeneratedFiles` so the generator's output lands on disk where you can inspect it, and clean that folder before every build so a stale `Generated/` directory never hides a generator failure behind old files. Copy this pattern from `Nucleus.Game.csproj`:
+Add `EmitCompilerGeneratedFiles` so a copy of the generator's output lands on disk where you can inspect it:
 
 ```xml
 <PropertyGroup>
     <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
 </PropertyGroup>
-
-<Target Name="CleanSourceGeneratedFiles" BeforeTargets="BeforeBuild" DependsOnTargets="$(BeforeBuildDependsOn)">
-    <RemoveDir Directories="Generated" />
-</Target>
-
-<ItemGroup>
-    <Compile Remove="Generated\**" />
-    <Content Include="Generated\**" />
-</ItemGroup>
 ```
 
-If a build stops producing new files under `Generated/`, this is what tells you: the folder gets wiped every build, so an empty or unchanged `Generated/` after a rebuild means the generator didn't run.
+With nothing else set, the files land under `obj/<Configuration>/<TargetFramework>/generated/Nucleus.CodeAnalysis.SourceGenerators/`, one `.g.cs` file per networked type with the type's name in the file name. The generator already adds this code to the compilation itself, and the `obj` folder is outside your project's own `Compile` items, so there is nothing to exclude.
+
+The compiler only adds and overwrites files there. It never deletes old ones, and `dotnet clean` leaves them too, so a file for a type you've since renamed or removed stays behind and can make a broken setup look fine. To check that the generator really runs, delete the `generated` folder and rebuild with `dotnet build --no-incremental`; a plain incremental build that finds nothing changed skips the compiler and leaves the folder empty. No file for your type after that means the generator didn't run over it.
 
 ## Give your assembly a bundle id
 

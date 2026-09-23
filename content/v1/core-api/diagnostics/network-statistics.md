@@ -47,4 +47,4 @@ The state-bit counters work the same way; divide the delta by eight to get bytes
 
 ## No per-object attribution
 
-There is no counter for what one object, one system, or one member cost. The counters are manager-wide totals. To isolate the cost of a feature, measure the counters with it on, then off, and compare - that is how the engine's own bandwidth suites in `Nucleus.Tests/Benchmarks` are written. `Nucleus.Tests/Integrations/Bridge/BridgeSyncTests.cs` reads `TotalStatePacketPayloadBitsSent` and `TotalStatePacketPayloadBitsReceived` directly, turning a wire-cost regression into a failing assertion instead of a surprise.
+There is no counter for what one object, one system, or one member cost. The counters are manager-wide totals. To isolate the cost of a feature, measure the counters with it on, then off, and compare. A test can read `TotalStatePacketPayloadBitsSent` and `TotalStatePacketPayloadBitsReceived` directly, turning a wire-cost regression into a failing assertion instead of a surprise.

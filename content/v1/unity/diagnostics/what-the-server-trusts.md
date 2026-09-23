@@ -4,7 +4,7 @@ title: "What the server trusts"
 
 ## Observation gates everything
 
-Every access check the engine makes, for a state write or for a remote call, starts with the same test: is the sending connection an observer of the system being addressed. `IsObservedBy` runs first, before the access value and before whether the sender controls the object. A connection that does not observe a system is rejected outright, regardless of `StateWriteAccess` or `RpcSendAccess`.
+Every access check the engine makes, for a state write or for a remote call, starts with the same test: is the sending connection an observer of the system being addressed. That test runs first, before the access value and before whether the sender controls the object. A connection that does not observe a system is rejected outright, regardless of `StateWriteAccess` or `RpcSendAccess`.
 
 This means a client cannot reach a system by guessing its id. An identifier that names something the client was never told about, or has since lost interest in, resolves to nothing on the server. Access - `Controller` or `AnyClient` - only decides what an observer may do once it has cleared this gate. It never substitutes for being told about the object in the first place.
 
@@ -30,7 +30,7 @@ A `Connection.Id` is assigned per session and reused once a connection is gone; 
 
 ## Arbitration is not a security boundary
 
-`StateWriteAccess.AnyClient` lets every observer, not just the controller, write a system's state. On a Free build that is the entire story: there is no contested write, because Free has no path for two writers' claims to collide in the first place.
+`StateWriteAccess.AnyClient` (Pro) lets every observer, not just the controller, write a system's state. A Free build has no `StateWriteAccess` at all: only a system's controller may write its state, so there is never a contested write to arbitrate.
 
 Contested multi-writer arbitration - resolving which of several observers' simultaneous writes to a system wins - is a Pro feature. Where it exists, the resolution is not adversarially safe: it is arbitrary but stable, and a client that keeps reconnecting to change its own connection id can farm a favorable outcome under it. Arbitration decides whose write is shown when two are equally legitimate; it does not decide whether a write should have been allowed, and it is not a defense against a client trying to win by gaming the mechanism. Anything where that matters needs its own arbiter in game code, sitting on top of the access check, not the arbitration itself.
 

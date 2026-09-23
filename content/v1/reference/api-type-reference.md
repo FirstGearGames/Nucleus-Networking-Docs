@@ -61,7 +61,7 @@ Everything reachable from a `CoreManager` field lives under `Nucleus.Managers.*`
 
 ## Reading the markers
 
-Three attributes tell you how a member is meant to be used before you call it:
+Three attributes tell you how a member is meant to be used before you call it. They are declared in CodeBoost, the utility library Nucleus builds on, in the `CodeBoost.Types` namespace (see [CodeBoost reference](./codeboost-reference.md)):
 
 - `[ServerOnly]` — only meaningful, or only safe to call, from server-side code.
 - `[ClientOnly]` — only meaningful, or only safe to call, from client-side code.

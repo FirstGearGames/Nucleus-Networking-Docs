@@ -12,7 +12,7 @@ Give each loaded scene its own local physics world so a body only collides with 
 
 ## Why the driver is needed
 
-Unity never auto-simulates a local physics scene. A scene loaded with `LocalPhysicsMode.Physics3D` sits inert until something steps it. `NetworkSceneBinder.AttachPhysicsSimulationDriver` adds a `PhysicsSimulationDriver` to the scene the moment it loads, and that driver is what the network loop steps on tick. Without local physics enabled, bodies step on Unity's own `FixedUpdate` against the one shared world instead.
+Unity never auto-simulates a local physics scene. A scene loaded with `LocalPhysicsMode.Physics3D` sits inert until something steps it. `NetworkSceneBinder.AttachPhysicsSimulationDriver` adds a `PhysicsSimulationDriver` to the scene the moment it loads, and that driver is what the network loop steps on tick. Without local physics enabled, bodies share the one default world instead, which under the default `PhysicsExecutionMode.NucleusPerTick` is stepped on tick by the driver Nucleus adds for it automatically.
 
 ## What changes for a body
 

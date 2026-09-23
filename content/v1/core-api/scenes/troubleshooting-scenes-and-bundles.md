@@ -4,19 +4,19 @@ title: "Scenes and bundles: things that look broken"
 
 ## A client connects and sees nothing
 
-`SceneManager.JoinPlacement` decides what a newly authenticated client is put into, and its default, `JoinScenePlacement.EveryOpenScene`, is what most projects want without calling `RequestSceneLoad` anywhere. If `JoinPlacement` was set to `JoinScenePlacement.None`, or a scene was opened `SceneScope.Connections` rather than `SceneScope.Global`, no client is placed automatically, and a client that never receives a `RequestSceneLoad` call sees nothing.
+`SceneManager.JoinPlacement` decides what a newly authenticated client is put into, and its default, `JoinScenePlacement.EveryOpenScene`, is what most projects want without calling `RequestSceneLoad` anywhere. If `JoinPlacement` was set to `JoinScenePlacement.None`, no joining client is placed automatically, and under `JoinScenePlacement.GlobalScenes` a scene opened `SceneScope.Connections` rather than `SceneScope.Global` is skipped at join. Either way, a client that never receives a `RequestSceneLoad` call for that scene sees nothing.
 
-The other cause is timing rather than configuration: a scene opened *after* a client already joined is not retroactively pushed to that client. Placement happens once, when the client authenticates. A client connected before a scene existed has to be asked for it explicitly.
+The other cause is timing rather than configuration: a `SceneScope.Connections` scene opened *after* a client already joined is not pushed to that client. Join placement happens once, when the client authenticates, and only covers the scenes open at that moment. A `SceneScope.Global` scene is the exception: opening it places every client already connected. A client connected before a `Connections` scene existed has to be asked for it explicitly.
 
-Check `JoinPlacement`, the scope the scene was opened with, and whether the scene existed before the client connected.
+Check `JoinPlacement`, the scope the scene was opened with, and, for a `Connections` scene, whether it existed before the client connected.
 
 ## Objects appear in the wrong copy of a stacked scene
 
 A stacked scene is one asset opened more than once, so every copy shares the same name and path — `GetSceneByName` and `GetSceneByPath` cannot tell them apart, only the scene handle can. `UnitySceneManager.TryGetScene` resolves a handle to the live Unity `Scene`, and that resolved scene is what has to be made active, or the target for `MoveGameObjectToScene`, before anything spawns into it.
 
-The handle itself is never the cause: a handle is issued once per open scene instance and never reused across opens (`SceneManager.RemoveOpenScene`). If objects are landing in the wrong copy, look at the spawner instead — it instantiated while the wrong Unity scene was active, or it moved the wrong scene's copy.
+The handle itself is never the cause: a handle is issued once per open scene instance and never reused across opens. If objects are landing in the wrong copy, look at the spawner instead: it instantiated while the wrong Unity scene was active, or it moved the wrong scene's copy.
 
-A second, unrelated cause produces the same symptom for a parented object: `UnitySystemSpawnHandler.PlaceInScene` only moves a root `GameObject` between scenes, because that is the only kind of move Unity itself supports. An object with a parent is refused rather than moved and stays in its parent's scene — logged as an error naming the parent. Un-parent the object, or move its parent instead.
+A second, unrelated cause produces the same symptom for a parented object: the Unity integration only moves a root `GameObject` between scenes, because that is the only kind of move Unity itself supports. An object with a parent is refused rather than moved and stays in its parent's scene, and an error naming the parent is logged. Un-parent the object, or move its parent instead.
 
 ## A load never completes
 
@@ -54,8 +54,8 @@ Whether the client is ever told to fetch the missing bundle depends on `BundleMa
 
 Two different lookups can fail on a world load, and each is logged and skipped rather than aborting the whole load:
 
-- A saved scene instance names a `sceneId` the manifest no longer resolves. `WorldPersistenceManager` calls `SceneManager.OpenSavedSceneAsync` for each saved scene; if it fails, `IWorldStore.OnSceneUnavailable` decides what happens — either the whole load is abandoned (logged as "the world is empty rather than half built"), or the objects in that scene are dropped and the rest of the load continues.
-- A saved object's identity no longer resolves. For a scene object, `WorldSystemIdentity.PlatformId` is looked up in the restored scene with `SystemManager.TryBindRestoredSceneObject`; if nothing matches, that object is dropped and logged as not found. For a constructed object, `WorldSystemIdentity.SystemTypeName` is looked up with `NetworkTypeRegistry.TryCreateSystemByName`; a type no longer registered in this build is dropped the same way.
+- A saved scene instance names a `sceneId` the manifest no longer resolves. `WorldPersistenceManager` reopens each saved scene; if that fails, `IWorldStore.OnSceneUnavailable` decides what happens: either the whole load is abandoned (logged as "the world is empty rather than half built"), or the objects in that scene are dropped and the rest of the load continues.
+- A saved object's identity no longer resolves. For a scene object, `WorldSystemIdentity.PlatformId` is looked up in the restored scene; if nothing matches, that object is dropped and logged as not found. For a constructed object, `WorldSystemIdentity.SystemTypeName` is looked up with `NetworkTypeRegistry.TryCreateSystemByName`; a type no longer registered in this build is dropped the same way.
 
 Missing objects after a load are one of these two lookups failing, not a corrupted save — check the log for which scene id or system type it named.
 
@@ -65,4 +65,4 @@ Copying an object that already carries a stamped id copies the id with it, and t
 
 For scene objects, `SceneNetworkObjectStamper` runs on every scene save: it keeps the first occurrence of each `SceneObjectId` and reassigns any later duplicate to the next free value, so a duplicated scene object gets a fresh id automatically the next time the scene is saved. Until that save happens, the duplicate still carries the copied id.
 
-For a duplicated prefab, the network id is stamped onto the prefab asset itself, so copying the prefab duplicates its id along with it and a spawn built from the copy resolves to the wrong object. There is no equivalent automatic re-stamp for a prefab copy — clear the copied prefab's stamped id and let it be reassigned.
+For a duplicated prefab, the network id is stamped onto the prefab asset itself, so copying the prefab duplicates its id along with it and a spawn built from the copy resolves to the wrong object. Nothing re-stamps it on save, but **Nucleus > Rebuild Network Prefab Collection** does: it keeps the id on whichever of the two sorts first by asset GUID and gives the other the next free id, and that other one can be the original. To keep the original's id, clear the copy's `_prefabId` to `0` before rebuilding. The inspector shows Prefab Id read-only, so change the `_prefabId:` line in the copy's `.prefab` file with a text editor. Then rebuild both the server and the client builds so every peer carries the same ids.

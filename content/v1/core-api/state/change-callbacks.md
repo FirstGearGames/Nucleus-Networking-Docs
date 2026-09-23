@@ -17,7 +17,7 @@ Override it to react to state without polling.
 `memberFlags` is one bit per member, in member-Id order. Cast it to the component's generated flags enum to test individual members:
 
 ```csharp
-protected override void OnMembersChanged(ulong memberFlags, MemberChangeDirection memberChangeDirection)
+public override void OnMembersChanged(ulong memberFlags, MemberChangeDirection memberChangeDirection)
 {
     TransformComponentFlags flags = (TransformComponentFlags)memberFlags;
 }

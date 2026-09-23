@@ -30,7 +30,7 @@ public void Resume();
 public bool Warp(Vector3 position);
 ```
 
-The path is found locally on the controlling peer, and only the legs it produces are replicated — no other peer ever learns the destination itself. A `Warp` reaches followers through the next leg, whose origin is the position warped to; because a warp of any real distance exceeds Resync Distance, the follower is seated there rather than walking the gap off.
+The path is found locally on the controlling peer, and only the legs it produces are replicated, so no other peer ever learns the destination itself. A `Warp` reaches followers through the next leg, whose origin is the position warped to. A follower is placed there outright only when the warp leaves it at or past Teleport Distance from that origin; a shorter warp past Resync Distance is walked off like any other gap, and one inside Resync Distance is not corrected at all.
 
 ## Reads
 
@@ -50,7 +50,7 @@ Behind the `MonoBehaviour` sits `UnityNavMeshAgentComponent`, the replicated `Ne
 - `Speed`, `AngularSpeed`, `Acceleration` — the agent settings a follower needs to reproduce the walk.
 - `IsStopped` — whether the agent is halted.
 
-`NetworkNavMeshAgent` binds this component on link, applies the inspector settings to it, and captures a leg whenever this peer controls the object; on every other peer it seats the object on the leg origin and advances it toward `NextPoint` each frame.
+`NetworkNavMeshAgent` binds this component on link, applies the inspector settings to it, and captures a leg whenever this peer controls the object; on every other peer it seats the object on the leg origin when it spawns and advances it toward `NextPoint` each frame.
 
 ## Corrections
 
@@ -64,5 +64,5 @@ A received spawn is always seated on the leg origin regardless of these threshol
 
 ## Requirements
 
-- Every peer needs a baked NavMesh covering the agent's path. A follower never path-finds; it only walks the leg it was told about, but it still needs the mesh under it to stand on.
+- The controlling peer needs a baked NavMesh covering the agent's path, and so does any peer that may take control later. A follower never path-finds or queries the NavMesh; it moves its transform along the leg it was told about, so following needs no mesh.
 - The prefab's agent settings (tolerance, resync and teleport distances, rotation, agent management, send interval) must match on every peer, since the follower walks entirely from the replicated leg and its own local settings.

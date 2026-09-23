@@ -6,7 +6,7 @@ See [Start Here / How replication works](../../start-here/how-replication-works.
 
 ## Containment
 
-A `NetworkSystem` holds `NetworkComponent`s, up to 64 per system. A `NetworkComponent` holds `NetworkMember`s, up to `Constants.MaximumNetworkMemberCount` (63) per component.
+A `NetworkSystem` holds `NetworkComponent`s, up to 64 per system. A `NetworkComponent` holds `NetworkMember`s, at most 64, one for each bit of the `ulong` `memberFlags` that `OnMembersChanged` reports. The generator does not check that limit on a component, so one that declares more still builds but does not replicate correctly. `Constants.MaximumNetworkMemberCount` (63) is a separate limit, on the structs and classes a member's value is made of: the generator reports `SERIALIZERS000` once such a type has 63 serialized fields and properties, so 62 is the most one can hold.
 
 Data lives in components, not in the `NetworkSystem` subclass itself. `NetworkSystem` tracks identity, lifecycle, and observers; the values that actually replicate are declared on the `NetworkComponent`s attached to it. A component exposes its own `Write`, `WriteDelta`, `Read`, and `ReadDelta`, and it is these that generated code fills in per member.
 
@@ -27,7 +27,7 @@ A host raises both directions in the same frame, write first, without waiting fo
 
 ## Who may write
 
-By default, `StateWriteAccess.Controller` (the enum's `0` value): the server, or the single controlling client, may write a system's state. Everything else - multiple writers, a validator-gated roster - is opt-in, covered on its own page.
+By default, `StateWriteAccess.Controller` (the enum's `0` value): the server, or the single controlling client, may write a system's state. Letting other observers write as well (`StateWriteAccess.AnyClient`) is a Pro opt-in, covered on its own page. A free build has no `StateWriteAccess` type, so there only the controller writes.
 
 ## What a change costs
 

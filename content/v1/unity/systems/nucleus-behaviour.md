@@ -13,6 +13,8 @@ The class splits in two:
 - `NucleusBehaviourBase` is the non-generic half: the `NetworkSystem` reference, role and control checks, the loud guards, and the twelve per-step virtuals. It never declares a required system, so it is not the type a script inherits directly.
 - `NucleusBehaviour<TComponent0>` requires a `NetworkSystem` carrying `TComponent0` and exposes it as `Component`.
 
+A script that only needs the role and control checks and the hooks, on an object where another component (a `NetworkTransform` or a `ProjectedRigidbody`, say) already declares the system, inherits the non-generic `NucleusBehaviour` instead. It declares nothing and adopts whichever system the object's `NetworkSystemObject` links, so something else on the object must declare one or it waits for the object's whole life.
+
 A generated family widens this to more component types: `NucleusBehaviour<TSystem, TComponent0>` through `NucleusBehaviour<TSystem, TComponent0, TComponent1, ..., TComponent31>`, one overload per arity from 1 to 32 component types, each naming the system type explicitly and each calling the matching `NetworkSystemObjectPool.RequireSystem<TSystem, TComponent0, ...>` overload. Use the generated form when a script needs a system that isn't just `NetworkSystem`, or needs more than one component off it.
 
 ## Inherited properties
@@ -34,7 +36,7 @@ Both have loud counterparts that log instead of failing silently:
 - `EnsureIsController(ControllerType controllerType, [CallerMemberName] string callerMemberName = null)`
 - `EnsureIsStarted(Invoker invoker, [CallerMemberName] string callerMemberName = null)`
 
-Each returns the same answer as its plain counterpart, and when that answer is false, logs a warning naming the calling member (supplied automatically via `[CallerMemberName]`) - on every failing call, not throttled. Reach for the loud form where a failure means a real bug worth surfacing loudly: a one-off action like handling a button press or an RPC, not a per-tick callback. A per-tick write like `OnEarlyStateWrite` runs every tick on every peer, so a non-controlling peer failing the check is the normal, expected case, not a bug - use the plain form there so it doesn't spam the log every tick:
+Each returns the same answer as its plain counterpart, and when that answer is false, logs a warning naming the calling member (supplied automatically via `[CallerMemberName]`). Each behaviour warns once per calling member and argument, so a guard that keeps failing from the same place warns the first time and then stays quiet. Reach for the loud form where a failure means a real bug worth surfacing loudly: a one-off action like handling a button press or an RPC, not a per-tick callback. A per-tick write like `OnEarlyStateWrite` runs every tick on every peer, so a non-controlling peer failing the check is the normal, expected case, not a bug - use the plain form there so an expected outcome logs no warning at all:
 
 ```csharp
 protected override void OnEarlyStateWrite(StepDelta stepDelta)

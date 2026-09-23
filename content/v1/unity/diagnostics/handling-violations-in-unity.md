@@ -58,11 +58,11 @@ A registration is not scoped to the scene or to the GameObject that made it - it
 
 ## Only a server enforces a kick
 
-`ViolationManager.RaiseViolation` settles an action and then enforces it. A `ViolationAction.Kick` is only ever carried out when the local peer has a server started; on a client-only peer the manager logs that the kick settled but was not enforced, and the connection is left alone. A deciding handler registered on a client-only build therefore never actually kicks anyone - it can still log or observe, but nothing it returns changes what happens to the offending connection. Put the handler that decides `Kick` on the build that runs the server; a client-only handler that only observes or logs is fine anywhere.
+`ViolationManager` settles an action for each violation and then enforces it. A `ViolationAction.Kick` is only ever carried out when the local peer has a server started; on a client-only peer the manager logs that the kick settled but was not enforced, and the connection is left alone. A deciding handler registered on a client-only build therefore never actually kicks anyone - it can still log or observe, but nothing it returns changes what happens to the offending connection. Put the handler that decides `Kick` on the build that runs the server; a client-only handler that only observes or logs is fine anywhere.
 
 ## Reading a violation from the console
 
-With no handler registered, `ViolationManager.DefaultAction` is `ViolationAction.Log`, and the default `Log` action writes a warning of the form:
+With no handler registered, most violations are raised with `ViolationAction.Ignore` and write nothing to the console. The scene- and bundle-protocol faults default to `Kick`, and only `PacketTransformRejectedViolation` (Pro) falls back to `ViolationManager.DefaultAction`, which is `ViolationAction.Log`. To see the silent ones, register an `IViolationObserver` or a per-type subscriber as above and log them yourself. A `Log` action writes a warning of the form:
 
 ```
 Violation [<ViolationTypeName>] from Connection [<connection>].

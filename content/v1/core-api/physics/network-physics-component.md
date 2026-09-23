@@ -19,7 +19,7 @@ title: "NetworkPhysicsComponent"
 
 `BodyFlags` carries a `PhysicsBodyFlags` value as an int member, since byte members do not currently ride the replication pipeline; the delta encoding keeps the wire cost equivalent.
 
-`CaptureTick` is the server tick the carried state was captured at, letting receivers anchor reconciles and projections to the snapshot's exact age instead of estimating it. It is carried as a signed int so the delta encoder can represent a decrease: a pooled component reused for a fresh body resets below the delta baseline, and an unsigned delta of that decrease would wrap to a 64-bit value and corrupt the stream. It holds `NetworkLoopManager.UnsetTick` until a ticked capture runs, and it is only re-stamped when the captured state actually changed — a resting body stays wire-quiet instead of dirtying the member every tick.
+`CaptureTick` is the tick the carried state was captured at, counted on the capturing peer's own tick counter: the server's for a body the server controls, the controlling client's for a body a client controls. It lets receivers anchor reconciles and projections to the snapshot's exact age instead of estimating it. It is carried as a signed int so the delta encoder can represent a decrease: a pooled component reused for a fresh body resets below the delta baseline, and an unsigned delta of that decrease would wrap to a 64-bit value and corrupt the stream. It holds `NetworkLoopManager.UnsetTick` until a ticked capture runs, and it is only re-stamped when the captured state actually changed, so a resting body stays wire-quiet instead of dirtying the member every tick.
 
 ## PhysicsBodyFlags
 
@@ -49,7 +49,7 @@ Replicated body condition bits packed into `BodyFlags`.
 public void CaptureBody(IPhysicsBody physicsBody, uint tick = Managers.NetworkLoop.NetworkLoopManager.UnsetTick)
 ```
 
-Called by the server once per tick, before serialization, to capture the body's current state into the replicated members. `CaptureTick` is only re-stamped when the captured position or rotation would actually serialize a change at that member's wire accuracy — not on every exact inequality, which would re-stamp on sub-quantum float jitter and drag the whole component onto the wire each tick even though nothing the receiver could observe had moved. This is what keeps a resting body wire-quiet.
+Called once per tick, before serialization, by the peer that controls the body (the server, unless a client controls it), to capture the body's current state into the replicated members. `CaptureTick` is only re-stamped when the captured position or rotation would actually serialize a change at that member's wire accuracy, not on every exact inequality, which would re-stamp on sub-quantum float jitter and drag the whole component onto the wire each tick even though nothing the receiver could observe had moved. This is what keeps a resting body wire-quiet.
 
 ```csharp
 public PhysicsSnapshot BuildSnapshot()

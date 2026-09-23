@@ -49,4 +49,4 @@ These `.g.cs` files are tracked source, not build output. They're regenerated de
 
 ## The ceiling
 
-`Serializers.Constants.MaximumNetworkMemberCount` is `63`. A single type can declare at most 63 network members, because the delta flags backing each type's change set is a `ulong` and the shift that sets a member's bit is computed as a 64-bit operation to avoid aliasing member 32 onto member 0.
+`Serializers.Constants.MaximumNetworkMemberCount` is `63`, and the usable count is one less: the generator reports `SERIALIZERS000` for a type that declares 63 or more network members, so a single type can declare at most 62. The ceiling exists because the delta flags backing each type's change set is a `ulong` and the shift that sets a member's bit is computed as a 64-bit operation to avoid aliasing member 32 onto member 0. The check covers the structs and classes the generator writes serializers for; it is not applied to a `NetworkComponent`, whose own limit is described in [How replicated state works](../state/state-replication-model.md).

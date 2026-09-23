@@ -13,7 +13,7 @@ Most settings can change at any time. Two cannot, because the engine builds fixe
 - **Tick rate.** `NetworkLoopManager.TickRate` is get-only, fixed by the `tickRate` argument passed when the loop starts. `DefaultTickRate` is 30. A requested rate below `MinimumTickRate` (5) or above `MaximumTickRate` (128) is clamped into range and logged, not rejected.
 - **`ServerConfiguration.MaximumConnections`** is a readonly field on the transport's server configuration struct, set once when that struct is constructed.
 
-The step provider is not on this list. `NetworkLoopManager.UseNetworkLoopStepProvider(INetworkLoopStepProvider)` swaps it at runtime, stopping the previous provider and returning it.
+The step provider is not on this list. `NetworkLoopManager.UseNetworkLoopStepProvider(INetworkLoopStepProvider)` swaps it at runtime, stopping the previous provider and returning it. To use your own provider from the start, pass it to the `CoreManager` constructor instead: swapped in after construction, it replaces a default provider that has already been stepping the loop from the thread pool.
 
 ## SystemManager
 
@@ -68,7 +68,7 @@ The step provider is not on this list. `NetworkLoopManager.UseNetworkLoopStepPro
 
 | Setting | Default | Notes |
 |---|---|---|
-| `DefaultAction` | `ViolationAction.Log` | Used when a violation is raised without its own handler-supplied action. |
+| `DefaultAction` | `ViolationAction.Log` | A constant. Used only when a violation type is raised with no default of its own and no handler is registered; `PacketTransformRejectedViolation` (Pro) is the one such type. Every other type carries its own default, mostly `Ignore`. |
 
 ## TransportManager
 
@@ -96,7 +96,7 @@ Pro only.
 |---|---|---|
 | `Port` | 0 | |
 | `MaximumTransmissionUnit` | 1200 | Packets longer than this are split into multiple packets. |
-| `ConnectingTimeoutSeconds` | 10 | Synapse does not apply this yet; its handshake has no timeout of its own to set. |
+| `ConnectingTimeoutSeconds` | 10 | Synapse does not apply this yet. An unanswered connect times out after `ConnectedTimeoutSeconds` instead. |
 | `ConnectedTimeoutSeconds` | 15 | Least applied value is one second. Times out a connection that has received no remote data within this window. |
 
 **`ServerConfiguration`**

@@ -48,7 +48,7 @@ public float SubtickPercentage { get; private set; }
 public void SetSubtickPercentage(float percentage)
 ```
 
-It is set by a loop step provider that measures partial-tick time and calls `SetSubtickPercentage`, which clamps the value into the 0-1 range. A provider that does not drive subtick accumulation leaves it at zero, its default, which is a safe value: interpolation reading it resolves to the previous value rather than an undefined intermediate one.
+It is set through `SetSubtickPercentage`, which clamps the value into the 0-1 range. `NetworkLoopStepDriver` publishes it on every frame that runs a variable update, just before `VariableUpdate`, so the default `SystemNetworkLoopStepProvider`, the Unity integration's provider, and any provider you build on the driver all keep it current; do not set it yourself from such a provider. Only a provider that invokes the steps without the driver leaves it at zero, its default, which is a safe value: interpolation reading it resolves to the previous value rather than an undefined intermediate one.
 
 ## StepDelta
 
