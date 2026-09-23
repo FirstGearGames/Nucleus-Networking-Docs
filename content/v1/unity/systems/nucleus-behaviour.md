@@ -55,7 +55,7 @@ Override these `protected virtual` methods on `NucleusBehaviourBase`:
 | Hook | Guarantee |
 |---|---|
 | `OnSystemLinked()` | Called once `NetworkSystem` is linked. |
-| `OnSystemUnlinked()` | Called as `NetworkSystem` unlinks, while it is still readable for the duration of the call. A pooled, recycled instance resets its per-life state here. |
+| `OnSystemUnlinked()` | Called as `NetworkSystem` unlinks, while it is still readable for the duration of the call, including when this behaviour is destroyed while still linked. A pooled, recycled instance resets its per-life state here. |
 | `OnServerStarted()` | Called once this peer's server role starts, with a system already linked. |
 | `OnServerStopped()` | Called once this peer's server role stops while a system is still linked. |
 | `OnClientStarted()` | The client-role counterpart of `OnServerStarted`. |
