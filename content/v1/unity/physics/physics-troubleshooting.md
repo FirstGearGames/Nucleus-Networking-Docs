@@ -58,4 +58,4 @@ Putting a `NetworkTransform` on the same object as a `ProjectedRigidbody` means 
 
 ## Reading bandwidth and round-trip time
 
-When grading whether a correction is worth its cost, read the diagnostics pages rather than guessing: [Reading network statistics in Unity](/v1/unity/diagnostics/network-statistics-in-unity) covers bandwidth, and [Round-trip time, jitter and packet loss](/v1/core-api/diagnostics/link-quality-measurement) covers the link figures a locally predicted body's projection depth is measured against.
+When grading whether a correction is worth its cost, read the diagnostics pages rather than guessing: [Reading network statistics in Unity](../diagnostics/network-statistics-in-unity.md) covers bandwidth, and [Round-trip time, jitter and packet loss](../../core-api/diagnostics/link-quality-measurement.md) covers the link figures a locally predicted body's projection depth is measured against.

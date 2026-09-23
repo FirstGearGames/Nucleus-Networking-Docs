@@ -2,7 +2,7 @@
 title: "The relay transport"
 ---
 
-> **Using Unity?** See [Blitz Relay Transport component](../../unity/transports/blitz-relay-transport-component).
+> **Using Unity?** See [Blitz Relay Transport component](../../unity/transports/blitz-relay-transport-component.md).
 
 ## RelayTransport
 

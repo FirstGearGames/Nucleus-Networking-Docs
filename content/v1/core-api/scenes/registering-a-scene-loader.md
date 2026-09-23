@@ -2,7 +2,7 @@
 title: "Registering a scene loader"
 ---
 
-> **Using Unity?** See [UnitySceneLoader component](../../unity/scenes/unity-scene-loader).
+> **Using Unity?** See [UnitySceneLoader component](../../unity/scenes/unity-scene-loader.md).
 
 The core engine carries a scene identifier and nothing else, no path, no build index, no asset reference. It has no notion of what a "scene" is on any given platform, so it ships no `ISceneLoader` implementation. Until one is registered, scene requests do nothing.
 

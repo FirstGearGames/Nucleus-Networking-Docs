@@ -2,7 +2,7 @@
 title: "Running two peers in one process"
 ---
 
-> **Using Unity?** See [Testing with two editors](./testing-with-two-editors).
+> **Using Unity?** See [Testing with two editors](./testing-with-two-editors.md).
 
 ## Two ways to get a second peer
 

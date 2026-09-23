@@ -2,7 +2,7 @@
 title: "Bundle Ids for Unity Assemblies"
 ---
 
-> **Driving the core API directly?** See [Type Identity on the Wire: Bundles and the Registry](../../core-api/wire/type-identity-and-bundles).
+> **Driving the core API directly?** See [Type Identity on the Wire: Bundles and the Registry](../../core-api/wire/type-identity-and-bundles.md).
 
 ## Declare the bundle
 

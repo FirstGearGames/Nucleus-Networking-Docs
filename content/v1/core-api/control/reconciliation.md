@@ -2,7 +2,7 @@
 title: "Reconciliation and replay"
 ---
 
-> **Using Unity?** See [Replaying a correction in Unity](../../unity/control/reconcile-in-unity).
+> **Using Unity?** See [Replaying a correction in Unity](../../unity/control/reconcile-in-unity.md).
 
 A predicted member on a controller can diverge from the server: the local prediction and the server's outcome disagree beyond wire tolerance, or the ring history is too shallow to still hold the echoed tick. When that happens the member is rewound to the server's value and the owning `NetworkSystem` asks game code to replay forward from the rewind point. Reconciliation is this rewind-and-replay contract.
 

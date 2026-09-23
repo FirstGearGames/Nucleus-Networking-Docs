@@ -2,7 +2,7 @@
 title: "Installing the Unity integration"
 ---
 
-> **Driving the core API directly?** See [Adding Nucleus to a .NET project](./adding-nucleus-to-a-dotnet-project).
+> **Driving the core API directly?** See [Adding Nucleus to a .NET project](./adding-nucleus-to-a-dotnet-project.md).
 
 ## What you get
 

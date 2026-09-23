@@ -2,7 +2,7 @@
 title: "Prediction settings on the Unity manager"
 ---
 
-> **Driving the core API directly?** See [Predicted members and prediction history](../../core-api/control/prediction-history-and-predicted-members).
+> **Driving the core API directly?** See [Predicted members and prediction history](../../core-api/control/prediction-history-and-predicted-members.md).
 
 ## Prediction History Ticks
 
@@ -39,4 +39,4 @@ Two consequences follow directly from this:
 
 ## Where to go next
 
-For what a predicted member does with the ring once it is sized, see [Predicted members and prediction history](../../core-api/control/prediction-history-and-predicted-members).
+For what a predicted member does with the ring once it is sized, see [Predicted members and prediction history](../../core-api/control/prediction-history-and-predicted-members.md).

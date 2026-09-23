@@ -2,7 +2,7 @@
 title: "Carrying and re-parenting objects"
 ---
 
-> **Driving the core API directly?** See [Parents, children and hierarchy](../../core-api/systems/system-hierarchy).
+> **Driving the core API directly?** See [Parents, children and hierarchy](../../core-api/systems/system-hierarchy.md).
 
 ## The call
 
@@ -73,4 +73,4 @@ private void OnParentChanged(uint previousParentId, uint currentParentId)
 - **Hierarchies nest at most 8 deep**, counted from a root. This bound also caps the despawn and interest walks that follow the parent link.
 - **Despawning a parent cascades to its children.** Stopping a system stops every started descendant beneath it, deepest first, so a peer is never left holding a child whose parent is already gone. Objects not parented to the one being despawned are untouched.
 
-For the full model — the resolved-versus-arrived distinction, the acyclic and same-scene checks the server enforces, and how the child's Id, controller and access survive the move — see [Parents, children and hierarchy](../../core-api/systems/system-hierarchy).
+For the full model — the resolved-versus-arrived distinction, the acyclic and same-scene checks the server enforces, and how the child's Id, controller and access survive the move — see [Parents, children and hierarchy](../../core-api/systems/system-hierarchy.md).

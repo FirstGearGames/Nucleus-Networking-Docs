@@ -2,7 +2,7 @@
 title: "Adding Nucleus to a .NET project"
 ---
 
-> **Using Unity?** See [Installing the Unity integration](./installing-the-unity-integration).
+> **Using Unity?** See [Installing the Unity integration](./installing-the-unity-integration.md).
 
 ## Reference Nucleus
 

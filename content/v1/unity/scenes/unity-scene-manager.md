@@ -2,7 +2,7 @@
 title: "UnitySceneManager component"
 ---
 
-> **Driving the core API directly?** See [Placing clients in scenes](../../core-api/scenes/placing-clients-in-scenes).
+> **Driving the core API directly?** See [Placing clients in scenes](../../core-api/scenes/placing-clients-in-scenes.md).
 
 `UnitySceneManager` is the inspector-side driver for the core `SceneManager`. It pushes its serialized fields into the core manager once on `ManagersInstantiated`, and gives the peer a scene loader if the project has not placed one itself.
 

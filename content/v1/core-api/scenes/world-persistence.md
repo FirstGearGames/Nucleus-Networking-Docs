@@ -2,7 +2,7 @@
 title: "Saving and loading a world"
 ---
 
-> **Using Unity?** See [Saving and loading a world from Unity](../../unity/scenes/world-save-load-in-unity).
+> **Using Unity?** See [Saving and loading a world from Unity](../../unity/scenes/world-save-load-in-unity.md).
 
 ## WorldPersistenceManager
 

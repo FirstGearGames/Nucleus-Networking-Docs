@@ -2,7 +2,7 @@
 title: "Logging"
 ---
 
-> **Using Unity?** See [Engine logging in the Unity console](../../unity/diagnostics/logging-in-unity).
+> **Using Unity?** See [Engine logging in the Unity console](../../unity/diagnostics/logging-in-unity.md).
 
 ## The default logger
 

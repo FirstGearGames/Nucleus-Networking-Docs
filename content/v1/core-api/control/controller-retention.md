@@ -2,7 +2,7 @@
 title: "Controller retention"
 ---
 
-> **Using Unity?** See [Keeping a player's objects across a disconnect](../../unity/control/controller-retention-in-unity).
+> **Using Unity?** See [Keeping a player's objects across a disconnect](../../unity/control/controller-retention-in-unity.md).
 
 Connection ids are recycled. An object left naming a departed controller is one the next renter of that id inherits, along with its state write permission and its input routing, because both are decided by the same comparison against `ControllerConnectionId`. Control is therefore always surrendered the moment a connection leaves - there is no configuration that keeps an object controlled by somebody who is gone. `ControllerRetentionPolicy` only decides whether a token is issued so the objects can be handed back to whoever comes next.
 
@@ -60,8 +60,8 @@ The framework never decides that a returning peer is the same player who left. T
 
 ## Unity
 
-Inspector fields for controller retention, and `NetworkPlayerDisconnectMode`, are covered on the Unity page: [Keeping a player's objects across a disconnect](../../unity/control/controller-retention-in-unity).
+Inspector fields for controller retention, and `NetworkPlayerDisconnectMode`, are covered on the Unity page: [Keeping a player's objects across a disconnect](../../unity/control/controller-retention-in-unity.md).
 
 ## Host migration
 
-Controller retention is what lets a peer promoted after a host dies rebuild retained records from the objects it adopted, rather than losing them. Retention itself does not migrate a host - see [Surviving the loss of a host](../transports/surviving-the-loss-of-a-host) for that.
+Controller retention is what lets a peer promoted after a host dies rebuild retained records from the objects it adopted, rather than losing them. Retention itself does not migrate a host - see [Surviving the loss of a host](../transports/hosting-topologies.md) for that.

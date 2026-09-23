@@ -2,7 +2,7 @@
 title: "Transport Manager component"
 ---
 
-> **Driving the core API directly?** See [TransportManager](../../core-api/transports/transport-manager).
+> **Driving the core API directly?** See [TransportManager](../../core-api/transports/transport-manager.md).
 
 `UnityTransportManager` is the Inspector-side driver for the core transport manager. On `ManagersInstantiated` it grabs the core `TransportManager` off the `CoreManager` and applies its `Default Channel` field to it. If you have not added a `UnityTransportManager` yourself, `UnityCoreManager` adds one for you.
 

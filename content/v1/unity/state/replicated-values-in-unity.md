@@ -2,7 +2,7 @@
 title: "Replicating a value from a Unity script"
 ---
 
-> **Driving the core API directly?** See [Your first networked component](../../core-api/state/your-first-networked-component).
+> **Driving the core API directly?** See [Your first networked component](../../core-api/state/your-first-networked-component.md).
 
 ## Declare the component
 

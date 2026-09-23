@@ -2,7 +2,7 @@
 title: "Registering Call Handlers Across a Component's Lifetime"
 ---
 
-> **Driving the core API directly?** See [Handler Registration and Scope](../../core-api/messaging/rpc-handler-registration).
+> **Driving the core API directly?** See [Handler Registration and Scope](../../core-api/messaging/rpc-handler-registration.md).
 
 ## The marker's link events
 

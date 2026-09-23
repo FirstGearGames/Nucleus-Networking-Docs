@@ -2,7 +2,7 @@
 title: "Reacting to changes: OnMembersChanged"
 ---
 
-> **Using Unity?** See [Reacting to a replicated change in Unity](../../unity/state/reacting-to-changes-in-unity).
+> **Using Unity?** See [Reacting to a replicated change in Unity](../../unity/state/reacting-to-changes-in-unity.md).
 
 `NetworkComponent` exposes one callback for every member change, rather than a separate event per member:
 

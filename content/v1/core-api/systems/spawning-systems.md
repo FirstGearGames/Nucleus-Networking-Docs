@@ -2,7 +2,7 @@
 title: "Starting and stopping systems"
 ---
 
-> **Using Unity?** See [Spawning and despawning objects](../../unity/systems/spawning-objects).
+> **Using Unity?** See [Spawning and despawning objects](../../unity/systems/spawning-objects.md).
 
 ## Starting a system
 

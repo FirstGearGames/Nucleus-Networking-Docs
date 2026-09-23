@@ -2,7 +2,7 @@
 title: "Level of detail in Unity"
 ---
 
-> **Driving the core API directly?** See [Interest level of detail](../../core-api/interest/interest-level-of-detail).
+> **Driving the core API directly?** See [Interest level of detail](../../core-api/interest/interest-level-of-detail.md).
 
 A band changes nothing about what is sent. It neither culls an object nor alters its rate; it is a measurement your game reads and acts on.
 

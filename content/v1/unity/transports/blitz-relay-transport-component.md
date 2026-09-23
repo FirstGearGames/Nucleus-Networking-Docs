@@ -2,7 +2,7 @@
 title: "Blitz Relay Transport component"
 ---
 
-> **Driving the core API directly?** See [The relay transport](../../core-api/transports/relay-transport).
+> **Driving the core API directly?** See [The relay transport](../../core-api/transports/relay-transport.md).
 
 `BlitzRelayTransport` is a `NetworkTransport` component that carries a session through a relay, so two peers behind routers or NAT can reach each other without either one listening on a port. Add it to the `UnityCoreManager`'s GameObject; the `UnityTransportManager` adds it to the `CoreManager` with the inspector's settings applied.
 
@@ -10,7 +10,7 @@ The component and its custom editor compile only behind the `BLITZ_RELAY` script
 
 ## What must already be running
 
-This component does not start a relay. It dials one. Something else has to be running the Blitz Relay service at the address and port configured below, and, if host migration is on, a directory service too. See [Hosting and joining a relay session](relay-sessions) for standing those up.
+This component does not start a relay. It dials one. Something else has to be running the Blitz Relay service at the address and port configured below, and, if host migration is on, a directory service too. See [Hosting and joining a relay session](./relay-sessions.md) for standing those up.
 
 ## Relay
 
@@ -40,7 +40,7 @@ The relay reports a larger `DatagramOverheadBytes` than the Synapse transport do
 
 Turning Host Migration on sets `ClientManager.DisconnectResetMode` to `RetainReceivedWorld`, so a client keeps its received world across the moment its link drops instead of being reset to an empty one. That wiring lives in a Pro-only partial (`BlitzRelayTransport.Migration.Pro.cs`). In a free build the toggle is present but does nothing: no `DisconnectResetMode` is set, and no migration coordinator is created.
 
-This is the relay-and-directory handover this component ships: a client can keep its world across a host loss, and a peer can rejoin a moved session by session id instead of a room code. It is not a separate, broader engine-level host migration feature — nothing beyond what is described on this page and on [Hosting and joining a relay session](relay-sessions) exists yet.
+This is the relay-and-directory handover this component ships: a client can keep its world across a host loss, and a peer can rejoin a moved session by session id instead of a room code. It is not a separate, broader engine-level host migration feature — nothing beyond what is described on this page and on [Hosting and joining a relay session](./relay-sessions.md) exists yet.
 
 ## Live fields
 

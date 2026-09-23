@@ -4,13 +4,13 @@ title: "Physics Synchronization"
 
 Pages in this category:
 
-- [Physics execution modes](./physics-execution-modes)
-- [ProjectedRigidbody](./projected-rigidbody)
-- [How physics replication works](./how-physics-replication-works)
-- [NetworkTransform or ProjectedRigidbody](./transform-or-rigidbody)
-- [Replicate a rigidbody](./replicate-a-rigidbody)
-- [Driving a body you control](./driving-a-predicted-body)
-- [NetworkNavMeshAgent](./network-nav-mesh-agent)
-- [PhysicsSimulationDriver](./physics-simulation-driver)
-- [Local physics scenes](./local-physics-scenes)
-- [Physics troubleshooting](./physics-troubleshooting)
+- [Physics execution modes](./physics-execution-modes.md)
+- [ProjectedRigidbody](./projected-rigidbody.md)
+- [How physics replication works](./how-physics-replication-works.md)
+- [NetworkTransform or ProjectedRigidbody](./transform-or-rigidbody.md)
+- [Replicate a rigidbody](./replicate-a-rigidbody.md)
+- [Driving a body you control](./driving-a-predicted-body.md)
+- [NetworkNavMeshAgent](./network-nav-mesh-agent.md)
+- [PhysicsSimulationDriver](./physics-simulation-driver.md)
+- [Local physics scenes](./local-physics-scenes.md)
+- [Physics troubleshooting](./physics-troubleshooting.md)

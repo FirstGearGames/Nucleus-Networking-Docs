@@ -2,7 +2,7 @@
 title: "Type Identity on the Wire: Bundles and the Registry"
 ---
 
-> **Using Unity?** See [Bundle Ids for Unity Assemblies](../../unity/wire/bundle-ids-for-unity-assemblies).
+> **Using Unity?** See [Bundle Ids for Unity Assemblies](../../unity/wire/bundle-ids-for-unity-assemblies.md).
 
 ## The identity
 

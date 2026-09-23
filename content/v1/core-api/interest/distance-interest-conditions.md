@@ -2,7 +2,7 @@
 title: "Distance interest conditions"
 ---
 
-> **Using Unity?** See [Limit what a client receives by distance](../../unity/interest/limit-replication-by-distance).
+> **Using Unity?** See [Limit what a client receives by distance](../../unity/interest/limit-replication-by-distance.md).
 
 ## What you subclass
 

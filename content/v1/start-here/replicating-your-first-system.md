@@ -2,7 +2,7 @@
 title: "Replicating your first system"
 ---
 
-> **Using Unity?** See [Replicating your first object](./replicating-your-first-object).
+> **Using Unity?** See [Replicating your first object](./replicating-your-first-object.md).
 
 ## Declare the data
 
@@ -115,4 +115,4 @@ A system handed to you by a watch is borrowed, not owned: a wire-constructed ins
 
 ## Using Unity
 
-The Unity track replaces both the rent and the watch with a marker component on a GameObject and `NetworkSystemObjectPool.RequireSystem`. See [Replicating your first object](./replicating-your-first-object) for that version.
+The Unity track replaces both the rent and the watch with a marker component on a GameObject and `NetworkSystemObjectPool.RequireSystem`. See [Replicating your first object](./replicating-your-first-object.md) for that version.

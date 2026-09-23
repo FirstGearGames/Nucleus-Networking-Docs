@@ -2,7 +2,7 @@
 title: "Replicate a physics body"
 ---
 
-> **Using Unity?** See [Replicate a rigidbody](../../unity/physics/replicate-a-rigidbody).
+> **Using Unity?** See [Replicate a rigidbody](../../unity/physics/replicate-a-rigidbody.md).
 
 `NetworkPhysicsComponent` replicates a simulated body's position and rotation through the normal member pipeline. The server captures its body into the component after it steps; every other peer rebuilds a snapshot from the component and steps a convergence follower toward it before it steps. Neither side needs an engine object — this page uses nothing but plain C# and `IPhysicsBody`.
 

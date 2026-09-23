@@ -4,7 +4,7 @@ title: "Configuration reference"
 
 There is no engine-wide configuration object. Every setting is a public field or property on the manager that owns it, assigned after `new CoreManager()` returns. This page lists them by manager, with defaults and whether each can still change after start-up.
 
-> **Using Unity?** See [The Nucleus manager components](../../unity/core/unity-manager-components) for setting the same values from the inspector.
+> **Using Unity?** See [The Nucleus manager components](../unity/core/unity-manager-components.md) for setting the same values from the inspector.
 
 ## Construction-only values
 

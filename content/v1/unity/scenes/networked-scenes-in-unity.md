@@ -2,7 +2,7 @@
 title: "Networked scenes in Unity"
 ---
 
-> **Driving the core API directly?** See [Opening and closing scene instances](../../core-api/scenes/opening-scene-instances).
+> **Driving the core API directly?** See [Opening and closing scene instances](../../core-api/scenes/opening-scene-instances.md).
 
 ## Add the manager and loader
 

@@ -58,4 +58,4 @@ A system nobody has recorded a position for reports unmeasurable, which is the c
 
 ## Unity
 
-The Unity integration registers a reader for you; you don't need to write one. See [Limiting replication by distance](limit-replication-by-distance) for how it's wired up and how to configure the distance conditions that depend on it.
+The Unity integration registers a reader for you; you don't need to write one. See [Limiting replication by distance](../../unity/interest/limit-replication-by-distance.md) for how it's wired up and how to configure the distance conditions that depend on it.

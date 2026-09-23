@@ -2,7 +2,7 @@
 title: "PhysicsConvergence"
 ---
 
-> **Using Unity?** See [ProjectedRigidbody](../../unity/physics/projected-rigidbody).
+> **Using Unity?** See [ProjectedRigidbody](../../unity/physics/projected-rigidbody.md).
 
 `PhysicsConvergence` is the per-body follower behind Projected physics sync. It takes the latest server snapshot, projects it to now, rides its velocity, and blends or teleports a diverged pose back onto it. Call `Step` once per physics step for each proxy body, before the engine simulates.
 
@@ -55,8 +55,8 @@ Each step, `Step` measures the divergence and picks one of three responses:
 
 ## TargetProvider
 
-By default `Step` projects the snapshot with a closed-form trajectory. Setting `TargetProvider` (an `IProjectionTargetProvider`) replaces that projection with whatever the provider computes instead — for example a target that sweeps against geometry rather than following a pure ballistic path. See [swept projection targets](../physics/swept-projection-targets) for that provider.
+By default `Step` projects the snapshot with a closed-form trajectory. Setting `TargetProvider` (an `IProjectionTargetProvider`) replaces that projection with whatever the provider computes instead — for example a target that sweeps against geometry rather than following a pure ballistic path. See [swept projection targets](./swept-projection-targets.md) for that provider.
 
 ## Locally predicted bodies
 
-`IsLocallyPredicted`, `PredictionMaximumProjectionSeconds`, and `PredictionCorrectionRate` only apply to a body this peer is driving with its own input rather than following from the server. See [locally predicted bodies](../physics/locally-predicted-bodies).
+`IsLocallyPredicted`, `PredictionMaximumProjectionSeconds`, and `PredictionCorrectionRate` only apply to a body this peer is driving with its own input rather than following from the server. See [locally predicted bodies](./locally-predicted-bodies.md).

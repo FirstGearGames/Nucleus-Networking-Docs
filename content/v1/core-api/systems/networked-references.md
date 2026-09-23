@@ -54,4 +54,4 @@ An unset reference costs one bit on the wire. A set reference costs that bit plu
 
 ## Reacting to resolution
 
-A reference resolving or losing its target does not fire an event of its own — it's reported the same way any other member change is, through the component's `OnMembersChanged` callback. See [Reacting to changes: OnMembersChanged](../state/change-callbacks) for how to read that callback and tell a reference's resolution apart from a regular value write.
+A reference resolving or losing its target does not fire an event of its own — it's reported the same way any other member change is, through the component's `OnMembersChanged` callback. See [Reacting to changes: OnMembersChanged](../state/change-callbacks.md) for how to read that callback and tell a reference's resolution apart from a regular value write.

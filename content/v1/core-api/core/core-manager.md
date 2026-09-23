@@ -2,7 +2,7 @@
 title: "Creating a CoreManager"
 ---
 
-> **Using Unity?** See [The Nucleus Core Manager component](../../unity/core/unity-core-manager).
+> **Using Unity?** See [The Nucleus Core Manager component](../../unity/core/unity-core-manager.md).
 
 `CoreManager` is the root of a Nucleus session. Construct one and the session is running; there is no separate `Initialize` or `Start` call.
 

@@ -2,7 +2,7 @@
 title: "Replicate a rigidbody"
 ---
 
-> **Driving the core API directly?** See [Replicate a physics body](../../core-api/physics/replicate-a-body).
+> **Driving the core API directly?** See [Replicate a physics body](../../core-api/physics/replicate-a-body.md).
 
 Add `ProjectedRigidbody` to a GameObject that has a `Rigidbody`. That's the whole setup.
 

@@ -2,7 +2,7 @@
 title: "Limit what a client receives by distance"
 ---
 
-> **Driving the core API directly?** See [Distance interest conditions](../../core-api/interest/distance-interest-conditions)
+> **Driving the core API directly?** See [Distance interest conditions](../../core-api/interest/distance-interest-conditions.md)
 
 A Distance rule stops an object's systems replicating to a player once that player is too far away. It is an inspector-only rule with two places to add it, one setting to tune, and one warning to know about.
 

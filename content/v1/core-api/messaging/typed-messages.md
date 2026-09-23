@@ -2,7 +2,7 @@
 title: "Typed Messages"
 ---
 
-> **Using Unity?** See [Typed Messages in Unity](../../unity/messaging/messages-in-unity).
+> **Using Unity?** See [Typed Messages in Unity](../../unity/messaging/messages-in-unity.md).
 
 A message is a point-to-point payload sent to one peer. It is never routed onward and never echoed back to whoever sent it. Declare a type, register a handler for it, and send it with `Connection.SendMessage`.
 

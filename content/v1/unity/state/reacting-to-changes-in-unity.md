@@ -2,7 +2,7 @@
 title: "Reacting to a replicated change in Unity"
 ---
 
-> **Driving the core API directly?** See [Reacting to changes: OnMembersChanged](../../core-api/state/change-callbacks).
+> **Driving the core API directly?** See [Reacting to changes: OnMembersChanged](../../core-api/state/change-callbacks.md).
 
 ## Override OnMembersChanged, forward it to your MonoBehaviour
 

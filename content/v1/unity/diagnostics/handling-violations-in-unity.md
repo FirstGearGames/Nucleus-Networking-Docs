@@ -2,7 +2,7 @@
 title: "Handling violations in Unity"
 ---
 
-> **Driving the core API directly?** See [Violations](../../core-api/diagnostics/violations)
+> **Driving the core API directly?** See [Violations](../../core-api/diagnostics/violations.md)
 
 ## No violation manager component
 

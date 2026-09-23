@@ -46,7 +46,7 @@ Three things ride on who the controller is, and all three are controller-only re
 
 - **Who may send inputs.** Only the controller's inputs are accepted for the system.
 - **Whose predicted members ride those inputs.** Prediction and reconcile are controller-only - a non-controlling observer never predicts or reconciles the system, it only receives the server's replicated state.
-- **Who may write state by default.** `StateWriteAccess.Controller` - "the server, or the single controlling client" - is the default access, and it is also the behavior every system had before write access existed as a setting at all. The controller can always write state; widening that to other observers is a separate, additive setting (`StateWriteAccess.AnyClient`), covered on [Letting clients write state](../state/state-write-access).
+- **Who may write state by default.** `StateWriteAccess.Controller` - "the server, or the single controlling client" - is the default access, and it is also the behavior every system had before write access existed as a setting at all. The controller can always write state; widening that to other observers is a separate, additive setting (`StateWriteAccess.AnyClient`), covered on [Letting clients write state](../../core-api/state/state-write-access.md).
 
 The same shape holds for RPCs: `RpcSendAccess.Controller` is the default there too, and its own doc comment puts it plainly - "only whoever drives the object may ask it to do anything."
 
@@ -67,7 +67,7 @@ private bool IsAccessPermitted(Connection connection, bool isAnyClientAccess)
 }
 ```
 
-Both `IsStateWritePermitted` and `IsRpcSendPermitted` route through this same check. A client that does not observe a system fails it immediately, regardless of whether it is the controller or the write access has been widened to any client. Widening control or write access never substitutes for being an observer - a connection has to be told about a system before anything it does about that system means anything. Observation itself is decided by the interest system, covered on [What area of interest is](../interest/area-of-interest).
+Both `IsStateWritePermitted` and `IsRpcSendPermitted` route through this same check. A client that does not observe a system fails it immediately, regardless of whether it is the controller or the write access has been widened to any client. Widening control or write access never substitutes for being an observer - a connection has to be told about a system before anything it does about that system means anything. Observation itself is decided by the interest system, covered on [What area of interest is](../interest/area-of-interest.md).
 
 ## The host case
 

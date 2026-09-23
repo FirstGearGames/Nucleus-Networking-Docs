@@ -2,7 +2,7 @@
 title: "Several systems on one object"
 ---
 
-> **Driving the core API directly?** See [System groups](../../core-api/systems/system-groups)
+> **Driving the core API directly?** See [System groups](../../core-api/systems/system-groups.md)
 
 ## Why split one object into several systems
 

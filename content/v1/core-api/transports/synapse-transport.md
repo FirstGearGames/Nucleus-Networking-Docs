@@ -2,7 +2,7 @@
 title: "The Synapse transport"
 ---
 
-> **Using Unity?** See [Synapse Transport component](../../unity/transports/synapse-transport-component).
+> **Using Unity?** See [Synapse Transport component](../../unity/transports/synapse-transport-component.md).
 
 Synapse is Nucleus's production UDP transport, backed by SynapseSocket. It has no editor dependency; every setting is a plain C# property or field set before connecting.
 

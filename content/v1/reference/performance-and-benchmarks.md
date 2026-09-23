@@ -46,7 +46,7 @@ Read the logged number together with the scenario that produced it - tick rate, 
 - `TotalBytesSent` and `TotalBytesReceived` count every byte that crossed the transport, including headers, framing, and every redundant resend or arrival.
 - `TotalStatePacketPayloadBitsSent` and `TotalStatePacketPayloadBitsReceived` count only serialized StatePacket payload bits, with headers and framing stripped out, and each serialized payload counted once no matter how many peers it reached.
 
-The byte counters answer "what did the link carry." The bit counters answer "what did replication actually cost." They do not reconcile, and a feature that fans one serialized payload out to many peers or resends over an unreliable link will always move the byte counters faster than the bit counters. See [Network statistics](../api/diagnostics/network-statistics.md) for the full counter reference.
+The byte counters answer "what did the link carry." The bit counters answer "what did replication actually cost." They do not reconcile, and a feature that fans one serialized payload out to many peers or resends over an unreliable link will always move the byte counters faster than the bit counters. See [Network statistics](../core-api/diagnostics/network-statistics.md) for the full counter reference.
 
 ## Per-connection measurement
 

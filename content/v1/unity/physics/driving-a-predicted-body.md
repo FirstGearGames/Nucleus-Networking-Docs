@@ -2,7 +2,7 @@
 title: "Driving a body you control"
 ---
 
-> **Driving the core API directly?** See [Locally predicted bodies](../../core-api/physics/locally-predicted-bodies).
+> **Driving the core API directly?** See [Locally predicted bodies](../../core-api/physics/locally-predicted-bodies.md).
 
 A body a client drives directly - a player's own physics character, for example - should not wait a round trip to respond. `ProjectedRigidbody` supports this: the driving peer predicts the body locally, applying its own input the instant it arrives, while the server still owns where the body really is and the driver reconciles toward it as confirmations return.
 

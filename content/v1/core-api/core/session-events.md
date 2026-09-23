@@ -2,7 +2,7 @@
 title: "Session events"
 ---
 
-> **Using Unity?** See [Reacting to session events in Unity](../../unity/core/unity-session-events).
+> **Using Unity?** See [Reacting to session events in Unity](../../unity/core/unity-session-events.md).
 
 A session turns on four moments, spread across three managers. Each answers a different question, and each is raised at a specific point in a specific code path, not on a generic "something changed" tick.
 

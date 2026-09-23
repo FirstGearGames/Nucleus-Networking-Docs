@@ -2,7 +2,7 @@
 title: "Wiring the Source Generator into a .NET Project"
 ---
 
-> **Using Unity?** See [Code Generation in Unity](../../unity/wire/code-generation-in-unity).
+> **Using Unity?** See [Code Generation in Unity](../../unity/wire/code-generation-in-unity.md).
 
 ## Reference the analyzer
 
@@ -64,7 +64,7 @@ If your project isn't the main assembly, declare a bundle id so its types don't 
 [assembly: NetworkBundle(1)]
 ```
 
-See [Type Identity on the Wire: Bundles and the Registry](./type-identity-and-bundles) for how bundle and local ids combine into a type's wire identity, and which ids are already taken.
+See [Type Identity on the Wire: Bundles and the Registry](./type-identity-and-bundles.md) for how bundle and local ids combine into a type's wire identity, and which ids are already taken.
 
 ## The generator skips assemblies that don't reference Nucleus
 

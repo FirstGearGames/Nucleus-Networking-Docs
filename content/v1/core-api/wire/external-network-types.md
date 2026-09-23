@@ -42,6 +42,6 @@ The lesson carries over directly: a marker struct that isn't actually carrying `
 
 ## Finding out a type has no serializer
 
-When a member's type has no serializer, the generator reports a `SERIALIZERS001` warning naming the member, once, instead of silently dropping it. See [Generator Errors and Warnings](/v1/core-api/wire/generator-diagnostics) for how to read generator diagnostics.
+When a member's type has no serializer, the generator reports a `SERIALIZERS001` warning naming the member, once, instead of silently dropping it. See [Generator Errors and Warnings](./generator-diagnostics.md) for how to read generator diagnostics.
 
-Seeing that warning for a type from an assembly you don't control is almost always a sign you need a marker struct, not a hand-written serializer: the type is a plain data type and the generator can serialize it field-by-field once it can see it. Reach for a hand-written serializer instead only when the type's shape genuinely needs custom read/write logic, not just visibility. See [Writing a Custom Serializer](/v1/core-api/wire/custom-serializers) for that case.
+Seeing that warning for a type from an assembly you don't control is almost always a sign you need a marker struct, not a hand-written serializer: the type is a plain data type and the generator can serialize it field-by-field once it can see it. Reach for a hand-written serializer instead only when the type's shape genuinely needs custom read/write logic, not just visibility. See [Writing a Custom Serializer](./custom-serializers.md) for that case.

@@ -2,7 +2,7 @@
 title: "Network statistics"
 ---
 
-> **Using Unity?** See [Reading network statistics in Unity](../../unity/diagnostics/network-statistics-in-unity).
+> **Using Unity?** See [Reading network statistics in Unity](../../unity/diagnostics/network-statistics-in-unity.md).
 
 `TransportManager` keeps four cumulative counters. They answer two different questions, and reading the wrong one for the wrong question is the usual mistake.
 

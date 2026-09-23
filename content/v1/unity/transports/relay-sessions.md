@@ -2,7 +2,7 @@
 title: "Hosting and joining a relay session"
 ---
 
-> **Driving the core API directly?** See [The relay transport](../../core-api/transports/relay-transport).
+> **Driving the core API directly?** See [The relay transport](../../core-api/transports/relay-transport.md).
 
 ## Hosting a session
 

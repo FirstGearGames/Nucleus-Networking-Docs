@@ -2,7 +2,7 @@
 title: "Giving a client control of an object"
 ---
 
-> **Driving the core API directly?** See [Assigning and releasing control](../../core-api/control/transferring-control).
+> **Driving the core API directly?** See [Assigning and releasing control](../../core-api/control/transferring-control.md).
 
 ## Calling SetController
 
@@ -69,4 +69,4 @@ This is easy to miss on a host, because the host's own client is often the same 
 
 ## Arbitration rules
 
-For how `SetController` resolves conflicting or repeated calls, see [Assigning and releasing control](../../core-api/control/transferring-control).
+For how `SetController` resolves conflicting or repeated calls, see [Assigning and releasing control](../../core-api/control/transferring-control.md).

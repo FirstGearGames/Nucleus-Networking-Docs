@@ -2,7 +2,7 @@
 title: "Server, client and host roles"
 ---
 
-> **Using Unity?** See [Starting and stopping a session in Unity](../../unity/core/unity-starting-and-stopping).
+> **Using Unity?** See [Starting and stopping a session in Unity](../../unity/core/unity-starting-and-stopping.md).
 
 ## Invoker
 

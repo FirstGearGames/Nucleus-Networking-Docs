@@ -59,4 +59,4 @@ Anything that reads it — `NetworkTransform`'s sweep included — reads it back
 
 A proxy isn't simulating anything. It's told where the controller's transform is — position, rotation, and, if enabled, scale — and it follows that pose. Velocity is never sent. That's also why kinematic management matters: while a rigidbody is kinematic, Unity's physics can't push back against a written pose, and nothing local — a collision, a force, a script nudging `transform.position` — should be moving a proxy either, since whatever it moves gets overwritten, or fought, on the very next tick it receives.
 
-See [NetworkTransform](../state/network-transform) for the rest of its inspector fields, and [NetworkMember](../../api/state/network-member) for the per-member interpolation snap threshold that cuts a large discontinuity instead of sweeping across it.
+See [NetworkTransform](../state/network-transform.md) for the rest of its inspector fields, and [NetworkMember](../../core-api/state/network-member.md) for the per-member interpolation snap threshold that cuts a large discontinuity instead of sweeping across it.

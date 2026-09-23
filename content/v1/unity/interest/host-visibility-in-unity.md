@@ -2,7 +2,7 @@
 title: "Making a host see what its players see"
 ---
 
-> **Driving the core API directly?** See [The host interest report](../../core-api/interest/host-interest-report)
+> **Driving the core API directly?** See [The host interest report](../../core-api/interest/host-interest-report.md)
 
 A host is the server: it holds every object in its own process regardless of what interest rules resolve for anyone. Without anything acting on that report, the person hosting sees every object in the level while their players are only sent a few — the host plays a different game to everyone else.
 

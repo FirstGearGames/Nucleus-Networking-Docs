@@ -2,7 +2,7 @@
 title: "Interest level of detail"
 ---
 
-> **Using Unity?** See [Level of detail in Unity](../../unity/interest/level-of-detail-in-unity)
+> **Using Unity?** See [Level of detail in Unity](../../unity/interest/level-of-detail-in-unity.md)
 
 ## Scope
 

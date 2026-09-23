@@ -1,7 +1,7 @@
 ---
 title: "Stopping versus culling"
 ---
-> **Using Unity?** See [Frozen or gone: what a stop does to the object](../../unity/interest/stopping-objects-in-unity)
+> **Using Unity?** See [Frozen or gone: what a stop does to the object](../../unity/interest/stopping-objects-in-unity.md)
 
 Interest can end replication for a connection two different ways, and they cost the receiver differently. `InterestEffect.Spawn` controls whether a `NetworkSystem` exists for a connection at all: while an unmet `Spawn` condition holds, the system does not spawn there, and one already spawned despawns, releasing the object exactly as an ordinary despawn does. `InterestEffect.Stop` is cheaper: while an unmet `Stop` condition holds, the system stops replicating to the connection, but the connection's engine object is retained. A distant object can stay visible while it stops costing anything to keep current, and it is only reclaimed if a `Spawn` condition later culls it too.
 

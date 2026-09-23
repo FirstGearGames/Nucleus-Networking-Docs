@@ -2,7 +2,7 @@
 title: "Your first .NET host"
 ---
 
-> **Using Unity?** See [Your first networked scene](./your-first-networked-scene).
+> **Using Unity?** See [Your first networked scene](./your-first-networked-scene.md).
 
 ## Bootstrap
 

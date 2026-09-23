@@ -2,7 +2,7 @@
 title: "Placing clients in scenes"
 ---
 
-> **Using Unity?** See [UnitySceneManager component](../../unity/scenes/unity-scene-manager).
+> **Using Unity?** See [UnitySceneManager component](../../unity/scenes/unity-scene-manager.md).
 
 Placing a client in a scene instance is what entitles it to see the objects inside. `SceneManager` drives every load and unload; the client never decides on its own.
 

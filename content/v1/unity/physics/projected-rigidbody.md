@@ -2,7 +2,7 @@
 title: "ProjectedRigidbody"
 ---
 
-> **Driving the core API directly?** See [PhysicsConvergence](../../core-api/physics/physics-convergence).
+> **Driving the core API directly?** See [PhysicsConvergence](../../core-api/physics/physics-convergence.md).
 
 `ProjectedRigidbody` is a `MonoBehaviour` that drives physics sync for one rigidbody. It requires a `Rigidbody` and a `NetworkSystemObject`, declares its need for the `NetworkSystem` carrying that body's replicated `NetworkPhysicsComponent`, and steps the body each tick: proxies adopt, follow the interpolation buffer, or run its `PhysicsConvergence` follower before the world simulates, and the server captures the stepped result afterward.
 
@@ -53,7 +53,7 @@ Below threshold, a sub-threshold residual can still be bled off rather than held
 
 At bring-up (`Awake`, and again on every inspector edit) most of these fields are written into a `PhysicsConvergenceSettings` and assigned to `Convergence.Settings`. Prediction Correction Rate is the exception: it is assigned straight to `Convergence.PredictionCorrectionRate` instead, since it lives on the follower itself rather than in `Settings`.
 
-The maths behind each of these values, and the full settings surface, live on the [PhysicsConvergence](../../core-api/physics/physics-convergence) API page — including `PredictionMaximumProjectionSeconds`, the predicted-body counterpart to Maximum Projection Time, which has no inspector field here at all.
+The maths behind each of these values, and the full settings surface, live on the [PhysicsConvergence](../../core-api/physics/physics-convergence.md) API page — including `PredictionMaximumProjectionSeconds`, the predicted-body counterpart to Maximum Projection Time, which has no inspector field here at all.
 
 ## Methods
 

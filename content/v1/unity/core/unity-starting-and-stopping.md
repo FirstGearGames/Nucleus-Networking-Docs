@@ -2,7 +2,7 @@
 title: "Starting and stopping a session in Unity"
 ---
 
-> **Driving the core API directly?** See [Server, client and host roles](../../core-api/core/server-client-and-host-roles).
+> **Driving the core API directly?** See [Server, client and host roles](../../core-api/core/server-client-and-host-roles.md).
 
 ## The Automatic Start Mode field
 

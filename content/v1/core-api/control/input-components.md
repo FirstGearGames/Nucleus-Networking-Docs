@@ -2,7 +2,7 @@
 title: "Input components"
 ---
 
-> **Using Unity?** See [Sending player input from Unity](../../unity/control/writing-an-input-component-unity).
+> **Using Unity?** See [Sending player input from Unity](../../unity/control/writing-an-input-component-unity.md).
 
 ## Overview
 

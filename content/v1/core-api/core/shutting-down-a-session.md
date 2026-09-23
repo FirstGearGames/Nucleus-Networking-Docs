@@ -2,7 +2,7 @@
 title: "Shutting a session down"
 ---
 
-> **Using Unity?** See [Play mode, domain reload and session lifetime](../../unity/core/unity-play-mode-lifetime).
+> **Using Unity?** See [Play mode, domain reload and session lifetime](../../unity/core/unity-play-mode-lifetime.md).
 
 `CoreManager.Deinitialize()` tears a session down: it stops the network loop, shuts every transport down, and releases every manager the `CoreManager` owns. Call it once, from whatever code owns the session's lifetime, when that session is done.
 

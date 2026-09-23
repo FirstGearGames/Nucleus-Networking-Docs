@@ -2,7 +2,7 @@
 title: "Reacting to session events in Unity"
 ---
 
-> **Driving the core API directly?** See [Session events](../../core-api/core/session-events).
+> **Driving the core API directly?** See [Session events](../../core-api/core/session-events.md).
 
 A scene script usually needs to know when a client authenticates, when one drops, or when the local client's own authentication comes back. Those moments arrive as events on `ServerManager` and `ClientManager`, reached through the `UnityServerManager` and `UnityClientManager` components on the CoreManager's GameObject.
 

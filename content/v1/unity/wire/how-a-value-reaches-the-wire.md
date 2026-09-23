@@ -2,9 +2,9 @@
 title: "How a Value Reaches the Wire"
 ---
 
-> New to Nucleus? Start with [How replication works](../start-here/how-replication-works) first — this page assumes you already have the pipeline overview and goes one level deeper, into the encoding itself.
+> New to Nucleus? Start with [How replication works](../../start-here/how-replication-works.md) first — this page assumes you already have the pipeline overview and goes one level deeper, into the encoding itself.
 
-Setup: [Reference the source generator](../start-here/adding-nucleus-to-a-dotnet-project) (plain .NET) or [Installing the Unity integration](../start-here/installing-the-unity-integration) (Unity).
+Setup: [Reference the source generator](../../start-here/adding-nucleus-to-a-dotnet-project.md) (plain .NET) or [Installing the Unity integration](../../start-here/installing-the-unity-integration.md) (Unity).
 
 ## The path, end to end
 

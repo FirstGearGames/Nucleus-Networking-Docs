@@ -2,7 +2,7 @@
 title: "Running a dedicated .NET server"
 ---
 
-> **Using Unity?** See [Building a headless Unity server](../../unity/transports/headless-server-build).
+> **Using Unity?** See [Building a headless Unity server](../../unity/transports/headless-server-build.md).
 
 There is no FishNet page for this, because every FishNet entry point begins in a scene. Nucleus does not require one: a dedicated server is a plain console application that references `Nucleus`, and nothing else.
 
@@ -76,4 +76,4 @@ AppDomain.CurrentDomain.ProcessExit += (_, _) =>
 
 ## Taking the port from the command line
 
-Hard-coding a port works for local testing, but a real deployment wants it and the bind address configurable at launch. See [Configuring a transport from launch arguments](command-line-configuration) for how `Transport.ApplyCommandLineArguments()` reads flags like `port` into `Configuration.Port`.
+Hard-coding a port works for local testing, but a real deployment wants it and the bind address configurable at launch. See [Configuring a transport from launch arguments](./command-line-configuration.md) for how `Transport.ApplyCommandLineArguments()` reads flags like `port` into `Configuration.Port`.

@@ -81,4 +81,4 @@ This page and the rest of the hand-written reference never try to enumerate ever
 
 ## Working in Unity
 
-If you're building against the Unity integration rather than plain C#, see the [manager components reference](../unity/core/unity-manager-components) for the `UnityManager`-derived components that front each core manager on the manager GameObject.
+If you're building against the Unity integration rather than plain C#, see the [manager components reference](../unity/core/unity-manager-components.md) for the `UnityManager`-derived components that front each core manager on the manager GameObject.

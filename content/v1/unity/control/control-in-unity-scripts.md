@@ -2,7 +2,7 @@
 title: "Control in a Unity script"
 ---
 
-> **Driving the core API directly?** See [Reading who controls a system](../../core-api/control/controlling-a-system).
+> **Driving the core API directly?** See [Reading who controls a system](../../core-api/control/controlling-a-system.md).
 
 A `NucleusBehaviour<TComponent0>` runs on every peer that has the object in scene, not just the one that controls it. A script that assumes it is the controller breaks the moment a client owns the object instead of the server, or the moment it runs on a peer that only observes. Every method below exists to make that distinction explicit instead of accidental.
 

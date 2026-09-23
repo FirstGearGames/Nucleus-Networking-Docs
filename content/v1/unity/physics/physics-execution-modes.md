@@ -31,7 +31,7 @@ The manager captures the previous value in `_previousFixedDeltaTime` and restore
 
 ## Mode versus driver
 
-The execution mode is process-global, chosen once by the `UnityPhysicsManager` in the scene that starts the session. A `PhysicsSimulationDriver` is per scene, registering which scene steps which physics world. This page answers which cadence steps a world; see [PhysicsSimulationDriver](physics-simulation-driver) for which scene owns which world.
+The execution mode is process-global, chosen once by the `UnityPhysicsManager` in the scene that starts the session. A `PhysicsSimulationDriver` is per scene, registering which scene steps which physics world. This page answers which cadence steps a world; see [PhysicsSimulationDriver](./physics-simulation-driver.md) for which scene owns which world.
 
 ## Checking which mode is live at runtime
 

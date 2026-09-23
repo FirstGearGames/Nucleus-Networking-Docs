@@ -2,7 +2,7 @@
 title: "Sending player input from Unity"
 ---
 
-> **Driving the core API directly?** See [Input components](../../core-api/control/input-components)
+> **Driving the core API directly?** See [Input components](../../core-api/control/input-components.md)
 
 An input component is the one channel a client is allowed to push data upstream on: once per tick, the client that controls a system writes its intent, and the framework sends it to the server. This page builds one for a keyboard or gamepad and wires it into a MonoBehaviour.
 
@@ -103,4 +103,4 @@ protected override void OnSystemUnlinked()
 
 Override `ValidateInputs` on the server side to enforce game rules — mutate the fields to correct them and return whether the input was accepted unchanged. Returning `false` is what triggers the forward to `InputCorrected`.
 
-For the serialization contract behind `Write`/`Read` and server-side validation in more depth, see [Input components](../../core-api/control/input-components).
+For the serialization contract behind `Write`/`Read` and server-side validation in more depth, see [Input components](../../core-api/control/input-components.md).
