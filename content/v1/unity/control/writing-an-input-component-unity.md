@@ -87,7 +87,7 @@ private void OnInputReceived(uint tick)
 }
 ```
 
-Unsubscribe wherever the component's owning system goes away, so a pooled or destroyed object doesn't keep a stale handler alive — `OnSystemUnlinked` on a `NucleusBehaviour<T0>`, or `OnDestroy` as a backstop for a behaviour torn down while still linked:
+Unsubscribe in `OnSystemUnlinked` on a `NucleusBehaviour<T0>`, so a pooled or destroyed object doesn't keep a stale handler alive. It also runs when the behaviour is destroyed while still linked, so no `OnDestroy` backstop is needed:
 
 ```csharp
 protected override void OnSystemUnlinked()
