@@ -2,7 +2,7 @@
 title: "Tick rate and the loop in Unity"
 ---
 
-> **Driving the core API directly?** See [Ticks, tick rate and time](../../core-api/core/ticks-and-time).
+> **Driving the core API directly?** See [Ticks, tick rate and time](../../core-api/core/ticks-and-time.md).
 
 ## Setting the tick rate
 
@@ -43,5 +43,5 @@ Unlike the default provider, the Unity provider drives subtick accumulation ever
 
 ## See also
 
-- [The network loop steps](../../core-api/core/network-loop-steps) — what actually runs at each step, and in what order.
-- [Driving the loop yourself](../../core-api/core/custom-loop-step-provider) — writing your own `INetworkLoopStepProvider` instead of the one Unity supplies.
+- [The network loop steps](../../core-api/core/network-loop-steps.md) — what actually runs at each step, and in what order.
+- [Driving the loop yourself](../../core-api/core/custom-loop-step-provider.md) — writing your own `INetworkLoopStepProvider` instead of the one Unity supplies.

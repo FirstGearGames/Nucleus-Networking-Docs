@@ -2,7 +2,7 @@
 title: "NetworkTransform"
 ---
 
-> **Driving the core API directly?** See [TransformComponent](../../core-api/state/transform-component).
+> **Driving the core API directly?** See [TransformComponent](../../core-api/state/transform-component.md).
 
 `NetworkTransform` replicates a GameObject's position, rotation, and scale. Add it to an object that also carries a `NetworkSystemObject` (it requires one) and the controller's transform replicates to every other peer.
 
@@ -40,4 +40,4 @@ With Kinematic Management Enabled on, an attached `Rigidbody` is held kinematic 
 
 ## See Also
 
-The replicated component this behaviour owns and binds to is `UnityTransformComponentBase` (`UnityLocalTransformComponent` or `UnityWorldTransformComponent` depending on Transform Space) — see [TransformComponent](../../core-api/state/transform-component) for its API.
+The replicated component this behaviour owns and binds to is `UnityTransformComponentBase` (`UnityLocalTransformComponent` or `UnityWorldTransformComponent` depending on Transform Space) — see [TransformComponent](../../core-api/state/transform-component.md) for its API.

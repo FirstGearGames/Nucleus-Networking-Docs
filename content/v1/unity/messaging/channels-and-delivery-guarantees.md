@@ -35,4 +35,4 @@ This promotion happens with no log line and no return value telling you it occur
 
 ## When neither one is the right tool
 
-Messages and calls both fire once and are gone - nothing records that they happened for a peer that starts observing afterward. If a value needs to be correct for a late joiner, it belongs in a replicated member instead, which shows a new observer the value as of the last write rather than replaying past sends. See [State, a Message, or a Call?](../../state-message-or-call.md) and [How replicated state works](../state/state-replication-model.md).
+Messages and calls both fire once and are gone - nothing records that they happened for a peer that starts observing afterward. If a value needs to be correct for a late joiner, it belongs in a replicated member instead, which shows a new observer the value as of the last write rather than replaying past sends. See [State, a Message, or a Call?](./state-message-or-call.md) and [How replicated state works](../state/state-replication-model.md).

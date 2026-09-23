@@ -2,7 +2,7 @@
 title: "Assigning and releasing control"
 ---
 
-> **Using Unity?** See [Giving a client control of an object](../../unity/control/transferring-control-in-unity).
+> **Using Unity?** See [Giving a client control of an object](../../unity/control/transferring-control-in-unity.md).
 
 ## Assigning and releasing control
 
@@ -37,7 +37,7 @@ It's raised with `ViolationAction.Ignore`: the ordinary cause is a race (control
 
 ## When the controller leaves
 
-The server drops the departing connection's reference automatically; a system does not have to notice its controller leaving on its own. Whether the controlling identity itself is cleared right away or held for a returning connection to reclaim is a retention decision, not part of this page - see [Controller retention](../control/controller-retention) for holding a departed controller's objects.
+The server drops the departing connection's reference automatically; a system does not have to notice its controller leaving on its own. Whether the controlling identity itself is cleared right away or held for a returning connection to reclaim is a retention decision, not part of this page - see [Controller retention](./controller-retention.md) for holding a departed controller's objects.
 
 ## Replication
 

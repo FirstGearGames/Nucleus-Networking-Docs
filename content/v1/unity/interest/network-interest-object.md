@@ -2,7 +2,7 @@
 title: "Network Interest Object"
 ---
 
-> **Driving the core API directly?** See [Registering interest conditions](../../core-api/interest/registering-interest-conditions).
+> **Driving the core API directly?** See [Registering interest conditions](../../core-api/interest/registering-interest-conditions.md).
 
 ## Description
 

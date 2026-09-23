@@ -2,7 +2,7 @@
 title: "Testing with two editors"
 ---
 
-> **Driving the core API directly?** See [Running two peers in one process](./running-two-peers-in-one-process).
+> **Driving the core API directly?** See [Running two peers in one process](./running-two-peers-in-one-process.md).
 
 ## One editor shows nothing
 

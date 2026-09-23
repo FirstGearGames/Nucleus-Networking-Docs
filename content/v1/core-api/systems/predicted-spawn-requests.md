@@ -2,7 +2,7 @@
 title: "Predicted spawn and despawn requests"
 ---
 
-> **Using Unity?** See [Client-predicted spawning in Unity](../../unity/systems/predicted-spawning).
+> **Using Unity?** See [Client-predicted spawning in Unity](../../unity/systems/predicted-spawning.md).
 
 Predicted spawning lets a client create or remove an object immediately, ahead of the server agreeing, instead of waiting a round trip to find out whether it may. It is a Pro feature.
 

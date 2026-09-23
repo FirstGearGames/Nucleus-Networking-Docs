@@ -2,7 +2,7 @@
 title: "Client-predicted spawning in Unity"
 ---
 
-> **Driving the core API directly?** See [Predicted spawn and despawn requests](../../core-api/systems/predicted-spawn-requests).
+> **Driving the core API directly?** See [Predicted spawn and despawn requests](../../core-api/systems/predicted-spawn-requests.md).
 
 Predicted spawning is a Pro feature. It lets a client create a prefab instance the instant it decides to, instead of waiting a round trip for the server to spawn it. The server still decides whether the object survives: it can confirm the client's guess or reject it, and the client finds out which.
 
@@ -85,4 +85,4 @@ Handle the rejection to make it legible instead of jarring: a small poof, a soun
 
 ## Authority side
 
-Confirming or rejecting a predicted spawn, granting the identifier lease it rides on, and choosing the refusal reason are all decided on the server. See [Predicted spawn and despawn requests](../../core-api/systems/predicted-spawn-requests) for the validators, the lease, and the full set of refusal reasons.
+Confirming or rejecting a predicted spawn, granting the identifier lease it rides on, and choosing the refusal reason are all decided on the server. See [Predicted spawn and despawn requests](../../core-api/systems/predicted-spawn-requests.md) for the validators, the lease, and the full set of refusal reasons.

@@ -2,7 +2,7 @@
 title: "Reading who controls a system"
 ---
 
-> **Using Unity?** See [Control in a Unity script](../../unity/control/control-in-unity-scripts).
+> **Using Unity?** See [Control in a Unity script](../../unity/control/control-in-unity-scripts.md).
 
 ## Checking control
 

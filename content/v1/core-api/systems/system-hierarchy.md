@@ -2,7 +2,7 @@
 title: "Parents, children and hierarchy"
 ---
 
-> **Using Unity?** See [Carrying and re-parenting objects](../../unity/systems/reparenting-objects).
+> **Using Unity?** See [Carrying and re-parenting objects](../../unity/systems/reparenting-objects.md).
 
 A NetworkSystem can be attached to another so the two move together and replicate as a unit. The link is server-only, the child follows a strict eligibility rule, and a receiver sees the identifier before it can see the object it names.
 

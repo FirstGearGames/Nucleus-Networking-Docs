@@ -2,7 +2,7 @@
 title: "Simulating latency, jitter and loss"
 ---
 
-> **Using Unity?** See [Simulating a bad connection in the editor](../../unity/transports/simulating-bad-connections-unity).
+> **Using Unity?** See [Simulating a bad connection in the editor](../../unity/transports/simulating-bad-connections-unity.md).
 
 A loopback connection is instant and lossless, which means anything that only matters on a bad link never gets exercised until players hit it. `Synapse` has three static knobs that make loopback behave like a real connection so you can drive that behavior on demand.
 

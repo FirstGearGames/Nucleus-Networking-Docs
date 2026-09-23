@@ -2,7 +2,7 @@
 title: "How replicated state works"
 ---
 
-See [Start Here / How replication works](./how-replication-works.md) for the pipeline overview. This page covers only the member-and-component contract every other page in this section assumes.
+See [Start Here / How replication works](../../start-here/how-replication-works.md) for the pipeline overview. This page covers only the member-and-component contract every other page in this section assumes.
 
 ## Containment
 

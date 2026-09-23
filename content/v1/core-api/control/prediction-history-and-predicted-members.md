@@ -2,7 +2,7 @@
 title: "Predicted members and prediction history"
 ---
 
-> **Using Unity?** See [Prediction settings on the Unity manager](../../unity/control/prediction-settings-in-unity).
+> **Using Unity?** See [Prediction settings on the Unity manager](../../unity/control/prediction-settings-in-unity.md).
 
 ## The isPredicted constructor argument
 
@@ -71,4 +71,4 @@ It carries the `SystemId` of the `NetworkSystem` whose predicted member the send
 
 No shipped component in the engine or the Unity integration sets `isPredicted: true`; only test components (`PredictedStateComponent`, `InterpolationStateComponent`) do. Prediction is an explicit, per-member opt-in you add to your own `NetworkMember<T0>` field declarations, not a default behavior or something a base class turns on for you.
 
-See [Reconciliation](../../api/control/reconciliation) for what happens after a rewind, including how a replay re-runs the ticks between the corrected tick and the present.
+See [Reconciliation](./reconciliation.md) for what happens after a rewind, including how a replay re-runs the ticks between the corrected tick and the present.

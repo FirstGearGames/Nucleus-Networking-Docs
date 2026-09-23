@@ -2,7 +2,7 @@
 title: "The host interest report"
 ---
 
-> **Using Unity?** See [Making a host see what its players see](../../unity/interest/host-visibility-in-unity).
+> **Using Unity?** See [Making a host see what its players see](../../unity/interest/host-visibility-in-unity.md).
 
 ## What it answers
 

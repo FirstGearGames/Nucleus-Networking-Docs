@@ -2,7 +2,7 @@
 title: "Registering interest conditions"
 ---
 
-> **Using Unity?** See [Network Interest Object](../../unity/interest/network-interest-object-component)
+> **Using Unity?** See [Network Interest Object](../../unity/interest/network-interest-object-component.md)
 
 ## Two registration routes
 

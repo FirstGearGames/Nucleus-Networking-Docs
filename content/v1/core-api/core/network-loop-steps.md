@@ -41,7 +41,7 @@ The remaining steps — `EarlyStateUpdate`, `Reconcile`, `LateFixedUpdate`, `Var
 
 ## Message and RPC dispatch
 
-Two dispatch points fall directly out of this ordering: typed messages resolve on `EarlyVariableUpdate`, and system RPCs resolve on `LateStateUpdate`. The difference, and why each lands where it does, is covered in [When a Message or Call Reaches Its Handler](/v1/core-api/messaging/message-and-call-timing) rather than repeated here.
+Two dispatch points fall directly out of this ordering: typed messages resolve on `EarlyVariableUpdate`, and system RPCs resolve on `LateStateUpdate`. The difference, and why each lands where it does, is covered in [When a Message or Call Reaches Its Handler](../messaging/message-and-call-timing.md) rather than repeated here.
 
 ## Hooking into a step
 
@@ -69,7 +69,7 @@ coreManager.NetworkLoopManager.RegisterNetworkLoopStepCallbacks(scoreTracker);
 
 `GetNetworkLoopSteps` can combine any number of flags; `OnNetworkLoopStep` is called once per step it declared, each time with just that one flag. Unregister with `UnregisterNetworkLoopStepCallbacks` when the object is torn down.
 
-**In Unity**, a `NucleusBehaviour` exposes the same twelve steps as per-step virtuals instead: `OnEarlyVariableUpdate`, `OnEarlyTickUpdate`, `OnEarlyStateUpdate`, `OnLateStateUpdate`, `OnReconcile`, `OnEarlyFixedUpdate`, `OnLateFixedUpdate`, `OnVariableUpdate`, `OnEarlyStateWrite`, `OnLateStateWrite`, `OnLateTickUpdate`, `OnLateVariableUpdate`. Override the ones you need; the base class only registers for the steps your concrete type actually overrides. See [Tick rate and the loop in Unity](/v1/unity/core/unity-tick-rate-and-the-loop) for the component side of this.
+**In Unity**, a `NucleusBehaviour` exposes the same twelve steps as per-step virtuals instead: `OnEarlyVariableUpdate`, `OnEarlyTickUpdate`, `OnEarlyStateUpdate`, `OnLateStateUpdate`, `OnReconcile`, `OnEarlyFixedUpdate`, `OnLateFixedUpdate`, `OnVariableUpdate`, `OnEarlyStateWrite`, `OnLateStateWrite`, `OnLateTickUpdate`, `OnLateVariableUpdate`. Override the ones you need; the base class only registers for the steps your concrete type actually overrides. See [Tick rate and the loop in Unity](../../unity/core/unity-tick-rate-and-the-loop.md) for the component side of this.
 
 ## Testing a step in a hot path
 

@@ -2,7 +2,7 @@
 title: "Sending a Remote Call From a Component"
 ---
 
-> **Driving the core API directly?** See [System RPCs](../../core-api/messaging/system-rpcs).
+> **Driving the core API directly?** See [System RPCs](../../core-api/messaging/system-rpcs.md).
 
 ## Resolving the system to send from
 
@@ -86,4 +86,4 @@ Every setting on that subject is a plain C# assignment against the manager or th
 
 ## Targets, self-delivery, and access
 
-For `RpcTarget`, `RpcSelfDelivery`, and `RpcSendAccess`, see [System RPCs](../../core-api/messaging/system-rpcs).
+For `RpcTarget`, `RpcSelfDelivery`, and `RpcSendAccess`, see [System RPCs](../../core-api/messaging/system-rpcs.md).

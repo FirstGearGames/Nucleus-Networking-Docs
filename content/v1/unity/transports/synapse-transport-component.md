@@ -2,7 +2,7 @@
 title: "Synapse Transport component"
 ---
 
-> **Driving the core API directly?** See [The Synapse transport](../../core-api/transports/synapse-transport).
+> **Driving the core API directly?** See [The Synapse transport](../../core-api/transports/synapse-transport.md).
 
 `SynapseTransport` is the Inspector-configurable `NetworkTransport` for the built-in UDP transport, Synapse. Place it on the `UnityCoreManager`'s GameObject and edit its fields there; `UnityTransportManager` reads every `NetworkTransport` component on that GameObject and its children and adds each to the `CoreManager`. When it finds none, it adds a `SynapseTransport` itself, so a project with no transport component configured still gets Synapse with its defaults.
 

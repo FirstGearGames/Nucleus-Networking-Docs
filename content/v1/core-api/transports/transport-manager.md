@@ -2,7 +2,7 @@
 title: "TransportManager"
 ---
 
-> **Using Unity?** See [Transport Manager component](../../unity/transports/transport-manager-component).
+> **Using Unity?** See [Transport Manager component](../../unity/transports/transport-manager-component.md).
 
 `TransportManager` is the `CoreManager` member that owns the added `Transport` instances, tracks every `Connection`, and answers role and peer-resolution queries. Reach it through `CoreManager.TransportManager`.
 

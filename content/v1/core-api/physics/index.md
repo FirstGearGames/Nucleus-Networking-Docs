@@ -4,11 +4,11 @@ title: "Physics Synchronization"
 
 Pages in this category:
 
-- [NetworkPhysicsComponent](./network-physics-component)
-- [PhysicsConvergence](./physics-convergence)
-- [How physics replication works](./how-physics-replication-works)
-- [Replicate a physics body](./replicate-a-body)
-- [Adapting your engine](./adapting-your-engine)
-- [Trajectory projection](./trajectory-projection)
-- [Locally predicted bodies](./locally-predicted-bodies)
-- [Swept projection targets](./swept-projection-targets)
+- [NetworkPhysicsComponent](./network-physics-component.md)
+- [PhysicsConvergence](./physics-convergence.md)
+- [How physics replication works](./how-physics-replication-works.md)
+- [Replicate a physics body](./replicate-a-body.md)
+- [Adapting your engine](./adapting-your-engine.md)
+- [Trajectory projection](./trajectory-projection.md)
+- [Locally predicted bodies](./locally-predicted-bodies.md)
+- [Swept projection targets](./swept-projection-targets.md)

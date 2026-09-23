@@ -2,7 +2,7 @@
 title: "Installing and updating Nucleus in Unity"
 ---
 
-> **Driving the core API directly?** See [Adding Nucleus to a .NET project](../start-here/adding-nucleus-to-a-dotnet-project).
+> **Driving the core API directly?** See [Adding Nucleus to a .NET project](../start-here/adding-nucleus-to-a-dotnet-project.md).
 
 ## What's in the package
 
@@ -59,8 +59,8 @@ If the editor is in Play mode when you replace the files, Unity reimports and tr
 
 ## Identifying what you're running
 
-Nothing in the package is stamped with a version today — no version number in the DLLs, no marker file to check against. See [Versioning, upgrading and release notes](../reference/versioning-and-upgrading) for what's tracked there instead.
+Nothing in the package is stamped with a version today — no version number in the DLLs, no marker file to check against. See [Versioning, upgrading and release notes](./versioning-and-upgrading.md) for what's tracked there instead.
 
 ## Not using Unity?
 
-For a dedicated server or any other non-Unity host, see [Adding Nucleus to a .NET project](../start-here/adding-nucleus-to-a-dotnet-project).
+For a dedicated server or any other non-Unity host, see [Adding Nucleus to a .NET project](../start-here/adding-nucleus-to-a-dotnet-project.md).

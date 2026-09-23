@@ -2,7 +2,7 @@
 title: "The Nucleus Core Manager component"
 ---
 
-> **Driving the core API directly?** See [Creating a CoreManager](../../core-api/core/core-manager).
+> **Driving the core API directly?** See [Creating a CoreManager](../../core-api/core/core-manager.md).
 
 `UnityCoreManager` is the one component a scene needs to bring up a Nucleus session. Drop it on a root GameObject and its `Awake` builds the `CoreManager`, wires the Unity integration to it, and fills in every other manager component the session needs.
 

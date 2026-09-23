@@ -2,7 +2,7 @@
 title: "UnitySceneLoader component"
 ---
 
-> **Driving the core API directly?** See [Registering a scene loader](../../core-api/scenes/scene-loader-api).
+> **Driving the core API directly?** See [Registering a scene loader](../../core-api/scenes/scene-loader-api.md).
 
 `UnitySceneLoader` is the shipped `ISceneLoader` implementation for Unity: it maps the scene identifiers a server sends to scene assets, loads them additively, and reports back so withheld spawns can land. Add it to a GameObject alongside (or reachable from) the integration's CoreManager and it registers itself automatically.
 

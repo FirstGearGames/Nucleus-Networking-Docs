@@ -2,7 +2,7 @@
 title: "Violations"
 ---
 
-> **Using Unity?** See [Handling violations in Unity](../../unity/diagnostics/handling-violations-in-unity)
+> **Using Unity?** See [Handling violations in Unity](../../unity/diagnostics/handling-violations-in-unity.md)
 
 ## What a violation is
 

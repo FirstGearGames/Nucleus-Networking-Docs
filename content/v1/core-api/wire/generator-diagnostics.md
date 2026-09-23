@@ -32,9 +32,9 @@ By far the most common diagnostic is `SERIALIZERS001`, with a message shaped lik
 
 This means the generator could not find a serializer for that member's type. It has three fixes:
 
-- **Marker struct** - if the type lives in an assembly you don't control (a `System.Numerics` type, a third-party math type), add it as a field on a marker struct carrying `[NetworkType]` so the generator can reach it. See [Reaching Types You Cannot Annotate](/v1/core-api/wire/external-network-types).
-- **Hand-written serializer** - if the type's shape genuinely needs custom read/write logic rather than just visibility. See [Writing a Custom Serializer](/v1/core-api/wire/custom-serializers).
-- **Declare the native type instead of the engine one** - in Unity, declaring a `UnityEngine` type (`Vector3`, `Quaternion`, and so on) instead of its `System.Numerics` equivalent hits this same warning, because only the native types have generated serializers. See [Unity Types and System.Numerics](/v1/unity/state/unity-types-and-system-numerics).
+- **Marker struct** - if the type lives in an assembly you don't control (a `System.Numerics` type, a third-party math type), add it as a field on a marker struct carrying `[NetworkType]` so the generator can reach it. See [Reaching Types You Cannot Annotate](./external-network-types.md).
+- **Hand-written serializer** - if the type's shape genuinely needs custom read/write logic rather than just visibility. See [Writing a Custom Serializer](./custom-serializers.md).
+- **Declare the native type instead of the engine one** - in Unity, declaring a `UnityEngine` type (`Vector3`, `Quaternion`, and so on) instead of its `System.Numerics` equivalent hits this same warning, because only the native types have generated serializers. See [Unity Types and System.Numerics](../../unity/state/unity-types-and-system-numerics.md).
 
 `SERIALIZERS000` is the error-level sibling of the same stage: a required serializer is missing or malformed in a way the generator cannot route around at all, for example `A [Write/Read] serializer could not be found for [Type].` or a type exceeding the maximum networked member count. Treat it the same way as `SERIALIZERS001`, just with a build-breaking severity.
 

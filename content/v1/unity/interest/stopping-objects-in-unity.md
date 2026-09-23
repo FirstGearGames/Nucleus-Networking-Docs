@@ -2,7 +2,7 @@
 title: "Frozen or gone: what a stop does to the object"
 ---
 
-> **Driving the core API directly?** See [Stopping versus culling](../../core-api/interest/stopping-versus-culling).
+> **Driving the core API directly?** See [Stopping versus culling](../../core-api/interest/stopping-versus-culling.md).
 
 ## The two outcomes
 

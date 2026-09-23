@@ -2,7 +2,7 @@
 title: "TransformComponent"
 ---
 
-> **Using Unity?** See [NetworkTransform](../../unity/state/network-transform).
+> **Using Unity?** See [NetworkTransform](../../unity/state/network-transform.md).
 
 `TransformComponent` is the engine-neutral replicated pose of an object: position, rotation, and scale. It declares no space of its own — whichever adapter binds it decides whether the values mean world or parent-local, and that choice is expressed by which subclass a system carries, not by a flag on the component.
 

@@ -32,6 +32,6 @@ Bodies in a local physics scene still need manual interpolation; local physics d
 
 ## See also
 
-- [UnitySceneLoader component](/unity/scenes/unity-scene-loader) and [UnitySceneManager component](/unity/scenes/unity-scene-manager) for the loader and manager settings themselves
-- [Opening and closing scene instances](/core-api/scenes/opening-scene-instances) for opening the stacked instances this applies to
-- [Moving and carrying objects between scenes](/how-to/moving-and-carrying-objects-between-scenes) for moving systems between scenes
+- [UnitySceneLoader component](../scenes/unity-scene-loader.md) and [UnitySceneManager component](../scenes/unity-scene-manager.md) for the loader and manager settings themselves
+- [Opening and closing scene instances](../../core-api/scenes/opening-scene-instances.md) for opening the stacked instances this applies to
+- [Moving and carrying objects between scenes](../../core-api/scenes/moving-objects-between-scenes.md) for moving systems between scenes

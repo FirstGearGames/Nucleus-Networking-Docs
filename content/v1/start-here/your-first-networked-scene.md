@@ -2,7 +2,7 @@
 title: "Your first networked scene"
 ---
 
-> **Driving the core API directly?** See [Your first .NET host](./your-first-dotnet-host).
+> **Driving the core API directly?** See [Your first .NET host](./your-first-dotnet-host.md).
 
 Every Unity scene that uses Nucleus needs exactly one `UnityCoreManager`. Everything else in this tutorial follows from that single component.
 
@@ -83,4 +83,4 @@ When the `UnityCoreManager` GameObject is destroyed — including on leaving Pla
 
 ## Next steps
 
-At this point you have a scene that can start a server, a client, or a host, and see the connection come up. Building a dedicated server with no Unity in the process at all works differently — see [Your first .NET host](./your-first-dotnet-host).
+At this point you have a scene that can start a server, a client, or a host, and see the connection come up. Building a dedicated server with no Unity in the process at all works differently — see [Your first .NET host](./your-first-dotnet-host.md).

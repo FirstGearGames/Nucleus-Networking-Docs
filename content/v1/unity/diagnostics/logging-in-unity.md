@@ -2,7 +2,7 @@
 title: "Engine logging in the Unity console"
 ---
 
-> **Driving the core API directly?** See [Logging](../../core-api/diagnostics/logging).
+> **Driving the core API directly?** See [Logging](../../core-api/diagnostics/logging.md).
 
 Every message the engine logs already shows up in the Unity console. There is nothing to wire up.
 

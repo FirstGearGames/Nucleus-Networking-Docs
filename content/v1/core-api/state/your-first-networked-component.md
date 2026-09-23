@@ -2,7 +2,7 @@
 title: "Your first networked component"
 ---
 
-> **Using Unity?** See [Replicating a value from a Unity script](../../unity/state/replicated-values-in-unity).
+> **Using Unity?** See [Replicating a value from a Unity script](../../unity/state/replicated-values-in-unity.md).
 
 ## Declare the component
 

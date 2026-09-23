@@ -2,7 +2,7 @@
 title: "Keeping a player's objects across a disconnect"
 ---
 
-> **Driving the core API directly?** See [Controller retention](../../core-api/control/controller-retention).
+> **Driving the core API directly?** See [Controller retention](../../core-api/control/controller-retention.md).
 
 By default, a disconnecting player's object is despawned. Retention changes that: the object is left in the world, uncontrolled, and handed back to the same player if they reconnect before a record expires. Two components decide whether that happens and how long it lasts, and a third can override it per prefab.
 
@@ -44,6 +44,6 @@ Controller retention is server bookkeeping: the Unity System Manager fields, the
 
 ## Where to go next
 
-Tokens, the retention events, and reclaiming a retained object by hand are covered on the API page: [Controller retention](../../core-api/control/controller-retention).
+Tokens, the retention events, and reclaiming a retained object by hand are covered on the API page: [Controller retention](../../core-api/control/controller-retention.md).
 
-This page does not cover host migration or world adoption. For what happens to retained objects when the host itself is lost, see [Surviving the loss of a host](../transports/surviving-the-loss-of-a-host).
+This page does not cover host migration or world adoption. For what happens to retained objects when the host itself is lost, see [Surviving the loss of a host](../transports/hosting-topologies.md).

@@ -2,7 +2,7 @@
 title: "Building a headless Unity server"
 ---
 
-> **Driving the core API directly?** See [Running a dedicated .NET server](../../core-api/transports/dedicated-server-host).
+> **Driving the core API directly?** See [Running a dedicated .NET server](../../core-api/transports/dedicated-server-host.md).
 
 ## The scene
 
@@ -51,4 +51,4 @@ Call `UnityTransportManager.ShutdownAll()` on process exit to remove and shut do
 
 ## When to skip Unity entirely
 
-If the server doesn't need Unity's engine loop, physics, or any other engine-side feature, a plain .NET host avoids the editor, the Dedicated Server build pipeline, and this bootstrap ordering altogether. See [Running a dedicated .NET server](../../core-api/transports/dedicated-server-host).
+If the server doesn't need Unity's engine loop, physics, or any other engine-side feature, a plain .NET host avoids the editor, the Dedicated Server build pipeline, and this bootstrap ordering altogether. See [Running a dedicated .NET server](../../core-api/transports/dedicated-server-host.md).

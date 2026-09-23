@@ -2,7 +2,7 @@
 title: "Renting and finding systems in code"
 ---
 
-> **Using Unity?** See [NucleusBehaviour: the script base class](../../unity/systems/nucleus-behaviour).
+> **Using Unity?** See [NucleusBehaviour: the script base class](../../unity/systems/nucleus-behaviour.md).
 
 ## Renting a system
 

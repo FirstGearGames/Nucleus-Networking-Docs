@@ -2,7 +2,7 @@
 title: "Handler Registration and Scope"
 ---
 
-> **Using Unity?** See [Registering Call Handlers Across a Component's Lifetime](../../unity/messaging/call-handlers-and-component-lifetime).
+> **Using Unity?** See [Registering Call Handlers Across a Component's Lifetime](../../unity/messaging/call-handlers-and-component-lifetime.md).
 
 ## Scope decides who a call reaches
 

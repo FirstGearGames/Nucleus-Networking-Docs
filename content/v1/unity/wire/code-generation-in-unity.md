@@ -2,7 +2,7 @@
 title: "Code Generation in Unity"
 ---
 
-> **Driving the core API directly?** See [Wiring the Source Generator into a .NET Project](../../core-api/wire/source-generator-setup).
+> **Driving the core API directly?** See [Wiring the Source Generator into a .NET Project](../../core-api/wire/source-generator-setup.md).
 
 ## What has to be in Assets/Nucleus
 
@@ -47,4 +47,4 @@ Generator diagnostics appear in the Unity console, using the same diagnostic ids
 
 ## See also
 
-For what the generator emits, and for wiring it into a plain .NET project outside Unity, see [Wiring the Source Generator into a .NET Project](../../core-api/wire/source-generator-setup).
+For what the generator emits, and for wiring it into a plain .NET project outside Unity, see [Wiring the Source Generator into a .NET Project](../../core-api/wire/source-generator-setup.md).

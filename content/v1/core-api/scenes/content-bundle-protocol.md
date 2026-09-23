@@ -2,7 +2,7 @@
 title: "The content bundle protocol"
 ---
 
-> **Using Unity?** See [Content bundles in Unity](../../unity/scenes/content-bundles-in-unity).
+> **Using Unity?** See [Content bundles in Unity](../../unity/scenes/content-bundles-in-unity.md).
 
 A content bundle is a `ushort` identifier for a shard of content that is not in the base build: a set of prefabs a client
 might not have installed yet. Nucleus carries the identifier and the load/unload protocol between the peers; it ships no

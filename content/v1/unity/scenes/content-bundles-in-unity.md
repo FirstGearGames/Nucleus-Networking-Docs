@@ -2,7 +2,7 @@
 title: "Content bundles in Unity"
 ---
 
-> **Driving the core API directly?** See [The content bundle protocol](../../core-api/scenes/content-bundle-protocol).
+> **Driving the core API directly?** See [The content bundle protocol](../../core-api/scenes/content-bundle-protocol.md).
 
 Content bundles let you ship a set of networked prefabs outside the base build and load them into a running game as an asset bundle. Clients that have not yet loaded a bundle simply do not receive spawns for the prefabs it ships — the server withholds them until the bundle is loaded and registered.
 

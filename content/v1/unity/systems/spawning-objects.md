@@ -2,7 +2,7 @@
 title: "Spawning and despawning objects"
 ---
 
-> **Driving the core API directly?** See [Starting and stopping systems](../../core-api/systems/spawning-systems).
+> **Driving the core API directly?** See [Starting and stopping systems](../../core-api/systems/spawning-systems.md).
 
 ## Declaring what an object needs
 

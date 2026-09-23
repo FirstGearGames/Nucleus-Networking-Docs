@@ -2,7 +2,7 @@
 title: "Replicating your first object"
 ---
 
-> **Driving the core API directly?** See [Replicating your first system](./replicating-your-first-system).
+> **Driving the core API directly?** See [Replicating your first system](./replicating-your-first-system.md).
 
 ## The marker component
 

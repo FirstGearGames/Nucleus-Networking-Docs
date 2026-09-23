@@ -2,7 +2,7 @@
 title: "Play mode, domain reload and session lifetime"
 ---
 
-> **Driving the core API directly?** See [Shutting a session down](../../core-api/core/shutting-down-a-session).
+> **Driving the core API directly?** See [Shutting a session down](../../core-api/core/shutting-down-a-session.md).
 
 ## The problem
 

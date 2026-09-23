@@ -2,7 +2,7 @@
 title: "Saving and loading a world from Unity"
 ---
 
-> **Driving the core API directly?** See [Saving and loading a world](../../core-api/scenes/world-persistence).
+> **Driving the core API directly?** See [Saving and loading a world](../../core-api/scenes/world-persistence.md).
 
 There is no Unity persistence component. `WorldPersistenceManager` lives on `CoreManager`, and you drive it from a `MonoBehaviour` you write yourself: resolve `CoreManager` from `UnityCoreManager`, then call into `CoreManager.WorldPersistenceManager`.
 

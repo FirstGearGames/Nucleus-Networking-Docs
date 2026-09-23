@@ -2,7 +2,7 @@
 title: "Ticks, tick rate and time"
 ---
 
-> **Using Unity?** See [Tick rate and the loop in Unity](../../unity/core/unity-tick-rate-and-the-loop).
+> **Using Unity?** See [Tick rate and the loop in Unity](../../unity/core/unity-tick-rate-and-the-loop.md).
 
 ## Tick rate
 

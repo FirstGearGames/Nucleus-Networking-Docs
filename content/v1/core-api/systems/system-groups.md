@@ -2,7 +2,7 @@
 title: "System groups"
 ---
 
-> **Using Unity?** See [Several systems on one object](../../unity/systems/grouped-systems).
+> **Using Unity?** See [Several systems on one object](../../unity/systems/grouped-systems.md).
 
 ## Why groups exist
 

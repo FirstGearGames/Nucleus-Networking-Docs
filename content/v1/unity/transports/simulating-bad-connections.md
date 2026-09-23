@@ -2,7 +2,7 @@
 title: "Simulating a bad connection in the editor"
 ---
 
-> **Driving the core API directly?** See [Simulating latency, jitter and loss](../../core-api/transports/simulating-bad-connections).
+> **Driving the core API directly?** See [Simulating latency, jitter and loss](../../core-api/transports/simulating-bad-connections.md).
 
 ## The three fields
 

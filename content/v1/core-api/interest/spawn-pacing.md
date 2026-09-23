@@ -47,4 +47,4 @@ Measure a real join or scene load's peak spawns-per-tick before and after settin
 
 ## Unity
 
-In the Unity integration, this ceiling is the **Maximum Spawns Per Tick** field on the Unity Interest Manager component — see [Unity Interest Manager component](/unity/interest/unity-interest-manager-component).
+In the Unity integration, this ceiling is the **Maximum Spawns Per Tick** field on the Unity Interest Manager component — see [Unity Interest Manager component](../../unity/interest/unity-interest-manager-component.md).

@@ -2,7 +2,7 @@
 title: "Replaying a correction in Unity"
 ---
 
-> **Driving the core API directly?** See [Reconciliation and replay](../../core-api/control/reconciliation).
+> **Driving the core API directly?** See [Reconciliation and replay](../../core-api/control/reconciliation.md).
 
 ## Override OnReconcile
 

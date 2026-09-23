@@ -2,7 +2,7 @@
 title: "Reading network statistics in Unity"
 ---
 
-> **Driving the core API directly?** See [Network statistics](../../core-api/diagnostics/network-statistics)
+> **Driving the core API directly?** See [Network statistics](../../core-api/diagnostics/network-statistics.md)
 
 ## Getting to the counters
 
