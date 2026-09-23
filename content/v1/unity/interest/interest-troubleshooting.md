@@ -10,15 +10,15 @@ Fix: add the scene rule to the world's interest conditions unless you are arbitr
 
 ## Nothing is ever culled, however large the stop distance is
 
-Outside Unity, or on any peer where no engine integration registered a position reader, `InterestManager.PositionReader` is null. Every distance measurement then answers unmeasurable, and an unmeasured pair is never allowed to restrict anything, so no distance condition culls or stops anything, no matter what its cutoffs are set to.
+A distance condition reads positions through its own `TryReadSourcePosition` (the Unity integration's conditions read the linked GameObject's transform), not through the world reader registered with `InterestManager.SetPositionReader`. When it cannot measure a pair it answers unmeasurable, and an unmeasured pair is never allowed to restrict anything, so no cutoff culls or stops it. That happens when the connection controls nothing yet, so there is no point to measure from, or when `TryReadSourcePosition` returns `false` for the object or for every object the connection controls.
 
-Fix: call `InterestManager.SetPositionReader` with an `IInterestPositionReader` before any distance rule can matter. The Unity integration supplies one for you; a plain API world has to register its own.
+Fix: make sure each player controls the object it plays through, and that the condition's `TryReadSourcePosition` answers for both the evaluated object and the controlled ones. The world reader is used only by level of detail: without one, level of detail logs an error once and every pair reads as Near, but culling is unaffected.
 
 ## An object disappears at range when it should only freeze, or the reverse
 
 `DistanceInterestLadder.Resolve` returns an unmet spawn past the despawn cutoff and only an unmet stop past the stop cutoff — despawn always outranks stop from the same measured distance. Whether an unmet stop actually removes the object is `NetworkSystem.DespawnWhenStoppedEnabled`: off, the object freezes in place and keeps its last state; on, it is treated as culled once stopped.
 
-On a grouped object (several systems sharing one `NetworkSystemGroup`), a stop is a vote, not a unilateral despawn: `NetworkSystemGroup.SetStoppedVote` only casts a vote for a member whose stop is unmet *and* whose `DespawnWhenStoppedEnabled` is set, and the object leaves only once every member votes to. A member that freezes instead of voting holds the object in place by abstaining, so one system in the group with `DespawnWhenStoppedEnabled` off is enough to keep a "should have despawned" object sitting there. An ungrouped system has no sibling to defer to, so its own unmet stop with the flag on despawns it directly.
+On a grouped object (several systems sharing one `NetworkSystemGroup`), a stop is a vote, not a unilateral despawn: a member votes only when its stop is unmet *and* its `DespawnWhenStoppedEnabled` is set, and the object leaves only once every member votes to. A member that freezes instead of voting holds the object in place by abstaining, so one system in the group with `DespawnWhenStoppedEnabled` off is enough to keep a "should have despawned" object sitting there. An ungrouped system has no sibling to defer to, so its own unmet stop with the flag on despawns it directly.
 
 Fix: check `DespawnWhenStoppedEnabled` on every system in the group, not just the one you're staring at.
 
@@ -26,7 +26,7 @@ Fix: check `DespawnWhenStoppedEnabled` on every system in the group, not just th
 
 There is no hysteresis on a distance cull. `Resolve` is two bare distance-versus-cutoff comparisons with nothing damping the boundary, so a player oscillating around a cutoff between evaluations flips the verdict every pass. The only thing standing between a player's movement and a flicker is `EvaluationCadenceTicks`: distance is only re-measured once per that many ticks, so as long as a player cannot close the gap between "just inside" and "just past" the cutoff within one cadence, the flicker never has a chance to fire.
 
-Hysteresis does exist in this codebase, but only on the level-of-detail ladder (a fraction-of-a-rung band a distance has to re-cross before it switches back). It cannot fix this: a level-of-detail band changes only how often an object is described, never whether it spawns, stops, or despawns, so it has no bearing on a cull boundary.
+Hysteresis does exist in this codebase, but only on the level-of-detail ladder (a fraction-of-a-rung band a distance has to re-cross before it switches back). It cannot fix this: a level-of-detail band is only a reading for the game. It never changes what is sent or how often, nor whether an object spawns, stops, or despawns, so it has no bearing on a cull boundary.
 
 Fix: widen the gap between the stop/despawn cutoff and how far a player can move in one `EvaluationCadenceTicks`, either by raising the cutoff, lowering the cadence, or both. There is no setting to smooth the boundary itself.
 

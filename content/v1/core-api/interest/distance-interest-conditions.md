@@ -40,7 +40,7 @@ public uint MaximumControlledInterestObjects = DefaultMaximumControlledInterestO
 
 ## Unmeasurable pairs restrict nothing
 
-When a distance can't be measured — the connection controls nothing yet, or a controlled object's position can't be read — the condition answers unmeasurable and restricts nothing, rather than culling. This is what a host with no position reader registered for a system looks like: `TryReadSourcePosition` returns `false`, the pair is skipped, and interest for it is left alone. Culling on an unknown distance would empty the world for a player whose character hasn't finished spawning.
+When a distance can't be measured (the connection controls nothing yet, or a controlled object's position can't be read), the condition answers unmeasurable and restricts nothing, rather than culling. This is what a system whose object has been destroyed or has not finished spawning looks like: `TryReadSourcePosition` returns `false`, the pair is skipped, and interest for it is left alone. Culling on an unknown distance would empty the world for a player whose character hasn't finished spawning.
 
 ## Pro feature
 

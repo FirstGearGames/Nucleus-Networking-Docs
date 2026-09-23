@@ -111,7 +111,7 @@ Or, to return it and clear your own reference in the same call:
 NetworkSystemPool.ReturnAndNullifyReference(ref matchSystem);
 ```
 
-A system handed to you by a watch is borrowed, not owned: a wire-constructed instance returns to its pool immediately after your acquired or released handler returns, so read what you need during the call and keep no reference past it.
+A system handed to you by a watch is borrowed, not owned: the same instance stays valid from your acquired handler until your released handler, and a wire-constructed instance returns to its pool immediately after your released handler returns, so drop your reference there and keep none past it.
 
 ## Using Unity
 

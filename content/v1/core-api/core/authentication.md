@@ -68,7 +68,7 @@ public const ushort UnsetAuthenticationTimeout = 0;
 
 `ServerManager.AuthenticationTimeoutSeconds` bounds how long a connecting client can go unresolved before the server disconnects it, measured from the moment its remote connection is established. The default is 30 seconds. A silent client, or an authenticator that never reports an outcome, would otherwise hold a connection slot open indefinitely.
 
-The check runs once per tick, at the `LateTickUpdate` step, via `ServerManager.CheckAuthenticationTimeouts`. Set `AuthenticationTimeoutSeconds` to `UnsetAuthenticationTimeout` (0) to disable it.
+The check runs once per tick, at the `LateTickUpdate` step. Set `AuthenticationTimeoutSeconds` to `UnsetAuthenticationTimeout` (0) to disable it.
 
 ## Events
 

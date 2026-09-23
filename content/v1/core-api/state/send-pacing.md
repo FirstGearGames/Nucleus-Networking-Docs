@@ -40,7 +40,7 @@ Both `TransmissionMode` and `PathContinuation` are construction defaults, option
 
 ## Pro gating
 
-`Divine` and every `SendInterval` above `Normal` are Pro. The two are gated differently, on purpose. Naming `TransmissionMode.Divine` in a free build is a compile error: the mode is compiled out entirely rather than quietly replicating at ordinary cost. `SendInterval.Short` and `SendInterval.Long`, on the other hand, compile fine in a free build — an enum can't be partial, so the values stay declared — but pace nothing: free resolves every span to a single tick and replicates every changed tick, which is what `Normal` already means. That's what lets one prefab load in either edition without a `#if` around every member declaration.
+`Divine` and every `SendInterval` above `Normal` are Pro, and both are gated the same way. They compile fine in a free build, because an enum can't be split by edition, so the values stay declared, but they change nothing there. A member set to `TransmissionMode.Divine` replicates with ordinary deltas, as `Interval` does. `SendInterval.Short` and `SendInterval.Long` pace nothing: free resolves every span to a single tick and replicates every changed tick, which is what `Normal` already means. That's what lets one prefab load in either edition without a `#if` around every member declaration.
 
 ## Interval and interpolation
 

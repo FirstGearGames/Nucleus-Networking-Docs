@@ -46,7 +46,7 @@ public void Kick<T0>(T0 notice) where T0 : IMessage, new()
 
 It calls `Kick()` first, then sends `notice` as an ordinary reliable message. It reaches the client because `SendMessage` is exempt from `BlockOutgoing` — the one thing still allowed out during a pending kick. `notice` is a regular message type, not a server notice; see the messages page for how to define one and pass an instance here.
 
-Writing the two calls by hand instead is easy to get backwards: a message sent before the kick is marked survives the mark itself, but a message sent after `PurgeOutgoing` runs is silently discarded rather than refused.
+Writing the two calls by hand instead is easy to get backwards: a message sent before the kick is marked is still queued when `PurgeOutgoing` runs, so it is silently discarded rather than refused. Only a message sent after the mark reaches the client. Use `connection.Kick(notice)` and the order is always right.
 
 ## Reading the pending state
 
@@ -58,7 +58,7 @@ Once a kick is marked, `Connection` exposes:
 
 ## When the kick actually runs
 
-Marking a connection doesn't tear it down immediately. Kicks are queued and executed by `ExecutePendingKicks`, which runs at the `LateVariableUpdate` network loop step — after that tick's messages have serialized, so a reason sent during the same tick the kick was marked has already gone out by the time the connection closes.
+Marking a connection doesn't tear it down immediately. Kicks are queued and executed at the end of the `LateVariableUpdate` network loop step, after that tick's messages have serialized, so a reason sent during the same tick the kick was marked has already gone out by the time the connection closes.
 
 A second kick against a connection that already has one pending is ignored; the policy from the first call stands.
 

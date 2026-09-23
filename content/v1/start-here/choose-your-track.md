@@ -24,9 +24,9 @@ The component layer is a seat on top of the core managers, not a replacement for
 
 The core engine declares seams it does not implement, and expects an integration to fill them in. An API reader does not need to read the Unity track, but should know these seams exist and that Unity fills them:
 
-- `ISceneLoader` — loads and releases scenes by handle and id; the core has no notion of a scene asset, path, or build index.
-- `IInterestPositionReader` — reads a `NetworkSystem`'s world position for distance-based interest. **This is a Pro seam**, not something every edition's Unity project has.
-- `UnityPhysicsManager` — the inspector seat for the process-wide physics execution mode a `PhysicsSimulationCoordinator` reads.
+- `ISceneLoader`: loads and releases scenes by handle and id; the core has no notion of a scene asset, path, or build index.
+- `IInterestPositionReader`: reads a `NetworkSystem`'s world position for level of detail. (A distance condition reads positions through its own `TryReadSourcePosition`.) **This is a Pro seam**, not something every edition's Unity project has.
+- `UnityPhysicsManager`: the inspector seat for the process-wide physics execution mode a `PhysicsSimulationCoordinator` reads.
 
 A dedicated server or another engine implements these same seams its own way; nothing in the core requires Unity specifically.
 

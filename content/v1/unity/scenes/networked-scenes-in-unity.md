@@ -6,7 +6,7 @@ title: "Networked scenes in Unity"
 
 ## Add the manager and loader
 
-Put a `UnitySceneManager` on the same object as your `UnityCoreManager` (or anywhere it can find one). It drives the core `SceneManager` for you: on `ManagersInstantiated` it copies its `Join Placement`, `Automatic Request On Blocked Spawn Enabled` and `Scene Load Timeout Seconds` fields onto the core manager, then makes sure some scene loader exists.
+`UnityCoreManager` adds a `UnitySceneManager` with default settings to its own GameObject if that GameObject has none. To change its settings, add one yourself on that same GameObject, not on a child object: `UnityCoreManager` only looks on its own GameObject before adding one, so a copy on a child leaves you with two. It drives the core `SceneManager` for you: on `ManagersInstantiated` it copies its `Join Placement`, `Automatic Request On Blocked Spawn Enabled` and `Scene Load Timeout Seconds` fields onto the core manager, then makes sure some scene loader exists.
 
 That last step, `EnsureSceneLoader`, only fires when `Scene Loader Enabled` is on and no `NetworkSceneLoader` is found anywhere in the loaded scenes (inactive objects count). If it finds none, it adds a `UnitySceneLoader` component to its own GameObject and sets its `LocalPhysicsEnabled` from `Automatic Stacked Scene Simulation Enabled`. If a loader already exists, `UnitySceneManager` leaves it alone.
 
@@ -38,9 +38,9 @@ Skip `RequestSceneLoad` and nothing goes wrong loudly: the instance exists on th
 
 ## Join placement only covers new joins
 
-`SceneScope.Global` places every currently connected client the moment you open the instance, and places each later client as it authenticates. But that placement path runs from `OnClientAuthenticated` only - it fires for a client at the moment it joins, not for scenes opened afterwards. `Join Placement` (`UnitySceneManager`'s field, `JoinPlacement` on the core manager) governs that same join-time moment: which of the open scenes a freshly authenticated client is dropped into.
+`SceneScope.Global` places every currently connected client the moment you open the instance, and places each later client as it authenticates. `Join Placement` (`UnitySceneManager`'s field, `JoinPlacement` on the core manager) governs only the join-time moment: which of the scenes already open a freshly authenticated client is dropped into.
 
-None of this reaches a client that's already connected when you open a new scene, even a `Global` one - that placement already happened, or didn't need to, before this scene existed. Any scene opened after clients have joined needs its own explicit `RequestSceneLoad` per connection you want in it, `SceneScope.Global` included.
+So a scene you open after clients have joined reaches them only if it is `SceneScope.Global`. A `SceneScope.Connections` scene opened after a client joined is never offered to that client by `Join Placement`, even under the default `EveryOpenScene`, and needs its own explicit `RequestSceneLoad` per connection you want in it.
 
 ## Where the two halves live
 

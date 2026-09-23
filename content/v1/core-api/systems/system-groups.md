@@ -6,7 +6,7 @@ title: "System groups"
 
 ## Why groups exist
 
-A networked object is often more than one `NetworkSystem`: a body, an inventory, a health pool. Each is spawned, replicated, and despawned independently unless something ties them together. A group does that tying: it marks several systems as belonging to the same object so a receiver waits for the whole set before treating the object as arrived, and a despawn on any one member takes the rest with it.
+A networked object is often more than one `NetworkSystem`: a body, an inventory, a health pool. Each is spawned, replicated, and despawned independently unless something ties them together. A group does that tying: it marks several systems as belonging to the same object so a receiver waits for the whole set before treating the object as arrived, and the group's `Despawn()` stops every member together.
 
 Membership is carried on the wire as a shared `GroupId`, read from `NetworkSystem.GroupId`. A system with no group carries `NetworkSystem.UnsetGroupId`. Nothing about a group is visible on an ungrouped system beyond that unset id.
 
@@ -55,7 +55,7 @@ group.Spawn();
 group.Spawn(inventorySystem);
 ```
 
-`Despawn()` stops every member the group holds. A group despawn always cascades to the whole set; there is no per-system despawn through the group.
+`Despawn()` stops every member the group holds. A group despawn always cascades to the whole set; there is no per-system despawn through the group. Stopping one member directly with `SystemManager.EnsureStopSystem` stops only that member, and the rest of the group stays spawned.
 
 ```csharp
 group.Despawn();

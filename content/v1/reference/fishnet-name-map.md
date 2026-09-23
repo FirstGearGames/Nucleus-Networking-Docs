@@ -65,9 +65,9 @@ Both slots name exactly one manager. A process running more than one `CoreManage
 These read the same in Nucleus as in FishNet; no rename to look up.
 
 - `Channel.Reliable`, `Channel.Unreliable`
-- `IsServerStarted`
-- `IsClientStarted`
-- `IsHostStarted`
+- `IsHostStarted`, on a `NucleusBehaviour` as well as on `TransportManager` and `NetworkSystem`
+
+`IsServerStarted` and `IsClientStarted` keep their names on `TransportManager` and `NetworkSystem`, but a `NucleusBehaviour` has no property by either name. Inside a script, ask `IsStarted(Invoker.Server)` or `IsStarted(Invoker.Client)` instead.
 
 ## No migration tool
 

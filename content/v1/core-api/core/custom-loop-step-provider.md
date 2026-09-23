@@ -83,7 +83,7 @@ CoreManager coreManager = new(tickRate: 30, networkLoopStepProvider: new HostClo
 
 ## Hand-driving for tests and deterministic simulation
 
-For deterministic simulation, or a test that must control exactly when a tick happens, drive the loop directly with `NetworkLoopManager.InvokeNetworkLoopStep(NetworkLoopSteps, StepDelta)` instead of going through a provider's timer. Install a provider that never steps on its own (the test suite's `ManualStepProvider`, which just flips `IsStarted` and does nothing else), then invoke all twelve steps yourself, in the framework's canonical order:
+For deterministic simulation, or a test that must control exactly when a tick happens, drive the loop directly with `NetworkLoopManager.InvokeNetworkLoopStep(NetworkLoopSteps, StepDelta)` instead of going through a provider's timer. Install a provider that never steps on its own (one whose methods just flip `IsStarted` and do nothing else), then invoke all twelve steps yourself, in the framework's canonical order:
 
 ```csharp
 StepDelta delta = new(0, 0, 0);

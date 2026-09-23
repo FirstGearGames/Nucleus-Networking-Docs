@@ -18,7 +18,7 @@ On the `UnityInterestManager` component, set **Host Interest Enabled**. That is 
 
 A `NetworkHostVisibility` component is put on each of a world's networked objects, but only once this peer turns out to be a host, and only then. A client and a dedicated server never attach one and never walk an object for renderers they could not hide anyway.
 
-The mechanism is a `HostVisibilityBinder`, one per `CoreManager`, built by `UnityInterestManager` whenever Host Visibility Enabled is set. It watches for the moment this peer becomes a host, sweeps every object already linked at that point, and from then on attaches the component to each object as it links. A peer only becomes a host partway through its own startup, often after its scenes have already spawned a world, so the sweep is what catches those already standing.
+`UnityInterestManager` sets this up once per `CoreManager` whenever Host Visibility Enabled is set. It watches for the moment this peer first becomes a host with its own client linked. If `InterestManager.HostInterestEnabled` is set at that moment, it sweeps every object already linked and from then on attaches the component to each object as it links. That decision is made once. A peer only becomes a host partway through its own startup, often after its scenes have already spawned a world, so the sweep is what catches those already standing.
 
 ## NetworkHostVisibility reference
 
@@ -37,6 +37,7 @@ Clear **Host Visibility Enabled** to keep the report without the built-in hiding
 
 ## Gotchas
 
-- Both switches are read once as the world comes up. Changing either while playing leaves that session hiding exactly as it already was.
+- The two inspector switches are copied into the world once, as it comes up, so ticking either while playing changes nothing. Set **Host Interest Enabled** before the host starts.
+- The engine's own `InterestManager.HostInterestEnabled` is read on every interest pass, so code can change it mid-session, but the decision to hide is made once, when the peer first becomes a host with its client linked. Turning it on after that gives you the report with nothing hiding on it. Turning it off returns every object's membership to `InterestMembership.Streamed`, which shows the object again. Code that sets it before the host starts must run after `UnityInterestManager` has pushed its settings, or the inspector's copy overwrites it.
 - A dedicated server has no client half to answer for. Leave both switches alone.
 - Hiding only happens on `InterestMembership.Unspawned`. A system that's merely stopped for a player still keeps its object standing, frozen rather than gone — hiding on a stop would show the host less than that player actually sees.

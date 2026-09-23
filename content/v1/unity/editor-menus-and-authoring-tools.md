@@ -39,7 +39,7 @@ Two more steps run without a menu command, so an author never has to remember to
 
 ## Two authoring traps
 
-**A copied prefab carries the original's stamped id.** Duplicating a prefab asset in the Project window duplicates its `NetworkSystemObject` component, id and all. Until the next `Rebuild Network Prefab Collection`, the copy has the same prefab id as the original, and a receiver resolving that id will spawn the wrong one. Rebuild after every prefab duplication, not just after adding a new prefab.
+**A copied prefab carries the original's stamped id.** Duplicating a prefab asset in the Project window duplicates its `NetworkSystemObject` component, id and all. Until the next `Rebuild Network Prefab Collection`, the copy has the same prefab id as the original, and a receiver resolving that id will spawn the wrong one. Rebuild after every prefab duplication, not just after adding a new prefab. The rebuild renumbers whichever of the two sorts later by asset GUID, which can be the original; to keep the original's id, clear the copy's `_prefabId` to `0` in its `.prefab` file first.
 
 **A scene object id only has to be unique within its own scene.** `SceneNetworkObjectStamper` reassigns collisions inside one scene, but the same id in two different scenes is fine and expected — the scene half of the correlation comes from the scene's own id, not from the object's. Don't assume a scene object id has to be globally unique across the project; it doesn't.
 

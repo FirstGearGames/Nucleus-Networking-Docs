@@ -64,9 +64,9 @@ A surviving peer that is elected next adopts the world it had been receiving as 
 
 Turning it on also sets `ClientManager.DisconnectResetMode` to `RetainReceivedWorld` for you. That's a client-side setting: it decides, at the moment this peer's link to the server drops, whether the world it received is thrown away or kept. Migration needs it kept, because the peer that gets elected next has to adopt what it was already receiving rather than starting from nothing.
 
-`RetainReceivedWorld` is settable in a free build, but adopting the retained world is Pro-only. In a free build the setting has nowhere to go: nothing turns a retained world into a served one, so a free peer elected to host still starts empty.
+`RetainReceivedWorld` is settable in a free build, but adopting the retained world is Pro-only, and so is this component: the coordinator adopts the retained world when it promotes a peer, so the Blitz Relay and Newfarm Migration assemblies do not compile against a free `Nucleus.dll`.
 
-Watch `SystemManager.RespawnWorldOnReconnectEnabled` too. If it's set, it defeats retention outright regardless of `DisconnectResetMode` - the world is dropped and rebuilt from the new server's own account instead of kept.
+Watch `SystemManager.RespawnWorldOnReconnectEnabled` too. It changes only what happens when a client reconnects: the world is still kept when the link drops, and a peer elected to host still adopts it, but a peer that rejoins drops what it kept and rebuilds it from the new server's own account instead of being relinked to it. That costs a spawn per object, in exchange for never keeping anything the new server never heard of.
 
 ## Services you have to run yourself
 

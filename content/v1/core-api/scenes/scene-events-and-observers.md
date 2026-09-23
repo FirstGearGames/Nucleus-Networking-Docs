@@ -10,9 +10,9 @@ title: "Scene events and observers"
 |---|---|---|---|
 | `SceneLoadRequested` | `SceneLoadRequestedHandler(uint sceneHandle, ushort sceneId, bool isLoadRequested)` | client | The server asks the client to load or release a scene, before the loader is consulted. |
 | `SceneLoadStateChanged` | `SceneLoadStateChangedHandler(Connection connection, uint sceneHandle, bool isLoaded)` | server | A client's answer changes which scenes it holds. |
-| `SceneLoaded` | `SceneLoadedHandler(uint sceneHandle, ushort sceneId)` | whichever peer did the loading | This peer's own scene load finishes, after the outcome has been reported to the server. Raised on a server loading its own copy too. |
-| `SceneUnloaded` | `SceneUnloadedHandler(uint sceneHandle, ushort sceneId)` | whichever peer did the unloading | This peer's own scene release finishes, after the report is sent. |
-| `SceneLoadFailed` | `SceneLoadFailedHandler(uint sceneHandle, ushort sceneId)` | local peer | This peer's own load fails, after the failure has been reported to the server. |
+| `SceneLoaded` | `SceneLoadedHandler(uint sceneHandle, ushort sceneId)` | client | This client's registered `ISceneLoader` finishes a load the server asked for, after the outcome has been reported to the server. Not raised on the server, a host included, for the server's own copy: server code awaits `OpenSceneAsync` instead, which returns the handle once the scene is loaded there, or `NetworkSystem.UnsetSceneHandle` if it could not be. |
+| `SceneUnloaded` | `SceneUnloadedHandler(uint sceneHandle, ushort sceneId)` | client | This client's registered `ISceneLoader` finishes a release the server asked for, after the report is sent. Not raised on the server when it closes its own copy; await `CloseSceneAsync` there instead. |
+| `SceneLoadFailed` | `SceneLoadFailedHandler(uint sceneHandle, ushort sceneId)` | local peer | This peer's own load fails, after the failure has been reported to the server. Also raised on the server when `OpenSceneAsync` could not load the server's own copy. |
 | `ClientSceneLoadFailed` | `ClientSceneLoadFailedHandler(Connection connection, uint sceneHandle)` | server | A client reports it could not load a scene, after the pending request has been cancelled. |
 | `SceneLoadProgressed` | `SceneLoadProgressedHandler(uint sceneHandle, ushort sceneId, float progress)` | local peer | This peer's own load advances, for a loading screen. Purely local; progress never reaches the wire. |
 

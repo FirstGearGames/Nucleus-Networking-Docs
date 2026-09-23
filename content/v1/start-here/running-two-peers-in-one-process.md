@@ -4,13 +4,13 @@ title: "Running two peers in one process"
 
 > **Using Unity?** See [Testing with two editors](./testing-with-two-editors.md).
 
-## Two ways to get a second peer
+## Two ways to run both sides in one process
 
-A test or repro needs two peers - a host and a client - without launching a second process. Nucleus gives you two ways to do that, and they answer different questions.
+A test or repro often needs a server and a client without launching a second process. Nucleus gives you two ways to do that, and they answer different questions.
 
-`Yak` (`Nucleus.Transports.Yak`) is an offline transport that emulates a client-host connection inside one process, with no socket underneath it at all. `Synapse` (`Nucleus.Transports.Synapse`) is the real UDP transport; running two `CoreManager` instances over it on `127.0.0.1` with distinct ports gives you a genuine socket pair, still inside one process.
+`Yak` (`Nucleus.Transports.Yak`) is an offline transport with no socket underneath it at all. One `Yak` holds both the server half and the client half inside a single transport on a single `CoreManager`, so what it gives you is a host: a server and its own local client, not a second, separate peer. It cannot connect two `CoreManager` instances. `Synapse` (`Nucleus.Transports.Synapse`) is the real UDP transport; running two `CoreManager` instances over it on `127.0.0.1`, the client dialing the port the server listens on, gives you two separate peers over a genuine socket pair, still inside one process.
 
-Use `Yak` when you're exercising game logic, replication, RPC routing or reconciliation and don't care about the wire. Use two loopback `Synapse` managers when the bug - or the thing you need to prove works - lives in framing, segmentation, batching, or anything else that only happens when bytes actually cross a socket.
+Use `Yak` when a host on its own is enough: single-player or offline play, or game logic that doesn't need a remote peer. Use two loopback `Synapse` managers when you need a second, separate peer, and whenever the bug - or the thing you need to prove works - lives in framing, segmentation, batching, or anything else that only happens when bytes actually cross a socket.
 
 ## Yak: no sockets at all
 
@@ -29,29 +29,39 @@ Add it to a `CoreManager` the same way you'd add any transport:
 ```csharp
 CoreManager coreManager = new();
 Yak yak = (Yak)await coreManager.TransportManager.AddTransportAsync<Yak>();
+
+await yak.ConnectAsync(Invoker.Server);
+await yak.ConnectAsync(Invoker.Client);
 ```
 
-Both socket halves exist in the same process and hand data to each other directly. There's no serialization onto a wire buffer, no datagram, no OS involved.
+Connecting both halves makes that one `CoreManager` a host. Both socket halves belong to the same transport and hand data to each other directly. The engine still serializes every packet into bytes exactly as it would for a real transport; those bytes just never become a datagram, and no OS is involved.
 
 ## Two CoreManagers over Synapse
 
-When you need the real shape - framing, segmentation, batching - build two `CoreManager` instances, each with its own `Synapse` transport, pointed at the same loopback port:
+When you need the real shape - framing, segmentation, batching - build two `CoreManager` instances, each with its own `Synapse` transport, pointed at the same loopback port, and each with its own loop provider passed at construction:
 
 ```csharp
-CoreManager server = new(tickRate: 60);
+MainThreadStepProvider serverLoop = new();
+MainThreadStepProvider clientLoop = new();
+
+CoreManager server = new(tickRate: 60, networkLoopStepProvider: serverLoop);
 Synapse serverSynapse = (Synapse)await server.TransportManager.AddTransportAsync<Synapse>();
 serverSynapse.Configuration.Port = port;
 
-CoreManager client = new(tickRate: 60);
+CoreManager client = new(tickRate: 60, networkLoopStepProvider: clientLoop);
 Synapse clientSynapse = (Synapse)await client.TransportManager.AddTransportAsync<Synapse>();
 clientSynapse.Configuration.Port = port;
 clientSynapse.RemoteHost = IPAddress.Loopback;
 
 await serverSynapse.ConnectAsync(Invoker.Server);
 await clientSynapse.ConnectAsync(Invoker.Client);
+
+// Every frame, step both peers from this one thread:
+serverLoop.Step(frameDeltaMilliseconds);
+clientLoop.Step(frameDeltaMilliseconds);
 ```
 
-This is the shape every `SynapseLive*` test in `Nucleus.Tests/Transports/` uses - `SynapseLiveRpcTests.cs` is one of around forty. `Synapse.RemoteHost` defaults to `IPAddress.Loopback`, so a single-process pair works without any extra addressing; you only set it explicitly on the client half to be clear about what's connecting to what.
+`MainThreadStepProvider` is the small `NetworkLoopStepDriver`-based provider from [Running a dedicated .NET server](../core-api/transports/dedicated-server-host.md), which steps its loop only when you call `Step`. Because each manager gets its provider at construction, neither loop moves while the transports are added and connected, and both are then stepped from the same thread. `Synapse.RemoteHost` defaults to `IPAddress.Loopback`, so a single-process pair works without any extra addressing; you only set it explicitly on the client half to be clear about what's connecting to what.
 
 ## Why the shortcut hides bugs
 
@@ -81,14 +91,13 @@ internal sealed class ManualStepProvider : INetworkLoopStepProvider
 }
 ```
 
-Name the provider right after constructing the `CoreManager`, before anything else runs against it - not by swapping it in later:
+Pass the provider to the `CoreManager` constructor, not by swapping it in later:
 
 ```csharp
-CoreManager coreManager = new();
-coreManager.NetworkLoopManager.UseNetworkLoopStepProvider(new ManualStepProvider());
+CoreManager coreManager = new(networkLoopStepProvider: new ManualStepProvider());
 ```
 
-`CoreManager`'s constructor starts a default, thread-pool-driven provider as its very last line, once every manager has finished constructing. Swapping your own in immediately afterward - before anything else touches the manager - replaces that default before its background timer gets a chance to fire, so nothing races your manual drive.
+Nothing steps the loop until the constructor's last line, so a provider named there means the default, thread-pool-driven provider never starts at all. Swapping yours in afterward with `UseNetworkLoopStepProvider` is too late: by then the default is already stepping the loop from the thread pool, racing whatever your code does until the swap.
 
 With the provider silenced, drive each step yourself through `NetworkLoopManager.InvokeNetworkLoopStep(NetworkLoopSteps, StepDelta)`:
 
@@ -121,4 +130,4 @@ networkLoopManager.InvokeNetworkLoopStep(NetworkLoopSteps.LateTickUpdate, delta)
 networkLoopManager.InvokeNetworkLoopStep(NetworkLoopSteps.LateVariableUpdate, delta);
 ```
 
-For two peers, drive one full pass of all twelve steps on one `CoreManager`, then the same pass on the other, per simulated tick. `Nucleus.Tests/Harness/LoopHarness.cs` is the reference implementation of this - its `DriveFullTick` drives one manager through the order above, and `DriveTicks` runs that across a list of managers in the order you supply them.
+For two peers, drive one full pass of all twelve steps on one `CoreManager`, then the same pass on the other, per simulated tick.

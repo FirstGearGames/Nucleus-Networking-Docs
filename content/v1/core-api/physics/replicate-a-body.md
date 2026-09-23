@@ -45,12 +45,34 @@ On every other peer, before your world step, rebuild the latest snapshot and han
 
 ```csharp
 PhysicsSnapshot snapshot = physicsComponent.BuildSnapshot();
-float ticksToProject = currentTick - physicsComponent.CaptureTick.Value;
+float ticksToProject = GetTicksToProject(physicsComponent);
 
 convergence.Step(physicsBody, in snapshot, tickDelta, ticksToProject);
 ```
 
 `BuildSnapshot` rebuilds position and rotation straight from the replicated members; linear and angular velocity are derived from the change between the last two committed ticks, so they never ride the wire themselves. `Step` projects that snapshot forward by `ticksToProject` ticks and steers `physicsBody` toward it — riding its projected velocity, teleporting on a large divergence, blending a smaller one back in. `Step` does nothing to a kinematic body.
+
+`ticksToProject` is the snapshot's age in ticks. Peers do not share a tick counter, so it is not this peer's tick minus `CaptureTick`: measure it in the server's numbering, with `Connection.TryGetServerTickEstimate` on the connection to the server.
+
+```csharp
+private const float FallbackTicksToProject = 2f;
+
+private float GetTicksToProject(NetworkPhysicsComponent physicsComponent)
+{
+    uint captureTick = (uint)physicsComponent.CaptureTick.Value;
+
+    if (captureTick != NetworkLoopManager.UnsetTick
+        && coreManager.TransportManager.TryGetServerConnection(out Connection serverConnection)
+        && serverConnection.TryGetServerTickEstimate(coreManager.NetworkLoopManager.Tick, out uint serverTick)
+        && serverTick > captureTick)
+        return serverTick - captureTick;
+
+    // No attributed capture or no estimate yet: project a short fixed distance.
+    return FallbackTicksToProject;
+}
+```
+
+The estimate is of the server's tick, so this measures the age of a body the server captures, which is the setup this page describes.
 
 ## Where each half runs in the loop
 
@@ -69,7 +91,7 @@ public class PhysicsDriver : INetworkLoopStepCallback
             if (!isAuthority)
             {
                 PhysicsSnapshot snapshot = physicsComponent.BuildSnapshot();
-                float ticksToProject = currentTick - physicsComponent.CaptureTick.Value;
+                float ticksToProject = GetTicksToProject(physicsComponent);
                 convergence.Step(physicsBody, in snapshot, tickDelta, ticksToProject);
             }
 
@@ -95,7 +117,7 @@ A proxy that has just started watching a system has no local trajectory worth pr
 if (!physicsComponent.TryAdoptInitialState(physicsBody))
 {
     PhysicsSnapshot snapshot = physicsComponent.BuildSnapshot();
-    float ticksToProject = currentTick - physicsComponent.CaptureTick.Value;
+    float ticksToProject = GetTicksToProject(physicsComponent);
     convergence.Step(physicsBody, in snapshot, tickDelta, ticksToProject);
 }
 ```

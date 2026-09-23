@@ -4,15 +4,15 @@ title: "Keeping a player's objects across a disconnect"
 
 > **Driving the core API directly?** See [Controller retention](../../core-api/control/controller-retention.md).
 
-By default, a disconnecting player's object is despawned. Retention changes that: the object is left in the world, uncontrolled, and handed back to the same player if they reconnect before a record expires. Two components decide whether that happens and how long it lasts, and a third can override it per prefab.
+By default, a disconnecting player's object is left in the world, uncontrolled, and nothing remembers who held it. Retention changes that: the object is also held on a record and handed back to the same player if they reconnect before the record expires. Two components decide whether that happens and how long it lasts, and a third can override it per prefab.
 
 ## Unity System Manager: the project-wide default
 
-The **Unity System Manager** component exposes three fields that configure `SystemManager` when the managers are instantiated:
+The **Unity System Manager** component exposes three fields, under its **Controller Retention** heading, that configure `SystemManager` when the managers are instantiated. The last two are drawn only while the first is set to `Retain`:
 
-- **Controller Retention Policy** — the retention policy applied to every controlled object whose system, and whose object, does not override it. Defaults to `ControllerRetentionPolicy.Release`, so retention is off project-wide until something turns it on.
-- **Controller Retention Seconds** — how long a retained set stays redeemable, in seconds. Defaults to 120. Zero never expires it.
-- **Maximum Retained Controller Records** — how many retained sets may stand at once before the oldest is evicted. Defaults to 64.
+- **On Controller Disconnect**: the retention policy applied to every controlled object whose system, and whose object, does not override it. Defaults to `ControllerRetentionPolicy.Release`, so retention is off project-wide until something turns it on.
+- **Retention Seconds**: how long a retained set stays redeemable, in seconds. Defaults to 120. Zero never expires it.
+- **Maximum Retained Sets**: how many retained sets may stand at once before the oldest is evicted. Defaults to 64.
 
 These three map straight onto `SystemManager.DefaultControllerRetentionPolicy`, `ControllerRetentionSeconds`, and `MaximumRetainedControllerRecords`.
 
@@ -20,8 +20,8 @@ These three map straight onto `SystemManager.DefaultControllerRetentionPolicy`, 
 
 `NetworkSystemObject` carries its own retention toggle, for a prefab that needs to disagree with the project default. It has two fields:
 
-- **the retention-override toggle** (`_controllerRetentionOverrideEnabled`) — off by default. Unity cannot serialize the absence of an enum value, so this toggle is what lets "inherit the manager's default" be told apart from "I have an opinion."
-- **the policy field** (`_controllerRetentionPolicy`) — read only when the toggle is on, and it defaults to `ControllerRetentionPolicy.Retain` once enabled. That default is deliberate: a script that turns the toggle on is doing so to hold the object, not to restate the manager's `Release` default.
+- **Override On Disconnect** (`_controllerRetentionOverrideEnabled`): off by default. Unity cannot serialize the absence of an enum value, so this toggle is what lets "inherit the manager's default" be told apart from "I have an opinion."
+- **On Controller Disconnect** (`_controllerRetentionPolicy`): drawn and read only when the toggle is on, and it defaults to `ControllerRetentionPolicy.Retain` once enabled. That default is deliberate: a script that turns the toggle on is doing so to hold the object, not to restate the manager's `Release` default.
 
 Turning the toggle on writes the policy to the object's system group (`ControllerRetentionPolicyOverride`) the first time the group is rented, so the override rides with every system the object's group carries, not with one system in isolation.
 

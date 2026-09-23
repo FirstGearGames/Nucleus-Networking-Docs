@@ -46,7 +46,7 @@ A prefab's identity is stamped onto the prefab asset itself, in the `NetworkSyst
 
 Two prefabs sharing one identity is invisible until a spawn resolves the wrong one: the receiver looks the identity up in `NetworkPrefabRegistry` and instantiates whichever prefab last registered under it, not necessarily the one that was actually spawned.
 
-Fix it by clearing the prefab identifier on the copy back to `0` and running **Nucleus > Rebuild Network Prefab Collection** again. The rebuild treats a zero identifier as unstamped and assigns it the next free local id for its shard, giving the copy its own distinct identity.
+Running **Nucleus > Rebuild Network Prefab Collection** fixes it: the rebuild keeps an id that is set and unique and gives a duplicate the next free local id for its shard. Prefabs are visited in asset GUID order, so whichever of the two sorts later is renumbered, and that can be the original. To keep the original's id, which matters once a build or content bundle has shipped with it, clear the copy's identifier to `0` before rebuilding; the rebuild treats zero as unstamped and stamps the copy fresh. The inspector shows Prefab Id read-only, so change the `_prefabId:` line in the copy's `.prefab` file with a text editor. Then rebuild both the server and the client builds so every peer agrees.
 
 ## Wire identity
 

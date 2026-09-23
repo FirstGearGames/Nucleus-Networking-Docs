@@ -6,15 +6,16 @@ title: "Your first .NET host"
 
 ## Bootstrap
 
-A Nucleus session starts with one line:
+A Nucleus session starts with a `CoreManager`, given the loop provider that will step it:
 
 ```csharp
 using Nucleus.Managers.Core;
 
-CoreManager coreManager = new();
+MainThreadStepProvider loop = new();
+CoreManager coreManager = new(networkLoopStepProvider: loop);
 ```
 
-That constructor is the whole bootstrap. It builds every manager the session needs and, on its last line, starts the network loop. There is no `Initialize` or `Start` call to make afterward — by the time `new CoreManager()` returns, the loop is already running.
+That constructor is the whole bootstrap. It builds every manager the session needs and, on its last line, installs and starts the loop provider you pass it. There is no `Initialize` or `Start` call to make afterward. `MainThreadStepProvider` is a small class of your own, shown under "Driving the network loop" below: it steps the loop only when your code tells it to, so everything you set up before then runs against a loop that is standing still.
 
 The constructor takes two optional arguments:
 
@@ -46,15 +47,40 @@ A Pro build adds two more fields the same way: `BundleManager` (content delivere
 
 ## Driving the network loop
 
-You don't have to drive ticks yourself. Pass no provider, as above, and the constructor installs a `SystemNetworkLoopStepProvider`, which runs the loop off a `System.Timers.Timer` on a thread-pool thread for as long as the process lives.
-
-If your host already runs its own loop — a game engine's update, a custom simulation tick — implement `INetworkLoopStepProvider` and pass it in at construction:
+Nothing ticks until something steps the loop. The provider from the bootstrap is the smallest one that works: each time your code calls `Step`, it hands the time since the previous call to `NetworkLoopStepDriver`, which decides when a tick runs and invokes the loop's steps in order. Put it in its own file:
 
 ```csharp
-CoreManager coreManager = new(tickRate: 30, networkLoopStepProvider: myProvider);
+using Nucleus.Managers.NetworkLoop;
+
+/// <summary>Steps the network loop only when called, on the calling thread.</summary>
+sealed class MainThreadStepProvider : INetworkLoopStepProvider
+{
+    private readonly NetworkLoopStepDriver _driver = new();
+
+    public bool IsStarted { get; private set; }
+
+    public void Initialize(NetworkLoopManager networkLoopManager) => _driver.Initialize(networkLoopManager, 1000f / networkLoopManager.TickRate);
+
+    public void Start() => IsStarted = true;
+
+    public void Stop() => IsStarted = false;
+
+    public void Return() { }
+
+    public void Step(float frameDeltaMilliseconds)
+    {
+        if (!IsStarted)
+            return;
+
+        _driver.AdvanceEarly(frameDeltaMilliseconds, isVariableUpdateAllowed: true);
+        _driver.AdvanceLate(frameDeltaMilliseconds, isVariableUpdateAllowed: true);
+    }
+}
 ```
 
-Do this at construction, not after. Nothing steps the loop until the constructor's last line, so naming a provider there means the default never runs at all. Swapping a provider in later instead leaves the default driving the loop from the thread pool for the rest of construction — a second thread writing the loop's collections while your code writes them too.
+If your host already runs its own loop, such as a game engine's update or a custom simulation tick, call `Step` from there instead of from `Main`.
+
+Pass the provider at construction, not after. Nothing steps the loop until the constructor's last line, so naming a provider there means the default never runs at all. Pass no provider and the constructor installs a `SystemNetworkLoopStepProvider`, which runs the loop off a `System.Timers.Timer` on a thread-pool thread from the moment the constructor returns. Everything you do after that, adding transports and subscribing to events included, races a loop that is already stepping, and swapping a provider in later leaves the default driving it until the swap. See [Threading and lifetime](../core-api/core/threading-and-lifetime.md).
 
 ## Bringing up a transport
 
@@ -71,9 +97,11 @@ TransportManager transportManager = coreManager.TransportManager;
 Yak yak = new();
 await transportManager.TryAddTransportAsync(yak);
 
-_ = yak.ConnectAsync(Invoker.Server);
-_ = yak.ConnectAsync(Invoker.Client);
+await yak.ConnectAsync(Invoker.Server);
+await yak.ConnectAsync(Invoker.Client);
 ```
+
+Make these `ConnectAsync` calls after you have subscribed to events and registered handlers, as the next two sections show. On `Yak` the connection comes up inside `ConnectAsync` itself, so a handler added afterwards never sees it.
 
 `ConnectAsync` lives on the `Transport`, not on `TransportManager`. `Invoker` just names which role the call acts for — it says nothing about whether that role is actually started yet.
 
@@ -152,16 +180,35 @@ transportManager.ConnectionRemoteStateChanged += change =>
 
 That's the whole round trip: the server sends the moment the client's connection comes up remotely, and the handler registered above prints it on receipt. See the Messaging pages for anything beyond a single struct — batching, per-connection sends, and the authentication handshake itself.
 
-## Keeping the process alive, and shutting down
+## Running the loop, and shutting down
 
-The network loop runs on its own thread, so `Main` has to block on something or the process exits immediately:
+With everything wired up, `Main` becomes the loop. Step the provider until you want to stop, then tear the session down:
 
 ```csharp
-Console.ReadKey();
+using System.Diagnostics;
+
+CancellationTokenSource stopSource = new();
+Console.CancelKeyPress += (_, eventArgs) =>
+{
+    eventArgs.Cancel = true;
+    stopSource.Cancel();
+};
+
+Stopwatch frameClock = Stopwatch.StartNew();
+while (!stopSource.IsCancellationRequested)
+{
+    float frameDeltaMilliseconds = (float)frameClock.Elapsed.TotalMilliseconds;
+    frameClock.Restart();
+
+    loop.Step(frameDeltaMilliseconds);
+    Thread.Sleep(1);
+}
+
+coreManager.Deinitialize();
 ```
 
-When you're done, tear the session down with `coreManager.Deinitialize()`. It's idempotent — calling it more than once, or from two places that both think they own shutdown, is safe.
+Ctrl+C ends the loop, and `coreManager.Deinitialize()` tears the session down. It's idempotent: calling it more than once, or from two places that both think they own shutdown, is safe.
 
 ## One thing to know before the second hour
 
-With the default provider, your message handlers, connection-state callbacks, and anything else Nucleus calls run on the network loop's own thread-pool thread — not the thread that constructed the `CoreManager`. If that's your UI thread or anything else that isn't thread-safe, marshal back to it yourself before touching it.
+With this provider, your message handlers, connection-state callbacks, and anything else Nucleus calls run on the thread that calls `loop.Step`, which here is `Main`'s own thread. With the default provider they run on the network loop's own thread-pool thread instead, not the thread that constructed the `CoreManager`. If that's your UI thread or anything else that isn't thread-safe, marshal back to it yourself before touching it.

@@ -35,7 +35,7 @@ The generated writers and readers have delta serializers for numerics, `Quaterni
 
 ```csharp
 [ReplicationIgnore]
-private readonly NetworkMember<List<ItemStack>> _containerContents = new();
+private readonly NetworkListMember<ItemStack> _containerContents = new();
 
 [ReplicationIgnore]
 private readonly NetworkMember<bool> _isModerationFlagged = new();

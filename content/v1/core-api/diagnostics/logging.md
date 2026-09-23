@@ -51,7 +51,7 @@ public interface ILogger
 | `DevelopmentBuilds` | Development builds outside the editor |
 | `ReleaseBuilds` | Release builds |
 
-`ConsoleLogger`'s setting runs `Information` in the editor and development, `Error` in release.
+`ConsoleLogger`'s setting runs `Information` in the editor and development, `Error` in release. Which of the three applies comes from CodeBoost's application state, and in a plain .NET process the default one, `IdeApplicationState`, always reports that it is running in the editor, in Debug and Release builds alike. A .NET host therefore logs at `Information` by default, even in a Release build. To log less, register a logger whose `GetLoggerSetting` returns a lower `Editor` level.
 
 Checking a level before formatting a message avoids the cost of building a string nobody will read. `LoggingService` exposes `IsInformationEnabled`, `IsWarningEnabled`, and `IsErrorEnabled` for this:
 
@@ -62,12 +62,12 @@ if (LoggingService.IsInformationEnabled)
 
 When a level is disabled, the guarded branch never runs, so the interpolated string is never built.
 
-## Set this before AddTransportAsync
+## Set this before new CoreManager()
 
-Swap the logger before doing anything else with `CoreManager`. The default loop provider starts stepping the moment the `CoreManager` constructor returns, so any warnings raised during bring-up are lost if you swap the sink afterward. The level is also only re-read inside `UseLogger`, so calling it is what makes a later level change take effect, not just the sink change.
+Swap the logger before you construct the `CoreManager`. The constructor already logs (a clamped tick rate, for one), and with the default provider the loop starts stepping the moment the constructor returns, so anything raised during bring-up goes to the old sink if you swap afterward. The level is also only re-read inside `UseLogger`, so calling it is what makes a later level change take effect, not just the sink change.
 
 ```csharp
-CoreManager coreManager = new();
 LoggingService.UseLogger(new MyServiceLogger());
-// AddTransportAsync and everything after this line logs through MyServiceLogger.
+CoreManager coreManager = new();
+// The constructor, AddTransportAsync and everything after this line log through MyServiceLogger.
 ```

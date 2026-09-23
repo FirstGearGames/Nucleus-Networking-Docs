@@ -78,16 +78,20 @@ bool unloaded = await coreManager.BundleManager.UnloadBundleAsync(bundleId);
 ```
 
 This is the route for content a peer decides it needs on its own — a server hotloading a zone it is about to spawn
-from, or a client preloading ahead of a gate. It runs through the registered `IBundleLoader` and reports the outcome to
-the server when the peer is a client. This is also the call a bundle-backed scene load makes to bring its content in.
+from, or a client preloading ahead of a gate. It runs through the registered `IBundleLoader`. On a client it is only a
+preload: the load is reported to the server only if the server has already asked for that bundle and is still waiting on
+the answer. Otherwise the content loads locally and nothing is sent, and the server still asks for the bundle when a
+spawn needs it; the client's answer to that request is what the server records. This is also the call a bundle-backed
+scene load makes to bring its content in.
 
 ## Reporting outcomes
 
 `BundleManager.NotifyBundleLoaded(ushort bundleId)` and `NotifyBundleUnloaded(ushort bundleId)` report an outcome to the
 server. `LoadBundleAsync`/`UnloadBundleAsync` call these automatically; call them directly only when a game drives
-loading itself outside an `IBundleLoader`.
+loading itself outside an `IBundleLoader`. Either way, a load report is sent only in answer to a request the server made,
+and an unload report only for a bundle the client has already told the server it holds; anything else stays on the client.
 
-On the server, `Connection.IsBundleLoaded(ushort bundleId)` reports whether a client holds a bundle.
+On the server, `Connection.IsBundleLoaded(ushort bundleId)` (Pro) reports whether a client holds a bundle.
 `Connection.BaseBuildBundleId` (0) is always loaded, since it shipped inside the build.
 
 ## Watching the protocol
@@ -126,5 +130,7 @@ Both default to a kick.
 
 ## Pro and Free
 
-`BundleManager` is Pro. In a Free build, `CoreManager.BundleManager` is not populated. The two violation types and the
-bundle-identifier plumbing they carry are plain files usable in either edition.
+`BundleManager` is Pro. In a Free build, `CoreManager` has no `BundleManager` member at all. `IBundleLoader`,
+`IBundleObserver`, `BundleInterestCondition` and `Connection.IsBundleLoaded` are Pro as well. The two violation types,
+`Connection.BaseBuildBundleId`, and `NetworkSystem.RequiredBundleId` with `SetRequiredBundleId` live in plain files
+usable in either edition.

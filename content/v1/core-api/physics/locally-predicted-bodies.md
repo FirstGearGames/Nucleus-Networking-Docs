@@ -2,7 +2,7 @@
 title: "Locally predicted bodies"
 ---
 
-> **Using Unity?** See [Driving a body you control](../../unity/physics/driving-a-predicted-body.md).
+> **Using Unity?** See [Driving a predicted body](../../unity/physics/driving-a-predicted-body.md).
 
 A body this peer is driving does not have to ride the server's velocity like a proxy does. Setting `IsLocallyPredicted` on that body's `PhysicsConvergence` switches it from following to reconciling: it keeps responding to local input instantly, and only trims the small gap that opens up against the server's snapshot.
 

@@ -8,7 +8,7 @@ A `NucleusBehaviour<TComponent0>` runs on every peer that has the object in scen
 
 ## Checking control
 
-Inherit `NucleusBehaviour<TComponent0>` (or `NucleusBehaviourBase` for a script that needs the role and control checks but not a typed component) and call `IsController(ControllerType)`:
+Inherit `NucleusBehaviour<TComponent0>` (or the non-generic `NucleusBehaviour` for a script that needs the role and control checks but not a typed component, on an object where another component such as a `NetworkTransform` declares the system) and call `IsController(ControllerType)`:
 
 ```csharp
 public class Health : NucleusBehaviour<HealthComponent>
@@ -41,7 +41,7 @@ private void RequestFire()
 }
 ```
 
-The warning names the calling member and is logged on every failing call - it is not throttled, so a guard checked every frame floods the console the moment it fails. `RequestFire` above is a one-off call from an input handler, where a failure is worth logging loudly because it means something is actually wrong. Reach for the loud forms there; reach for the plain `IsController` / `IsStarted` in a per-frame or per-tick hook, where a non-controlling peer failing the check is the normal, expected path rather than a mistake.
+The warning names the calling member and is logged once per calling member on each behaviour, so a guard that keeps failing from the same place warns the first time and then stays quiet. `RequestFire` above is a one-off call from an input handler, where a failure is worth logging loudly because it means something is actually wrong. Reach for the loud forms there; reach for the plain `IsController` / `IsStarted` in a per-frame or per-tick hook, where a non-controlling peer failing the check is the normal, expected path rather than a mistake.
 
 ## Reacting to control changing
 

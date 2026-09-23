@@ -11,7 +11,7 @@ title: "ProjectedRigidbody"
 | Member | Type | Notes |
 |---|---|---|
 | `Convergence` | `PhysicsConvergence` (readonly) | The convergence follower this component owns. Tune it through `Convergence.Settings`, which the inspector fields below write into. |
-| `SmoothedVisual` | `Transform` | Optional render transform, detached from the physics body, interpolated between physics steps for tick-rate rendering. |
+| `SmoothedVisual` | `Transform` | Optional render transform, normally a child of the body that holds its renderer, interpolated between physics steps for tick-rate rendering. |
 | `RemoteExtrapolationEnabled` | `bool` (default `true`) | On, a remote-controlled proxy extrapolates forward from its last received state — more current, but overshoots on sudden input changes. Off, it interpolates between received states in remote time — smooth, never overshoots, always a step behind. |
 | `Body` | `UnityPhysicsBody` (read-only) | The adapter around the attached `Rigidbody`. |
 | `PhysicsComponent` | `NetworkPhysicsComponent` (read-only) | The replicated physics component this body captures into or converges from. |
@@ -29,7 +29,7 @@ These gate both the predicted and the proxy correction paths.
 How a body over its threshold corrects splits by role:
 
 - **Blend Per Tick** (`_blendPerTick`) — the fraction of the remaining gap a *proxy* closes per tick while over threshold. A predicted body ignores this.
-- **Prediction Correction Rate** (`_predictionCorrectionRate`, default `0.1`) — how aggressively a *predicted* body (one whose `Convergence.IsLocallyPredicted` is set) corrects toward the server: the fraction of the gap taken off per tick, once past Position Threshold. Higher snaps back harder and sooner; lower lets the prediction ride looser. Only the locally-controlled driver's own body sets `IsLocallyPredicted`, so this field only ever acts on that body.
+- **Prediction Correction Rate** (`_predictionCorrectionRate`, default `0.1`): how aggressively a *predicted* body (one whose `Convergence.IsLocallyPredicted` is set) corrects toward the server: the fraction of the gap taken off per tick, once past Position Threshold. Higher snaps back harder and sooner; lower lets the prediction ride looser. `ProjectedRigidbody` runs its follower only on a peer that is not the body's controller, so this field only acts where such a peer steers the body with its own input and sets `IsLocallyPredicted`.
 - **Blend Mode** (`_blendMode`, `ConvergenceBlendMode.Position` or `.Velocity`) — how the closing fraction is applied. `Position` writes the pose directly toward the target each step, identical to `Velocity` in free space, but bypasses the solver, so a blend into geometry penetrates and depenetrates rather than resolving as a contact. `Velocity` applies the same closing fraction as a solver-integrated velocity bias, so contacts, stacks, and other bodies are never disrupted — a blend against geometry becomes a bounded press instead of a penetration.
 
 ## Residual fields

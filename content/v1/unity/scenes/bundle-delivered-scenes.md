@@ -23,7 +23,7 @@ Net effect: for scene content, `RequiredBundleId` is never anything but the base
 
 1. Mark the scene Addressable in the project (its own group, address, whatever the project's Addressables setup calls for).
 2. Rebuild the manifest with `Nucleus/Rebuild Network Scene Manifest`. The builder finds the scene among the project's Addressable GUIDs and records `DeliveryMode = SceneDeliveryMode.Addressables` for it.
-3. Add the `NUCLEUS_ADDRESSABLES` scripting define symbol. The Addressables code path in `UnitySceneLoader` is compiled out without it.
+3. Make sure `com.unity.addressables` 1.19 or newer is installed. The integration's assembly definition then sets the `NUCLEUS_ADDRESSABLES` define for you through a `versionDefines` entry, so there is no scripting define symbol to add by hand. The Addressables code path in `UnitySceneLoader` is compiled out without it.
 
 The Addressables path itself ships in the non-Pro `UnitySceneLoader.cs`. It is not gated by edition — only fetching content out of an asset bundle is.
 

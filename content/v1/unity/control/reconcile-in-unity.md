@@ -46,7 +46,7 @@ private void OnReconcileRequired(uint rewoundTick)
 }
 ```
 
-`rewoundTick` is the local tick the server's values were rewound onto - replay forward from here. It is `NetworkLoopManager.UnsetTick` when the correction was a snap with no replay target (a full apply with no processed-input echo to rewind against); skip the replay in that case.
+`rewoundTick` is the local tick the server's values were rewound onto. The server's value at that tick already includes that tick's input, so replay starts at the tick after it. It is `NetworkLoopManager.UnsetTick` when the correction was a snap with no replay target (a server `SendReconcile` that landed with no processed-input echo to rewind against); skip the replay in that case.
 
 ## Replay each invalidated tick
 
@@ -60,7 +60,7 @@ protected override void OnReconcile(StepDelta stepDelta)
 
     uint currentTick = CoreManager.NetworkLoopManager.Tick;
 
-    for (uint tick = _pendingRewoundTick; tick < currentTick; tick++)
+    for (uint tick = _pendingRewoundTick + 1; tick < currentTick; tick++)
     {
         NetworkSystem.BeginReplayTick(tick);
 
@@ -78,7 +78,9 @@ protected override void OnReconcile(StepDelta stepDelta)
 
 ## One event, one replay
 
-A single inbound pass can correct several members on the same system - a predicted member that diverged, an input correction, a full-state snap. `NetworkSystem` accumulates all of them internally and raises `ReconcileRequired` once, with the earliest rewound tick among them. A handler therefore replays once per correcting pass, not once per corrected member.
+A single inbound pass can correct several members on the same system: several predicted members that diverged, or a full-state correction the server sent with `SendReconcile`. `NetworkSystem` accumulates all of them internally and raises `ReconcileRequired` once, with the earliest rewound tick among them. A handler therefore replays once per correcting pass, not once per corrected member.
+
+A server correction of your inputs does not raise `ReconcileRequired`. It raises `NetworkInputComponent.InputCorrected` with the corrected tick instead.
 
 ## See also
 

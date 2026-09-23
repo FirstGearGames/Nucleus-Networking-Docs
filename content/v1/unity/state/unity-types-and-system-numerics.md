@@ -4,7 +4,7 @@ title: "Unity Types and System.Numerics"
 
 ## Declare members in System.Numerics, not UnityEngine
 
-The engine core replicates `System.Numerics` types. A networked member is declared as `NetworkMember<System.Numerics.Vector3>`, never `NetworkMember<UnityEngine.Vector3>`. UnityEngine types don't have generated serializers, so a member declared with one fails to compile a serializer at all.
+The engine core replicates `System.Numerics` types. A networked member is declared as `NetworkMember<System.Numerics.Vector3>`, never `NetworkMember<UnityEngine.Vector3>`. Nucleus registers its vector and rotation handling, such as interpolation and Divine projection, for the `System.Numerics` types only. A member declared with a UnityEngine type still builds, but the generator treats the type like any struct of your own: it writes a plain serializer from the type's public fields and settable properties, and none of that handling applies. For `UnityEngine.Quaternion` that plain serializer also picks up the settable `eulerAngles` property, so every value carries the rotation twice.
 
 The shipped `UnityNavMeshAgentComponent` follows this exactly:
 
@@ -48,7 +48,7 @@ A struct you declare yourself, made entirely of natively-serializable fields, ne
 
 ## The error you get instead of a crash
 
-An unserializable member type is caught at build time, not at runtime. The generator reports a `SERIALIZERS`-series diagnostic (`SERIALIZERS000` as an error, `SERIALIZERS001` as a warning) naming the member. A member declared as `NetworkMember<UnityEngine.Vector3>` fails the build with that diagnostic instead of throwing when a system first tries to serialize it.
+An unserializable member type is caught at build time, not at runtime. The generator reports a `SERIALIZERS`-series diagnostic (`SERIALIZERS000` as an error, `SERIALIZERS001` as a warning) naming the member. A member declared as `NetworkMember<UnityEngine.Vector3>` is not caught this way: the generator can read the type's public fields, so it builds without a diagnostic and replicates through the plain serializer described above.
 
 ## Adding a type you can't annotate
 

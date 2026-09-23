@@ -93,9 +93,9 @@ The correlation between a handle and its `Scene` is tracked internally; these tw
 
 A project doesn't have to place a `UnitySceneLoader` itself: `UnitySceneManager` adds one automatically if no `NetworkSceneLoader` of any kind is present in the loaded scenes.
 
-## Content bundles (Pro)
+## Content bundles
 
-`NetworkBundleManifest`, `NetworkBundleLoader`, and `UnityAssetBundleLoader` are Pro-only files — absent entirely from a Free build.
+`NetworkBundleManifest` ships in every build. `NetworkBundleLoader` and `UnityAssetBundleLoader` are Pro-only files, absent entirely from a Free build, so a Free project can carry a bundle manifest but has nothing built in that loads against it.
 
 ### NetworkBundleManifest
 
@@ -104,7 +104,7 @@ A `ScriptableObject` (`Nucleus/Network Bundle Manifest` in the Create menu) mapp
 - `_bundleEntries` — the mapped bundles, exposed as `Entries`; each `BundleEntry` pairs a `BundleId` with a `FileName`.
 - `_rootDirectory` — the directory file names resolve against; empty falls back to `Application.streamingAssetsPath`.
 
-### NetworkBundleLoader and UnityAssetBundleLoader
+### NetworkBundleLoader and UnityAssetBundleLoader (Pro)
 
 `NetworkBundleLoader` is the abstract `MonoBehaviour` base for loading content bundles: it implements `IBundleLoader` and self-registers on `Awake`, the same way `NetworkSceneLoader` does for scenes. `LoadBundleAsync`/`UnloadBundleAsync` are left to the derived class.
 

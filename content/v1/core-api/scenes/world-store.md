@@ -108,7 +108,7 @@ public enum WorldLoadFailureAction : byte
 }
 ```
 
-Returned from `OnSceneUnavailable` when a saved scene cannot be opened in this build. `Skip` drops that scene instance and every object saved inside it, then loads the rest of the world; it is the default and the safer answer when scenes are independent of each other. `Fail` abandons the load entirely and leaves whatever world was already standing untouched. Nothing is built either way until this answer comes back, so a refused load costs nothing.
+Returned from `OnSceneUnavailable` when a saved scene cannot be opened in this build. `Skip` drops that scene instance and every object saved inside it, then loads the rest of the world; it is the default and the safer answer when scenes are independent of each other. `Fail` abandons the load and `LoadAsync` returns `false`, but it does not bring back the world that was standing: a load despawns every object and closes every open scene before it reads the saved scenes, so by the time this is asked the old world is already gone. No saved object is built until every saved scene has been answered for, so `Fail` leaves an empty world rather than a half-built one. Saved scenes that reopened before the one that failed stay open, with nothing built in them.
 
 ## JsonWorldStore as a reference
 

@@ -58,7 +58,7 @@ Left at `UnsetConvergenceDeadlineTicks`, the deadline is derived from the connec
 
 ## Pro feature
 
-Write access beyond `Controller`, and the echo-withholding window that goes with it, are Pro. The gate is structural: both live in `NetworkSystem.WriteAccess.Pro.cs`, split from the free-side `NetworkSystem.WriteAccess.cs`. A free build's eligibility check admits the controller alone, so `AnyClient` has no effect without Pro.
+Write access beyond `Controller`, and the echo-withholding window that goes with it, are Pro. The gate is structural: both live in `NetworkSystem.WriteAccess.Pro.cs`, split from the free-side `NetworkSystem.WriteAccess.cs`. `StateWriteAccess` itself, `NetworkSystem.WriteAccess` and `NetworkSystem.SetWriteAccess` are Pro-only too, so a free build has none of them and code naming them does not compile. A free build's eligibility check admits the controller alone.
 
 Two limits apply even with Pro:
 

@@ -30,7 +30,7 @@ Every other peer's `Rigidbody` does not run free simulation. Instead it follows:
 
 ## Smoothing the render without touching physics
 
-`Smoothed Visual` takes a `Transform` detached from the physics body — a child you keep separate from whatever the `Rigidbody` itself carries. It interpolates between the last two stepped poses in `LateUpdate`, hiding tick-rate stepping behind frame-rate rendering. Because it's a detached transform, the physics body's own pose is never touched by this smoothing — nothing here can desync a collision or a captured state.
+`Smoothed Visual` takes a child `Transform` of the body that holds its renderer, such as a child named `Visual`. It interpolates between the last two stepped poses in `LateUpdate`, hiding tick-rate stepping behind frame-rate rendering. Because only that child moves, the physics body's own pose is never touched by this smoothing, so nothing here can desync a collision or a captured state.
 
 `Visual Smoothing` (seconds) additionally low-passes that visual toward the interpolated pose, easing out the jitter a correction leaves. Leave it at `0` on a body that should not trail — a fast-falling object that needs its visual pinned exactly to the physics pose.
 
@@ -38,7 +38,7 @@ Every other peer's `Rigidbody` does not run free simulation. Instead it follows:
 
 This object replicates its pose through `ProjectedRigidbody`'s own `NetworkPhysicsComponent`. Adding `NetworkTransform` to the same object as well double-replicates the pose through two independent systems. See the transform-replication choosing page for which component fits which object.
 
-A `PhysicsSimulationDriver` present in this body's scene is what puts the body on the tick cadence: it calls the pre- and post-step halves around the world step so capture and follow line up with ticks. You don't have to add one yourself for replication to work — a `UnityPhysicsManager` is added to the manager graph automatically, and without any driver in the scene the body still replicates, just clocked by Unity's own `FixedUpdate` instead of the tick.
+A `PhysicsSimulationDriver` present in this body's scene is what puts the body on the tick cadence: it calls the pre- and post-step halves around the world step so capture and follow line up with ticks. You don't have to add one yourself. A `UnityPhysicsManager` is added to the manager graph automatically, and under its default execution mode, `PhysicsExecutionMode.NucleusPerTick`, a `PhysicsSimulationDriver` for the default physics world is added with the managers too, so a body in an ordinary scene is on the tick from the start. A stacked local-physics scene gets its own driver when it loads. Under `PhysicsExecutionMode.UnityRun` the default world is left to Unity and projected physics is unavailable there; see [Physics execution modes](./physics-execution-modes.md).
 
 ## Verifying it
 

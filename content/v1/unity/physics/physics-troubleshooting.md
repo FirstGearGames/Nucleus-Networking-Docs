@@ -14,7 +14,7 @@ A `UnityPhysicsManager` is always present, so a missing manager is never the cau
 
 ## A body jitters or trails
 
-**Visual Smoothing versus a Smoothed Visual that is not detached.** `ProjectedRigidbody`'s Visual Smoothing (`_visualSmoothing`) low-passes the render pose of `SmoothedVisual` toward the interpolated physics pose, hiding tick-to-tick correction jitter. It requires `SmoothedVisual` to be a transform detached from the rigidbody's own hierarchy driving; if `SmoothedVisual` is left parented so it inherits the body's pose directly, `LateUpdate` writes a world pose onto a transform that is also being moved by its parent, and the two fight. Assign a `SmoothedVisual` that is not a child whose position Unity's transform hierarchy would otherwise drive.
+**Visual Smoothing with no Smoothed Visual.** `ProjectedRigidbody`'s Visual Smoothing (`_visualSmoothing`) low-passes the render pose of `SmoothedVisual` toward the interpolated physics pose, hiding tick-to-tick correction jitter. Without a `SmoothedVisual` assigned it has nothing to act on. Assign a child of the body that holds its renderer, as the demo prefabs do with a child named `Visual`: `ProjectedRigidbody` writes a world pose onto it every frame, so the parent's own motion does not fight it. Leave that child's transform to `ProjectedRigidbody`; another script or animation writing the same transform would.
 
 **Blend Mode Position on a body in contact.** `ConvergenceBlendMode.Position` (the `_blendMode` field) writes the pose directly toward the target every over-threshold step. On a body resting in a stack or against the ground, that direct pose write fights the solver's own contact resolution, producing visible jitter. Switch to `ConvergenceBlendMode.Velocity` (see below).
 

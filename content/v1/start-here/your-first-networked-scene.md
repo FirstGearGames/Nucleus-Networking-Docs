@@ -8,7 +8,7 @@ Every Unity scene that uses Nucleus needs exactly one `UnityCoreManager`. Everyt
 
 ## Add the core manager
 
-Create an empty GameObject at the root of your scene and add `UnityCoreManager` to it. Stop there — do not add any of the other Unity manager components yourself.
+Create an empty GameObject at the root of your scene and add `UnityCoreManager` to it. That is the only component you have to add: when the scene starts, it adds whichever of the other Unity manager components are missing. You can also add any of them to the same GameObject yourself, and that is how you set their Inspector fields, such as the tick rate and start mode below, before pressing Play. Keep them on that one GameObject, because `UnityCoreManager` only looks there before adding its own.
 
 `UnityCoreManager` is marked `[DisallowMultipleComponent]`, so a scene can only ever have one on a given GameObject, and `[DefaultExecutionOrder(-10000)]`, so its `Awake` runs before every other script's. That ordering matters: other components resolve a ready `CoreManager` from their own `Awake`, and that only works if `UnityCoreManager` has already built one.
 

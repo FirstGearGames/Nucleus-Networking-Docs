@@ -12,7 +12,7 @@ Three properties on `TransportManager` answer which of these the local peer is:
 - `IsClientStarted` — an authenticated client connection is established.
 - `IsHostStarted` — both of the above are true at once.
 
-`Invoker` is a separate, smaller idea: a byte enum, `Invoker.Client = 0` and `Invoker.Server = 1`, used wherever code has to say which role an operation acts for rather than what the local peer is. A host holds a connection for each role, and APIs like `TransportManager.TryGetConnection` take an `Invoker` to say which one they mean:
+`Invoker` is a separate, smaller idea: a byte enum, `Invoker.Client = 0` and `Invoker.Server = 1`, used wherever code has to say which role an operation acts for rather than what the local peer is. A host holds a connection for each role, and APIs like `Transport.TryGetConnection(Invoker, out Connection)` take an `Invoker` to say which one they mean (`TransportManager` answers the same question through `TryGetServerConnection` and `TryGetLocalClientConnection`):
 
 ```csharp
 public enum Invoker : byte

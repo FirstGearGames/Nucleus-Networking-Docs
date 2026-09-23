@@ -12,8 +12,8 @@ A shard is one `NetworkPrefabCollection` asset. Which prefabs belong to it is de
 
 Each collection exposes:
 
-- `PrefabBundleId` — the bundle identifier this shard's prefabs register under. You never author this directly; it is stamped at rebuild time from `BundleAssemblyName`.
-- `BundleAssemblyName` — the simple name of the assembly whose `[assembly: NetworkBundle(n)]` attribute supplies the bundle identifier. Empty means the base build's default shard, bundle id `0`.
+- `PrefabBundleId`: the bundle identifier this shard's prefabs register under. You never author this directly; it is stamped at rebuild time from `BundleAssemblyName`.
+- `BundleAssemblyName`: the simple name of the assembly whose `[assembly: NetworkBundle(n)]` attribute supplies the bundle identifier. Empty means the base build's default shard, bundle id `0`.
 
 Each separately built assembly that ships its own content declares its own bundle identifier:
 
@@ -36,9 +36,9 @@ If your project has no `NetworkBundleManifest` yet, the build creates one and re
 
 `NetworkBundleManifest` maps the bundle identifiers the server names on the wire to the files a client loads them from:
 
-- `Entries` — a list of `BundleEntry { BundleId, FileName }`.
-- `RootDirectory` — the directory file names resolve against; falls back to `Application.streamingAssetsPath` when left unset, which is `Assets/StreamingAssets` in the editor and the shipped copy in a build.
-- `TryGetBundlePath(ushort bundleId, out string path)` — resolves a bundle identifier to its full file path, combining `RootDirectory` with the matching entry's `FileName`.
+- `Entries`: a list of `BundleEntry { BundleId, FileName }`.
+- `RootDirectory`: the directory file names resolve against; falls back to `Application.streamingAssetsPath` when left unset, which is `Assets/StreamingAssets` in the editor and the shipped copy in a build.
+- `TryGetBundlePath(ushort bundleId, out string path)`: resolves a bundle identifier to its full file path, combining `RootDirectory` with the matching entry's `FileName`.
 
 You don't hand-author entries. **Build Content Bundles** writes them for you, upserting by identifier so an entry you keep for content loaded through some other pipeline survives.
 
@@ -58,8 +58,8 @@ Normally a prefab's required content is read straight from the shard it shipped 
 
 `NetworkSystemObject` exposes this as an override:
 
-- **Required Bundle Override Enabled** (`_requiredBundleOverrideEnabled`) — turns the override on. Left off, the requirement comes from the prefab's own `PrefabBundleId`.
-- **Required Bundle Id** (`_requiredBundleId`) — the bundle identifier required when the override is enabled.
+- **Override Required Bundle** (`_requiredBundleOverrideEnabled`): turns the override on. Left off, the requirement comes from the prefab's own `PrefabBundleId`.
+- **Required Bundle Id** (`_requiredBundleId`): the bundle identifier required when the override is enabled. The inspector only shows this field while the override is on.
 
 `NetworkSystemObject.RequiredBundleId` resolves between the two: the override value when enabled, otherwise `PrefabBundleId`. This never changes the prefab's own wire identity — that stays `PrefabBundleId` paired with `PrefabId` — it only changes which bundle must be loaded before the server will spawn it.
 

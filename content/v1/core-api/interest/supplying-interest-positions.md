@@ -4,7 +4,7 @@ title: "Supplying positions to the interest system"
 
 ## Core ships no reader
 
-The distance half of the interest system needs to know where a `NetworkSystem`'s object is, and core has no way to know that on its own. A bare `CoreManager`, with no engine integration attached, registers nothing. Every distance measurement answers unmeasurable, and because an unmeasurable position must never restrict anything, nothing is ever culled by distance. Scene-based interest still works with no reader at all; only the distance conditions and level-of-detail depend on one.
+The distance half of the interest system needs to know where a `NetworkSystem`'s object is, and core has no way to know that on its own. A distance condition reads positions through its own `TryReadSourcePosition` (see [Distance interest conditions](./distance-interest-conditions.md)), so it does not use the reader on this page. Level of detail has no condition to ask, so it reads through the world's reader, registered on the manager. A bare `CoreManager`, with no engine integration attached, registers none: level of detail then logs an error once and every pair reads as Near. Scene-based interest and the distance conditions work with no world reader at all; only level of detail depends on one.
 
 ## The interface
 
@@ -19,7 +19,7 @@ public interface IInterestPositionReader
 
 Return `false` rather than guessing for a system whose object has been destroyed or hasn't finished spawning. Don't reach for a stale or default position; an unmeasurable read must fail honestly so the caller can abstain instead of restricting on bad data.
 
-This is the single thing an engine integration owes the distance half of interest. Everything else - memoizing, the finiteness check, the once-per-pass discipline - lives on `InterestManager`.
+This is the single thing an engine integration owes level of detail. Everything else - memoizing, the finiteness check, the once-per-pass discipline - lives on `InterestManager`.
 
 ## Registering it
 
@@ -35,7 +35,7 @@ A condition is a per-prefab object that its system hands back to a pool when it'
 
 ## One read per pass
 
-The manager caches each system's measured position for the length of one interest pass. A system read once by level-of-detail and again by a distance condition on the same tick only calls `TryReadPosition` once; every repeated ask within that pass is answered from the cache. A failed read is cached too, so a destroyed or not-yet-spawned object doesn't get probed again and again within the same pass.
+The manager caches each system's measured position for the length of one interest pass. A system read once by level-of-detail and again by a distance condition on the same tick is only read once, through whichever reader asks first; every repeated ask within that pass is answered from the cache. A failed read is cached too, so a destroyed or not-yet-spawned object doesn't get probed again and again within the same pass.
 
 Because of this, your reader owes no memoization of its own. Write the raw read and let the manager do the rest.
 
@@ -58,4 +58,4 @@ A system nobody has recorded a position for reports unmeasurable, which is the c
 
 ## Unity
 
-The Unity integration registers a reader for you; you don't need to write one. See [Limiting replication by distance](../../unity/interest/limit-replication-by-distance.md) for how it's wired up and how to configure the distance conditions that depend on it.
+The Unity integration registers a reader for you; you don't need to write one. See [Limiting replication by distance](../../unity/interest/limit-replication-by-distance.md) for how to configure the distance conditions, which read positions on their own.

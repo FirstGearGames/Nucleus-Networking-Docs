@@ -20,7 +20,7 @@ Start every networked object the same way: create the prefab, add `NetworkSystem
 
 A prefab with no `PrefabId` can't spawn over the network. Run **Nucleus > Rebuild Network Prefab Collection** from the Unity menu (`NetworkPrefabCollectionBuilder.Rebuild`, on `[MenuItem("Nucleus/Rebuild Network Prefab Collection")]`) after adding a new networked prefab, and again any time you add or remove one. It scans the project for prefabs carrying a `NetworkSystemObject`, stamps each with a prefab id and its bundle's id, and writes the shard's prefab collection asset.
 
-The id lives on the prefab asset itself, which is where the trap comes from: duplicate a networked prefab in the Project window and the copy carries the same stamped `_prefabId` as the original, because duplication copies the serialized data verbatim. Until you rebuild, both prefabs claim the same identifier and the wrong one can end up resolved on the receiving end. Clear the duplicate's identifier back to zero and rebuild — the collection build only preserves an identifier that's already set and unique, so a cleared one is stamped fresh.
+The id lives on the prefab asset itself, which is where the trap comes from: duplicate a networked prefab in the Project window and the copy carries the same stamped `_prefabId` as the original, because duplication copies the serialized data verbatim. Until you rebuild, both prefabs claim the same identifier and the wrong one can end up resolved on the receiving end. Rebuilding gives one of the two a fresh identifier, but not necessarily the copy: whichever sorts later by asset GUID is renumbered. To keep the original's identifier, clear the duplicate's `_prefabId` back to zero first (in its `.prefab` file, since the inspector shows it read-only), then rebuild. The collection build only preserves an identifier that's already set and unique, so a cleared one is stamped fresh.
 
 ## Adding NetworkTransform
 
@@ -91,7 +91,7 @@ public class FirstObjectController : NucleusBehaviour<FirstObjectComponent>
 - `CoreManager` — resolved in `Awake`.
 - `IsController(ControllerType controllerType)` — false until a system is linked, otherwise the system's own answer.
 - `IsStarted(Invoker invoker)` — whether this peer's server or client role is started, meaningful only once a system is linked.
-- `EnsureIsController(ControllerType controllerType)` and `EnsureIsStarted(Invoker invoker)` — the same checks, but log a warning on every failing call instead of failing silently. `Update()` above uses the plain forms deliberately: it runs every frame, and a non-controlling or not-yet-started peer failing the check there is the normal case, not a bug. Reach for the loud forms in one-off code — a button handler, an RPC — where a failure means something is actually wrong.
+- `EnsureIsController(ControllerType controllerType)` and `EnsureIsStarted(Invoker invoker)`: the same checks, but instead of failing silently they log a warning naming the calling member, once per calling member on each behaviour. `Update()` above uses the plain forms deliberately: it runs every frame, and a non-controlling or not-yet-started peer failing the check there is the normal case, not a bug, so even that one warning would be noise. Reach for the loud forms in one-off code, such as a button handler or an RPC, where a failure means something is actually wrong.
 
 ## The lifecycle hooks
 

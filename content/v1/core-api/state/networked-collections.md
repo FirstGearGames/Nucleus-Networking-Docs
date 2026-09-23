@@ -12,7 +12,7 @@ Nucleus replicates five collection shapes, each a `NetworkComponent` member type
 - `NetworkHashSetMember<T0>` — an unordered set of unique elements
 - `NetworkQueueMember<T0>` — a FIFO queue
 
-All five derive from `NetworkCollectionMemberBase<TChange>`, which owns the change-log and snapshot-ring bookkeeping shared across the family; each family only supplies its own storage, mutation surface, and wire shape. As with scalar members, the element type (and, for the dictionary, the key type) must be a value type or `string` — codegen rejects any other reference type so values cannot change without going through the public mutation API.
+All five derive from `NetworkCollectionMemberBase<TChange>`, which owns the change-log and snapshot-ring bookkeeping shared across the family; each family only supplies its own storage, mutation surface, and wire shape. As with scalar members, keep the element type (and, for the dictionary, the key type) to a value type or `string`. Codegen does not enforce this, but an element held by reference can be changed without going through the public mutation API, and the collection never sees that change.
 
 ```csharp
 public class NetworkListMember<T0> : NetworkCollectionMemberBase<NetworkListChange<T0>>

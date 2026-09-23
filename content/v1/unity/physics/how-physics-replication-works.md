@@ -26,7 +26,7 @@ Three things replicate: world position, world rotation, and a small set of condi
 
 No engine type ever crosses that boundary. The replicated members and the snapshot they rebuild are expressed in `System.Numerics` — `Vector3` and `Quaternion` — never an engine-specific vector, quaternion, or rigidbody handle. The core has no dependency on any particular physics engine; an integration is responsible for reading its engine's body into that shape and writing the projected result back onto it.
 
-Position and rotation ride Divine or Interval transmission like any other member — the choice is per-member, not physics-specific. Divine can go quiet for stretches where Interval would still send every tick; what differs between editions is only how tightly the correction packs, not whether Divine or Interval is available.
+Position and rotation ride Divine or Interval transmission like any other member; the choice is per-member, not physics-specific. Divine can go quiet for stretches where Interval would still send every tick. Divine projection is Pro: a free build accepts `Divine` and replicates the member with ordinary deltas, as `Interval` does.
 
 ## What isn't built
 

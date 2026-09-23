@@ -22,7 +22,7 @@ An object placed directly in a scene (`NetworkSystemObject.IsSceneObject` true, 
 
 By default every started `NetworkSystem` is registered to every authenticated client and nothing is filtered — but `UnityInterestManager` ships one interest rule on by default: `AuthoredSceneInterestCondition`, the scene gate. It withholds an object from a player until that player holds the same scene instance the object lives in. If the second peer hasn't been placed in that scene (see #2), the object is fully spawned on the server and still invisible to that client.
 
-Check the **Interest Rules** list on `UnityInterestManager`, and any `AuthoredInterestCondition` entries on the object's own `NetworkInterestObject`. Either can restrict — never expand — who receives the object.
+Check the **World Rules** list on `UnityInterestManager`, and the **Rules** list on the object's own `NetworkInterestObject`. Either can only restrict who receives the object, never expand it.
 
 ## 4. Wrong role branch
 

@@ -14,8 +14,8 @@ coreManager.Deinitialize();
 
 `Deinitialize()` does three things, in this order, and the order is the point:
 
-1. **Stop the loop provider.** `NetworkLoopManager.ReleaseNetworkLoopStepProvider()` runs first, because the default provider steps the loop from a thread-pool thread, and every manager released below mutates collections a step walks. Nothing else can safely happen while the loop is still stepping.
-2. **Shut the transports down.** `TransportManager.ShutdownTransports()` runs next. Shutting a socket down drives the disconnect path through handlers spread across the managers, and every one of those managers is still whole at this point. Doing this later, partway through the manager unwind, would run those handlers against managers that no longer exist.
+1. **Stop the loop provider.** The network loop's step provider is released first, because the default provider steps the loop from a thread-pool thread, and every manager released below mutates collections a step walks. Nothing else can safely happen while the loop is still stepping.
+2. **Shut the transports down.** Every transport is shut down next. Shutting a socket down drives the disconnect path through handlers spread across the managers, and every one of those managers is still whole at this point. Doing this later, partway through the manager unwind, would run those handlers against managers that no longer exist.
 3. **Release the managers in reverse of construction order.** A manager built later resolved and registered onto managers built earlier (handlers on the message manager, a spawn gate on the interest manager, callbacks on the network loop manager). Releasing the newest first means nothing is released while something built after it still holds a reference to it.
 
 Both the loop-provider release and the transport shutdown are idempotent on their own, so each manager's `Deinitialize` still reads as the one place its resource is released.
