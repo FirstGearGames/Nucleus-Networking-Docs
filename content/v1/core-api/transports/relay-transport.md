@@ -21,6 +21,10 @@ title: "The relay transport"
 
 `RelayTransport.DatagramOverheadBytes` is the relay's own header on a host data frame (message type, virtual client id, channel) plus the overhead the socket library beneath the relay adds to every datagram. The engine reserves this before building a packet, so it comes straight off your usable transmission unit compared to a transport that talks to the wire directly — a relayed session pays for the relay's framing in addition to the socket layer's.
 
+## When the relay closes the room
+
+If the relay closes the hosting peer's link, for example because the relay shut down or dropped the room, that peer's server stops on its own. On the next poll every client is disconnected and the server's local state walks down to stopped, the same as if you'd stopped it yourself, so the usual server-stopped and client-disconnected callbacks fire. You don't need to watch for a dead room. To keep playing, stand up a new room, or let `NewfarmHostMigration` do it.
+
 ## Why the room needs a session-host seam
 
 A relayed room belongs to whichever peer made it, and it dies with that peer. Every other peer's link to the room dies with it too. That means a handover isn't a reconnect — it's a brand-new room, under a name nobody could have known in advance, with no channel left between the survivors to learn it. `RelayTransport` alone has no way to solve that; it only knows how to open, join, and leave a room it's told about.
