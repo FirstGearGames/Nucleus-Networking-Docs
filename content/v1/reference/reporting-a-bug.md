@@ -14,7 +14,9 @@ An issue without a reproduction project is investigated at lower priority, and m
 
 ## The size limit
 
-**Under 1 MB, zipped.** That sounds tight, and it is not. A Unity project carrying one scene, a handful of prefabs and the Nucleus package fits comfortably once the regenerated folders are gone.
+**Under 1 MB, zipped. Attachments over 1 MB will be deleted, with no exceptions.**
+
+That sounds tight, and it is not. A Unity project carrying one scene, a handful of prefabs and the Nucleus package fits comfortably once the regenerated folders are gone. Every reproduction project can be reduced to that.
 
 Delete these before zipping. Unity rebuilds every one of them the first time the project is opened:
 
@@ -40,9 +42,11 @@ Delete these before zipping. Unity rebuilds every one of them the first time the
 - **Whether it happens in a build too**, or only in the editor.
 - **Any simulated packet loss** you had switched on, and at what percentage.
 
-## If you cannot get under 1 MB
+## If yours will not fit
 
-Open the issue anyway. Attach the smallest project that still shows the fault, and say in the issue what you could not remove and why. A report that arrives is worth more than one that was never filed because the archive was 1.4 MB.
+The cause is content the bug does not need, and removing it is part of narrowing down the fault anyway. Strip the project further rather than filing it oversized.
+
+Deleting an oversized attachment does not close your issue. It does leave it without a reproduction project, which means it is investigated at lower priority, and may be closed if it cannot be reproduced.
 
 ## What not to send
 
