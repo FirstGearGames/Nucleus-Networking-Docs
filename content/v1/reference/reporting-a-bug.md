@@ -42,11 +42,11 @@ Delete these before zipping. Unity rebuilds every one of them the first time the
 - **Whether it happens in a build too**, or only in the editor.
 - **Any simulated packet loss** you had switched on, and at what percentage.
 
-## If yours will not fit
+## Attachments larger than 1 MB
 
-The cause is content the bug does not need, and removing it is part of narrowing down the fault anyway. Strip the project further rather than filing it oversized.
+If your zipped project is still over 1 MB after deleting the regenerated folders, the extra size is coming from something in `Assets/` that the bug does not need. Find it and remove it. Cutting a project down to the smallest thing that still shows the fault is useful work in its own right, because it tells you which parts of your setup the bug actually depends on.
 
-Deleting an oversized attachment does not close your issue. It does leave it without a reproduction project, which means it is investigated at lower priority, and may be closed if it cannot be reproduced.
+Please do not attach the project anyway and explain the size in the issue. An attachment larger than 1 MB is deleted, and deleting it does not close your issue, but it does leave the issue without a reproduction project. An issue without one is investigated at lower priority, and may be closed if it cannot be reproduced.
 
 ## What not to send
 
