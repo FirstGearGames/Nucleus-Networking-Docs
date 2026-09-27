@@ -60,7 +60,7 @@ There are no attribute-driven RPCs in Nucleus. A remote call is a plain struct i
 
 Both slots name exactly one manager. A process running more than one `CoreManager` at a time — a host pair in the same process, a two-peer test — has more than one valid manager and no slot can name both. In that situation, resolve and pass the `CoreManager` explicitly instead of reading the static.
 
-## Identical on both sides
+## These names are the same in both frameworks
 
 These read the same in Nucleus as in FishNet; no rename to look up.
 
@@ -69,6 +69,6 @@ These read the same in Nucleus as in FishNet; no rename to look up.
 
 `IsServerStarted` and `IsClientStarted` keep their names on `TransportManager` and `NetworkSystem`, but a `NucleusBehaviour` has no property by either name. Inside a script, ask `IsStarted(Invoker.Server)` or `IsStarted(Invoker.Client)` instead.
 
-## No migration tool
+## There is no automated migration tool
 
 There is no automated FishNet-to-Nucleus converter. Port code by hand, using this map to find the replacement concept, then write it in Nucleus's own shape rather than FishNet's.

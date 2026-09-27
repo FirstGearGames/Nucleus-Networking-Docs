@@ -50,7 +50,7 @@ if (networkSystem.IsServerStarted)
 }
 ```
 
-## Why there is no IsAuthority
+## IsAuthority was removed because it conflated two questions
 
 `IsAuthority` was removed. It conflated two different questions, and the roles above answer them separately:
 

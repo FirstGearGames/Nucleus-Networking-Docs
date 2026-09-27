@@ -8,7 +8,7 @@ Prediction removes one thing: the wait for a round trip before the controller se
 
 That is the entire benefit. Prediction does not make an object more accurate, more responsive to other peers, or cheaper to replicate. It only hides the round trip from the one peer driving the object.
 
-## What it costs
+## Prediction costs bandwidth, memory and replay time
 
 Turning prediction on for a `NetworkMember<T0>` is one constructor argument:
 
@@ -42,6 +42,6 @@ Prediction only matters to the peer that controls the object, because it's the o
 
 `isPredicted` is a per-`NetworkMember<T0>` constructor argument, not a project setting or even a per-object one. A single component can predict its transform while leaving its health, ammo count, or any other member unpredicted — each one is its own opt-in. As of this writing, no shipped component in the codebase passes `isPredicted: true`; the only members that do live in the test tree (`Nucleus.Tests/Components/Testing/PredictedStateComponent.cs`, `InterpolationStateComponent.cs`). Prediction is available, per member, wherever the compare-gate-and-replay cost is worth paying — it just isn't turned on anywhere by default.
 
-## What's Pro
+## Predicted spawning is Pro, predicted motion is not
 
 Predicted members, their inputs, and the reconcile replay described above are available in every build. Predicted *spawning*, predicted *despawn*, and spawn compensation are Pro-only — `NetworkSystem.PredictedSpawn.Pro.cs`, `SystemManager.PredictedSpawn.Pro.cs`, `NetworkSystem.SpawnCompensation.Pro.cs`, and `SystemManager.SpawnCompensation.Pro.cs` don't exist in a Free build. Predicting an object's motion or state costs nothing extra to license; predicting the moment an object comes into or out of existence does.

@@ -2,7 +2,7 @@
 title: "Compatibility"
 ---
 
-## Runtime
+## Nucleus runs anywhere netstandard2.1 runs
 
 Nucleus's core targets `netstandard2.1`, with nullable reference types enabled and unsafe blocks allowed. Anything that implements netstandard2.1 runs it: .NET 5 and later, Mono, and Unity, plus .NET Core 3.x with two additions to the consuming project, a `PackageReference` to `System.Runtime.CompilerServices.Unsafe` 5.0.0 (which `CodeBoost.dll` depends on) and `<LangVersion>9.0</LangVersion>` (the generated code uses module initializers). The core has no engine dependency, so this is one axis independent of the Unity integration below.
 
@@ -28,7 +28,7 @@ Without these packages installed, the corresponding code simply isn't compiled i
 
 The source generators (`Nucleus.CodeAnalysis.SourceGenerators`) target `netstandard2.0` and are consumed as Roslyn analyzers, not as a runtime dependency. Any toolchain building Nucleus from source needs an SDK that can host netstandard2.0 analyzers alongside the netstandard2.1 core.
 
-## Not supported
+## These targets are closed, not pending
 
 These are closed, not pending:
 

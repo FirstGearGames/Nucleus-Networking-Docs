@@ -48,7 +48,7 @@ Two exceptions have no Unity-side component of their own: `RpcManager` and `Viol
 
 The tenth Unity component `EnsureManagers` adds, `UnityPhysicsManager`, is the odd one out in the other direction: it fronts no core manager at all. It's an inspector-side seat for physics execution settings that a physics coordinator reads directly, not a wrapper around one of the eleven fields above.
 
-## No engine-wide settings object
+## Every setting lives on the manager that owns it
 
 There is no single settings type for a Nucleus session. Every knob - tick rate, a transport's connection settings, interest rules, scene load behavior - is a field on the manager that owns that concern. To change something, find its manager first.
 

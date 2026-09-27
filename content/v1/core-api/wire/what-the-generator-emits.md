@@ -8,7 +8,7 @@ A `NetworkComponent` you declare is a partial class. At build time, `NetworkComp
 
 A component with no replicated members emits neither pair at all, inheriting the empty base implementation. Both peers compile the same decision, so the wire format agrees without either side needing to check at runtime.
 
-## Reachability
+## The generator finds types by walking fields, not by scanning for attributes
 
 The generator finds types by walking fields, not by scanning for an attribute. Any type reached through a `NetworkMember<T0>` field - including a plain struct you define yourself - gets a full serializer with no marker required. `[NetworkType]` exists for the opposite case: a type nothing reaches this way, which needs the attribute to force a serializer into existence.
 
@@ -18,13 +18,13 @@ An inherited field is written and read too, ahead of the declaring type's own fi
 
 A type's full serializer and its delta serializer are produced by the same pass, from the same member list. If a member's type has no full writer, the generator reports it in a warning naming the member and drops it from both halves; it never emits one half without the other. A member the generator genuinely cannot serialize is therefore a build-time diagnostic, not something discovered later on the wire.
 
-## Registration
+## Each assembly registers its own types as it loads
 
 Each assembly gets one generated `NetworkTypeRegistry` class carrying a `[ModuleInitializer]`-attributed method. It registers every discovered `NetworkSystem` subclass and every constructible `NetworkComponent` type into `Nucleus.Serializers.NetworkTypeRegistry` as the assembly loads, calling `RegisterSystem<T>(bundleId, localId)` and `RegisterComponent<T>(bundleId, localId)` for each. Nothing needs to call this and there is no reflection walk at runtime to build it: the module initializer runs once, at load, before any of the assembly's own code.
 
 Registration order is deterministic: systems and components are each sorted with `OrderBy(..., StringComparer.Ordinal)` on their full type name before numbering, so a rebuild from the same source always assigns the same local ids.
 
-## Numbering
+## Local ids are numbered per bundle, from two different starting points
 
 Local ids are numbered per assembly (per bundle), and the two counters start differently:
 
@@ -47,6 +47,6 @@ Generated code and hand-written engine code both need to compile against the sam
 
 These `.g.cs` files are tracked source, not build output. They're regenerated deliberately when a signature changes, then committed and edited like any other file the generator depends on - never gitignored, never deleted on the assumption that a build will replace them.
 
-## The ceiling
+## A single type can declare at most 62 network members
 
 `Serializers.Constants.MaximumNetworkMemberCount` is `63`, and the usable count is one less: the generator reports `SERIALIZERS000` for a type that declares 63 or more network members, so a single type can declare at most 62. The ceiling exists because the delta flags backing each type's change set is a `ulong` and the shift that sets a member's bit is computed as a 64-bit operation to avoid aliasing member 32 onto member 0. The check covers the structs and classes the generator writes serializers for; it is not applied to a `NetworkComponent`, whose own limit is described in [How replicated state works](../state/state-replication-model.md).

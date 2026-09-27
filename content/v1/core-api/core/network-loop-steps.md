@@ -19,7 +19,7 @@ The names group into three kinds:
 
 A fixed step only runs on a frame that also ran a tick step; there is no fixed step floating outside a tick. A frame that does not land on the network tick rate runs its variable steps and nothing between `EarlyTickUpdate` and `LateTickUpdate`. Do not assume a tick step, or the fixed and state steps nested inside it, fires on every frame.
 
-## Where the framework does its own work
+## Several steps run framework work around your callback
 
 Several steps carry framework work woven in alongside your callbacks, and whether that work runs before or after your callback matters:
 
@@ -33,7 +33,7 @@ Several steps carry framework work woven in alongside your callbacks, and whethe
 
 The remaining steps — `EarlyStateUpdate`, `Reconcile`, `LateFixedUpdate`, `VariableUpdate`, `EarlyStateWrite` — carry no framework work of their own; your callback is the only thing that runs on them.
 
-## What this means for your code
+## Where a step sits decides what your code may safely do
 
 - **Read replicated state after it has been applied**, not before. `LateStateUpdate` and later is where incoming values are current; a read during `EarlyStateUpdate` or earlier can still see last tick's value.
 - **Write before it is serialized.** `EarlyStateWrite` is the step for setting values you want sent; `LateStateWrite` serializes whatever changed, so a write registered for `LateStateWrite` itself may miss the packet.

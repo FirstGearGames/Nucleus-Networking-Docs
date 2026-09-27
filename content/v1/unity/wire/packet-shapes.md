@@ -73,6 +73,6 @@ A `State` packet's combined stream can be too large for one transport unit, so i
 
 The convention across both types is one owner copies once, and one owner returns: a payload lives in its writer's buffer unless a later stage copies it out, and whichever struct ends up holding that copy is the one responsible for returning it.
 
-## Scope
+## This page is for reading the wire, not for writing packets
 
 `PacketHeader` is a public type, but every member on it is `internal`, and `SegmentMode` is `internal` as well. Nothing here is a public API for writing packets — this page is for reading what's on the wire (a log line, a capture, a framing error), not for constructing packets yourself.

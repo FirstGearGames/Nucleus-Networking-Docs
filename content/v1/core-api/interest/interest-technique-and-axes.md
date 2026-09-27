@@ -31,7 +31,7 @@ Pick the technique from the world's geometry, not from player count.
 
 The choice resolves to a per-axis multiplier (one on each measured axis, zero on the omitted one) rather than a branch, so nothing on the hot path tests which axes are live. `Xyz` resolves to the mask of ones, which leaves the arithmetic identical to a world that never chose a plane at all.
 
-## The technique settles once
+## The technique is locked once a distance condition registers
 
 `SetInterestTechnique` is refused, with a logged error, once any distance condition has registered in the world. A single pass cannot measure in two planes at once, and which one won would become an accident of evaluation order rather than a decision anyone made. Set the technique and the axes during setup, before anything carrying a distance rule spawns.
 

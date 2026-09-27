@@ -2,7 +2,7 @@
 title: "Reference & Project Meta"
 ---
 
-Lookup pages: type and component references, configuration, and compatibility.
+These pages are for looking things up: type and component references, configuration, and compatibility.
 
 - [API type reference](./api-type-reference.md)
 - [Compatibility](./compatibility.md)

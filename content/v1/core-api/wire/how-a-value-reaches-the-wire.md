@@ -16,11 +16,11 @@ At serialize time, the component's generated writer encodes each changed member 
 
 On the receiving end this runs in reverse: rejoin segments into one reader, walk the frames in order (`Full`, then `Controller`, then `Delta` — so a spawn exists before anything addresses it), and each component's generated reader decodes its members back out.
 
-## Bits, not bytes
+## Values are packed at bit granularity, not byte granularity
 
 Values are packed at bit granularity, not byte granularity. A member carries a length indicator alongside its data, so the wire cost of "a float" or "a Vector3" has no fixed answer — it depends on how far the value moved since the last tick it was sent. A value that barely changed writes short; one that changed a lot writes long. (How that length indicator itself is encoded isn't covered here — the granularity and the cost trade-off are what matter at this level.)
 
-## Nothing reflective at runtime
+## Every serializer is generated at build time, never by reflection
 
 Every `Write`/`Read` method your components use is emitted by the Nucleus source generator at build time, and each one registers itself at assembly load through a module initializer. There is no reflection-based serialization path, and no runtime type inspection to find or build a serializer — a type either has generated code for it or it doesn't compile against the network path. That's what keeps the engine AOT-friendly: nothing here depends on `System.Reflection.Emit` or similar runtime code generation that AOT platforms disallow.
 
@@ -30,7 +30,7 @@ Every `Write`/`Read` method your components use is emitted by the Nucleus source
 - **Transmission mode and send interval — how often, or whether at all.** `TransmissionMode.Interval` (the default) sends ordinary deltas paced to a `SendInterval`; `SendInterval.Normal` sends every changed tick, and a wider interval accumulates changes and rides at most one delta per span. `TransmissionMode.Divine` projects the value instead of sending ordinary deltas, correcting only when needed, so it can go quiet for stretches where `Interval` would still be sending — the mechanism itself isn't something you need to reason about to use it, and it is Pro-only.
 - **`[ReplicationIgnore]` — whether the code exists at all.** A member declared with `ReplicationIgnoreAttribute` gets no generated serialization: the generator skips it entirely rather than serializing-and-discarding it, so it's not a runtime cost you pay and choose not to use — it's code that was never emitted.
 
-## Unreliable-first
+## Most state rides an unreliable channel by design
 
 Most state rides an unreliable channel. Correctness doesn't come from retransmitting a lost packet — it comes from acknowledgment, redundant resends, and targeted recovery for a peer that's fallen behind. See the reliability and recovery section for how that works; this page only needs you to know that "unreliable" is the normal case for state, not an edge case to work around.
 
