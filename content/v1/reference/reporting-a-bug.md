@@ -4,50 +4,48 @@ title: "Reporting a bug"
 
 Bugs go to the [issue tracker](https://github.com/FirstGearGames/nucleus-issues/issues/new/choose). The form there asks for your version, edition, transport and topology, because those four facts decide which code path ran.
 
-This page covers the part the form cannot do for you: the project you attach so someone else can see the fault happen.
+This page covers the part the form cannot do for you, which is the project you attach so that someone else can watch the fault happen.
 
-## Why a project matters
+## A reproduction project is what gets a bug fixed
 
-Nucleus faults are usually timing faults. A description of what you saw narrows the search a little; a project that reproduces it narrows it to a specific tick. Most reports that go unfixed are not ignored, they simply could never be reproduced.
+Nucleus faults are usually timing faults. A description of what you saw narrows the search a little, but a project that reproduces it narrows the search to a single tick. Most reports that go unfixed were never ignored; they simply could not be reproduced.
 
-An issue without a reproduction project is investigated at lower priority, and may be closed if it cannot be reproduced.
+An issue without a reproduction project is investigated at lower priority, and it may be closed if it cannot be reproduced.
 
-## The size limit
+## Every attachment must be under 1 MB
 
-**Under 1 MB, zipped. Attachments over 1 MB will be deleted, with no exceptions.**
+**Zip your project and keep the archive under 1 MB. Attachments over 1 MB are deleted, and there are no exceptions.**
 
-That sounds tight, and it is not. A Unity project carrying one scene, a handful of prefabs and the Nucleus package fits comfortably once the regenerated folders are gone. Every reproduction project can be reduced to that.
+That limit sounds tight, and it is not. A Unity project carrying one scene, a handful of prefabs and the Nucleus package fits comfortably once the regenerated folders are gone, and every reproduction project can be reduced to that.
 
-Delete these before zipping. Unity rebuilds every one of them the first time the project is opened:
+Delete these folders before zipping, because Unity rebuilds every one of them the first time the project is opened:
 
-- `Library/`
-- `Temp/`
-- `obj/` and `Build/`
-- `Logs/`
-- `UserSettings/`
+- `Library/` holds the imported asset cache, and it is usually most of the archive on its own.
+- `Temp/` and `obj/` hold intermediate build files.
+- `Build/` holds any player you have built from the project.
+- `Logs/` holds the editor logs, which belong pasted into the issue rather than zipped.
+- `UserSettings/` holds your personal editor layout, which nobody else needs.
 
-`Library/` alone is usually most of the archive. If you are still over 1 MB after deleting it, something in `Assets/` is the cause, and it is almost always an imported asset that the bug does not need.
+## The project should contain only what the bug needs
 
-## What the project should contain
+- **Remove every third-party asset.** Replace anything from the Asset Store with primitives and untextured materials, because a project that cannot be opened without buying something cannot be used to investigate your bug.
+- **Leave the Nucleus package in place, exactly as you have it installed.** Which build you are running is part of the report, so do not strip it out to save space.
+- **Reduce the project to one scene showing one fault.** If two things are wrong, please open two issues.
+- **Name the steps precisely.** Say which scene to open, what to press, and what to watch for.
 
-- **No third-party assets.** Replace anything from the Asset Store with primitives and untextured materials. A project that cannot be opened without buying something cannot be used to investigate your bug.
-- **The Nucleus package as you have it installed.** Which build you are running is part of the report, so leave it in rather than stripping it out to save space.
-- **One scene, one fault.** Strip everything the bug does not need. If two things are wrong, open two issues.
-- **The steps inside that scene**, named exactly: which scene to open, what to press, what to watch.
+## Say these things in the issue itself
 
-## What to say alongside it
+- **Describe the topology the fault needs.** Say whether it takes a host or a dedicated server plus a client, and how many peers have to be running. A large class of faults disappears the moment the same code runs as a host, and the reverse is true just as often.
+- **Say how often it happens.** "Every time" and "roughly one run in four" lead to completely different investigations. An intermittent fault is still worth reporting, as long as the report says that it is intermittent.
+- **Say whether it also happens in a build**, or only in the editor.
+- **Mention any simulated packet loss** that you had switched on, and give the percentage.
 
-- **The topology it needs.** A host, or a dedicated server plus a client, and how many peers have to be running. A large class of faults disappears the moment the same code runs as a host, and the reverse is also true.
-- **How often it happens.** "Every time" and "roughly one run in four" lead to completely different investigations. An intermittent fault is still worth reporting, as long as the report says it is intermittent.
-- **Whether it happens in a build too**, or only in the editor.
-- **Any simulated packet loss** you had switched on, and at what percentage.
+## Attachments larger than 1 MB are deleted
 
-## Attachments larger than 1 MB
+If your zipped project is still over 1 MB after you have deleted the regenerated folders, then the extra size is coming from something in `Assets/` that the bug does not need. Find it and remove it. Cutting a project down to the smallest thing that still shows the fault is useful work in its own right, because it tells you which parts of your setup the fault actually depends on.
 
-If your zipped project is still over 1 MB after deleting the regenerated folders, the extra size is coming from something in `Assets/` that the bug does not need. Find it and remove it. Cutting a project down to the smallest thing that still shows the fault is useful work in its own right, because it tells you which parts of your setup the bug actually depends on.
+Please do not attach an oversized project and explain the size in the issue instead. An attachment larger than 1 MB is deleted, and while deleting it does not close your issue, it does leave that issue without a reproduction project. An issue without one is investigated at lower priority, and it may be closed if it cannot be reproduced.
 
-Please do not attach the project anyway and explain the size in the issue. An attachment larger than 1 MB is deleted, and deleting it does not close your issue, but it does leave the issue without a reproduction project. An issue without one is investigated at lower priority, and may be closed if it cannot be reproduced.
+## Do not send your whole game
 
-## What not to send
-
-Do not attach your game. A full project is slower to investigate than no project at all, because the first job becomes cutting it down, and only you know which parts matter.
+A full project is slower to investigate than no project at all, because the first job becomes cutting it down, and only you know which parts matter.
