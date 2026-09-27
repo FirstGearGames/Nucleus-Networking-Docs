@@ -2,7 +2,7 @@
 title: "NetworkMember"
 ---
 
-## What it is
+## NetworkMember is the scalar building block of a component
 
 `NetworkMember<T0>` is the scalar building block a generated `NetworkComponent` declares its replicated fields with. It stores a sparse ring of past values for `T0`, exposes the current, previous, and interpolated views of that value, and owns the construction-time knobs that decide how it is compressed, paced, and projected on the wire. The non-generic behaviour (write access, `IsReplicated`) lives on its base type, `NetworkMemberBase`.
 

@@ -16,7 +16,7 @@ LoggingService.UseLogger(new MyServiceLogger());
 
 `DisableUnconditionalDevelopmentStacktrace()` on `ILogger` controls whether a development build appends a stack trace to every log call regardless of level; `ConsoleLogger` returns `true`, so its info/warning logs stay plain.
 
-## Pooling
+## CodeBoost provides two object pools
 
 `ObjectPool<T0>` (constraint `new()`) rents and returns plain objects through a thread-local stack backed by a shared global stack. `ResettableObjectPool<T0>` does the same for a type implementing `IPoolResettable`, calling `OnRent()` after renting and `OnReturn()` before storing the instance back. Both expose `Rent()`, `Return(T0)`, and `ReturnAndNullifyReference(ref T0)`.
 

@@ -10,7 +10,7 @@ A **message** is addressed to a peer and forgotten. It has no address beyond the
 
 A **call** is addressed to a `NetworkSystem`. The receiver resolves that system before any handler runs, so a call for a system the receiver does not have is stepped over rather than delivered to the wrong place.
 
-## What each costs to send
+## Each mechanism carries a different envelope
 
 A message's envelope carries a hash of the message type (`ushort`), so the receiver knows which handler decodes the body. There is no address and no framing beyond that.
 

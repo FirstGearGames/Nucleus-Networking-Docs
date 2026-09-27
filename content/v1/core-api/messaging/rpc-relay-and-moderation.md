@@ -2,7 +2,7 @@
 title: "Judging and Refusing a Relayed Call"
 ---
 
-## Overview
+## A handler decides whether a call goes any further
 
 An RPC handler on the server does not just react to a call - it can decide whether that call goes any further. Every handler returns an `RpcRelayAction`, and the server applies that verdict before writing a single byte to the peers the call would otherwise reach.
 
@@ -28,7 +28,7 @@ The fold only ever downgrades toward `Cancel`. A handler that answers `Relay` af
 
 Each handler is invoked in its own try/catch, so one throwing handler does not stop the handlers after it from receiving the call. But the throw itself is treated as a refusal: a handler that threw never answered `Relay`, so the call fails closed rather than travelling on unjudged. A payload crafted to crash a moderating handler does not buy it a pass.
 
-## What the peer is to the call
+## RpcContext tells a handler what this peer is to the call
 
 Alongside the verdict, a handler receives an `RpcContext` describing what this peer is to the call it's judging:
 

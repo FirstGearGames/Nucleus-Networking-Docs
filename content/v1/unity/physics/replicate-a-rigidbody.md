@@ -6,7 +6,7 @@ title: "Replicate a rigidbody"
 
 Add `ProjectedRigidbody` to a GameObject that has a `Rigidbody`. That's the whole setup.
 
-## What gets added
+## Adding ProjectedRigidbody pulls in two more components
 
 `ProjectedRigidbody` carries two `[RequireComponent]` attributes, so adding it pulls in the other two components you need:
 
@@ -22,7 +22,7 @@ You never rent or spawn anything by hand. In its own `Awake`, `ProjectedRigidbod
 
 Nothing else needs wiring. No manual `RequireSystem` call, no manual component lookup.
 
-## Who simulates
+## Exactly one peer simulates the body for real
 
 Exactly one peer simulates this body for real: the one where `NetworkSystem.IsController(ControllerType.AnyController)` is true. Every tick, that peer's `Rigidbody` steps normally, and the stepped result is captured into `PhysicsComponent` for replication.
 
@@ -40,7 +40,7 @@ This object replicates its pose through `ProjectedRigidbody`'s own `NetworkPhysi
 
 A `PhysicsSimulationDriver` present in this body's scene is what puts the body on the tick cadence: it calls the pre- and post-step halves around the world step so capture and follow line up with ticks. You don't have to add one yourself. A `UnityPhysicsManager` is added to the manager graph automatically, and under its default execution mode, `PhysicsExecutionMode.NucleusPerTick`, a `PhysicsSimulationDriver` for the default physics world is added with the managers too, so a body in an ordinary scene is on the tick from the start. A stacked local-physics scene gets its own driver when it loads. Under `PhysicsExecutionMode.UnityRun` the default world is left to Unity and projected physics is unavailable there; see [Physics execution modes](./physics-execution-modes.md).
 
-## Verifying it
+## Check the result across two editors
 
 Run two editors. On the controlling peer, move or nudge the `Rigidbody` — push it, let it fall, whatever your scene does. On the second editor, the same `Rigidbody` follows that motion: not by teleporting to each new position, but converging toward it tick by tick.
 

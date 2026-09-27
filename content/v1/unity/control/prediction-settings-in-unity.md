@@ -10,7 +10,7 @@ The Unity system manager exposes a **Prediction History Ticks** field (backed by
 
 Zero means "leave the per-member defaults alone." Every predicted member and input member already sizes its own ring; this field only raises that ring when a value is set.
 
-## When it takes effect
+## The field is pushed onto the core manager as it comes up
 
 `UnitySystemManager.ManagersInstantiated` assigns the field straight onto the core manager:
 
@@ -20,7 +20,7 @@ NucleusSystemManager.PredictionHistoryTicks = _predictionHistoryTicks;
 
 This runs inside `ManagersInstantiated`, before any user script's `Awake` or `Start` can observe `SystemManager`. Script execution order cannot get ahead of it, so there is no ordering trap to work around.
 
-## Sizing it
+## The value must cover the round trip plus interpolation
 
 `SystemManager.PredictionHistoryTicks` must cover the round trip plus the state interpolation depth (`StateInterpolation`). A predicted member's compare gate has to still hold the tick a server outcome echoes, and that echo arrives a round trip plus interpolation later. A member's own default ring depth is two slots, which spans only a single tick of history — not enough to address a compare tick more than one tick back, so a networked prediction setup almost always needs this field raised above zero.
 

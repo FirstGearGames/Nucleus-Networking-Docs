@@ -4,7 +4,7 @@ title: "Play mode, domain reload and session lifetime"
 
 > **Driving the core API directly?** See [Shutting a session down](../../core-api/core/shutting-down-a-session.md).
 
-## The problem
+## Static state outlives a play session
 
 `CoreManager` keeps a static registry of every live manager in the process (`LiveCoreManagers`, behind `CoreManager.Instance`), and the Unity integration keeps its own static session state alongside it (`NucleusUnity.BoundCoreManager`, `NucleusUnity.SpawnHandler`, the prefab pool, the network prefab registry). None of that is scoped to a play session. Stopping play mode does not clear static fields on its own, and with Unity's domain reload disabled it especially does not: the same AppDomain, and the same static fields, carry straight into the next Play button press. Without an explicit reset, a second session inherits the first one's `CoreManager`, a `SpawnHandler` bound to GameObjects Unity already destroyed, and a prefab registry that thinks its content is already loaded.
 

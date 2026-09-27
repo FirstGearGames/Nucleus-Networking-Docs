@@ -74,6 +74,6 @@ A load closes all currently open scenes, then reopens each scene the saved world
 
 A save always captures the entire world, and a load always replaces the entire world. There is no incremental or partial save.
 
-## Pro only
+## World persistence ships only in Pro
 
 World persistence is a Pro feature.

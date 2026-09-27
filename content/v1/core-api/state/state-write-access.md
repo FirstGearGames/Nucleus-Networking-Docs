@@ -56,7 +56,7 @@ public const uint UnsetConvergenceDeadlineTicks = uint.MaxValue;
 
 Left at `UnsetConvergenceDeadlineTicks`, the deadline is derived from the connection's measured round-trip time rather than fixed. Set it explicitly per system when the default feel is wrong - a shared UI value and a contested physics object don't want the same answer. `StateWriteConvergenceDeadlineTicks` itself is declared alongside the widening logic, so this window exists only in a Pro build; a free build has no echo-withholding at all.
 
-## Pro feature
+## Write access beyond the controller ships only in Pro
 
 Write access beyond `Controller`, and the echo-withholding window that goes with it, are Pro. The gate is structural: both live in `NetworkSystem.WriteAccess.Pro.cs`, split from the free-side `NetworkSystem.WriteAccess.cs`. `StateWriteAccess` itself, `NetworkSystem.WriteAccess` and `NetworkSystem.SetWriteAccess` are Pro-only too, so a free build has none of them and code naming them does not compile. A free build's eligibility check admits the controller alone.
 

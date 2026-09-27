@@ -4,7 +4,7 @@ title: "Your first .NET host"
 
 > **Using Unity?** See [Your first networked scene](./your-first-networked-scene.md).
 
-## Bootstrap
+## A session starts with a CoreManager and a loop provider
 
 A Nucleus session starts with a `CoreManager`, given the loop provider that will step it:
 

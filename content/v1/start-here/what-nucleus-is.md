@@ -34,7 +34,7 @@ A `NetworkMember<T0>` is the unit of replication. Nothing above it — the `Netw
 
 **Interest decides what a peer can see.** Visibility isn't global. What a given connection is allowed to see of a given object is resolved per object, per connection, through the interest system (`InterestManager`, `IInterestCondition` and their implementations). A NetworkSystem existing doesn't mean every peer receives it.
 
-## Unreliable-first
+## State arrives over an unreliable channel by design
 
 There is no reliable channel underneath replication quietly retransmitting every state change until it lands. Acknowledgment rides the packet header of the traffic already flowing, and recovery is targeted at what a peer is actually missing rather than a blanket retransmit. If you're used to a reliable-by-default RPC layer, read the reliability and redundancy docs before assuming state "just arrives" — here, arriving is something the system has to actively account for, not a channel guarantee you get for free.
 

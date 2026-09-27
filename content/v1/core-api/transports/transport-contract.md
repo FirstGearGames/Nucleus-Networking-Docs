@@ -59,7 +59,7 @@ It rents both sockets in `InitializeAsync`, calls `Initialize` on each, then cal
 
 A received payload is copied into a pooled buffer exactly once, and that buffer is returned by exactly one owner. `CopyIntoOwnedPayload` and `TryCopyIntoIncomingPacket` are the two places that copying happens; whichever code queues the resulting `IncomingPacket` becomes the array's owner from that point on, and whatever path does not queue it must return the array to the pool itself. Two owners, or none, both corrupt the pool.
 
-## The honest limit
+## You cannot write a transport outside the Nucleus assembly today
 
 You cannot write a `Transport` outside the Nucleus assembly today. `CommonSocket`'s `ConnectAsync`, `SendPacket`, and `ReceivePackets` are declared `internal`, and on `SocketPairTransport<TServerSocket, TClientSocket>` the `ServerSocket` and `ClientSocket` properties themselves are `internal` too - there is no public surface left to build a socket pair from outside the engine. `AssemblyInfo.cs` grants exactly one exception, `[assembly: InternalsVisibleTo("Nucleus.Integrations.BlitzRelay")]`, so that relay and rendezvous code can stay out of the engine rather than being folded into it to reach this machinery.
 

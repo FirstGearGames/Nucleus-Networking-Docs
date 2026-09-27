@@ -34,7 +34,7 @@ NetworkMember<Vector3> position = new(transmissionMode: TransmissionMode.Divine)
 
 Under `TransmissionMode.Divine`, `PathContinuation` is a second setting you choose: `Implied` (the default) or `Announced`. The two trade off differently when a packet is lost — `Implied` favors staying live at the risk of a brief overshoot, `Announced` favors staying accurate at the risk of a brief stall. Try `Implied` first; reach for `Announced` if a lost packet is visibly overshooting for your use case. `PathContinuation` only matters under `Divine` — `TransmissionMode.Interval` ignores it.
 
-## A receiver doesn't need to match
+## A receiver adopts the sender's mode automatically
 
 Both `TransmissionMode` and `PathContinuation` are construction defaults, optionally overridden per instance at runtime. A receiver doesn't need to be built with the same values: every full serialization carries the sender's mode and path continuation, and the receiver adopts them automatically. Nothing here has to be toggled in lockstep ahead of time.
 

@@ -45,7 +45,7 @@ Below threshold, a sub-threshold residual can still be bled off rather than held
 - **Maximum Projection Time** (`_maximumProjectionSeconds`, seconds, proxy-only) — the maximum time a proxy's projection may lead the last received state. A predicted body spans its whole round trip and ignores this field entirely.
 - **Gravity Enabled** (`_gravityEnabled`, default on) — whether gravity participates in the projection. On, a falling body is carried down under gravity while resting or supported bodies are left alone, so they are never projected into the ground. Off, the projection ignores gravity entirely.
 
-## Render-only
+## Visual smoothing changes the render, never the body
 
 - **Visual Smoothing** (`_visualSmoothing`, seconds, default `0`) — low-passes `SmoothedVisual` toward the interpolated physics pose to hide tick-to-tick correction jitter. Requires a `SmoothedVisual`; without one it has nothing to act on. The physics body itself stays exact — captured state and collisions are untouched, so nothing can desync — only the render eases toward it. Larger smooths harder but lets the render trail the body more; zero, the default, is off.
 
@@ -55,7 +55,7 @@ At bring-up (`Awake`, and again on every inspector edit) most of these fields ar
 
 The maths behind each of these values, and the full settings surface, live on the [PhysicsConvergence](../../core-api/physics/physics-convergence.md) API page — including `PredictionMaximumProjectionSeconds`, the predicted-body counterpart to Maximum Projection Time, which has no inspector field here at all.
 
-## Methods
+## Methods you can call
 
 `ProjectedRigidbody` exposes three public methods, all already called for you by the `PhysicsSimulationDriver` and the spawn handler:
 

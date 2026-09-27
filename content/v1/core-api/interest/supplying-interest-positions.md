@@ -21,7 +21,7 @@ Return `false` rather than guessing for a system whose object has been destroyed
 
 This is the single thing an engine integration owes level of detail. Everything else - memoizing, the finiteness check, the once-per-pass discipline - lives on `InterestManager`.
 
-## Registering it
+## Register the reader on the interest manager
 
 ```csharp
 public void SetPositionReader(IInterestPositionReader interestPositionReader);
@@ -56,6 +56,6 @@ public sealed class DictionaryInterestPositionReader : IInterestPositionReader
 
 A system nobody has recorded a position for reports unmeasurable, which is the correct default: it's a failed read, not a zero position.
 
-## Unity
+## The Unity integration registers a position reader for you
 
 The Unity integration registers a reader for you; you don't need to write one. See [Limiting replication by distance](../../unity/interest/limit-replication-by-distance.md) for how to configure the distance conditions, which read positions on their own.

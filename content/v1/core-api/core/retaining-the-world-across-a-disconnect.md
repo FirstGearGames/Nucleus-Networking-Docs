@@ -73,6 +73,6 @@ coreManager.ServerManager.ClientAuthenticated += connection =>
 
 Treat `SessionId` as a secret shared with the players and nobody else. A directory has no way of telling a peer that was told this identifier from one that wasn't, so whoever holds it can generally take the session over. That's the point of it, and also the whole of its security.
 
-## Where this stops
+## This page covers the world's state, not reconnecting the peers
 
 This page covers keeping and adopting the world's *state*. Actually getting the survivors reconnected to the promoted host — relay host migration and the services it needs — is covered under transports and hosting, not repeated here.

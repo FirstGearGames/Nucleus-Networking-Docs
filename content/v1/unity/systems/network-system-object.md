@@ -2,7 +2,7 @@
 title: "NetworkSystemObject component"
 ---
 
-## What it is
+## This marker is the one link between a GameObject and its systems
 
 `NetworkSystemObject` is a `MonoBehaviour` and the single point of correlation between a GameObject and one or more `NetworkSystem` instances. It is `[DisallowMultipleComponent]`: exactly one marker per GameObject, on the root of a networked prefab or scene object.
 
@@ -43,7 +43,7 @@ Three fields are stamped by editor tooling and shown read-only in the inspector:
 | `IsSceneObject` | `bool` | True when `SceneObjectId != 0`. |
 | `PredictedSpawnPolicy` | `Nucleus.Systems.PredictedSpawnPolicy` | What a client may do to this object ahead of the server agreeing, as authored on the prefab. |
 
-## Events
+## Events this component raises
 
 - **`SystemLinked(NetworkSystem)`** — raised once each time a system links to this marker.
 - **`SystemUnlinked(NetworkSystem)`** — raised when a linked system is cleared on despawn.

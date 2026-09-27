@@ -14,13 +14,13 @@ Interest resolves to one of a few verdicts per connection, and "stopped" is not 
 
 Check that the Nucleus source generator is wired into the project as an analyzer, not just referenced as an ordinary assembly. Without it no serializers are produced for your networked types, so there is nothing for the wire to send or read. See the source generator setup page.
 
-## Control
+## Questions about control
 
 ### Why can I see my object but not drive it
 
 Observing and controlling are separate questions. Interest decides whether a connection is sent an object's state at all; control is a separate assignment made by the server over who is allowed to drive it. Being registered as an observer never implies being the controller. See the control assignment page.
 
-## Timing
+## Questions about timing
 
 ### Why does it work in host mode and break with two processes
 
@@ -38,7 +38,7 @@ The same loopback exemption above applies more broadly: a host's server half nev
 
 The transport's byte and bit counters are running totals, accumulated since the connection started, with no per-object or per-feature attribution. Turning a feature off changes the rate at which the totals climb, not the totals themselves, so a snapshot taken once won't show it. Sample the counters over time (per second) and compare rates before and after the change, rather than reading a single cumulative value.
 
-## Editions
+## Questions about Free and Pro
 
 ### Why does this type not exist in my build
 

@@ -26,7 +26,7 @@ There is no host-only code path in the engine. A host is a `CoreManager` with a 
 
 That has one direct consequence for trust: the host's `CoreManager` is the server. It runs the same server logic a dedicated server would, with the same say over what's true. Hosting doesn't relax that — it just means the server is sitting in a player's process instead of yours.
 
-## Reachability
+## Every topology has its own reachability problem
 
 A dedicated server needs an open, forwarded port people can reach. A player host needs the same thing on the player's own connection — behind carrier-grade NAT or a restrictive firewall, that often doesn't work.
 

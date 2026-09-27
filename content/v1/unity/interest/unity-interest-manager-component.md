@@ -2,7 +2,7 @@
 title: "Unity Interest Manager"
 ---
 
-## Overview
+## This component is the inspector-side driver for the core InterestManager
 
 `UnityInterestManager` is the inspector-side driver for the core `InterestManager`. It carries the world-wide interest rules this peer is authored with, controls how often interest is re-resolved, and, in Pro, how spawns are paced and how distance is measured. Every field is pushed onto the core `InterestManager` in `ManagersInstantiated`, so script execution order cannot lose a setting. Both host switches are copied at that point, so ticking either in the inspector mid-session changes nothing. The engine reads its own `InterestManager.HostInterestEnabled` on every pass, but whether a host hides objects is decided once, when the peer first becomes a host with its own client linked.
 
@@ -25,7 +25,7 @@ How many ticks pass between one interest evaluation pass and the next for any on
 
 When enabled, a `NetworkHostVisibility` component is put on each networked object as it links, only once the peer turns out to be a host.
 
-## Free Build
+## A free build draws only some of these fields
 
 In a free build the inspector draws only **World Rules**, **Evaluation Cadence Ticks**, and the two host switches. **Maximum Spawns Per Tick** and the entire **Distance Measurement** and **Level Of Detail** sections belong to Pro-only partial files (`UnityInterestManager.SpawnPacing.Pro.cs`, `UnityInterestManager.LevelOfDetail.Pro.cs`). Those fields do not exist in a free build, so the editor skips drawing them rather than disabling them.
 

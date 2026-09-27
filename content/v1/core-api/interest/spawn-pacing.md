@@ -45,6 +45,6 @@ interestManager.MaximumSpawnsPerTick = 200;
 
 Measure a real join or scene load's peak spawns-per-tick before and after setting `MaximumSpawnsPerTick`, rather than guessing a number. Set the ceiling above what ordinary play spawns at once, so pacing engages only on the bursts that would otherwise have cost a whole tick — a join, a scene binding, a bundle release — and leaves normal spawning untouched. If `ConnectionsAwaitingSpawnAdmissionCount` sits near zero outside those bursts, the ceiling is sized correctly; a stall warning in the log means it is set below what the world spawns and needs raising.
 
-## Unity
+## In Unity this ceiling is an inspector field
 
 In the Unity integration, this ceiling is the **Maximum Spawns Per Tick** field on the Unity Interest Manager component — see [Unity Interest Manager component](../../unity/interest/unity-interest-manager-component.md).

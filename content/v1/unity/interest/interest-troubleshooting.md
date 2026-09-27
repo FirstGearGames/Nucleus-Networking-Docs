@@ -59,7 +59,7 @@ This is specific to the authored Unity rule (`AuthoredDistanceInterestCondition`
 
 The underlying type has no such limitation. `DistanceInterestCondition` (Unity's own binding of the engine-neutral `DistanceInterestConditionBase`, not the inspector-authored rule) takes a `stopDistance` and a `spawnDistance` independently in its constructor, and so does the `DistanceInterestLadder` beneath it. Construct one yourself in code (or register a global condition) to get culling by distance instead of authoring through the inspector.
 
-## Edition check
+## Every distance lever on this page is Pro-only
 
 Distance interest conditions, the spatial grid, level of detail, and spawn pacing are all Pro-only — their implementations live in files suffixed `.Pro.cs`: `InterestManager.Conditions.Pro.cs`, `DistanceInterestLadder.Pro.cs`, `DistanceInterestConditionBase.Pro.cs`, `SpatialInterestGrid.Pro.cs`, `InterestManager.LevelOfDetail.Pro.cs`, `InterestManager.SpawnPacing.Pro.cs`, and the Unity-side `AuthoredDistanceInterestCondition.Pro.cs` / `DistanceInterestCondition.Pro.cs`. On a free build these files are absent, so none of the above levers exist: no distance rule, no spatial grid, no level of detail, no spawn ceiling. The scene rule and the base interest system are not gated this way and ship in free.
 

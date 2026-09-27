@@ -2,7 +2,7 @@
 title: "Writer and Reader"
 ---
 
-## Overview
+## Writer and Reader are the bit-level building blocks
 
 `Writer` and `Reader` are the bit-level building blocks every Nucleus serializer, RPC struct, and transport is written against. A `Writer` packs values onto a growable bit buffer; a matching `Reader` walks the same buffer back out, in the same order, at the same compression level. Both are pooled types: rent one, write or read, then return it.
 

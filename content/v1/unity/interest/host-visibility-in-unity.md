@@ -35,7 +35,7 @@ A renderer the game had already disabled stays disabled: only the renderers this
 
 Clear **Host Visibility Enabled** to keep the report without the built-in hiding. Nothing is hidden automatically, and it's yours to answer through `NetworkHostVisibility`'s own `HostVisibilityChanged` event, or through `NetworkSystem.HostInterestChanged` directly. That's the path for dimming an object instead of hiding it, or for hiding more than its renderers.
 
-## Gotchas
+## Three things catch people out
 
 - The two inspector switches are copied into the world once, as it comes up, so ticking either while playing changes nothing. Set **Host Interest Enabled** before the host starts.
 - The engine's own `InterestManager.HostInterestEnabled` is read on every interest pass, so code can change it mid-session, but the decision to hide is made once, when the peer first becomes a host with its client linked. Turning it on after that gives you the report with nothing hiding on it. Turning it off returns every object's membership to `InterestMembership.Streamed`, which shows the object again. Code that sets it before the host starts must run after `UnityInterestManager` has pushed its settings, or the inspector's copy overwrites it.

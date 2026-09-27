@@ -44,7 +44,7 @@ Assigning `Value` does not do a one-shot lookup that is later forgotten. Both me
 
 This is why a reference is written and read even while `Value` is `null` — `TargetId` is what rides the wire, and it is what lets the member pick the resolution back up later without anyone re-sending the assignment.
 
-## Cost
+## An unset reference costs one bit, a set one costs about a byte more
 
 An unset reference costs one bit on the wire. A set reference costs that bit plus the Id, and an Id in the low range costs about a byte. A game that holds no references between systems pays essentially nothing for the feature existing.
 

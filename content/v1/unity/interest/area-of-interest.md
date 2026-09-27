@@ -2,7 +2,7 @@
 title: "What area of interest is"
 ---
 
-## The default
+## Without any condition, every system replicates to every client
 
 Without any interest condition registered, Nucleus replicates every started NetworkSystem to every authenticated client, every tick. This is the broadcast-to-everyone default, and it is not something interest opts you into: it is what the engine does before interest exists at all.
 
@@ -22,7 +22,7 @@ Interest resolves one `(NetworkSystem, Connection)` pair at a time. The evaluati
 
 Because resolution happens on this hot path, an `IInterestCondition` implementation must be a pure read: it must not start or stop systems, mutate observers, or block.
 
-## The two effects
+## A condition speaks to spawning, to stopping, or to both
 
 `InterestEffect` has two flags, and a condition declares which of them it ever speaks to:
 
@@ -37,7 +37,7 @@ See stopping-versus-culling for what each looks like from the receiving connecti
 
 The cadence is skipped for two cases that cannot wait for a stagger slot to come around: a connection that just authenticated is evaluated against every started system immediately, and a system that just started is evaluated against every authenticated connection immediately. Both land on the tick they happen, before anything serializes, rather than trickling in as each system's stagger slot arrives.
 
-## The cost
+## Evaluation costs one check per system per connection
 
 The evaluation is O(systems × connections). It is cadenced and staggered to keep that honest, which is fine for demo and mid scale; a world of thousands of systems and connections wants a spatial broadphase feeding it candidate pairs instead, and that is future work rather than something the current pass fakes.
 

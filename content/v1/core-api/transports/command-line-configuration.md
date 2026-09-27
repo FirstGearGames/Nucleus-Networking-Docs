@@ -22,7 +22,7 @@ transport.ApplyCommandLineArguments(launcherArguments);
 
 A flag that was not supplied leaves its setting at whatever the build configured. Applying arguments is safe to call even when the launcher passes none.
 
-### Ordering
+### Apply arguments before connecting
 
 Apply arguments before `ConnectAsync`. The socket reads `Configuration` (and, for Synapse, `RemoteHost`) as it builds; changing those values after the connection has started has no effect on that connection.
 

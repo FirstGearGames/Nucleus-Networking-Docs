@@ -2,7 +2,7 @@
 title: "Player objects"
 ---
 
-## What it does
+## NetworkPlayerSpawner gives every client one object of its own
 
 `NetworkPlayerSpawner` is a `MonoBehaviour` that gives every authenticated client one object of its own. On the server it spawns one prefab per client, hands that client control of the spawned object, and keeps a connection-to-object relationship so the rest of the game can ask which object belongs to whom.
 
@@ -25,7 +25,7 @@ Only the server spawns. The component observes its role from the transport (`IsS
 
 `RetainForReturn` is only as trustworthy as the identity behind it. The default `AddressClientAuthenticator` identifies a client by the address it connected from, which two players behind one NAT can share — under it, this mode can hand the second player the first player's object. Use an `IClientAuthenticator` that issues a real per-player identity if you turn this on.
 
-## API
+## The public members
 
 ```csharp
 public bool IsServerStarted { get; }
@@ -43,7 +43,7 @@ public bool TryGetPlayerObject(Connection connection, out NetworkSystemObject pl
 
 `PlayerObjectCount` is how many clients this spawner currently holds an object for.
 
-## Events
+## Events this component raises
 
 ```csharp
 public event PlayerObjectSpawnedHandler PlayerObjectSpawned;

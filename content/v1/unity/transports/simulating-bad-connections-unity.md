@@ -61,6 +61,6 @@ These read the link as the engine actually measures it (via its own round-trip p
 
 A steady 100ms latency and a link swinging between 20ms and 180ms average the same but feel nothing alike — set jitter, not just latency, to catch bugs that only show up when timing varies. Try loss in the 1-5% range for typical broadband conditions, and higher (10-20%) to stress recovery paths.
 
-## What this can't reproduce
+## The simulator cannot reproduce reordering or MTU black holes
 
 The simulator delays and drops packets in-process; it does not reorder them across a real path, model asymmetric upload/download links, or reproduce MTU black holes (a real path silently dropping packets over some size). Loopback with these knobs on tells you how your game feels under latency, jitter, and loss — it is not a substitute for testing over an actual network.
