@@ -73,7 +73,7 @@ For a remote peer authenticating against a host, `ApproveClient` also ends by ca
 
 Disconnection follows the mirror shape: `ClientDisconnecting` is raised from the release path before a connection's controlled systems are released, and `PeerConnectionDropped` is raised (via `RaiseHostPeerConnectionDropped`, host only, and never for the host's own client) out of the same connection-state-changed handling that release runs from.
 
-## What's safe inside each raise
+## Each event allows some work and asks you to defer the rest
 
 | Event | Safe here | Defer instead |
 |---|---|---|

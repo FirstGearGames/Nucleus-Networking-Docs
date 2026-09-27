@@ -4,7 +4,7 @@ title: "The host interest report"
 
 > **Using Unity?** See [Making a host see what its players see](../../unity/interest/host-visibility-in-unity.md).
 
-## What it answers
+## The report tells a host what its own client half would have received
 
 A host runs the server and a client in the same process, so it already holds every object in the world. That leaves it no way to know what its own client half would actually have been sent, unless something resolves the question and hands back an answer. `InterestManager.HostInterestEnabled` does that: turned on, the interest pass also resolves the host's own client against the registered conditions, exactly as it would a remote client.
 

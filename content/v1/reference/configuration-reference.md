@@ -111,6 +111,6 @@ Most manager settings are purely local: a server and its clients can each run di
 
 Tick rate is the exception that must match. A server and client running different `TickRate` values are ticking at different real-world speeds, which the replication and interpolation built on top of the tick assume does not happen.
 
-## Not a setting
+## RemoteTimeoutType is declared but nothing reads it
 
 `RemoteTimeoutType` is declared in `Nucleus.Managers.Core` but nothing in the engine reads it. Setting it has no effect.

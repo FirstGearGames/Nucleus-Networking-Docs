@@ -4,7 +4,7 @@ title: "Interest level of detail"
 
 > **Using Unity?** See [Level of detail in Unity](../../unity/interest/level-of-detail-in-unity.md)
 
-## Scope
+## Level of detail is a measurement, not a behaviour
 
 Level of detail is a measurement, not a behavior. Nothing in the engine acts on a band: it does not cull an object, it does not change what a system sends, and it does not touch the per-member send interval, which is configured separately. A band tells the game how far an object is from a peer, in three steps instead of a raw distance. What the game does with that reading is up to the game.
 
@@ -55,7 +55,7 @@ Read the resolved band for a specific connection with `GetInterestLevelOfDetail`
 InterestLevelOfDetail band = networkSystem.GetInterestLevelOfDetail(connection);
 ```
 
-## The bands
+## There are three bands, and Near means no level of detail at all
 
 `InterestLevelOfDetail` has three values: `Near` (0), `Medium` (1), and `Far` (2). `Near` is not the finest level of detail — it is the absence of level of detail entirely. An unconfigured ladder, a position that cannot currently be measured, and a peer's own controlled object all resolve to `Near`, on the same footing as an object nobody ever measures.
 
@@ -65,7 +65,7 @@ Each rung's release boundary is precomputed from `1 - hysteresis` at ladder cons
 
 Without that dead band, an object sitting exactly on a rung — or a player walking back and forth across one — would flap between two bands on every resolution, and anything reading the band would see a stream of changes describing jitter rather than movement. With the default 10% hysteresis, a 40-metre rung holds a 4-metre release band: comfortably wider than the distance an ordinary walking speed covers between resolutions.
 
-## Pro feature
+## Level of detail ships only in Pro
 
 Level of detail is part of Nucleus Pro.
 

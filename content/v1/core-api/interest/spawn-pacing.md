@@ -2,7 +2,7 @@
 title: "Spawn pacing"
 ---
 
-## The problem
+## An unpaced world sends its biggest tick to the peer least able to take it
 
 A tick's outbound to a connection is one MTU-segmented combined stream. A receiver can only read it once every segment has arrived, so losing one segment costs the whole tick. Redundancy multiplies that loss rather than avoiding it. An unpaced world spawns every system it can as soon as interest admits it, which means the biggest ticks — a client joining a large world, a scene binding, a bundle releasing a world's worth of withheld spawns — land exactly on the peer least able to absorb them: one still building its connection, with nothing yet to fall back on.
 

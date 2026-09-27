@@ -2,7 +2,7 @@
 title: "Reaching Types You Cannot Annotate"
 ---
 
-## The problem
+## The generator cannot reach a type in an assembly you do not control
 
 The generator only emits a serializer for a type when it can find `[NetworkType]` on that type, or reach the type through a member it is already generating a serializer for. A type declared in an assembly you do not control, such as `System.Numerics.Vector2` or a type from a third-party math library, can never carry that attribute. Without another way in, it has no serializer.
 

@@ -14,7 +14,7 @@ To write your own condition, subclass `DistanceInterestConditionBase` and implem
 protected abstract bool TryReadSourcePosition(NetworkSystem networkSystem, out Vector3 position);
 ```
 
-## The ladder
+## A ladder is built from a spawn cutoff and a stop cutoff
 
 Construct the condition with two cutoffs:
 
@@ -42,6 +42,6 @@ public uint MaximumControlledInterestObjects = DefaultMaximumControlledInterestO
 
 When a distance can't be measured (the connection controls nothing yet, or a controlled object's position can't be read), the condition answers unmeasurable and restricts nothing, rather than culling. This is what a system whose object has been destroyed or has not finished spawning looks like: `TryReadSourcePosition` returns `false`, the pair is skipped, and interest for it is left alone. Culling on an unknown distance would empty the world for a player whose character hasn't finished spawning.
 
-## Pro feature
+## Distance conditions ship only in Pro
 
 Every file behind this page — `DistanceInterestConditionBase.Pro.cs`, `InterestPositionConditionBase.Pro.cs`, and `DistanceInterestLadder.Pro.cs` — is a `.Pro.cs` file. A free build has the interest system but not distance conditions.

@@ -14,7 +14,7 @@ public void SetController(Connection controllingClientConnection)
 
 Pass a `Connection` to make that client the controller, or `null` to return control to the server. Only a peer with a started server may call it; a client that calls it gets a logged error and nothing happens - the call does not act on a non-server caller, it rejects it. An assignment that does not actually change the controlling identity queues nothing, so calling `SetController` with the current controller (or `null` when the server already controls it) is a no-op.
 
-## What control gates
+## One comparison decides three separate things
 
 A single comparison - "does this connection hold `ControllerConnectionId`" - decides three separate things at once:
 

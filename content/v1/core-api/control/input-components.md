@@ -4,7 +4,7 @@ title: "Input components"
 
 > **Using Unity?** See [Sending player input from Unity](../../unity/control/writing-an-input-component-unity.md).
 
-## Overview
+## An input component is a tick-aligned channel from the controlling client
 
 A `NetworkInputComponent` is a tick-aligned input channel attached to a `NetworkSystem`. Subclass it, declare the fields you want to send, and the framework serializes them upstream from the controlling client every tick. On the server, the deserialized values are validated before anything reacts to them, and validated inputs can be forwarded back out to observers for presentation.
 
@@ -74,7 +74,7 @@ public bool ForwardingEnabled = true;
 
 When `ForwardingEnabled` is true, the server includes the component in the forwarded Input subpacket sent to the system's delta observers each tick. Remote observers receive the validated values through their own `InputReceived`, letting them drive presentation (audio, animation) from the controller's actions; the controller itself receives only the correction flag, surfaced through `InputCorrected`. A component with `ForwardingEnabled` false is validated and raises events locally but is never sent to observers.
 
-## Pooling
+## Input components are pooled, so they must reset themselves
 
 `NetworkInputComponent` implements `IPoolResettable`:
 

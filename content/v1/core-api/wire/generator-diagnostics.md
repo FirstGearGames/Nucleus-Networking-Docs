@@ -2,7 +2,7 @@
 title: "Generator Errors and Warnings"
 ---
 
-## Where they show up
+## Diagnostics appear in your build output or the Unity console
 
 The source generator runs as part of the normal C# compile. In a plain .NET project it reports through the ordinary build output or your IDE's error list, same as any other compiler diagnostic. In Unity, the generator DLL is imported with the `RoslynAnalyzer` label so Unity runs it as part of scripting compilation; its diagnostics land in the Unity console alongside regular compile errors.
 
@@ -47,6 +47,6 @@ A `UnityEngine` type (`Vector3`, `Quaternion`, and so on) does not raise this wa
 
 The generator's stages run in order, and an early error aborts the run for that type before later stages get a chance to run. A discovery-stage error on `NETWORKTYPEFINDER01` commonly produces a long tail of `SERIALIZERS001` warnings underneath it, because every member the generator never got to walk correctly also has no serializer. Fixing the first error in the list is usually enough to make the rest disappear on the next build. Scroll to the top of the diagnostics for a type, fix that one, and rebuild before working through the rest.
 
-## What this is not
+## A generator diagnostic is a compile-time problem, never a runtime one
 
 A generator diagnostic is a compile-time problem: the generator could not produce correct code for your types. It has nothing to do with runtime behavior. If your build is clean but replicated values are wrong, systems never converge, or packets look malformed at runtime, that is a wire or convergence problem, not a generator diagnostic, and belongs on a different page.

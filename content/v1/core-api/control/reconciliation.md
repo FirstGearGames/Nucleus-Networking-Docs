@@ -41,7 +41,7 @@ The rewind that triggers `ReconcileRequired` writes the server's value into the 
 
 This is what makes `rewoundTick` a correct base to resume from: nothing later in the ring can still be trusted, and the corrected slot is the last one that can. The replay itself starts at `rewoundTick + 1`, since the corrected value already includes that tick's input.
 
-## A correction is not a stop
+## A replay must carry the object forward to the present tick
 
 Landing the corrected value is not the end of the job. The replay has to carry the object forward from the tick after `rewoundTick` through to the current tick, re-running each intermediate tick's simulation under `BeginReplayTick`/`EndReplayTick` and feeding it that tick's original inputs, before letting the final tick apply live. Stopping at the rewound tick leaves the object sitting at a past state while the rest of the game has already moved on; the visible object would freeze or teleport instead of continuing to predict.
 

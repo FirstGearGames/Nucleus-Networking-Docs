@@ -17,7 +17,7 @@ public interface IClientAuthenticator
 
 The decision does not have to be immediate. `OnClientConnecting` can return right away and the outcome can arrive any number of ticks later, after a backend round trip. Until it does, the connection stays unauthenticated: the engine delivers it no message that requires authentication, and it observes nothing.
 
-## Deciding
+## Call ApproveClient or DenyClient once you have a verdict
 
 Call one of these from anywhere in your authenticator once you've reached a verdict:
 
