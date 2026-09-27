@@ -63,6 +63,6 @@ Normally a prefab's required content is read straight from the shard it shipped 
 
 `NetworkSystemObject.RequiredBundleId` resolves between the two: the override value when enabled, otherwise `PrefabBundleId`. This never changes the prefab's own wire identity — that stays `PrefabBundleId` paired with `PrefabId` — it only changes which bundle must be loaded before the server will spawn it.
 
-## Pro only
+## Content bundles ship only in Pro
 
 Content bundles are a Pro feature. `CoreManager.BundleManager` lives in a Pro-only partial file; a Free build has no such field at all, and the runtime loaders (`NetworkBundleLoader`, `UnityAssetBundleLoader`) exist only to register against it. A Free project builds and ships without content bundles.

@@ -2,7 +2,7 @@
 title: "NetworkPhysicsComponent"
 ---
 
-## Overview
+## This component replicates a body through ordinary member replication
 
 `NetworkPhysicsComponent` replicates a physics body's kinematic state through ordinary member replication. The server captures its body into typed members each tick; proxies rebuild the latest server `PhysicsSnapshot` from those members as the projection source. Only position and rotation ride the wire — linear and angular velocity are derived from their per-tick change when a snapshot is built, so a moving body carries roughly half the members it otherwise would.
 
@@ -43,7 +43,7 @@ Replicated body condition bits packed into `BodyFlags`.
 | `HasReceivedState` | `BodyFlags` has `PhysicsBodyFlags.Captured` set. |
 | `HasAdoptedState` | True once `TryAdoptInitialState` has placed a proxy body onto the first received state. |
 
-## Methods
+## Methods you can call
 
 ```csharp
 public void CaptureBody(IPhysicsBody physicsBody, uint tick = Managers.NetworkLoop.NetworkLoopManager.UnsetTick)

@@ -44,6 +44,6 @@ InterestLevelOfDetail level = networkSystem.GetInterestLevelOfDetail(connection)
 - **Medium** — between the near rung and the far one.
 - **Far** — beyond the far rung.
 
-## Pro feature
+## Level of detail ships only in Pro
 
 Level of detail is Pro. The whole file set behind it is `*.Pro.cs`; a free build has no bands at all.

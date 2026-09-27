@@ -2,7 +2,7 @@
 title: "NetworkAnimator"
 ---
 
-## Overview
+## NetworkAnimator replicates parameters, not animation state
 
 `NetworkAnimator` replicates a GameObject's `Animator` across peers. Parameters are the primary channel: the peer driving the object reads its float, int, bool and trigger parameters, its layer weights and its playback speed, and every other peer applies those values and lets its own `Animator` run its own state machine from them.
 
@@ -53,7 +53,7 @@ private bool _rootMotionManagementEnabled = true;
 
 When enabled (the default), `Animator.applyRootMotion` is cleared on every peer that doesn't drive the object, so root motion can't fight the replicated pose, and restored on the peer that does drive it. Disable it when other code owns the flag, or when the object doesn't replicate a transform.
 
-## API
+## The public members
 
 All writing methods are silently no-ops on a peer that doesn't drive the object — the same script runs on every peer, and a call that has effect on the controller is inert everywhere else.
 

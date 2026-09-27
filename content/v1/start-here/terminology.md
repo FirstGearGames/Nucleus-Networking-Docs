@@ -69,7 +69,7 @@ public readonly struct ConnectionHandle
 
 `Generation` is what makes a stale handle fail rather than alias: identifier seven issued twice is two different handles, and only the current one resolves through `TransportManager.TryGetConnection(ConnectionHandle, out Connection)`. A bare `Connection.Id` is no better, because identifiers are recycled too — a recycled id can never resolve to whoever arrived next once it's wrapped in a handle.
 
-## Time
+## Words for time
 
 - **Tick** — one step of the network clock, `NetworkLoopManager.Tick`. It starts at `FirstTick = 1` and counts up; it never starts at zero.
 - **Tick rate** — `NetworkLoopManager.TickRate`, ticks per second, clamped between `MinimumTickRate` (5) and `MaximumTickRate` (128), defaulting to `DefaultTickRate` (30).

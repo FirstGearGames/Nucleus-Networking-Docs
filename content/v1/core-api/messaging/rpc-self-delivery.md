@@ -2,7 +2,7 @@
 title: "Seeing Your Own Call: RpcSelfDelivery"
 ---
 
-## What it controls
+## RpcSelfDelivery decides whether a sender sees its own call
 
 `RpcSelfDelivery` decides whether the peer that sends a remote call also sees that call itself, and when. It is a single enum, not a set of flags, because the three answers are mutually exclusive: a sender either runs its own call at the send site, waits for the copy that comes back, or does neither. A pair of flags could ask for two of those at once, which would run the handlers twice.
 

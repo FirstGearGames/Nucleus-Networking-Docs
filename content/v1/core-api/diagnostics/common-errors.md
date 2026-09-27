@@ -37,7 +37,7 @@ This guard is compiled only in `DEBUG`. A Release build has no such check and fa
 
 Also `DEBUG`-only. Same consequence in Release: the guard disappears, the race doesn't.
 
-## Second driver
+## Two threads are driving one manager
 
 `"Step [X] was turned away on thread [...] because this manager is already executing a step on thread [...]. One loop must drive one manager, and a second driver races every collection the loop owns. A manager whose owner never supplied a step provider, leaving the default one driving the loop from the thread pool, is the usual cause. At least [N] steps have been turned away since the previous report."`
 

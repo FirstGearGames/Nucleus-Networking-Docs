@@ -10,7 +10,7 @@ A violation is a rejected protocol fault from a peer: writing state it doesn't c
 
 By default almost every violation is silent. Most types are raised with `Ignore`, so the fault is rejected and nothing is logged; the scene-protocol faults (and, in Pro, the bundle-protocol faults) kick the offender, and only `PacketTransformRejectedViolation` (Pro) logs a warning. To see violations at all, register an `IViolationObserver`. If you want misbehaving clients kicked, or you want to feed violations into your own audit system, you register with `ViolationManager`.
 
-## The pipeline
+## Every violation passes through the same four stages
 
 A raised violation passes through the same four stages, in order, every time:
 
@@ -72,6 +72,6 @@ One registration hears every type, including types added later. Remove it with `
 
 To watch one type only, use `RegisterViolationDetectedHandler<T0>(ViolationDetectedHandler<T0> violationDetectedHandler)` or the matching per-type event (for example `UncontrolledStateChangeViolationDetected`) — both write the same subscription. A subscriber registered this way pays nothing for violation types it didn't ask about.
 
-## Enforcement
+## Only a peer running a server enforces a kick
 
 `Kick` is enforced only on a peer that has started a server; a client that settles a violation on `Kick` against its own server Connection just logs it, since an impossible acknowledgment from its own server there is a tick-ordering hiccup, not abuse to punish. On a server, the kick is routed through `ServerManager.KickClient`, which purges what's queued to the offender, stops serving it state, and closes the link at the end of the frame — not a socket drop mid-tick.

@@ -2,7 +2,7 @@
 title: "NetworkNavMeshAgent"
 ---
 
-## Overview
+## NetworkNavMeshAgent sends the leg being walked, not the pose
 
 `NetworkNavMeshAgent` replicates a `NavMeshAgent` by sending the leg it is walking, not its pose. The peer that controls the object captures a leg — the point it is heading for, the point it set off from, and the agent's speed, angular speed, and acceleration — only when a new leg begins. Every other peer walks its own copy of that agent from one point to the other at the replicated settings, turning toward its direction of travel, with its own `NavMeshAgent` switched off so nothing path-finds twice.
 
@@ -32,7 +32,7 @@ public bool Warp(Vector3 position);
 
 The path is found locally on the controlling peer, and only the legs it produces are replicated, so no other peer ever learns the destination itself. A `Warp` reaches followers through the next leg, whose origin is the position warped to. A follower is placed there outright only when the warp leaves it at or past Teleport Distance from that origin; a shorter warp past Resync Distance is walked off like any other gap, and one inside Resync Distance is not corrected at all.
 
-## Reads
+## Values you can read
 
 ```csharp
 public Vector3 NextPoint { get; }

@@ -87,6 +87,6 @@ The half that makes a handover mean anything, carrying the game world across it 
 
 A `Transport` is built on internal members of the engine's socket layer, so nothing outside the engine can write one without this grant. It's scoped to exactly this assembly — nothing else can reach those internals, and nothing in the engine itself names a relay, references one, or knows one exists. The relay server and the newfarm directory server are separate services; `RelayTransport` talks to the relay, `NewfarmHostMigration` talks to the directory, and neither runs as part of the other.
 
-## Scope
+## This handover is the relay's own, not an engine-wide feature
 
 This is the relay-plus-directory handover this transport ships: a room that moves and a coordinator that finds the new one. It is not a general engine-level host migration feature — no such feature exists yet outside this relay/directory pairing.

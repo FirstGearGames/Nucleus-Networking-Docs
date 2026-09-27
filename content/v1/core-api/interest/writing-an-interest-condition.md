@@ -113,6 +113,6 @@ networkSystem.AddInterestCondition(new ProbeInterestCondition(
 
 Register the condition on a single system with `NetworkSystem.AddInterestCondition`, or globally with `InterestManager.AddCondition` to cover every system spawned from then on.
 
-## Unity
+## The Unity page covers authoring the same condition in the inspector
 
 A condition authored on a prefab derives from `AuthoredInterestCondition`, a public abstract `[Serializable]` class, and builds the runtime `IInterestCondition` from its `CreateCondition` method. Subclasses are discovered automatically by the add-rule menu; nothing has to be registered by hand.

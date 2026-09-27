@@ -46,6 +46,6 @@ The engine brings an awaited outcome back onto the loop thread itself. Once your
 
 `IBundleLoader` (Pro-only) is the equivalent seam for bundle loads: `LoadBundleAsync` and `UnloadBundleAsync` are likewise `Task<bool>`-returning and the engine does not care which thread they complete on, for the same reason.
 
-## The Unity integration sidesteps this
+## The Unity integration drives the loop from the main thread instead
 
 Unity drives the loop from the main thread instead of the default pool-thread timer, so callbacks, handlers and scene/bundle continuations land on Unity's main thread the way the rest of your MonoBehaviour code expects. See the Unity integration's own network loop page for how its provider is wired up.

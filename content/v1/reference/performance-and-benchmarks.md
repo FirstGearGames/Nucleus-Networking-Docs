@@ -2,7 +2,7 @@
 title: "Performance and benchmarks"
 ---
 
-## Methodology
+## Every figure here comes from a test against the real engine
 
 The benchmark suites live in `Nucleus.Tests/Benchmarks` and write through the real serializer, the real interest system, and the real spawn/controller paths - not a stand-in model of them. A change that regresses wire cost or per-object overhead fails a test in that project; it does not require someone to notice a number drift in a document. Treat any figure quoted for Nucleus as only as trustworthy as the suite that produced it.
 

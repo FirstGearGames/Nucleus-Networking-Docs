@@ -2,7 +2,7 @@
 title: "Local physics scenes"
 ---
 
-## What it does
+## Each scene gets its own physics world
 
 Give each loaded scene its own local physics world so a body only collides with other bodies loaded into that same scene. Two switches control it, both on the Unity scene-loading components.
 

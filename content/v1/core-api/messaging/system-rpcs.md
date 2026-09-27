@@ -6,7 +6,7 @@ title: "System RPCs"
 
 A system RPC is a remote call addressed to a `NetworkSystem`. The receiver resolves the object before any handler runs, so a call for a system this peer does not hold is stepped over whole instead of being decoded into nothing. Without that address, a game would have to put a system id in its own payload, re-resolve it on receipt, write its own fan-out, decide relay itself, and invent a permission check. A system RPC closes all of that.
 
-## The call type
+## A call is a struct that implements IRpc
 
 A call is a plain `[NetworkType]` struct that implements `IRpc`:
 

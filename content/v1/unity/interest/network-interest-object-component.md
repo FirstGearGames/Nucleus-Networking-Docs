@@ -4,7 +4,7 @@ title: "Network Interest Object"
 
 > **Driving the core API directly?** See [Registering interest conditions](../../core-api/interest/registering-interest-conditions.md).
 
-## Description
+## One component authors interest rules for the whole prefab
 
 `NetworkInterestObject` authors interest rules once for a prefab, and those rules apply to every `NetworkSystem` on the object. An object built from several systems is filtered as the one thing a player sees, not as separate components each judged on their own.
 
@@ -30,7 +30,7 @@ The component re-surfaces `NetworkSystem.InterestStopResolving` as its own `Inte
 
 Subscribing to this event is itself the reason the evaluation pass walks the object: gaining the first listener hooks `InterestStopResolving` on every currently linked system, and losing the last listener unhooks it again, so an object that authors rules and subscribes to none of this pays for none of it.
 
-## Pooling
+## Rules are re-registered from Awake so a pooled object recovers them
 
 Rules are re-registered from `Awake`, not from a subscription that could be missed. A system linked before this component woke — the case for a context-aware rent that resolves inside the prefab's own `Awake` — raises nothing for this component to subscribe to. So `Awake` walks every system already linked (`_networkSystemObject.Systems`) and adopts each one, which is how a pooled object's next life re-registers everything its previous life's pool return dropped.
 

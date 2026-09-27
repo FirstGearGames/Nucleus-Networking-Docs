@@ -2,13 +2,13 @@
 title: "Spawn compensation"
 ---
 
-## The problem
+## A spawned object starts a round trip behind on an observer
 
 An object spawned by the server does not exist on an observer until its spawn packet crosses the network and clears that peer's interpolation buffer. By the time the observer starts simulating it, the object is already a round trip behind where it should be. A projectile spawned moving is the clearest case: it appears at its origin point instead of somewhere along the path it has already travelled, and it stays visibly behind until something closes the gap.
 
 Spawn compensation closes that gap by giving the object a burst of extra simulation time right after it starts, front-loaded so most of the catch-up happens in the opening ticks and the rest eases out smoothly. It is a Pro feature.
 
-## Enabling it
+## Enable compensation once the object has started
 
 Call `NetworkSystem.EnableSpawnCompensation` once the object has started, typically from whatever the game runs when the object comes into being:
 
@@ -43,7 +43,7 @@ Whichever scope is declared, the peer that predicted the spawn never compensates
 
 The choice is really about who simulates the object. An object the server simulates and replicates the pose of wants `Authority` alone — a receiving client that fast-forwarded it would be dragged straight back by the next delta from the server, so the catch-up would only show as a stutter. An object every peer simulates for itself from the parameters it spawned with, the ordinary projectile, wants `All` — no correction is coming to fight it, and the receiving client's own downstream latency is real time the object owes.
 
-## Reading it while it runs
+## Two members report the catch-up while it runs
 
 `IsSpawnCompensating` is true while a schedule is still owed time on the object. `SpawnCompensationSeconds` is the extra time the current tick is spending on the catch-up, in seconds, and reads zero when nothing is compensating — read it beside the tick's own delta when the game simulates on a step of its own rather than subscribing to the event.
 
@@ -60,7 +60,7 @@ void OnSpawnCompensationStepped(in SpawnCompensationDelta delta)
 
 `SpawnCompensationDelta` carries the timing for that step: `FixedDelta` is the tick's ordinary fixed delta, `CompensationDelta` is the extra time this step is spending, and `TotalDelta` is the two added together — the figure to advance motion by so the handler needs no branch for whether a catch-up is running. `BudgetSeconds` and `RemainingSeconds` report the whole schedule and what is still owed after this step; `StepIndex` and `StepCount` (counting from one) report progress through it.
 
-## Bounds
+## How much time a peer may be asked to make up is capped
 
 How much a peer can be asked to compensate is capped, in milliseconds:
 
@@ -78,6 +78,6 @@ The cap bounds the whole of one peer's catch-up, counted across every hop the ob
 
 `aggression` shapes the curve rather than the budget: it never changes how much time is owed, only how quickly the schedule spends it.
 
-## What it isn't
+## Spawn compensation is not lag compensation
 
 Spawn compensation does not rewind the world. It only advances a newly spawned object's own simulation faster for a short window after it starts; nothing else on the peer is touched, and no other object's state is altered or replayed. It is also not lag compensation — rewinding the world to check a hit against where other players actually were at the time the shooter fired. Nucleus does not have lag compensation; spawn compensation solves a narrower problem, getting one object's starting position right.

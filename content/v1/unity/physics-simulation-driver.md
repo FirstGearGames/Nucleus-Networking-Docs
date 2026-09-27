@@ -2,7 +2,7 @@
 title: "PhysicsSimulationDriver"
 ---
 
-## What it is
+## PhysicsSimulationDriver ties one scene's physics to the network tick
 
 `PhysicsSimulationDriver` is a `MonoBehaviour` that ties one scene's physics to the network tick. A scene with a driver steps its bodies on `NetworkLoopSteps.EarlyFixedUpdate` and steps its physics world on `NetworkLoopSteps.LateFixedUpdate`, instead of on Unity's own `FixedUpdate` cadence. Received state deserializes earlier in the same frame and the tick's captures serialize later in it, so captures and transmissions share one clock instead of drifting against Unity's own physics timing.
 
@@ -10,7 +10,7 @@ A driver is per scene. It registers itself with `PhysicsSimulationCoordinator`, 
 
 Scenes that share a physics world (every scene not loaded with a local physics world of its own) are stepped once between them. A driver per scene is not the same thing as a physics world per scene: multiple drivers can point at the same world, and the coordinator steps that world once per tick regardless of how many drivers resolve to it.
 
-## Events
+## Events this component raises
 
 | Event | Signature | Fires |
 |---|---|---|
@@ -27,7 +27,7 @@ driver.WorldStepStarted += (tick, stepDelta) =>
 
 `BodyRegistered`/`BodyDeregistered` exist so a diagnostic, editor tool, or convergence monitor can follow the live body set without walking the scene for it every frame. Subscribe and then read `Bodies` to adopt what already exists, otherwise anything attaching after the first spawn misses every body already present.
 
-## Reads
+## Values you can read
 
 - `CurrentTick` (`uint`) - the network loop tick currently being simulated.
 - `SubtickFraction` (`float`) - how far the render frame has progressed through the current tick, for phasing smoothed visuals between the last two stepped poses.
@@ -61,6 +61,6 @@ PhysicsSimulationDriver.UnregisterForScene(gameObject.scene, OnDriverReady);
 
 Two drivers cannot claim the same scene. If a second driver enables on a scene a driver already steps, it logs an error naming both GameObjects and does nothing - the first driver keeps stepping the scene, the second driver's bodies are simply never registered to it.
 
-## Track
+## This component is Unity only
 
 Unity only. There is no plain-C# counterpart: physics stepping is a Unity concept.

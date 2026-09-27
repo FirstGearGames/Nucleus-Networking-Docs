@@ -39,6 +39,6 @@ Leave it on Pairwise until the cutoff excludes most pairs. Settle the choice bef
 
 A `NetworkSystem` accepts only one rule that decides by distance. A second one is refused, and logged, as the object spawns. The `NetworkInterestObject` inspector counts the rules in its **Rules** list and warns when more than one decides by distance, so the mistake is visible before it ships rather than only in a log line at runtime.
 
-## Pro
+## Distance rules ship only in Pro
 
 Distance is a Pro feature. A free build ships the interest system and the world-wide Scene rule, but no distance rule anywhere — on a free build, a `NetworkInterestObject`'s **Rules** list has no shipped entry to add at all.

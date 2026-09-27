@@ -4,7 +4,7 @@ title: "NucleusBehaviour: the script base class"
 
 > **Driving the core API directly?** See [Renting and finding systems in code](../../core-api/systems/renting-and-watching-systems.md).
 
-## What it does
+## The base class requires a system for you on Awake
 
 `NucleusBehaviour<TComponent0>` is the base class for a gameplay `MonoBehaviour` that belongs to one networked system. On `Awake` it requires that system for you, resolving the `CoreManager` and calling `NetworkSystemObjectPool.RequireSystem`, and hands back a typed `Component` property once the system is acquired. A script inheriting it never writes the manager lookup, the `RequireSystem` call, or the unlink/unsubscribe that a hand-rolled version would otherwise repeat.
 

@@ -70,7 +70,7 @@ public const ushort UnsetAuthenticationTimeout = 0;
 
 The check runs once per tick, at the `LateTickUpdate` step. Set `AuthenticationTimeoutSeconds` to `UnsetAuthenticationTimeout` (0) to disable it.
 
-## Events
+## Events this manager raises
 
 On the server, `ServerManager` raises:
 
@@ -127,6 +127,6 @@ public sealed class TokenClientAuthenticator : IClientAuthenticator
 
 The client sends its `TokenAuthentication` message on its own connection as soon as it connects. A token presented this way is a bearer credential: until the transport is encrypted it can be read off the wire and replayed, so it must be server-generated, unguessable, opaque about the identity it maps to, validated against server-held state so an unrecognized value fails closed onto a fresh identity rather than an assumed one, and expired or rotated on use.
 
-## Unity
+## Unity has no authenticator component, so set one from a script
 
 There is no authenticator component. Call `ServerManager.SetAuthenticator` from a script once the managers exist.

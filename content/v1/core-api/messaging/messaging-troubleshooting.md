@@ -29,7 +29,7 @@ A routed call (`RpcRoute.TargetRelay`) has one more check once the system is fou
 
 So when a call goes nowhere, check interest before framing: does the receiver still hold the system, and does the intended recipient still observe it. A wire-level bug would produce a decode error or a violation. Silence is interest.
 
-## Nothing happens on the sender
+## The sender never asked to see its own call
 
 `RpcSelfDelivery` defaults to `None`, meaning the sender does not see its own call at all. A sender that expects immediate local feedback and gets nothing has not lost a call; it never asked to see it.
 

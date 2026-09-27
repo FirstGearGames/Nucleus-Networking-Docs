@@ -41,6 +41,6 @@ The engine enforces this limit itself, before the loader is ever consulted. A re
 
 The wire never carries a path or an asset reference, only the `ushort sceneId`. The mapping from that id to actual content (a scene asset, an address, a bundle) is entirely the loader's own. Nothing in the core engine constrains how that table is built or where it lives.
 
-## Unity
+## The Unity integration supplies its own scene loader
 
 The Unity integration ships two implementations of this interface, `NetworkSceneLoader` and `UnitySceneLoader`, so a Unity project does not need to write its own.

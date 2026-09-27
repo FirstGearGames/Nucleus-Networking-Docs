@@ -2,7 +2,7 @@
 title: "Packet transforms"
 ---
 
-## Overview
+## A transform rewrites every packet on its way in and out
 
 A packet transform rewrites the bytes of every packet on its way to and from a Transport. Use it to layer encryption, compression, obfuscation, or a custom integrity check underneath the engine, without touching any send or receive call site.
 
@@ -46,7 +46,7 @@ Set `TransportManager.PacketTransform` before starting the Transport. Both peers
 
 A transform sees the whole of what the engine hands the Transport, including the engine's own packet header. It sees nothing the Transport adds around that: a handshake or a keep-alive the Transport sends on its own behalf is below this seam and keeps flowing untouched.
 
-## Keying
+## Key a transform on something both peers already hold
 
 Key a transform on something both peers already hold — a build key, or something the Transport itself established — never on anything Nucleus negotiates. Nucleus authenticates over ordinary packets, and those cross this seam like any other, so a key that only exists once a session is authenticated has no way to exempt the traffic that authenticates it.
 

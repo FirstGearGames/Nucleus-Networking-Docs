@@ -59,6 +59,6 @@ fixture.CoreManager.TransportManager.RawPacketReceived += (sendingConnection, re
 };
 ```
 
-## The cost of looking
+## The Reader is reused the moment your handler returns
 
 The `Reader` handed to `RawPacketReceived` belongs to the receive loop, not to you. It is reused on the next packet the moment your handler returns. Copy whatever values you need out of it inside the callback; do not stash the `Reader` reference itself and read from it later.
