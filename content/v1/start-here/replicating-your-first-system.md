@@ -26,13 +26,14 @@ A `NetworkSystem` is the thing that gets spawned and despawned; the components a
 The server rents a system and attaches the components it needs in one call:
 
 ```csharp
-NetworkSystem? matchSystem = NetworkSystemPool.Rent<NetworkSystem, MatchClockComponent>(coreManager, canStartSystem: true);
+if (!NetworkSystemPool.TryRent<NetworkSystem, MatchClockComponent>(coreManager, out NetworkSystem? matchSystem, canStartSystem: true))
+    return;
 ```
 
-`canStartSystem` defaults to `true`; pass `false` to rent a system without starting it yet. `Rent` is generated in overloads that take up to 64 component type arguments (`TComponent0` through `TComponent63`), so a system with several components is still one call:
+`TryRent` returns `false` when no `CoreManager` could be found or the start was refused. `canStartSystem` defaults to `true`; pass `false` to rent a system without starting it yet. `TryRent` is generated in overloads that take up to 31 component type arguments (`TComponent0` through `TComponent30`), so a system with several components is still one call:
 
 ```csharp
-NetworkSystemPool.Rent<NetworkSystem, MatchClockComponent, ScoreboardComponent>(coreManager, canStartSystem: true);
+NetworkSystemPool.TryRent<NetworkSystem, MatchClockComponent, ScoreboardComponent>(coreManager, out NetworkSystem? matchSystem, canStartSystem: true);
 ```
 
 Once started, write to the component's members the same way on either peer:
@@ -58,7 +59,7 @@ NetworkSystemWatch? watch = NetworkSystemPool.Watch<NetworkSystem, MatchClockCom
 });
 ```
 
-Composition, not type alone, is what a watch matches on: a watch for `NetworkSystem, MatchClockComponent` is never offered a plain `NetworkSystem` that carries a different component. `Watch` also takes an optional released handler for when the matching system stops, and is generated in the same up-to-64-component overloads as `Rent`.
+Composition, not type alone, is what a watch matches on: a watch for `NetworkSystem, MatchClockComponent` is never offered a plain `NetworkSystem` that carries a different component. `Watch` also takes an optional released handler for when the matching system stops, and is generated in the same up-to-64-component overloads as `TryRent`.
 
 Registering a watch is safe at any time. If a matching system already exists when you watch, it is replayed against the new watch immediately, so a subscriber that starts late still gets it.
 

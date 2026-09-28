@@ -21,10 +21,11 @@ Add more fields for more state; each gets its own bit in the generated flags enu
 
 ## Rent a system that carries it
 
-A `NetworkComponent` doesn't exist on its own; it lives on a `NetworkSystem`. `NetworkSystemPool.Rent` takes the system type and one type argument per component it should carry, and returns a started system:
+A `NetworkComponent` doesn't exist on its own; it lives on a `NetworkSystem`. `NetworkSystemPool.TryRent` takes the system type and one type argument per component it should carry, and hands back a started system through its `out` argument. It returns `false` when no `CoreManager` could be found or the start was refused:
 
 ```csharp
-NetworkSystem system = NetworkSystemPool.Rent<NetworkSystem, SimpleStateComponent>(coreManager, canStartSystem: true)!;
+if (!NetworkSystemPool.TryRent<NetworkSystem, SimpleStateComponent>(coreManager, out NetworkSystem? system, canStartSystem: true))
+    return;
 
 system.TryGetComponent(out SimpleStateComponent component);
 component.Counter.Value = 31337;

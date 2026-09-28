@@ -43,7 +43,7 @@ void OnSystemsLinked(NetworkSystemObject networkSystemObject)
 NetworkSystemObjectPool.RequireSystem<NetworkSystem, UnityAnimatorComponent>(this, OnSystemAcquired, OnSystemReleased);
 ```
 
-A second script on the same GameObject calls `RequireSystem` for its own composition in its own `Awake`, exactly the same way. Each script's requirement is served once: `RequireSystem` records it and resolves it from whatever the marker already links or from a fresh rent, so the script never retries or guards against a double rent itself. The raw, context-aware `Rent<TSystem, TComponent0>` that `RequireSystem` calls into is the one-shot version, meant for a driver that wants its system back synchronously at a moment of its own choosing. It is not refused on a marker that already links a system: each call rents and links another member, so calling it twice for the same need gives you two systems.
+A second script on the same GameObject calls `RequireSystem` for its own composition in its own `Awake`, exactly the same way. Each script's requirement is served once: `RequireSystem` records it and resolves it from whatever the marker already links or from a fresh rent, so the script never retries or guards against a double rent itself. The raw, context-aware `TryRent<TSystem, TComponent0>` that `RequireSystem` calls into is the one-shot version, meant for a driver that wants its system back synchronously at a moment of its own choosing. It is not refused on a marker that already links a system: each call rents and links another member, so calling it twice for the same need gives you two systems.
 
 ## How the spawn side ties them together
 

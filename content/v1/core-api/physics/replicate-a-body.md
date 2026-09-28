@@ -11,7 +11,9 @@ title: "Replicate a physics body"
 Add `NetworkPhysicsComponent` to a system the same way you add any other component, by renting it:
 
 ```csharp
-NetworkSystem networkSystem = NetworkSystemPool.Rent<NetworkSystem, NetworkPhysicsComponent>(coreManager, canStartSystem: true)!;
+if (!NetworkSystemPool.TryRent<NetworkSystem, NetworkPhysicsComponent>(coreManager, out NetworkSystem? networkSystem, canStartSystem: true))
+    return;
+
 networkSystem.TryGetComponent(out NetworkPhysicsComponent physicsComponent);
 ```
 
