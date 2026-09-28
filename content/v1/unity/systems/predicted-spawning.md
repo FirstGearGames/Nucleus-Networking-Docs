@@ -27,9 +27,7 @@ GameObject projectileObject = Instantiate(_projectilePrefab, _muzzle.position, Q
 NetworkSystemObject marker = projectileObject.GetComponent<NetworkSystemObject>();
 
 // Rented unstarted, so the shot can be written into the object before the request that carries it is sent.
-NetworkSystem projectileSystem = NetworkSystemObjectPool.Rent<NetworkSystem, PredictedProjectileComponent>(marker, canStartSystem: false);
-
-if (projectileSystem == null)
+if (!NetworkSystemObjectPool.TryRent<NetworkSystem, PredictedProjectileComponent>(marker, out NetworkSystem projectileSystem, canStartSystem: false))
 {
     Destroy(projectileObject);
     return;

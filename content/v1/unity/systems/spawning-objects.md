@@ -28,19 +28,20 @@ private void OnSystemReleased(NetworkSystem networkSystem)
 
 `OnSystemReleased` is optional — pass `null` when there is nothing to reset. Both handlers are typed as `NetworkSystemAcquiredHandler` and `NetworkSystemReleasedHandler`.
 
-A direct call to `Rent` asks too early on a transport that has not finished starting, and misses a system that already linked before the call ran. `RequireSystem` owns both: it retries while the transport comes up, and adopts a system that linked before the subscription existed. Reach for `Rent` instead only when a script wants the system back synchronously, such as a driver creating an object's system at a moment of its own choosing.
+A direct call to `TryRent` asks too early on a transport that has not finished starting, and misses a system that already linked before the call ran. `RequireSystem` owns both: it retries while the transport comes up, and adopts a system that linked before the subscription existed. Reach for `TryRent` instead only when a script wants the system back synchronously, such as a driver creating an object's system at a moment of its own choosing.
 
 ## Renting directly
 
-`NetworkSystemObjectPool.Rent<TSystem, TComponent0...>(contextComponent, canStartSystem = true)` is the one-shot form. One call is correct on every peer:
+`NetworkSystemObjectPool.TryRent<TSystem, TComponent0...>(contextComponent, out networkSystem, canStartSystem = true)` is the one-shot form. It returns `true` once a system is linked to the object, and `false` on an error, which it logs. One call is correct on every peer:
 
 ```csharp
-NetworkSystem system = NetworkSystemObjectPool.Rent<NetworkSystem, UnityLocalTransformComponent>(this);
+if (!NetworkSystemObjectPool.TryRent<NetworkSystem, UnityLocalTransformComponent>(this, out NetworkSystem system))
+    return;
 ```
 
 The call resolves its `CoreManager` from `NucleusUnity`, so nothing is passed in. Internally it branches on the calling peer's situation:
 
-- **A wire spawn is staging.** The integration is mid-`Instantiate` for an incoming spawn, and the rent returns the system the wire already built rather than constructing a new one.
+- **A wire spawn is staging.** The integration is mid-`Instantiate` for an incoming spawn, and the rent hands back the system the wire already built rather than constructing a new one.
 - **A client scene object.** The system is built locally, unstarted, and parked by scene identifier until the server's spawn binds it.
 - **The server.** The system is rented and started with the marker's platform identity, which is what replicates it to observers.
 
@@ -50,11 +51,11 @@ The context component supplies the marker: the rent locates a `NetworkSystemObje
 
 ```csharp
 // Both calls target `this`, so both systems land on the one marker and share a GroupId.
-NetworkSystemObjectPool.Rent<NetworkSystem, UnityLocalTransformComponent>(this);
-NetworkSystemObjectPool.Rent<NetworkSystem, ColorPulseComponent>(this);
+NetworkSystemObjectPool.TryRent<NetworkSystem, UnityLocalTransformComponent>(this, out _);
+NetworkSystemObjectPool.TryRent<NetworkSystem, ColorPulseComponent>(this, out _);
 ```
 
-What is refused is a rent whose composition does not match a staged wire spawn: on a receiving client, a rent inside a freshly instantiated prefab's `Awake` must ask for the same `TSystem` and the same NetworkComponent types the wire actually sent for that member, or the call logs an error and returns null. Up to 64 NetworkComponent type arguments are generated for both `Rent` and `RequireSystem` (`TComponent0` through `TComponent63`).
+What is refused is a rent whose composition does not match a staged wire spawn: on a receiving client, a rent inside a freshly instantiated prefab's `Awake` must ask for the same `TSystem` and the same NetworkComponent types the wire actually sent for that member, or the call logs an error and returns `false`. Up to 31 NetworkComponent type arguments are generated for both `TryRent` and `RequireSystem` (`TComponent0` through `TComponent30`), and both also have a form that takes none, for a system that carries only a spawn payload.
 
 ## Despawning
 
@@ -80,4 +81,4 @@ An object that needs nothing but a payload can require a system with no componen
 
 ## A scene object needs no separate spawn call
 
-There is no separate `Spawn` call for an object already sitting in a loaded scene — the same `Rent` or `RequireSystem` call that spawns a dynamic prefab also resolves a scene object, built locally and bound once the server's spawn arrives.
+There is no separate `Spawn` call for an object already sitting in a loaded scene — the same `TryRent` or `RequireSystem` call that spawns a dynamic prefab also resolves a scene object, built locally and bound once the server's spawn arrives.

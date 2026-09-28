@@ -6,13 +6,11 @@ title: "Renting and finding systems in code"
 
 ## Renting a system
 
-`NetworkSystemPool.Rent<TSystem, TComponent0...>(coreManager, canStartSystem)` gets you a `NetworkSystem` with no engine object behind it at all. The generated overloads run from zero components up to sixty-four (`TComponent0` through `TComponent63`), and each one rents `TSystem`, attaches every named component, and starts the system unless you pass `canStartSystem: false`.
+`NetworkSystemPool.TryRent<TSystem, TComponent0...>(coreManager, out networkSystem, canStartSystem)` gets you a `NetworkSystem` with no engine object behind it at all. The generated overloads run from zero components up to thirty-one (`TComponent0` through `TComponent30`), and each one rents `TSystem`, attaches every named component, and starts the system unless you pass `canStartSystem: false`. It returns `true` with the system in `networkSystem`, typed as `TSystem`. It returns `false` when no `CoreManager` could be found or the start was refused, and it logs the reason.
 
 ```csharp
-NetworkSystem networkSystem = NetworkSystemPool.Rent<NetworkSystem, MatchClockComponent>(coreManager, canStartSystem: true);
-
-if (networkSystem is null)
-    return; // no CoreManager instance could be resolved
+if (!NetworkSystemPool.TryRent<NetworkSystem, MatchClockComponent>(coreManager, out NetworkSystem networkSystem, canStartSystem: true))
+    return; // no CoreManager instance could be resolved, or the start was refused
 
 if (networkSystem.TryGetComponent(out MatchClockComponent matchClockComponent))
 {
@@ -85,10 +83,10 @@ public class MatchClock : INetworkLoopStepCallback
 
     public bool Start()
     {
-        NetworkSystem = NetworkSystemPool.Rent<NetworkSystem, MatchClockComponent>(_coreManager, canStartSystem: true);
-
-        if (NetworkSystem is null)
+        if (!NetworkSystemPool.TryRent<NetworkSystem, MatchClockComponent>(_coreManager, out NetworkSystem rentedNetworkSystem, canStartSystem: true))
             return false;
+
+        NetworkSystem = rentedNetworkSystem;
 
         _secondsPerTick = 1f / _coreManager.NetworkLoopManager.TickRate;
 
