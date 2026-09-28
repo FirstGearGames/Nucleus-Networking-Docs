@@ -30,13 +30,15 @@ NetworkMember<float> health = new(sendInterval: SendInterval.Short);
 NetworkMember<Vector3> position = new(transmissionMode: TransmissionMode.Divine);
 ```
 
-## PathContinuation
+## Extrapolation decides what silence means
 
-Under `TransmissionMode.Divine`, `PathContinuation` is a second setting you choose: `Implied` (the default) or `Announced`. The two trade off differently when a packet is lost — `Implied` favors staying live at the risk of a brief overshoot, `Announced` favors staying accurate at the risk of a brief stall. Try `Implied` first; reach for `Announced` if a lost packet is visibly overshooting for your use case. `PathContinuation` only matters under `Divine` — `TransmissionMode.Interval` ignores it.
+`isExtrapolated` is a second setting you choose, and it applies under both modes. `true` (the default) keeps receivers moving the value through the sender's silence; `false` holds them still until told. The two trade off differently when an update is lost — `true` favors staying live at the risk of a brief overshoot, `false` favors staying accurate at the risk of a brief stall. Try `true` first; set it to `false` if a lost update is visibly overshooting for your use case.
+
+Under `Interval`, `true` lets a receiver render up to one send interval ahead of the newest value while it is moving, which covers an update that never arrives, and the sender sends one small "stopped" update when the value stops changing so the receiver settles exactly on it. That costs a tiny overhead on each update plus one extra update each time the value stops. With `false`, the receiver never renders past the newest value and there is no extra cost.
 
 ## A receiver adopts the sender's mode automatically
 
-Both `TransmissionMode` and `PathContinuation` are construction defaults, optionally overridden per instance at runtime. A receiver doesn't need to be built with the same values: every full serialization carries the sender's mode and path continuation, and the receiver adopts them automatically. Nothing here has to be toggled in lockstep ahead of time.
+Both `TransmissionMode` and `isExtrapolated` are construction defaults, optionally overridden per instance at runtime. A receiver doesn't need to be built with the same values: every full serialization carries the sender's mode and extrapolation setting, and the receiver adopts them automatically. Nothing here has to be toggled in lockstep ahead of time, though each value is meant to be set once rather than changed mid-stream.
 
 ## Pro gating
 
