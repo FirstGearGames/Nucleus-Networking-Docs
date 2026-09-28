@@ -74,7 +74,7 @@ A system whose position is driven by a controller — a `ProjectedRigidbody` ano
 
 ## A spawn can carry one-time data
 
-Data an object needs only when it arrives, such as a random seed or a loot table, goes in a spawn payload rather than a member. Pick a payload type in the marker's **Spawn Payload** list, or declare one from code with `NetworkSystem.SetSpawnPayload`. [Spawning systems](../../core-api/systems/spawning-systems.md) explains how payloads work and who may declare them. On a client, a scene object is bound after it has already linked, so read a scene object's payload where it arrives, in the payload's own `ReadSpawnPayload`, rather than in `OnSystemLinked`.
+Data an object needs only when it arrives, such as a random seed or a loot table, goes in a spawn payload rather than a member. Pick a payload type in the marker's **Spawn Payload** list, or declare one from code with `NetworkSystem.SetSpawnPayload`. [Spawning systems](../../core-api/systems/spawning-systems.md) explains how payloads work and who may declare them. On a client, a scene object is bound after it has already linked, so read a scene object's payload where it arrives, in the payload's own `ReadSpawnPayload`, or from `SystemManager.SystemStarted` or a system watch, which announce a scene object on a client once the server's spawn has bound it, rather than in `OnSystemLinked`.
 
 An object that needs nothing but a payload can require a system with no components: `NetworkSystemObjectPool.RequireSystem<NetworkSystem>(this, OnSystemAcquired)`.
 
