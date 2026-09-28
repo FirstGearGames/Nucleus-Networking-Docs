@@ -28,7 +28,7 @@ public readonly NetworkMember<Vector3> Scale = new(transmissionMode: Transmissio
 
 - `SetSendInterval(SendInterval sendInterval)`
 - `SetTransmissionMode(TransmissionMode transmissionMode)`
-- `SetExtrapolated(bool isExtrapolated)`
+- `SetExtrapolationEnabled(bool isExtrapolationEnabled)`
 
 Apply the same value on every peer. A platform integration typically pushes a serialized interval, mode, or extrapolation setting on bind so this stays consistent without each peer configuring it by hand.
 

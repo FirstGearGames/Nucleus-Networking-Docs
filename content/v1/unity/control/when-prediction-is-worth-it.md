@@ -13,7 +13,7 @@ That is the entire benefit. Prediction does not make an object more accurate, mo
 Turning prediction on for a `NetworkMember<T0>` is one constructor argument:
 
 ```csharp
-public NetworkMember(CompressionLevel deltaCompressionLevel = CompressionLevel.Tight, bool isAutomaticPoolingEnabled = false, bool isPredicted = false, float accuracy = float.NaN, float interpolationSnapThreshold = float.NaN, SendInterval sendInterval = SendInterval.Normal, TransmissionMode transmissionMode = TransmissionMode.Interval, bool isExtrapolated = true)
+public NetworkMember(CompressionLevel deltaCompressionLevel = CompressionLevel.Tight, bool isAutomaticPoolingEnabled = false, bool isPredicted = false, float accuracy = float.NaN, float interpolationSnapThreshold = float.NaN, SendInterval sendInterval = SendInterval.Normal, TransmissionMode transmissionMode = TransmissionMode.Interval, bool isExtrapolationEnabled = true)
 ```
 
 `isPredicted: true` does three things, and each one is a real cost:
