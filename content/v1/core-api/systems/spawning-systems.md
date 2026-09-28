@@ -112,8 +112,30 @@ coreManager.SystemManager.EnsureMoveSystemToScene(networkSystem, destinationScen
 
 This is the one path that moves a spawned object between scenes — nothing in interest, physics, or scene loading calls it on its own. It's server-only, and only for a started, dynamically spawned system (not a scene object) that carries a platform identity. The move restamps the system's scene handle in place, preserving its Id, controller, access and group, then re-evaluates interest so a peer no longer in the destination scene is despawned and a peer newly in it is served a full. See the scenes category for how scene instances and handles work.
 
-## Two things worth knowing
+## A spawn can carry one-time data
 
-There's no spawn payload. A member replicates only its current value, not a value captured at spawn time. A peer that starts observing a system after several changes have already happened reads whatever the member's current value is — the last write, not the history in between.
+A spawn payload is a block of data attached to one object's spawn: a random seed, a loot table or a launch speed that the object needs when it arrives but that no member should keep replicating. Derive from `NetworkSpawnPayload`, write and read your own values, and declare an instance on the system before it spawns:
+
+```csharp
+public class CrateSpawnPayload : NetworkSpawnPayload
+{
+    public int LootTableIndex;
+
+    public override void WriteSpawnPayload(Writer writer, NetworkSystem networkSystem) => writer.WriteInt32(LootTableIndex);
+
+    public override void ReadSpawnPayload(Reader reader, NetworkSystem networkSystem) => LootTableIndex = reader.ReadInt32();
+}
+
+NetworkSystem networkSystem = NetworkSystemPool.Rent<NetworkSystem, CrateComponent>(coreManager);
+networkSystem.SetSpawnPayload(new CrateSpawnPayload { LootTableIndex = 3 });
+```
+
+- The payload travels with every complete snapshot of the object, so a late joiner and a peer that regains interest receive it too, and it is never sent in the updates in between. Declare it in the same call stack as the rent, exactly as you write a component's opening values.
+- A receiver reads it into an instance of its own, available as `networkSystem.SpawnPayload`. `ReadSpawnPayload` must read exactly what `WriteSpawnPayload` wrote, and it can run more than once for one object, so whatever it applies has to be harmless to repeat.
+- Declare it on the peer that creates the object. That is the server, or, for a predicted spawn, the client predicting it: that client can create the object, set its payload and spawn it, and the server passes the payload on to everyone else. A client cannot change a payload once the object exists.
+- The source generator registers every concrete payload type for you. A concrete payload type without a public parameterless constructor is a build error, because a receiver has to construct it.
+- A system can carry a payload and nothing else. Rent one with no components through `NetworkSystemPool.Rent<NetworkSystem>(coreManager)` and declare the payload on it.
+
+## A system can reach a peer a tick or two after it starts
 
 A system may not start replicating to a given peer the instant it starts. Spawn admission is paced, so a peer can see the system a tick or two later than the tick it actually started on (see Interest Management).
