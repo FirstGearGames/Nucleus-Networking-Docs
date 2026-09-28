@@ -68,12 +68,16 @@ A call with no linked system is a no-op. Only the server may despawn a replicate
 
 ## Where the object lands
 
-A spawn arrives as a full serialization that is deserialized before the prefab instantiates, so the framework reads the spawned system's pose before creating the GameObject rather than moving it into place afterward. If the system carries a `UnityTransformComponentBase`, its `ReplicatedPosition`, `ReplicatedRotation`, and `LocalScale` supply the instantiate pose. If the system carries no transform component, the prefab's own authored transform is used instead. Either way, the instance is produced already positioned — there is no frame where it sits at the origin waiting to be moved.
+A spawn arrives as a full serialization that is deserialized before the prefab instantiates, so the framework reads the spawned system's pose before creating the GameObject rather than moving it into place afterward. If the system carries a `UnityTransformComponentBase`, its `ReplicatedPosition`, `ReplicatedRotation`, and `LocalScale` supply the instantiate pose. If the system carries no transform component, the prefab's own authored transform is used instead, unless the marker's **Auto Transform Payload** is on, in which case the object arrives at the server's parent and pose. Either way, the instance is produced already positioned — there is no frame where it sits at the origin waiting to be moved.
 
 A system whose position is driven by a controller — a `ProjectedRigidbody` another peer simulates — is not placed by `Instantiate` at all. The controlling peer builds its own copy from the prefab and asserts the prefab's pose back within a tick, so a server-chosen spawn point set through `Instantiate` is overwritten almost immediately. Derive or publish the spawn point so the controlling peer can place itself.
 
-## Two things you won't find
+## A spawn can carry one-time data
+
+Data an object needs only when it arrives, such as a random seed or a loot table, goes in a spawn payload rather than a member. Pick a payload type in the marker's **Spawn Payload** list, or declare one from code with `NetworkSystem.SetSpawnPayload`. [Spawning systems](../../core-api/systems/spawning-systems.md) explains how payloads work and who may declare them. On a client, a scene object is bound after it has already linked, so read a scene object's payload where it arrives, in the payload's own `ReadSpawnPayload`, rather than in `OnSystemLinked`.
+
+An object that needs nothing but a payload can require a system with no components: `NetworkSystemObjectPool.RequireSystem<NetworkSystem>(this, OnSystemAcquired)`.
+
+## A scene object needs no separate spawn call
 
 There is no separate `Spawn` call for an object already sitting in a loaded scene — the same `Rent` or `RequireSystem` call that spawns a dynamic prefab also resolves a scene object, built locally and bound once the server's spawn arrives.
-
-There is no per-spawn payload parameter on `Rent` or `RequireSystem`. A NetworkComponent's fields carry current state, not one-time spawn arguments, so a late-joining observer's first read is simply the last value written, not a message it missed.
