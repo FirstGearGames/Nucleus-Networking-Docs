@@ -41,7 +41,7 @@ public NetworkMember(
     float interpolationSnapThreshold = float.NaN,
     SendInterval sendInterval = SendInterval.Normal,
     TransmissionMode transmissionMode = TransmissionMode.Interval,
-    PathContinuation pathContinuation = PathContinuation.Implied);
+    bool isExtrapolated = true);
 ```
 
 All eight arguments are supplied by name at the field declaration, e.g. `NetworkMember<T> _x = new(isPredicted: true);`.
@@ -55,7 +55,7 @@ All eight arguments are supplied by name at the field declaration, e.g. `Network
 | `interpolationSnapThreshold` | Yes | The distance beyond which `InterpolatedValue` snaps to `Value` instead of animating from `PreviousValue`. `float.NaN` (the default) disables snapping. Usable only on numeric types with a registered tolerance comparer. |
 | `sendInterval` | No — see `SetSendInterval` | The span between deltas while `TransmissionMode.Interval` is in force. `SendInterval.Normal` sends every tick. |
 | `transmissionMode` | No — see `SetTransmissionMode` | The transmission strategy: `TransmissionMode.Interval` (the default) encodes ordinary deltas paced to `sendInterval`; `TransmissionMode.Divine` (Pro) projects motion instead, for values that tend to move predictably. |
-| `pathContinuation` | No — see `SetPathContinuation` | Tunes how a `Divine` member behaves when a packet is lost: `PathContinuation.Implied` (the default) favors staying live, `PathContinuation.Announced` favors staying accurate. Ignored under `TransmissionMode.Interval`. |
+| `isExtrapolated` | No — see `SetExtrapolated` | Whether receivers keep the value moving through the sender's silence, under either mode. `true` (the default) favors staying live when an update is lost; `false` holds still until told and favors staying accurate. Under `TransmissionMode.Interval`, `true` costs a tiny overhead on each update plus one extra update each time the value stops; `false` costs nothing extra. See [How Often a Member Is Sent](./send-pacing.md). |
 
 ## Interpolation
 
@@ -70,7 +70,7 @@ The three construction-time doors above with a runtime override can be re-author
 ```csharp
 public void SetSendInterval(SendInterval sendInterval);
 public void SetTransmissionMode(TransmissionMode transmissionMode);
-public void SetPathContinuation(PathContinuation pathContinuation);
+public void SetExtrapolated(bool isExtrapolated);
 ```
 
 `SetReplicates(bool isReplicated)`, on `NetworkMemberBase`, sets whether the member is sent to other peers at all. It is called only by generated code, emitted beside a member's `Initialize` call and only for a member declared with `ReplicationIgnoreAttribute`; calling it by hand desynchronizes what this peer sends from what its peers expect to read.

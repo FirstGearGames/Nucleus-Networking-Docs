@@ -28,9 +28,9 @@ public readonly NetworkMember<Vector3> Scale = new(transmissionMode: Transmissio
 
 - `SetSendInterval(SendInterval sendInterval)`
 - `SetTransmissionMode(TransmissionMode transmissionMode)`
-- `SetPathContinuation(PathContinuation pathContinuation)`
+- `SetExtrapolated(bool isExtrapolated)`
 
-Apply the same value on every peer. A platform integration typically pushes a serialized interval, mode, or continuation on bind so this stays consistent without each peer configuring it by hand.
+Apply the same value on every peer. A platform integration typically pushes a serialized interval, mode, or extrapolation setting on bind so this stays consistent without each peer configuring it by hand.
 
 ## Subclassing
 

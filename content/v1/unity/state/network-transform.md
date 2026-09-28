@@ -17,9 +17,9 @@ The controller's pose is sampled just before serialization, on the `EarlyStateWr
 | Kinematic Management Enabled | `true` | Holds an attached `Rigidbody` kinematic on every non-controlling peer, including the server while a client controls the system, and returns it to simulation on the controller. |
 | Send Interval | `Normal` | Paces ordinary delta replication while Transmission Mode is `Interval`. Has no effect on a projecting (`Divine`) member — a projected path already streams and smooths on its own. |
 | Transmission Mode | `TransmissionModeDefaults.Motion` | The replication strategy applied to position, rotation, and scale on bind. Resolves to `Divine` projection where a projector is registered, `Interval` otherwise. |
-| Path Continuation | `Implied` | What silence means while a member projects. Has no effect under `Interval`. |
+| Is Extrapolated | `true` | Whether other peers keep the object moving through the sender's silence, under either Transmission Mode. On, a lost update is covered by motion but may briefly overshoot; turn it off if that overshoot is visible, and the object holds still until told instead. Under `Interval`, on costs a tiny overhead on each update plus one extra update each time the object stops. See [How Often a Member Is Sent](../../core-api/state/send-pacing.md). |
 
-Transmission Mode, Path Continuation, and Send Interval are pushed onto the underlying `UnityTransformComponentBase` on bind (`SetTransmissionMode`, `SetPathContinuation`, `SetSendInterval`), so a pooled instance re-applies the same authored values on every reuse. Interpolate Scale Enabled and Kinematic Management Enabled stay on `NetworkTransform` itself and are read directly each step, not pushed to the component. Transform Space is spent earlier still, once in `Awake`, before any bind happens.
+Transmission Mode, Is Extrapolated, and Send Interval are pushed onto the underlying `UnityTransformComponentBase` on bind (`SetTransmissionMode`, `SetExtrapolated`, `SetSendInterval`), so a pooled instance re-applies the same authored values on every reuse. Interpolate Scale Enabled and Kinematic Management Enabled stay on `NetworkTransform` itself and are read directly each step, not pushed to the component. Transform Space is spent earlier still, once in `Awake`, before any bind happens.
 
 ## Transform Space
 
