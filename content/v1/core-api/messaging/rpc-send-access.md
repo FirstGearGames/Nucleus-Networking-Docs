@@ -20,10 +20,10 @@ Ordinal 1 is deliberately vacant. The value is serialized into authored Unity sc
 
 ## Setting and reading access
 
-The server sets access with `SetRpcAccess`:
+The server sets access with `TrySetRpcAccess`:
 
 ```csharp
-public bool SetRpcAccess(RpcSendAccess rpcSendAccess)
+public bool TrySetRpcAccess(RpcSendAccess rpcSendAccess)
 ```
 
 It's server-only; a client call is rejected, since letting a client widen its own send access would make the permission client-settable.

@@ -43,7 +43,7 @@ public interface ISceneObserver
 }
 ```
 
-Register any number of observers with `sceneManager.RegisterSceneObserver(observer)`, and remove one with `UnregisterSceneObserver`. Both the events above and the matching `ISceneObserver` callback are raised for the same occurrence, so use whichever form suits the call site. Registering the same observer twice is ignored; registering null is logged as an error.
+Register any number of observers with `sceneManager.RegisterSceneObserver(observer)`, and remove one with `TryUnregisterSceneObserver`. Both the events above and the matching `ISceneObserver` callback are raised for the same occurrence, so use whichever form suits the call site. Registering the same observer twice is ignored; registering null is logged as an error.
 
 ## Reporting from a loader that is not the shipped one
 
@@ -61,7 +61,7 @@ All three report methods are safe to call from any thread, and each is only sent
 A reported failure latches, so the server stops asking a client that cannot fetch the content. Re-arm it once whatever blocked the load has been addressed:
 
 ```csharp
-bool cleared = sceneManager.ClearSceneLoadFailure(connection, sceneHandle);
+bool cleared = sceneManager.TryClearSceneLoadFailure(connection, sceneHandle);
 ```
 
 Check whether a client is currently latched with `connection.HasSceneLoadFailed(sceneHandle)`.

@@ -23,7 +23,7 @@ Only the deciding handler can change the outcome. Observers and per-type subscri
 
 ## Deciding the action
 
-Register at most one deciding handler per violation type through `ViolationManager.RegisterViolationHandler<T0>(ViolationHandler<T0> violationHandler)`. Registering a second handler for the same type replaces the first. Remove it with `UnregisterViolationHandler<T0>()`, which takes no argument — it always targets the one handler for `T0`.
+Register at most one deciding handler per violation type through `ViolationManager.RegisterViolationHandler<T0>(ViolationHandler<T0> violationHandler)`. Registering a second handler for the same type replaces the first. Remove it with `TryUnregisterViolationHandler<T0>()`, which takes no argument — it always targets the one handler for `T0`.
 
 ```csharp
 coreManager.ViolationManager.RegisterViolationHandler<UncontrolledStateChangeViolation>(context =>
@@ -68,7 +68,7 @@ public sealed class ViolationAuditSink : IViolationObserver
 }
 ```
 
-One registration hears every type, including types added later. Remove it with `UnregisterViolationObserver(IViolationObserver violationObserver)`.
+One registration hears every type, including types added later. Remove it with `TryUnregisterViolationObserver(IViolationObserver violationObserver)`.
 
 To watch one type only, use `RegisterViolationDetectedHandler<T0>(ViolationDetectedHandler<T0> violationDetectedHandler)` or the matching per-type event (for example `UncontrolledStateChangeViolationDetected`) — both write the same subscription. A subscriber registered this way pays nothing for violation types it didn't ask about.
 

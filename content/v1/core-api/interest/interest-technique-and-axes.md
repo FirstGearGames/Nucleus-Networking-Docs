@@ -39,13 +39,13 @@ The choice resolves to a per-axis multiplier (one on each measured axis, zero on
 
 `SpatialInterestGrid` is the engine-free index `InterestTechnique.SpatialGrid` narrows through. It knows nothing about transforms; it answers "which of these points lie within this radius of this point."
 
-- `BeginPass(uint pass)` opens a pass, clearing the grid when the pass has moved on. It returns `true` when the caller must re-insert this pass's points, so several callers can share one grid within a pass and only the first pays to build it.
+- `TryBeginPass(uint pass)` opens a pass, clearing the grid when the pass has moved on. It returns `true` when the caller must re-insert this pass's points, so several callers can share one grid within a pass and only the first pays to build it.
 - `Insert(uint id, Vector3 position)` files one identified point for the current pass. A non-finite position is dropped rather than filed.
 - `CollectWithin(Vector3 center, float radius, HashSet<uint> results)` adds the identifiers of every inserted point within `radius` of `center`. Candidates are tested exactly before being added, so a result is genuinely in range and not merely in a probed cell.
 - `IsIndexed(uint id)` reports whether an identifier filed any point at all this pass, which is how a caller tells "indexed and out of range" apart from "never indexed."
 - `ConfigureAxes(GridInterestAxes gridInterestAxes)` chooses the plane, taking effect at the next rebuild rather than mid-pass.
 
-`CellSize` is a public read-back with a private setter, not a fixed constant. `DefaultCellSize` (32 units) is a floor: each `BeginPass` that rebuilds widens the cell size to the widest radius any query asked about in the previous pass. Correctness never depends on the cell size — a query probes every cell its bounding box touches and tests each candidate exactly — so a mis-sized cell only costs more probes or more candidates, never a wrong answer.
+`CellSize` is a public read-back with a private setter, not a fixed constant. `DefaultCellSize` (32 units) is a floor: each `TryBeginPass` that rebuilds widens the cell size to the widest radius any query asked about in the previous pass. Correctness never depends on the cell size — a query probes every cell its bounding box touches and tests each candidate exactly — so a mis-sized cell only costs more probes or more candidates, never a wrong answer.
 
 ## Scale caveat
 

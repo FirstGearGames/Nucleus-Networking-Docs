@@ -126,7 +126,7 @@ public IReadOnlyList<TChange> Changes => ChangeLog;
 
 ## Collections cannot be multi-writer
 
-A collection member closes off `StateWriteAccess.AnyClient` by construction, not just by convention. `NetworkSystem.SetWriteAccess` refuses to widen a system's access beyond `StateWriteAccess.Controller` when that system holds any collection member:
+A collection member closes off `StateWriteAccess.AnyClient` by construction, not just by convention. `NetworkSystem.TrySetWriteAccess` refuses to widen a system's access beyond `StateWriteAccess.Controller` when that system holds any collection member:
 
 ```csharp
 if (stateWriteAccess is not StateWriteAccess.Controller && HasCollectionMember())

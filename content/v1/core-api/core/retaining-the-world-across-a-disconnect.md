@@ -21,12 +21,12 @@ The field itself is present and settable in every edition. In a Free build it si
 
 ## Adopting a retained world
 
-A peer that retained a world takes it over with `ServerManager.AdoptRetainedWorld()` instead of respawning everything from scratch:
+A peer that retained a world takes it over with `ServerManager.TryAdoptRetainedWorld()` instead of respawning everything from scratch:
 
 ```csharp
 coreManager.ServerManager.AuthorityAdopted += OnAuthorityAdopted;
 
-if (coreManager.ServerManager.AdoptRetainedWorld())
+if (coreManager.ServerManager.TryAdoptRetainedWorld())
     await transport.ConnectAsync(Invoker.Server);
 
 void OnAuthorityAdopted(uint adoptedSystemCount, uint adoptedSceneCount)
@@ -35,13 +35,13 @@ void OnAuthorityAdopted(uint adoptedSystemCount, uint adoptedSceneCount)
 }
 ```
 
-`AdoptRetainedWorld()` returns `true` when a world was adopted, and `false` when this peer holds nothing it was sent. It fires `AuthorityAdopted(uint adoptedSystemCount, uint adoptedSceneCount)` on success, so a game can re-attach whatever it only does for objects it owns once this peer becomes the server for them.
+`TryAdoptRetainedWorld()` returns `true` when a world was adopted, and `false` when this peer holds nothing it was sent. It fires `AuthorityAdopted(uint adoptedSystemCount, uint adoptedSceneCount)` on success, so a game can re-attach whatever it only does for objects it owns once this peer becomes the server for them.
 
-**Call it after the link has dropped and before starting the server.** `AdoptRetainedWorld()` refuses to run once `TransportManager.IsServerStarted` is true, because being the server changes the meaning of the interest pass, the recovery pass, and the scene and bundle request handlers from the instant the server socket connects.
+**Call it after the link has dropped and before starting the server.** `TryAdoptRetainedWorld()` refuses to run once `TransportManager.IsServerStarted` is true, because being the server changes the meaning of the interest pass, the recovery pass, and the scene and bundle request handlers from the instant the server socket connects.
 
 Adoption keeps every identifier the world already has and raises the allocators past them, rather than renumbering. Renumbering would surface as the entire world despawning and respawning, since an identifier is the only name an object has.
 
-`AdoptRetainedWorld()` doesn't start anything itself. The caller starts the server, and — if this peer's own player is meant to keep playing — connects its own client half afterward. A pure-server successor holds the world but has no character in it.
+`TryAdoptRetainedWorld()` doesn't start anything itself. The caller starts the server, and — if this peer's own player is meant to keep playing — connects its own client half afterward. A pure-server successor holds the world but has no character in it.
 
 ## Skipping the reconcile on reconnect
 

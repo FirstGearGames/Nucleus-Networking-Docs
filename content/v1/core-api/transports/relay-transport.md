@@ -59,7 +59,7 @@ Driving it:
 
 - `StartHostingAsync(uint timeoutMilliseconds = DefaultTimeoutMilliseconds)` — opens a session with the directory and stands it up on this peer.
 - `JoinAsync(ulong sessionId, uint timeoutMilliseconds = DefaultTimeoutMilliseconds)` — finds a session by id and joins wherever it currently lives. A join can end with this peer elected to host it, which still reports success.
-- `SurrenderHosting()` — gives the session up to whoever the directory elects next, while this peer stays in the session as an ordinary client afterward.
+- `TrySurrenderHosting()` gives the session up to whoever the directory elects next, while this peer stays in the session as an ordinary client afterward.
 - `CloseSession()` — ends the session for everybody, rather than handing it on.
 - `Poll()` — call once a frame or once a tick. Drives the directory link, the `ISessionHost`, and watches for the current host going quiet.
 
@@ -75,7 +75,7 @@ Events:
 - `Rejoined(string credential)` — raised on a surviving peer once it has rejoined the session where it moved.
 - `Abandoned(string reason)` — raised when the session could not be carried on, whether the directory refused it or no peer would host it.
 
-The half that makes a handover mean anything, carrying the game world across it rather than starting the new host empty, is Pro. It lives in `ClientManager.Adoption.Pro.cs` and `SceneManager.Adoption.Pro.cs`: a client kept with `DisconnectResetMode.RetainReceivedWorld` retains the world it had when its link dropped, and the newly promoted server adopts that retained world as its own to serve. `NewfarmHostMigration` itself needs Pro as well: when it promotes a peer it calls `ServerManager.AdoptRetainedWorld`, which a free build does not have. The `Nucleus.Integrations.Newfarm` assembly therefore does not compile against a free `Nucleus.dll`, and neither does `Nucleus.Integrations.BlitzRelay`, which references it.
+The half that makes a handover mean anything, carrying the game world across it rather than starting the new host empty, is Pro. It lives in `ClientManager.Adoption.Pro.cs` and `SceneManager.Adoption.Pro.cs`: a client kept with `DisconnectResetMode.RetainReceivedWorld` retains the world it had when its link dropped, and the newly promoted server adopts that retained world as its own to serve. `NewfarmHostMigration` itself needs Pro as well: when it promotes a peer it calls `ServerManager.TryAdoptRetainedWorld`, which a free build does not have. The `Nucleus.Integrations.Newfarm` assembly therefore does not compile against a free `Nucleus.dll`, and neither does `Nucleus.Integrations.BlitzRelay`, which references it.
 
 ## Assembly boundary
 

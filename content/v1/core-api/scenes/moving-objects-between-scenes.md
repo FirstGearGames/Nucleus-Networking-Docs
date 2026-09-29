@@ -70,7 +70,7 @@ Register and unregister a resolver on the `SceneManager`:
 
 ```csharp
 coreManager.SceneManager.RegisterSceneCarryFailureResolver(resolver);
-coreManager.SceneManager.UnregisterSceneCarryFailureResolver(resolver);
+coreManager.SceneManager.TryUnregisterSceneCarryFailureResolver(resolver);
 ```
 
 ## In Unity

@@ -8,7 +8,7 @@ title: "Channels and What Is Guaranteed"
 
 ```csharp
 connection.SendMessage(Channel.Reliable, myMessage);
-mySystem.SendRpc(RpcTarget.Observers, Channel.Unreliable, myRpc);
+mySystem.TrySendRpc(RpcTarget.Observers, Channel.Unreliable, myRpc);
 ```
 
 The channel is not a Nucleus feature built on top of the transport - it is a request passed straight through to it. The transport is what makes `Reliable` actually reliable: nothing in `RpcManager`, `MessageManager`, or `Connection` retries a send, buffers it for redelivery, or checks that it arrived. Pick `Reliable` and the transport guarantees order and delivery. Pick `Unreliable` and it guarantees neither.
