@@ -28,20 +28,20 @@ The manager exposes the core scene manager it drives as `NucleusSceneManager` on
 ushort sceneId; // the id the manifest gave your scene
 if (unitySceneManager.NucleusSceneManager.TryOpenScene(sceneId, SceneScope.Connections, out uint sceneHandle))
 {
-    unitySceneManager.NucleusSceneManager.RequestSceneLoad(connection, sceneHandle);
+    unitySceneManager.NucleusSceneManager.TryRequestSceneLoad(connection, sceneHandle);
 }
 ```
 
-`TryOpenScene` only opens the instance on the server - it records the handle and, for `SceneScope.Connections`, places nobody. Nothing loads on a client until you ask for it with `RequestSceneLoad(connection, sceneHandle)`, which is the step that actually tells that connection to load the scene.
+`TryOpenScene` only opens the instance on the server - it records the handle and, for `SceneScope.Connections`, places nobody. Nothing loads on a client until you ask for it with `TryRequestSceneLoad(connection, sceneHandle)`, which is the step that actually tells that connection to load the scene.
 
-Skip `RequestSceneLoad` and nothing goes wrong loudly: the instance exists on the server, but no client was ever told to load it, so the scene simply never appears on the other end. There's no error for it, because from the engine's side you never asked.
+Skip `TryRequestSceneLoad` and nothing goes wrong loudly: the instance exists on the server, but no client was ever told to load it, so the scene simply never appears on the other end. There's no error for it, because from the engine's side you never asked.
 
 ## Join placement only covers new joins
 
 `SceneScope.Global` places every currently connected client the moment you open the instance, and places each later client as it authenticates. `Join Placement` (`UnitySceneManager`'s field, `JoinPlacement` on the core manager) governs only the join-time moment: which of the scenes already open a freshly authenticated client is dropped into.
 
-So a scene you open after clients have joined reaches them only if it is `SceneScope.Global`. A `SceneScope.Connections` scene opened after a client joined is never offered to that client by `Join Placement`, even under the default `EveryOpenScene`, and needs its own explicit `RequestSceneLoad` per connection you want in it.
+So a scene you open after clients have joined reaches them only if it is `SceneScope.Global`. A `SceneScope.Connections` scene opened after a client joined is never offered to that client by `Join Placement`, even under the default `EveryOpenScene`, and needs its own explicit `TryRequestSceneLoad` per connection you want in it.
 
 ## Where the two halves live
 
-The inspector fields you just set - `Scene Loader Enabled`, `Join Placement`, `Automatic Request On Blocked Spawn Enabled`, `Scene Load Timeout Seconds`, `Automatic Stacked Scene Simulation Enabled`, and the loader's `Scene Manifest` and `Local Physics Enabled` - are documented on the `UnitySceneManager` reference page. The calls you made from script - `TryOpenScene`, `RequestSceneLoad`, and the rest of the core `SceneManager` API - are documented on the scene API pages under Core API.
+The inspector fields you just set - `Scene Loader Enabled`, `Join Placement`, `Automatic Request On Blocked Spawn Enabled`, `Scene Load Timeout Seconds`, `Automatic Stacked Scene Simulation Enabled`, and the loader's `Scene Manifest` and `Local Physics Enabled` - are documented on the `UnitySceneManager` reference page. The calls you made from script - `TryOpenScene`, `TryRequestSceneLoad`, and the rest of the core `SceneManager` API - are documented on the scene API pages under Core API.

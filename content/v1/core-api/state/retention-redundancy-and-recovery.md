@@ -61,7 +61,7 @@ Four members on `SystemManager` let you inspect what's actually in the serializa
 | `SerializationHistoryTickCount` | How many ticks of serialization history are currently retained. |
 | `IsSystemRecentlySerialized(uint systemId)` | Whether a given system was locally serialized as changed or spawned within the recent history window. |
 | `GetRecentlySerializedSystemIds(HashSet<uint> collectedSystemIds)` | Adds the Id of every system locally serialized as changed or spawned within the recent history window. |
-| `GetSerializedSystemIdsAfterTick(uint afterTick, HashSet<uint> collectedSystemIds)` | Adds the Id of every system serialized after a baseline tick; returns false if part of the requested range has already aged out of the history window. |
+| `TryGetSerializedSystemIdsAfterTick(uint afterTick, HashSet<uint> collectedSystemIds)` | Adds the Id of every system serialized after a baseline tick; returns false if part of the requested range has already aged out of the history window. |
 
 ```csharp
 using HashSet<uint> changedSystemIds = HashSetPool<uint>.Get();

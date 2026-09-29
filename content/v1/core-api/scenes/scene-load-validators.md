@@ -19,18 +19,18 @@ public interface ISceneLoadValidator
 
 Return `true` to let the request go out, `false` to refuse it. A validator is a predicate and nothing else: it must not open scenes, send messages, or otherwise act on what it's deciding.
 
-Register one with `SceneManager.RegisterSceneLoadValidator`, and remove it with `UnregisterSceneLoadValidator` when it no longer applies:
+Register one with `SceneManager.RegisterSceneLoadValidator`, and remove it with `TryUnregisterSceneLoadValidator` when it no longer applies:
 
 ```csharp
 sceneManager.RegisterSceneLoadValidator(myValidator);
 
 // later
-sceneManager.UnregisterSceneLoadValidator(myValidator);
+sceneManager.TryUnregisterSceneLoadValidator(myValidator);
 ```
 
 ## Several validators, first refusal wins
 
-Any number of validators may be registered. When `RequestSceneLoad` is about to ask a client into a scene, the server walks the registered list in order and stops at the first one that returns `false`. If none are registered, or none refuse, the request proceeds. There's no voting and no override: one refusal is final, and validators after it aren't even asked.
+Any number of validators may be registered. When `TryRequestSceneLoad` is about to ask a client into a scene, the server walks the registered list in order and stops at the first one that returns `false`. If none are registered, or none refuse, the request proceeds. There's no voting and no override: one refusal is final, and validators after it aren't even asked.
 
 This means validator order can matter if two validators disagree about edge cases, but it never matters for the common case of independent entitlement checks — each one only needs to say yes or no about its own rule.
 

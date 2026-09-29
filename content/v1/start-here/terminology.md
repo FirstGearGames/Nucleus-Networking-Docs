@@ -86,7 +86,7 @@ A peer **observes** a system when it has been registered to receive that system'
 
 A **message** is addressed to a peer: `Connection.SendMessage<T0>(Channel channel, T0 data) where T0 : IMessage, new()`.
 
-An **RPC** is addressed to a NetworkSystem: `NetworkSystem.SendRpc<T0>(RpcTarget rpcTarget, Channel channel, T0 rpc, RpcSelfDelivery rpcSelfDelivery = RpcSelfDelivery.None) where T0 : IRpc, new()`. The `RpcTarget` (`Server`, `Observers`, or a specific connection) says who receives it; the system it's sent on says which replicated entity it concerns.
+An **RPC** is addressed to a NetworkSystem: `NetworkSystem.TrySendRpc<T0>(RpcTarget rpcTarget, Channel channel, T0 rpc, RpcSelfDelivery rpcSelfDelivery = RpcSelfDelivery.None) where T0 : IRpc, new()`. The `RpcTarget` (`Server`, `Observers`, or a specific connection) says who receives it; the system it's sent on says which replicated entity it concerns.
 
 ## Transport and channel
 

@@ -101,6 +101,6 @@ protected override void OnSystemUnlinked()
 
 `ForwardingEnabled` (true by default) controls whether the server forwards this component's validated inputs to the system's observers. When it's on, a remote observer receives the same values through its own `InputReceived`, so presentation — audio, animation — can react to another player's actions. The controller itself doesn't receive its own inputs back through `InputReceived`; instead, if validation rejected or modified what it sent, the controller gets `InputCorrected(uint tick)`, and the corrected values are already written into the input members' ring history at that tick before the callback fires, so a later replay from that tick uses the validated inputs.
 
-Override `ValidateInputs` on the server side to enforce game rules — mutate the fields to correct them and return whether the input was accepted unchanged. Returning `false` is what triggers the forward to `InputCorrected`.
+Override `TryValidateInputs` on the server side to enforce game rules — mutate the fields to correct them and return whether the input was accepted unchanged. Returning `false` is what triggers the forward to `InputCorrected`.
 
 For the serialization contract behind `Write`/`Read` and server-side validation in more depth, see [Input components](../../core-api/control/input-components.md).

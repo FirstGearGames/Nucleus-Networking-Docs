@@ -8,19 +8,19 @@ Placing a client in a scene instance is what entitles it to see the objects insi
 
 ## Loading a connection into a scene
 
-`RequestSceneLoad(Connection connection, uint sceneHandle, SceneReplaceMode sceneReplaceMode = SceneReplaceMode.None, uint systemId = NetworkSystem.UnsetId)` asks one client to load a live scene instance. It is deduped per connection and scene: a scene the client already holds, or has already reported it cannot load, is not asked for again. It returns `true` only when a request was actually sent.
+`TryRequestSceneLoad(Connection connection, uint sceneHandle, SceneReplaceMode sceneReplaceMode = SceneReplaceMode.None, uint systemId = NetworkSystem.UnsetId)` asks one client to load a live scene instance. It is deduped per connection and scene: a scene the client already holds, or has already reported it cannot load, is not asked for again. It returns `true` only when a request was actually sent.
 
 ```csharp
-coreManager.SceneManager.RequestSceneLoad(connection, sceneHandle);
+coreManager.SceneManager.TryRequestSceneLoad(connection, sceneHandle);
 ```
 
 There is also an overload for several clients at once:
 
 ```csharp
-uint requestedCount = coreManager.SceneManager.RequestSceneLoad(connections, sceneHandle, SceneReplaceMode.None);
+uint requestedCount = coreManager.SceneManager.TryRequestSceneLoad(connections, sceneHandle, SceneReplaceMode.None);
 ```
 
-`RequestSceneLoad(IReadOnlyList<Connection> connections, uint sceneHandle, SceneReplaceMode sceneReplaceMode = SceneReplaceMode.None)` places each client independently: one refused by a validator, already in the scene, or holding a recorded failure does not stop the rest. It returns how many clients a request was actually sent to, which tells you when the placement did less than you asked.
+`TryRequestSceneLoad(IReadOnlyList<Connection> connections, uint sceneHandle, SceneReplaceMode sceneReplaceMode = SceneReplaceMode.None)` places each client independently: one refused by a validator, already in the scene, or holding a recorded failure does not stop the rest. It returns how many clients a request was actually sent to, which tells you when the placement did less than you asked.
 
 ## Removing a connection from a scene
 
@@ -44,7 +44,7 @@ The replace form exists because the removal half is easy to forget: passing `Sce
 
 - **`EveryOpenScene`** (the default) - every live scene instance the server has open, whatever it was opened for. This overrides `SceneScope`, so a `SceneScope.Connections` arena still gets every new client while this is set.
 - **`GlobalScenes`** - every `SceneScope.Global` instance, and nothing else. This is the answer once a world starts instancing: shared scenes opened `Global` still place everyone, but `Connections` instances place nobody.
-- **`None`** - nothing. The game places every client itself, entirely through `RequestSceneLoad`.
+- **`None`** - nothing. The game places every client itself, entirely through `TryRequestSceneLoad`.
 
 ## Reading occupancy
 
@@ -60,4 +60,4 @@ Setting it to zero or less turns the timeout off and the server waits indefinite
 
 ## Placing a client from a blocked spawn
 
-`SceneManager.AutomaticRequestOnBlockedSpawnEnabled` defaults to `false`. When `true`, a client would be placed in a scene the moment a spawn is withheld for want of it. It's off by default here, unlike the equivalent flag on the bundle manager (which defaults to `true`), because being in a scene is what *entitles* a client to its objects in the first place - inferring placement from a withheld spawn would pull every connected client into every open scene. Leave placement to a deliberate `RequestSceneLoad` call unless every client genuinely belongs in every scene you open.
+`SceneManager.AutomaticRequestOnBlockedSpawnEnabled` defaults to `false`. When `true`, a client would be placed in a scene the moment a spawn is withheld for want of it. It's off by default here, unlike the equivalent flag on the bundle manager (which defaults to `true`), because being in a scene is what *entitles* a client to its objects in the first place - inferring placement from a withheld spawn would pull every connected client into every open scene. Leave placement to a deliberate `TryRequestSceneLoad` call unless every client genuinely belongs in every scene you open.
