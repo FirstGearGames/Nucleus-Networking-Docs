@@ -78,4 +78,4 @@ Where the thing genuinely is a value, a member is still the better answer, and i
 
 ## The other payload
 
-A [spawn payload](../systems/spawning-systems.md) is the other half of this. That one is declared per object rather than per component, rides the spawn alone and never a repair, and chooses whether it is read before or after the member states. Use it for what is true about an object at the moment it spawns. Use the pair here for what a component's own state needs to carry alongside it.
+A [spawn payload](../systems/spawning-systems.md) is the other half of this. That one is declared per object rather than per component, rides the spawn alone and never a repair, and is always read after the member states. Use it for what is true about an object at the moment it spawns. Use the pair here for what a component's own state needs to carry alongside it.
