@@ -16,7 +16,7 @@ public partial class CastComponent : NetworkComponent
     private uint _castStartTick;
     private uint _elapsedCastTicks;
 
-    protected override void WriteFullPayload(Writer writer, StatePacketType statePacketType, ulong serializedMemberFlags)
+    protected override void WriteFullPayload(Writer writer, FullPayloadReason fullPayloadReason, ulong serializedMemberFlags)
     {
         // This serialization never carried the spell, so there is no cast here to describe.
         if ((serializedMemberFlags & (ulong)CastComponentFlags.SpellIndex) == 0)
@@ -25,7 +25,7 @@ public partial class CastComponent : NetworkComponent
         writer.WriteUInt32(CoreManager.NetworkLoopManager.Tick - _castStartTick);
     }
 
-    protected override void ReadFullPayload(Reader reader, StatePacketType statePacketType, ulong serializedMemberFlags)
+    protected override void ReadFullPayload(Reader reader, FullPayloadReason fullPayloadReason, ulong serializedMemberFlags)
     {
         if ((serializedMemberFlags & (ulong)CastComponentFlags.SpellIndex) == 0)
             return;
@@ -60,13 +60,24 @@ This is the part to build on. What a payload says usually depends on what the me
 
 It is `NetworkComponent.EverySerializedMember` whenever the whole component is being carried, which covers a spawn, a resync, an interest serve and a reconcile. It is narrower for a recovery serve, and that is the case the flags exist for. A recovery is not a re-send of everything: it repairs only the members the lost tick actually carried. A payload describing one particular member has no business riding a repair that member was not part of, so test its bit and return when it is clear.
 
-`statePacketType` says what kind of send it is. `Reconcile` is the one worth naming: a controlled object reconciles to its controller constantly, so a payload written there is paid for on every tick of prediction. Return early for the kinds you have nothing to say for.
+`fullPayloadReason` says why the component is being serialized whole, and is one of four:
+
+| Reason | When |
+|---|---|
+| `Serve` | The authority is handing a peer the whole component: a spawn, a resync, or an interest serve bringing it back into view. |
+| `ClientWrite` | A client is writing the whole component upstream. A predicted spawn reports this too, because what both ends can agree on is that the sender was not the authority. |
+| `Reconcile` | The authority is correcting the client that controls the object. |
+| `Recovery` | The authority is repairing a tick a peer lost. This is the only reason whose member flags are narrower than the whole component. |
+
+Nothing on the wire carries it. The writer knows what it is doing, and the reader derives the same answer from the subpacket kind the frame already named and from whether the Connection the body arrived on is the server's, so the two agree by construction and it costs no bits.
+
+`Reconcile` is the one worth naming when deciding what to write: a controlled object reconciles to its controller constantly, so a payload written there is paid for on every tick of prediction, where the same payload on a `Serve` is paid for once. Return early for the reasons you have nothing to say for.
 
 ## The one rule
 
 Nothing frames the payload, so **every bit written must be read back**. Write four bytes and read two, and everything behind the payload decodes against the wrong offset. That surfaces as values arriving wrong or a whole tick being discarded, usually somewhere far away from the component that caused it.
 
-Both ends are handed the same flags and the same kind precisely so the decision to write and the decision to read are made from the same facts rather than each end guessing. Gate on those two arguments and on the member values. Never gate on local state the other end cannot see, such as a field only the server sets or something read off your own scene.
+Both ends are handed the same flags and the same reason precisely so the decision to write and the decision to read are made from the same facts rather than each end guessing. Gate on those two arguments and on the member values. Never gate on local state the other end cannot see, such as a field only the server sets or something read off your own scene.
 
 A read also happens on a body the engine is about to throw away, so applying a payload must be harmless rather than guarded against.
 
