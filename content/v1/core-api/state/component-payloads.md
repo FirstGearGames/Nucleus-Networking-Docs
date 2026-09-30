@@ -60,16 +60,15 @@ This is the part to build on. What a payload says usually depends on what the me
 
 It is `NetworkComponent.EverySerializedMember` whenever the whole component is being carried, which covers a spawn, a resync, an interest serve and a reconcile. It is narrower for a recovery serve, and that is the case the flags exist for. A recovery is not a re-send of everything: it repairs only the members the lost tick actually carried. A payload describing one particular member has no business riding a repair that member was not part of, so test its bit and return when it is clear.
 
-`reason` says why the component is being serialized whole, and is one of four:
+`reason` says why the component is being stated rather than diffed, and is one of three:
 
 | Reason | When |
 |---|---|
-| `Serve` | The authority is handing a peer the whole component: a spawn, a resync, or an interest serve bringing it back into view. |
-| `PredictedSpawn` | A client is asking the authority to build an object it has already built for itself. |
+| `Serve` | The component is stated whole so the receiver can build the object, or rebuild it from nothing it can trust. From the authority that is a spawn, a resync, or an interest serve; from a client it is a predicted spawn. |
 | `Reconcile` | The authority is correcting the client that controls the object. |
 | `Recovery` | The authority is repairing a tick a peer lost. This is the only reason whose member flags are narrower than the whole component. |
 
-`author` is an `Invoker` saying which side wrote the body: on the write side that is this peer, on the read side it is the sender. Direction is kept apart from the reason because the two are independent, and `Serve` in practice is always the authority, since the only thing a client states whole is a `PredictedSpawn`.
+`author` is an `Invoker` saying which side wrote the body: on the write side that is this peer, on the read side it is the sender. Direction is kept apart from the reason because the two are independent: every reason means the same act whichever side wrote it, so a `Serve` from a client is a predicted spawn and a `Serve` from the authority is a spawn or a resync.
 
 Nothing on the wire carries either of them. The writer knows what it is doing, and the reader derives the same answers from the subpacket kind the frame already named, from whether the Connection the body arrived on is the server's, and from a discriminator every upstream full already leads with. So the two ends agree by construction and it costs no bits.
 
