@@ -16,6 +16,10 @@
     "title": "Reacting to changes: OnMembersChanged"
   },
   {
+    "slug": "component-payloads",
+    "title": "Sending your own data beside the members"
+  },
+  {
     "slug": "your-first-networked-component",
     "title": "Your first networked component"
   },
