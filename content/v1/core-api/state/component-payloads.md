@@ -16,7 +16,7 @@ public partial class CastComponent : NetworkComponent
     private uint _castStartTick;
     private uint _elapsedCastTicks;
 
-    protected override void WriteFullPayload(Writer writer, FullPayloadReason fullPayloadReason, ulong serializedMemberFlags)
+    protected override void WritePayload(Writer writer, PayloadReason reason, Invoker author, ulong serializedMemberFlags)
     {
         // This serialization never carried the spell, so there is no cast here to describe.
         if ((serializedMemberFlags & (ulong)CastComponentFlags.SpellIndex) == 0)
@@ -25,7 +25,7 @@ public partial class CastComponent : NetworkComponent
         writer.WriteUInt32(CoreManager.NetworkLoopManager.Tick - _castStartTick);
     }
 
-    protected override void ReadFullPayload(Reader reader, FullPayloadReason fullPayloadReason, ulong serializedMemberFlags)
+    protected override void ReadPayload(Reader reader, PayloadReason reason, Invoker author, ulong serializedMemberFlags)
     {
         if ((serializedMemberFlags & (ulong)CastComponentFlags.SpellIndex) == 0)
             return;
@@ -52,7 +52,7 @@ An ordinary delta writes members and never the component, so a member that moves
 
 ## It runs after the members, not before
 
-This is the part to build on. What a payload says usually depends on what the members now hold, and a peer cannot know how to read one until it has read them. So the pair is a trailer: by the time `ReadFullPayload` runs, every member of that component has already landed and can be read straight off it. The example above relies on exactly that, reading `SpellIndex.Value` while it parses the elapsed time that belongs beside it.
+This is the part to build on. What a payload says usually depends on what the members now hold, and a peer cannot know how to read one until it has read them. So the pair is a trailer: by the time `ReadPayload` runs, every member of that component has already landed and can be read straight off it. The example above relies on exactly that, reading `SpellIndex.Value` while it parses the elapsed time that belongs beside it.
 
 ## The two arguments
 
@@ -60,16 +60,18 @@ This is the part to build on. What a payload says usually depends on what the me
 
 It is `NetworkComponent.EverySerializedMember` whenever the whole component is being carried, which covers a spawn, a resync, an interest serve and a reconcile. It is narrower for a recovery serve, and that is the case the flags exist for. A recovery is not a re-send of everything: it repairs only the members the lost tick actually carried. A payload describing one particular member has no business riding a repair that member was not part of, so test its bit and return when it is clear.
 
-`fullPayloadReason` says why the component is being serialized whole, and is one of four:
+`reason` says why the component is being serialized whole, and is one of four:
 
 | Reason | When |
 |---|---|
 | `Serve` | The authority is handing a peer the whole component: a spawn, a resync, or an interest serve bringing it back into view. |
-| `ClientWrite` | A client is writing the whole component upstream. A predicted spawn reports this too, because what both ends can agree on is that the sender was not the authority. |
+| `PredictedSpawn` | A client is asking the authority to build an object it has already built for itself. |
 | `Reconcile` | The authority is correcting the client that controls the object. |
 | `Recovery` | The authority is repairing a tick a peer lost. This is the only reason whose member flags are narrower than the whole component. |
 
-Nothing on the wire carries it. The writer knows what it is doing, and the reader derives the same answer from the subpacket kind the frame already named and from whether the Connection the body arrived on is the server's, so the two agree by construction and it costs no bits.
+`author` is an `Invoker` saying which side wrote the body: on the write side that is this peer, on the read side it is the sender. Direction is kept apart from the reason because the two are independent, and `Serve` in practice is always the authority, since the only thing a client states whole is a `PredictedSpawn`.
+
+Nothing on the wire carries either of them. The writer knows what it is doing, and the reader derives the same answers from the subpacket kind the frame already named, from whether the Connection the body arrived on is the server's, and from a discriminator every upstream full already leads with. So the two ends agree by construction and it costs no bits.
 
 `Reconcile` is the one worth naming when deciding what to write: a controlled object reconciles to its controller constantly, so a payload written there is paid for on every tick of prediction, where the same payload on a `Serve` is paid for once. Return early for the reasons you have nothing to say for.
 
