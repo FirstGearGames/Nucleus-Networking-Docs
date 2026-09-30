@@ -37,7 +37,7 @@ Each of these exposes the `Nucleus*` core manager it drives as a public property
 
 Some components own inspector fields that are documented on their own pages rather than repeated here:
 
-- **UnitySystemManager** — redundancy, state interpolation, host migration, and controller retention settings.
+- **UnitySystemManager** — redundancy, state interpolation, partial state apply, host migration, and controller retention settings.
 - **UnityInterestManager** — evaluation cadence, host interest, and interest condition settings.
 - **UnitySceneManager** — join placement, automatic scene requests, and load timeout settings.
 
