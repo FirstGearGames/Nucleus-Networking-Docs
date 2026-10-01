@@ -82,6 +82,13 @@ Both ends are handed the same flags and the same reason precisely so the decisio
 
 A read also happens on a body the engine is about to throw away, so applying a payload must be harmless rather than guarded against.
 
+## When a payload throws
+
+An exception thrown inside either half is caught and logged, and the body it was part of is dropped whole rather than sent half written, because nothing frames the payload and a half-written one cannot be read past.
+
+- A throw while writing means that body is not sent. The peers it was for are served again on a later pass, so a payload that keeps throwing keeps its object from ever reaching them.
+- A throw while reading is handled like a body that could not be read. A later repair replaces what the send still owed, and a predicted spawn whose payload throws is refused.
+
 ## Prefer a member where the data is a value
 
 The pair has no change detection of its own and is not meant to. It rides the serves your members have already earned, so a component whose members never change is never served and never writes a payload.
