@@ -81,7 +81,7 @@ public class MatchClock : INetworkLoopStepCallback
 
     public NetworkLoopSteps GetNetworkLoopSteps() => NetworkLoopSteps.EarlyFixedUpdate;
 
-    public bool Start()
+    public bool TryStart()
     {
         if (!NetworkSystemPool.TryRent<NetworkSystem, MatchClockComponent>(_coreManager, out NetworkSystem rentedNetworkSystem, canStartSystem: true))
             return false;

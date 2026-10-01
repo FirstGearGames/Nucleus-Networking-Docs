@@ -24,11 +24,11 @@ The two routes meet when a system starts: the globals registered on the `Interes
 
 ## Removing conditions
 
-`InterestManager.RemoveCondition` unregisters a globally registered condition and returns `true` when it was registered and removed. `NetworkSystem.RemoveInterestCondition` does the same for a system's own registration.
+`InterestManager.TryRemoveCondition` unregisters a globally registered condition and returns `true` when it was registered and removed. `NetworkSystem.TryRemoveInterestCondition` does the same for a system's own registration.
 
 ```csharp
-bool wasRemoved = coreManager.InterestManager.RemoveCondition(interestCondition);
-bool wasRemovedFromSystem = networkSystem.RemoveInterestCondition(interestCondition);
+bool wasRemoved = coreManager.InterestManager.TryRemoveCondition(interestCondition);
+bool wasRemovedFromSystem = networkSystem.TryRemoveInterestCondition(interestCondition);
 ```
 
 Systems already started keep the fold they took at spawn and drop it when they next start. Removing the last condition of an effect leaves that effect's current resolution in place rather than restoring the default.
@@ -45,7 +45,7 @@ Systems already started keep the fold they took at spawn and drop it when they n
 uint removedCount = coreManager.InterestManager.RemoveDefaultConditions();
 ```
 
-It is the single call for a game that wants to arbitrate everything itself. Systems already started keep the fold they took at spawn and drop it when they next start, exactly as `RemoveCondition` does.
+It is the single call for a game that wants to arbitrate everything itself. Systems already started keep the fold they took at spawn and drop it when they next start, exactly as `TryRemoveCondition` does.
 
 ## Evaluation cadence
 

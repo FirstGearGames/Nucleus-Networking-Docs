@@ -22,10 +22,10 @@ public struct DamageRpc : IRpc
 
 ## Sending a call
 
-`NetworkSystem.SendRpc<T0>` sends a call to the peers a target names:
+`NetworkSystem.TrySendRpc<T0>` sends a call to the peers a target names:
 
 ```csharp
-bool sent = SendRpc(RpcTarget.Observers, Channel.Reliable, new DamageRpc { Amount = 10 });
+bool sent = TrySendRpc(RpcTarget.Observers, Channel.Reliable, new DamageRpc { Amount = 10 });
 ```
 
 - `RpcTarget` is who the call is for: `RpcTarget.Server` (client to server only), `RpcTarget.Observers` (fan-out to every observer), `RpcTarget.ObserversExcept(connection, isControllerExcluded)` (server only), or `RpcTarget.To(connection)` (one named connection).

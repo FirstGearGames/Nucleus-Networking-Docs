@@ -16,7 +16,7 @@ That log line is your confirmation. Causes: the prefab isn't in a `NetworkPrefab
 
 ## 2. Scene not networked
 
-An object placed directly in a scene (`NetworkSystemObject.IsSceneObject` true, correlated by `SceneObjectId`) only binds once that scene is a live networked scene instance with a `sceneHandle` — not merely a scene Unity has loaded. The server opens the instance, and a client is placed in it through `SceneManager.RequestSceneLoad(connection, sceneHandle, ...)`. Load the scene with plain Unity APIs instead of going through Nucleus's scene system, or leave the scene out of the project's `NetworkSceneManifest`, and the scene's objects never get a handle to bind against.
+An object placed directly in a scene (`NetworkSystemObject.IsSceneObject` true, correlated by `SceneObjectId`) only binds once that scene is a live networked scene instance with a `sceneHandle` — not merely a scene Unity has loaded. The server opens the instance, and a client is placed in it through `SceneManager.TryRequestSceneLoad(connection, sceneHandle, ...)`. Load the scene with plain Unity APIs instead of going through Nucleus's scene system, or leave the scene out of the project's `NetworkSceneManifest`, and the scene's objects never get a handle to bind against.
 
 ## 3. No interest rule is admitting the object
 

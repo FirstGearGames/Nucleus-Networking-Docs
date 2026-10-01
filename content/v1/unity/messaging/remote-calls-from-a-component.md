@@ -6,14 +6,14 @@ title: "Sending a Remote Call From a Component"
 
 ## Resolving the system to send from
 
-`SendRpc` is a method on `NetworkSystem`, so a `MonoBehaviour` needs that system before it can call it. A script derived from `NucleusBehaviour<TComponent0>` already has one: `NetworkSystem`, inherited from `NucleusBehaviourBase`, is set once the script's required system links, and stays set until it unlinks. `NucleusBehaviour<TComponent0>` separately exposes `Component`, the typed `NetworkComponent` the system carries; that property is for reading replicated values, not for sending calls.
+`TrySendRpc` is a method on `NetworkSystem`, so a `MonoBehaviour` needs that system before it can call it. A script derived from `NucleusBehaviour<TComponent0>` already has one: `NetworkSystem`, inherited from `NucleusBehaviourBase`, is set once the script's required system links, and stays set until it unlinks. `NucleusBehaviour<TComponent0>` separately exposes `Component`, the typed `NetworkComponent` the system carries; that property is for reading replicated values, not for sending calls.
 
 ```csharp
 public class DemoScoreRpcSender : NucleusBehaviour<DemoScoreComponent>
 {
     private void SendScoreRpc()
     {
-        bool sent = NetworkSystem.SendRpc(RpcTarget.Server, Channel.Reliable, new AddScoreRpc { Amount = 1 });
+        bool sent = NetworkSystem.TrySendRpc(RpcTarget.Server, Channel.Reliable, new AddScoreRpc { Amount = 1 });
     }
 }
 ```
@@ -22,7 +22,7 @@ A script that is not built around one required component instead resolves a `Net
 
 ```csharp
 if (networkSystemObject.TryGetFirstSystem(out NetworkSystem networkSystem))
-    networkSystem.SendRpc(RpcTarget.Server, Channel.Reliable, new AddScoreRpc { Amount = 1 });
+    networkSystem.TrySendRpc(RpcTarget.Server, Channel.Reliable, new AddScoreRpc { Amount = 1 });
 ```
 
 `TryGetFirstSystem` returns the object's first-linked system, the correct one to address a call from when several systems share the object.
@@ -43,13 +43,13 @@ public struct AddScoreRpc : IRpc
 
 ## Sending the call
 
-`NetworkSystem.SendRpc<T0>` queues the call to the peers a target names, and returns a `bool`:
+`NetworkSystem.TrySendRpc<T0>` queues the call to the peers a target names, and returns a `bool`:
 
 ```csharp
-bool sent = NetworkSystem.SendRpc(RpcTarget.Server, Channel.Reliable, new AddScoreRpc { Amount = 1 });
+bool sent = NetworkSystem.TrySendRpc(RpcTarget.Server, Channel.Reliable, new AddScoreRpc { Amount = 1 });
 ```
 
-The return value reports only what this peer can see. `true` means the call was queued, or was invoked locally; it does not mean the call was delivered, and a client routing a call through the server has no way to know that it arrived. `false` means nothing was sent, most often because the local client does not hold the access this call's target requires. Call `SendRpc` from wherever the game decides to act: input handling, a UI callback, or a script method fired by an animation event.
+The return value reports only what this peer can see. `true` means the call was queued, or was invoked locally; it does not mean the call was delivered, and a client routing a call through the server has no way to know that it arrived. `false` means nothing was sent, most often because the local client does not hold the access this call's target requires. Call `TrySendRpc` from wherever the game decides to act: input handling, a UI callback, or a script method fired by an animation event.
 
 ## Guarding the send
 
@@ -61,7 +61,7 @@ private void OnFireButton()
     if (!EnsureIsController(ControllerType.Client))
         return;
 
-    NetworkSystem.SendRpc(RpcTarget.Server, Channel.Reliable, new AddScoreRpc { Amount = 1 });
+    NetworkSystem.TrySendRpc(RpcTarget.Server, Channel.Reliable, new AddScoreRpc { Amount = 1 });
 }
 ```
 
@@ -69,7 +69,7 @@ private void OnFireButton()
 
 ```csharp
 if (IsStarted(Invoker.Client))
-    NetworkSystem.SendRpc(RpcTarget.Server, Channel.Reliable, new AddScoreRpc { Amount = 1 });
+    NetworkSystem.TrySendRpc(RpcTarget.Server, Channel.Reliable, new AddScoreRpc { Amount = 1 });
 ```
 
 Both read `false` before a system is linked, so a script can call them without a separate null check on `NetworkSystem`.

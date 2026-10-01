@@ -4,7 +4,7 @@ title: "Scenes and bundles: things that look broken"
 
 ## A client connects and sees nothing
 
-`SceneManager.JoinPlacement` decides what a newly authenticated client is put into, and its default, `JoinScenePlacement.EveryOpenScene`, is what most projects want without calling `RequestSceneLoad` anywhere. If `JoinPlacement` was set to `JoinScenePlacement.None`, no joining client is placed automatically, and under `JoinScenePlacement.GlobalScenes` a scene opened `SceneScope.Connections` rather than `SceneScope.Global` is skipped at join. Either way, a client that never receives a `RequestSceneLoad` call for that scene sees nothing.
+`SceneManager.JoinPlacement` decides what a newly authenticated client is put into, and its default, `JoinScenePlacement.EveryOpenScene`, is what most projects want without calling `TryRequestSceneLoad` anywhere. If `JoinPlacement` was set to `JoinScenePlacement.None`, no joining client is placed automatically, and under `JoinScenePlacement.GlobalScenes` a scene opened `SceneScope.Connections` rather than `SceneScope.Global` is skipped at join. Either way, a client that never receives a `TryRequestSceneLoad` call for that scene sees nothing.
 
 The other cause is timing rather than configuration: a `SceneScope.Connections` scene opened *after* a client already joined is not pushed to that client. Join placement happens once, when the client authenticates, and only covers the scenes open at that moment. A `SceneScope.Global` scene is the exception: opening it places every client already connected. A client connected before a `Connections` scene existed has to be asked for it explicitly.
 
@@ -31,7 +31,7 @@ If the load is stuck client-side with no timeout firing at all, check that the l
 
 `SceneLoadOutcome.Refused` means the client's `ISceneLoader.MaximumConcurrentScenes` was already at its limit — the loader was never consulted, because the request was rejected before it got there. `SceneLoadOutcome.Failed` means the loader was asked and the load itself did not work: the content would not fetch, the scene would not resolve, or the load threw.
 
-The two are deliberately distinct outcomes because the remedy differs. A `Failed` load can just be asked for again with `SceneManager.ClearSceneLoadFailure`. A `Refused` load cannot — asking again hits the same limit — the client has to be moved with `SceneReplaceMode.AllScenes` instead, so it releases what it holds before taking on the new one.
+The two are deliberately distinct outcomes because the remedy differs. A `Failed` load can just be asked for again with `SceneManager.TryClearSceneLoadFailure`. A `Refused` load cannot — asking again hits the same limit — the client has to be moved with `SceneReplaceMode.AllScenes` instead, so it releases what it holds before taking on the new one.
 
 ## A client is kicked during scene or bundle traffic
 

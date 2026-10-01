@@ -36,11 +36,11 @@ These are not one-to-one. A FishNet `NetworkObject` is one networked identity pe
 | `Owner` / `IsOwner` | `ControllingClient` / `IsController(ControllerType.Client)` |
 | `GiveOwnership(connection)` | `SetController(connection)` |
 | `RemoveOwnership()` | `SetController(null)` |
-| `[ServerRpc]` / `[ObserversRpc]` / `[TargetRpc]` | an `IRpc` struct sent with `SendRpc<T0>(RpcTarget, Channel, T0, RpcSelfDelivery)` and an `RpcTarget` (`RpcTarget.Server`, `RpcTarget.Observers`, `RpcTarget.ObserversExcept(...)`, `RpcTarget.To(connection)`) |
+| `[ServerRpc]` / `[ObserversRpc]` / `[TargetRpc]` | an `IRpc` struct sent with `TrySendRpc<T0>(RpcTarget, Channel, T0, RpcSelfDelivery)` and an `RpcTarget` (`RpcTarget.Server`, `RpcTarget.Observers`, `RpcTarget.ObserversExcept(...)`, `RpcTarget.To(connection)`) |
 | `RequireOwnership` | `RpcSendAccess` |
 | `IBroadcast` | `IMessage` |
 
-There are no attribute-driven RPCs in Nucleus. A remote call is a plain struct implementing `IRpc`, sent explicitly through `SendRpc` with a target and channel, rather than a method decorated with an attribute. That is a design choice, not a gap.
+There are no attribute-driven RPCs in Nucleus. A remote call is a plain struct implementing `IRpc`, sent explicitly through `TrySendRpc` with a target and channel, rather than a method decorated with an attribute. That is a design choice, not a gap.
 
 `ControllerType` also has a `Server` and an `AnyController` value alongside `Client`, for checking whether the local peer is the server, the controlling client, or either.
 

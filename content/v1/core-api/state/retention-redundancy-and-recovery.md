@@ -23,6 +23,21 @@ if (systemManager.CanUseRedundancy())
 }
 ```
 
+## A tick that loses some of its packets applies what arrived
+
+A tick carrying more state than one packet holds is sent as several packets. On a lossy link one of them is sometimes still missing when the tick's buffering window runs out.
+
+With `SystemManager.PartialStateApplyEnabled` on, which is the default, the receiver applies the packets that did arrive and tells the server which ones never did. The server remembers what each packet it sent held, so it re-serves only what the missing ones carried, on its very next tick. A tick that is lost entirely is reported the same way, and the server re-serves everything that changed since the last tick the client applied. In both cases the repair starts as soon as the client notices the loss, rather than once the server has waited long enough to suspect it. The notice the receiver sends takes the same unreliable channel the state did, because a peer already losing packets is the last one that should be made to wait on a retransmit, and it is repeated for a few ticks in case a copy is lost. If every copy is lost, the server's own recovery still catches the gap, a little later than a repair would have. With it off, the whole tick is discarded and recovered. That costs more under steady loss, because a repair spanning many packets has to arrive complete before any of it applies, and a large world can fall further behind with every attempt.
+
+A tick is still discarded whole when a missing packet carried a change the rest of the tick relies on, such as a despawn, a controller change or a reparent. Applying around such a change could put state on the wrong object.
+
+The setting is the receiver's alone. The sender writes the same packets either way, so the two peers do not need to match.
+
+```csharp
+// Discard and recover any tick that loses a packet, as every tick was handled before this option existed.
+coreManager.SystemManager.PartialStateApplyEnabled = false;
+```
+
 ## Retention
 
 `SystemManager.StateRetentionMilliseconds` governs two things at once: how much past state is kept for targeted recovery, and how long a sent state tick may go unacknowledged before recovery escalates. Raise it for high-latency audiences — every recovery threshold derives from it, so a peer whose acknowledgments simply travel slowly is never mistaken for one that lost data.
@@ -61,7 +76,7 @@ Four members on `SystemManager` let you inspect what's actually in the serializa
 | `SerializationHistoryTickCount` | How many ticks of serialization history are currently retained. |
 | `IsSystemRecentlySerialized(uint systemId)` | Whether a given system was locally serialized as changed or spawned within the recent history window. |
 | `GetRecentlySerializedSystemIds(HashSet<uint> collectedSystemIds)` | Adds the Id of every system locally serialized as changed or spawned within the recent history window. |
-| `GetSerializedSystemIdsAfterTick(uint afterTick, HashSet<uint> collectedSystemIds)` | Adds the Id of every system serialized after a baseline tick; returns false if part of the requested range has already aged out of the history window. |
+| `TryGetSerializedSystemIdsAfterTick(uint afterTick, HashSet<uint> collectedSystemIds)` | Adds the Id of every system serialized after a baseline tick; returns false if part of the requested range has already aged out of the history window. |
 
 ```csharp
 using HashSet<uint> changedSystemIds = HashSetPool<uint>.Get();
@@ -73,4 +88,4 @@ systemManager.GetRecentlySerializedSystemIds(changedSystemIds);
 
 See the Diagnostics page for what a `RetentionExceededViolation` or a `RecoveryUnconfirmedViolation` means when one is raised — they're the signal that retention or recovery settings are undersized for what a connection is actually experiencing.
 
-In the Unity inspector, `UnitySystemManager` exposes `Redundancy` and `StateInterpolation` as fields. `StateRetentionMilliseconds` has no inspector field; set it in code.
+In the Unity inspector, `UnitySystemManager` exposes `Redundancy`, `StateInterpolation` and `PartialStateApplyEnabled` (labelled Partial State Apply) as fields. `StateRetentionMilliseconds` has no inspector field; set it in code.
