@@ -60,5 +60,5 @@ Once you know which rung and which of the two failure modes, shrink the repro be
 
 1. Cut to one object and one member. A whole scene desyncing is the same bug as one member desyncing, just noisier to look at.
 2. Turn projection off - set the member's `TransmissionMode` to `Interval`. If the bug disappears, it's in the projection path; if it doesn't, projection was never the cause.
-3. Raise loss deliberately (`SimulatedPacketLossChance` on the transport) to see whether the symptom is loss-shaped - arrives late, arrives out of order, never arrives - versus present on every send.
+3. Raise loss deliberately (a `NetworkConditions` with a `PacketLossChance`, passed to `TransportManager.SetNetworkConditions`) to see whether the symptom is loss-shaped - arrives late, arrives out of order, never arrives - versus present on every send.
 4. Only then read a packet. By this point you know which member, which tick range, and which of "never arrived" or "arrived wrong" you're chasing, so there's an actual question to answer instead of a blind capture.
