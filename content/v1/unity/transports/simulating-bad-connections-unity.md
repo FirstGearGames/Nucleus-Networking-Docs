@@ -20,7 +20,7 @@ The Synapse transport supports every field except `DuplicateChance`, which it ig
 
 ## Pass the conditions to the TransportManager
 
-`UnityTransportManager.NucleusTransportManager` is the core `TransportManager`. Call `SetNetworkConditions` on it to set every transport, or `SetNetworkConditions<Synapse>` to set only the Synapse ones. Passing null goes back to a clean connection.
+Call `SetNetworkConditions` on `UnityTransportManager` to set every transport, or `SetNetworkConditions<Synapse>` to set only the Synapse ones. Passing null goes back to a clean connection.
 
 The transports have to exist before they can take the conditions, and Synapse decides whether to simulate at all when it connects. So set **Automatic Start Mode** on `UnityTransportManager` to `None`, and start the network yourself: add the transports, set the conditions, then start.
 
@@ -38,7 +38,7 @@ public class ConnectionSimulator : MonoBehaviour
     {
         await _unityTransportManager.EnsureAddedAsync();
 
-        _unityTransportManager.NucleusTransportManager.SetNetworkConditions(new NetworkConditions
+        _unityTransportManager.SetNetworkConditions(new NetworkConditions
         {
             LatencyMilliseconds = 100,
             JitterMilliseconds = 40,
