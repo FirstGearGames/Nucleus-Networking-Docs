@@ -48,10 +48,10 @@ Give players a room code for a session that will never change host. Give them a 
 
 ## Handing the room on
 
-A host that means to leave without ending the match calls `SurrenderHostingSession()`:
+A host that means to leave without ending the match calls `TrySurrenderHostingSession()`:
 
 ```csharp
-bool isSurrendered = blitzRelayTransport.SurrenderHostingSession();
+bool isSurrendered = blitzRelayTransport.TrySurrenderHostingSession();
 ```
 
 This gives the session up to whoever the directory elects next, without leaving it and without stopping play. The component owns the coordinator that does this work, exposed as `Migration` (a `NewfarmHostMigration`). It drives the directory from the component's own `Update`, so nothing beyond starting a hosting session or joining one is required of the game; election, adoption and finding the session's new location all follow from that.
@@ -60,7 +60,7 @@ A surviving peer that is elected next adopts the world it had been receiving as 
 
 ## What the host-migration toggle does
 
-`IsHostMigrationEnabled` (on by default) is what makes `Migration` exist at all; without it, `StartHostingSessionAsync`, `JoinSessionAsync` and `SurrenderHostingSession` all fail and log an error telling you to drive the CoreManager directly instead.
+`IsHostMigrationEnabled` (on by default) is what makes `Migration` exist at all; without it, `StartHostingSessionAsync`, `JoinSessionAsync` and `TrySurrenderHostingSession` all fail and log an error telling you to drive the CoreManager directly instead.
 
 Turning it on also sets `ClientManager.DisconnectResetMode` to `RetainReceivedWorld` for you. That's a client-side setting: it decides, at the moment this peer's link to the server drops, whether the world it received is thrown away or kept. Migration needs it kept, because the peer that gets elected next has to adopt what it was already receiving rather than starting from nothing.
 

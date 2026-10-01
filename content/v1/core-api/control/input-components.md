@@ -47,10 +47,10 @@ An override **replaces** the default rather than adding to it. If you override `
 
 ## Validating inputs on the server
 
-Override `ValidateInputs` on the server to enforce game rules against a tick's deserialized input:
+Override `TryValidateInputs` on the server to enforce game rules against a tick's deserialized input:
 
 ```csharp
-protected virtual bool ValidateInputs(uint tick) => true;
+protected virtual bool TryValidateInputs(uint tick) => true;
 ```
 
 It runs after `Read` deserializes the fields and before `InputReceived` fires. It may mutate the deserialized field values directly (a denied jump becomes `false`), and its return value reports whether the inputs were accepted unchanged: `true` if nothing was touched, `false` if anything was rejected or modified. A `false` result queues a correction that is forwarded back to the controller.
@@ -62,9 +62,9 @@ public event InputReceivedHandler InputReceived;   // delegate void InputReceive
 public event InputCorrectedHandler InputCorrected;  // delegate void InputCorrectedHandler(uint tick)
 ```
 
-`InputReceived` fires whenever an input payload has been applied to the fields — on the server after `ValidateInputs` runs for the controller's tick, and on a remote observer after a forwarded, validated payload is applied. Read the fields inside the handler; they're already updated.
+`InputReceived` fires whenever an input payload has been applied to the fields — on the server after `TryValidateInputs` runs for the controller's tick, and on a remote observer after a forwarded, validated payload is applied. Read the fields inside the handler; they're already updated.
 
-On a host, which is the server for the system it controls, `InputReceived` is always raised for that tick. `InputCorrected` is raised alongside it only when `ValidateInputs` returned `false` for that tick — never unconditionally. On a remote (non-host) controller, `InputCorrected` fires when the server forwards a correction, and the corrected values land in the member's ring history at the corrected tick so a later replay uses the validated inputs.
+On a host, which is the server for the system it controls, `InputReceived` is always raised for that tick. `InputCorrected` is raised alongside it only when `TryValidateInputs` returned `false` for that tick — never unconditionally. On a remote (non-host) controller, `InputCorrected` fires when the server forwards a correction, and the corrected values land in the member's ring history at the corrected tick so a later replay uses the validated inputs.
 
 ## Forwarding to observers
 

@@ -22,7 +22,7 @@ An object authored into a scene is identified by the pair of scene handle and sc
 
 `SceneManager` opens instances, places and removes clients, and closes instances. A client never decides any of this for itself: it loads a scene only when asked, releases one only when asked, and reports back only what it was asked to report. That is what makes the server's record of who holds what trustworthy enough to serve objects from — a client cannot inflate what the server believes it holds by loading or reporting on its own initiative.
 
-`SceneManager.TryOpenScene` and `OpenSceneAsync` open instances. `RequestSceneLoad` and `RequestSceneUnload` place and remove clients. `EnsureCloseScene` and `CloseSceneAsync` close instances. See [Opening and closing scene instances](./opening-scene-instances.md) and [Placing clients in scenes](./placing-clients-in-scenes.md) for the full API.
+`SceneManager.TryOpenScene` and `OpenSceneAsync` open instances. `TryRequestSceneLoad` and `RequestSceneUnload` place and remove clients. `EnsureCloseScene` and `CloseSceneAsync` close instances. See [Opening and closing scene instances](./opening-scene-instances.md) and [Placing clients in scenes](./placing-clients-in-scenes.md) for the full API.
 
 ## Every instance coexists, nothing is replaced
 
@@ -34,7 +34,7 @@ This is what makes scene stacking possible: opening one asset several times give
 
 `SceneScope` is decided once, when the instance is opened, and cannot change afterward:
 
-- `SceneScope.Connections` — nobody is placed until `RequestSceneLoad` asks for it. The instancing case: an arena, a dungeon, a match.
+- `SceneScope.Connections` — nobody is placed until `TryRequestSceneLoad` asks for it. The instancing case: an arena, a dungeon, a match.
 - `SceneScope.Global` — every connected client is placed immediately, and every client that authenticates afterward is placed as it arrives. The single-world or lobby case.
 
 Because scope is per instance rather than per asset, one scene asset can run as a shared `Global` lobby while a dozen other instances of a different (or the same) asset run as private `Connections` matches, all open at once.

@@ -8,7 +8,7 @@ title: "Blitz Relay Transport component"
 
 The component and its custom editor compile only behind the `BLITZ_RELAY` scripting define. A project that has not added the define never loads anything relay-related.
 
-Blitz Relay needs Pro. The relay assembly references the Newfarm Migration assembly, whose host-migration coordinator calls `ServerManager.AdoptRetainedWorld`, and that method exists only in a Pro build. Against a free `Nucleus.dll` the relay integration does not compile, whether or not Host Migration is on.
+Blitz Relay needs Pro. The relay assembly references the Newfarm Migration assembly, whose host-migration coordinator calls `ServerManager.TryAdoptRetainedWorld`, and that method exists only in a Pro build. Against a free `Nucleus.dll` the relay integration does not compile, whether or not Host Migration is on.
 
 ## What must already be running
 

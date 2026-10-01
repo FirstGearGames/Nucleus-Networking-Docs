@@ -26,7 +26,7 @@ A client that is being moved into a scene does not have to wait for the scene lo
 
 ## Automatic scene requests
 
-By default a blocked spawn does nothing beyond withholding the object. Setting `SceneManager.AutomaticRequestOnBlockedSpawnEnabled` to `true` turns that block into an action: when `Evaluate` is about to withhold a spawn, it also calls `SceneManager.RequestSceneLoad` for that connection and scene, naming the system so the load's confirmation can arrive as a spawn on the same tick rather than waiting for the next stagger slot. The request dedupes per connection and scene, and stops firing once that client has reported it cannot load the scene.
+By default a blocked spawn does nothing beyond withholding the object. Setting `SceneManager.AutomaticRequestOnBlockedSpawnEnabled` to `true` turns that block into an action: when `Evaluate` is about to withhold a spawn, it also calls `SceneManager.TryRequestSceneLoad` for that connection and scene, naming the system so the load's confirmation can arrive as a spawn on the same tick rather than waiting for the next stagger slot. The request dedupes per connection and scene, and stops firing once that client has reported it cannot load the scene.
 
 ## Why stacked scenes cannot see each other
 
@@ -37,7 +37,7 @@ Two open instances of the same scene occupy the same world coordinates — nothi
 **A client should be seeing an object and isn't.**
 
 - Check `NetworkSystem.SceneHandle` on the object. If it is not `NetworkSystem.UnsetSceneHandle`, the client must hold that exact scene instance.
-- Check `Connection.IsSceneLoaded(sceneHandle)` for that client. If it is false, the object is being withheld correctly — the fix is getting the client into the scene (`SceneManager.RequestSceneLoad`), not the interest system.
+- Check `Connection.IsSceneLoaded(sceneHandle)` for that client. If it is false, the object is being withheld correctly — the fix is getting the client into the scene (`SceneManager.TryRequestSceneLoad`), not the interest system.
 - If the client was recently told to leave the scene (`RequestSceneUnload`), everything in it is withheld immediately, before the unload confirms. This is expected, not a bug.
 - If the object is the client's own controlled object arriving right as it enters the scene, confirm the carry conditions hold: the system must be a spawned object rather than a scene object, the scene load must be outstanding for that connection, and the connection must control the system's group.
 - On a genuinely local setup, an emulated connection or a peer sharing an in-memory Transport, `SpawnGate` abstains; this does not apply to a real host's own client, which is gated normally and reported through `NetworkSystem.HostInterestMembership` instead.

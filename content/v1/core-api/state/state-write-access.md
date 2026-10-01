@@ -20,10 +20,10 @@ Ordinal 1 is deliberately vacant. `StateWriteAccess` is serialized into authored
 
 ## Setting and reading access
 
-The server sets access with `SetWriteAccess`:
+The server sets access with `TrySetWriteAccess`:
 
 ```csharp
-public bool SetWriteAccess(StateWriteAccess stateWriteAccess)
+public bool TrySetWriteAccess(StateWriteAccess stateWriteAccess)
 ```
 
 It's server-only; a client call is rejected. Widening a system's own permission state through a client call would make the permission client-settable, so the guard exists at the entry point rather than downstream. It also refuses to widen a system that holds a collection member (see below).
@@ -58,9 +58,9 @@ Left at `UnsetConvergenceDeadlineTicks`, the deadline is derived from the connec
 
 ## Write access beyond the controller ships only in Pro
 
-Write access beyond `Controller`, and the echo-withholding window that goes with it, are Pro. The gate is structural: both live in `NetworkSystem.WriteAccess.Pro.cs`, split from the free-side `NetworkSystem.WriteAccess.cs`. `StateWriteAccess` itself, `NetworkSystem.WriteAccess` and `NetworkSystem.SetWriteAccess` are Pro-only too, so a free build has none of them and code naming them does not compile. A free build's eligibility check admits the controller alone.
+Write access beyond `Controller`, and the echo-withholding window that goes with it, are Pro. The gate is structural: both live in `NetworkSystem.WriteAccess.Pro.cs`, split from the free-side `NetworkSystem.WriteAccess.cs`. `StateWriteAccess` itself, `NetworkSystem.WriteAccess` and `NetworkSystem.TrySetWriteAccess` are Pro-only too, so a free build has none of them and code naming them does not compile. A free build's eligibility check admits the controller alone.
 
 Two limits apply even with Pro:
 
-- A system holding a collection member cannot be widened past `Controller`. `SetWriteAccess` rejects the call, because a client write to a collection arrives as an absolute with no operation log to relay to other observers.
+- A system holding a collection member cannot be widened past `Controller`. `TrySetWriteAccess` rejects the call, because a client write to a collection arrives as an absolute with no operation log to relay to other observers.
 - A client permitted to write on a system with more than one possible writer sends its members upstream as absolutes, not deltas. A member holds a single decode baseline, so two writers' deltas can't both reconstruct against it safely - only one sender per baseline can use the cheaper delta stream, and a multi-writer system gives that up.

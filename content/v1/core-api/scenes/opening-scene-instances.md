@@ -48,4 +48,4 @@ An explicit close or unload request always takes effect regardless of replace po
 
 `EnsureCloseScene(uint sceneHandle)` and the awaitable `CloseSceneAsync(uint sceneHandle)` are the ordinary way to end an instance: occupants are asked to leave before the instance itself comes down.
 
-If an instance goes away without being closed through the manager - unloaded out from under it - call `NotifySceneUnloadedUnexpectedly(uint sceneHandle)` to tell the manager. It despawns the instance's systems and removes its occupants, since nothing else will.
+If an instance goes away without being closed through the manager - unloaded out from under it - call `TryNotifySceneUnloadedUnexpectedly(uint sceneHandle)` to tell the manager. It despawns the instance's systems and removes its occupants, since nothing else will.

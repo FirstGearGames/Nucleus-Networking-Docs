@@ -131,7 +131,7 @@ if (NetworkSystemPool.TryRent<NetworkSystem, CrateComponent>(coreManager, out Ne
 ```
 
 - The payload travels with every complete snapshot of the object, so a late joiner and a peer that regains interest receive it too, and it is never sent in the updates in between. Declare it in the same call stack as the rent, exactly as you write a component's opening values.
-- A receiver reads it into an instance of its own, available as `networkSystem.SpawnPayload`. `ReadSpawnPayload` must read exactly what `WriteSpawnPayload` wrote, and it can run more than once for one object, so whatever it applies has to be harmless to repeat.
+- A receiver reads it into an instance of its own, available as `networkSystem.SpawnPayload`. It is read after the object's member values, so `ReadSpawnPayload` can already see them and use them to decide what else to read. `ReadSpawnPayload` must read exactly what `WriteSpawnPayload` wrote, and it can run more than once for one object, so whatever it applies has to be harmless to repeat.
 - Declare it on the peer that creates the object. That is the server, or, for a predicted spawn, the client predicting it: that client can create the object, set its payload and spawn it, and the server passes the payload on to everyone else. A client cannot change a payload once the object exists.
 - The source generator registers every concrete payload type for you. A concrete payload type without a public parameterless constructor is a build error, because a receiver has to construct it.
 - A system can carry a payload and nothing else. Rent one with no components through `NetworkSystemPool.TryRent<NetworkSystem>(coreManager, out NetworkSystem networkSystem)` and declare the payload on it.

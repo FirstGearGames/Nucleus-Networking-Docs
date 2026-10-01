@@ -17,10 +17,10 @@ public enum RpcSelfDelivery : byte
 }
 ```
 
-It is the last parameter on `NetworkSystem.SendRpc<T0>`, and defaults to `None`:
+It is the last parameter on `NetworkSystem.TrySendRpc<T0>`, and defaults to `None`:
 
 ```csharp
-public bool SendRpc<T0>(RpcTarget rpcTarget, Channel channel, T0 rpc, RpcSelfDelivery rpcSelfDelivery = RpcSelfDelivery.None) where T0 : IRpc, new()
+public bool TrySendRpc<T0>(RpcTarget rpcTarget, Channel channel, T0 rpc, RpcSelfDelivery rpcSelfDelivery = RpcSelfDelivery.None) where T0 : IRpc, new()
 ```
 
 ## The three values
@@ -37,7 +37,7 @@ The sender's own handlers run at the send site, before the call has gone anywher
 
 The sender sees the call once it has actually been delivered, and not at all if it was refused. For effects that must agree on when something happens, or whether it happens at all, a client asking for `OnDelivery` sees its own call only if the server passed it on. A refusal then reads as nothing happening, rather than as an effect that has to be undone.
 
-The server is itself the delivery point. Asking for `OnDelivery` on a server's own send is treated the same as `Immediate`, resolved at the point of send rather than at the call site. That collapse is what lets one `SendRpc` call read the same on both peers instead of branching on role, the same way `RpcTarget.To` does for the destination.
+The server is itself the delivery point. Asking for `OnDelivery` on a server's own send is treated the same as `Immediate`, resolved at the point of send rather than at the call site. That collapse is what lets one `TrySendRpc` call read the same on both peers instead of branching on role, the same way `RpcTarget.To` does for the destination.
 
 `OnDelivery` is meaningless with `RpcTarget.Server`, and the engine refuses the send outright rather than silently downgrading it: a call addressed to the server is not passed on anywhere, so there is nothing for it to come back from.
 

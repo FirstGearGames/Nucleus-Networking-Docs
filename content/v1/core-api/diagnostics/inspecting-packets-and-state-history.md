@@ -13,12 +13,12 @@ Some faults only show up as "the client has the wrong value" with nothing in the
 - `IsSystemRecentlySerialized(uint systemId)` — was this system serialized within the window, as of the current tick.
 - `GetRecentlySerializedSystemIds(HashSet<uint> collectedSystemIds)` — every system id serialized within the window.
 - `TryGetSerializedSystemIds(uint tick, HashSet<uint> collectedSystemIds)` — every system id serialized on one specific tick; returns `false` if that tick has aged out of the window.
-- `GetSerializedSystemIdsAfterTick(uint afterTick, HashSet<uint> collectedSystemIds)` — every system id serialized on any tick after a baseline; returns `false` if part of that range has already aged out, meaning the results are incomplete rather than empty.
+- `TryGetSerializedSystemIdsAfterTick(uint afterTick, HashSet<uint> collectedSystemIds)` — every system id serialized on any tick after a baseline; returns `false` if part of that range has already aged out, meaning the results are incomplete rather than empty.
 
 ```csharp
 HashSet<uint> changedSystemIds = HashSetPool<uint>.Rent();
 
-bool isComplete = coreManager.SystemManager.GetSerializedSystemIdsAfterTick(lastKnownGoodTick, changedSystemIds);
+bool isComplete = coreManager.SystemManager.TryGetSerializedSystemIdsAfterTick(lastKnownGoodTick, changedSystemIds);
 
 foreach (uint systemId in changedSystemIds)
 {
