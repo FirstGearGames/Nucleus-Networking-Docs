@@ -58,7 +58,7 @@ public class ConnectionSimulator : MonoBehaviour
 
 Use `StartServerAsync` or `StartClientAsync` in place of `StartHostAsync` for the other roles.
 
-## Changing the conditions while playing
+## The conditions can change while playing
 
 A Synapse transport that connected with conditions takes new values straight away, so you can raise or lower them mid-session. One that connected with no conditions ignores them until it next connects. If you plan to change them while playing, start with a small condition, such as a latency of 1 ms, so the simulation is running from the start.
 
@@ -70,7 +70,7 @@ Conditions belong to the transports in one editor. In a ParrelSync pair, each ed
 
 Each peer applies loss to the packets it sends. A request and its reply each roll independently, so a round trip only survives when both directions do.
 
-## Reading the effect back
+## Read the effect back from the Connection
 
 While playing, read the measured effect off `Connection`:
 
@@ -80,10 +80,10 @@ While playing, read the measured effect off `Connection`:
 
 These are measured by the engine's own round trip probes, so they are the right numbers to check that the conditions are actually taking effect, not just an echo of the values you set.
 
-## Values worth testing at
+## Test at more than one setting
 
 A steady 100 ms latency and a link swinging between 20 ms and 180 ms average the same but feel nothing alike, so set jitter as well as latency to catch bugs that only show up when timing varies. Try loss in the 1 to 5% range for typical broadband, and higher, around 10 to 20%, to stress recovery.
 
-## What this cannot reproduce
+## Some real network faults cannot be reproduced
 
 The simulation delays, drops and reorders packets inside the process. It does not model a slow upload beside a fast download, or a real path that silently drops packets over some size. Loopback with conditions set tells you how your game feels on a poor connection, but it is not a substitute for testing over an actual network.
