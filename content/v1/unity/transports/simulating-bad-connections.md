@@ -18,9 +18,15 @@ Playing in the editor runs over loopback, which is instant and lossless. You can
 
 The Synapse transport supports every field except `DuplicateChance`, which it ignores. A transport that supports none of them logs a warning when you set them.
 
-## Pass the conditions to the TransportManager
+## Set them in the inspector
 
-Call `SetNetworkConditions` on `UnityTransportManager` to set every transport, or `SetNetworkConditions<Synapse>` to set only the Synapse ones. Passing null goes back to a clean connection.
+`UnityTransportManager` has a **Network Conditions** section in the inspector. Tick **Network Conditions Enabled** and fill in the values. When the transports are added, just before they start, it sets those conditions on every transport, or clears them when the box is unticked. This works with any **Automatic Start Mode**.
+
+Each editor reads its own inspector, so in a ParrelSync pair you can make only the clone's connection bad.
+
+## Set them from code
+
+Call `SetNetworkConditions` on `UnityTransportManager` to set every transport, or `SetNetworkConditions<Synapse>` to set only the Synapse ones. Passing null goes back to a clean connection. Conditions set from code replace the inspector's.
 
 The transports have to exist before they can take the conditions, and Synapse decides whether to simulate at all when it connects. So set **Automatic Start Mode** on `UnityTransportManager` to `None`, and start the network yourself: add the transports, set the conditions, then start.
 
