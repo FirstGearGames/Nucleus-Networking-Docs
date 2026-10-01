@@ -4,63 +4,80 @@ title: "Simulating a bad connection in the editor"
 
 > **Driving the core API directly?** See [Simulating latency, jitter and loss](../../core-api/transports/simulating-bad-connections.md).
 
-## The three fields
+Playing in the editor runs over loopback, which is instant and lossless. You can make it behave like a real connection by giving the transports a set of network conditions.
 
-`Synapse` exposes three static diagnostic knobs:
+## Describe the connection with NetworkConditions
 
-- `Synapse.SimulatedLatencyMilliseconds` — one-way latency added to every outbound packet.
-- `Synapse.SimulatedJitterMilliseconds` — a random amount below this, added on top of the base latency, so packets don't all arrive shifted by the same constant.
-- `Synapse.SimulatedPacketLossChance` — a fraction from 0 to 1; `0.2` drops one outbound packet in five.
+`NetworkConditions` is a struct in `Nucleus.Transports`. Each field describes one way a real connection goes wrong, and the default value simulates nothing.
 
-All three default to zero (disabled).
+- `LatencyMilliseconds` is a one-way delay added to every packet sent.
+- `JitterMilliseconds` is extra delay on top of the latency, a fresh random amount below this figure for each packet, so packets do not all arrive shifted by the same amount.
+- `PacketLossChance` is the chance, from 0 to 1, that a packet is dropped. `0.2f` drops one packet in five.
+- `OutOfOrderChance` is the chance, from 0 to 1, that a packet is held back long enough to arrive after packets sent later.
+- `DuplicateChance` is the chance, from 0 to 1, that a packet is also sent a second time.
+
+The Synapse transport supports every field except `DuplicateChance`, which it ignores. A transport that supports none of them logs a warning when you set them.
+
+## Pass the conditions to the TransportManager
+
+`UnityTransportManager.NucleusTransportManager` is the core `TransportManager`. Call `SetNetworkConditions` on it to set every transport, or `SetNetworkConditions<Synapse>` to set only the Synapse ones. Passing null goes back to a clean connection.
+
+The transports have to exist before they can take the conditions, and Synapse decides whether to simulate at all when it connects. So set **Automatic Start Mode** on `UnityTransportManager` to `None`, and start the network yourself: add the transports, set the conditions, then start.
 
 ```csharp
-using Nucleus.Transports.Synapse;
+using Nucleus.Integrations.Unity.Managers.Transports;
+using Nucleus.Transports;
+using UnityEngine;
 
 public class ConnectionSimulator : MonoBehaviour
 {
-    private void Awake()
+    [SerializeField]
+    private UnityTransportManager _unityTransportManager;
+
+    private async void Start()
     {
-        Synapse.SimulatedLatencyMilliseconds = 100;
-        Synapse.SimulatedJitterMilliseconds = 40;
-        Synapse.SimulatedPacketLossChance = 0.05;
+        await _unityTransportManager.EnsureAddedAsync();
+
+        _unityTransportManager.NucleusTransportManager.SetNetworkConditions(new NetworkConditions
+        {
+            LatencyMilliseconds = 100,
+            JitterMilliseconds = 40,
+            PacketLossChance = 0.05f,
+        });
+
+        await _unityTransportManager.StartHostAsync();
     }
 }
 ```
 
-## The trap: set them before the socket connects
+Use `StartServerAsync` or `StartClientAsync` in place of `StartHostAsync` for the other roles.
 
-These fields are read when a socket builds its engine configuration — that is, when it connects, not while it's already running. Set them too late and the running session simply never picks them up.
+## Changing the conditions while playing
 
-If `UnityTransportManager`'s Automatic Start Mode is anything but `None`, that manager starts the transport from its own `Start()`. A script sitting at Unity's default script execution order runs against no guaranteed ordering relative to that `Start()` — by the time your script's `Start()` or a same-order `Awake()` runs, the transport may already have connected with the fields still at their defaults.
+A Synapse transport that connected with conditions takes new values straight away, so you can raise or lower them mid-session. One that connected with no conditions ignores them until it next connects. If you plan to change them while playing, start with a small condition, such as a latency of 1 ms, so the simulation is running from the start.
 
-Two ways to win the race:
+To see what is set, call `GetNetworkConditions<Synapse>()`, or `GetNetworkConditions()` for a pooled list with one entry per transport that you return to `ListPool` when done.
 
-- Set the fields from `Awake()` (Unity calls every `Awake()` before any `Start()`).
-- Or give your simulator script an earlier execution order than `UnityTransportManager` in Project Settings → Script Execution Order.
+## Each editor sets its own
 
-Either way, set them before `StartServerAsync`, `StartClientAsync`, or `StartHostAsync` runs — whichever `UnityTransportManager` calls for your configured start mode.
+Conditions belong to the transports in one editor. In a ParrelSync pair, each editor is its own process with its own transports, so setting conditions in the host editor does nothing to the clone.
 
-## Static fields, both editors
-
-The fields are `static`, scoped to the process, not to a Connection or a transport instance. In a ParrelSync pair, each editor is its own process, so each one needs the fields set independently — setting them in the host editor does nothing to the clone.
-
-Each peer rolls loss on its own outbound side. A request and its reply each roll independently, so a round trip only survives when both directions do.
+Each peer applies loss to the packets it sends. A request and its reply each roll independently, so a round trip only survives when both directions do.
 
 ## Reading the effect back
 
 While playing, read the measured effect off `Connection`:
 
-- `Connection.RoundTripTimeMilliseconds` — smoothed round trip time.
-- `Connection.RoundTripTimeDeviationMilliseconds` — the jitter: how far samples stray from the smoothed average.
-- `Connection.PacketLossPercentage` — the share of recent probes that went unanswered.
+- `Connection.RoundTripTimeMilliseconds` is the smoothed round trip time.
+- `Connection.RoundTripTimeDeviationMilliseconds` is the jitter, meaning how far samples stray from the smoothed average.
+- `Connection.PacketLossPercentage` is the share of recent probes that went unanswered.
 
-These read the link as the engine actually measures it (via its own round-trip probes), so they're the right numbers to check that your simulated settings are actually taking effect, not just an echo of the values you set.
+These are measured by the engine's own round trip probes, so they are the right numbers to check that the conditions are actually taking effect, not just an echo of the values you set.
 
 ## Values worth testing at
 
-A steady 100ms latency and a link swinging between 20ms and 180ms average the same but feel nothing alike — set jitter, not just latency, to catch bugs that only show up when timing varies. Try loss in the 1-5% range for typical broadband conditions, and higher (10-20%) to stress recovery paths.
+A steady 100 ms latency and a link swinging between 20 ms and 180 ms average the same but feel nothing alike, so set jitter as well as latency to catch bugs that only show up when timing varies. Try loss in the 1 to 5% range for typical broadband, and higher, around 10 to 20%, to stress recovery.
 
-## What this can't reproduce
+## What this cannot reproduce
 
-The simulator delays and drops packets in-process; it does not reorder them across a real path, model asymmetric upload/download links, or reproduce MTU black holes (a real path silently dropping packets over some size). Loopback with these knobs on tells you how your game feels under latency, jitter, and loss — it is not a substitute for testing over an actual network.
+The simulation delays, drops and reorders packets inside the process. It does not model a slow upload beside a fast download, or a real path that silently drops packets over some size. Loopback with conditions set tells you how your game feels on a poor connection, but it is not a substitute for testing over an actual network.
