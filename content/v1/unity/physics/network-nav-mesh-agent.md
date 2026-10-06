@@ -6,7 +6,7 @@ title: "NetworkNavMeshAgent"
 
 `NetworkNavMeshAgent` replicates a `NavMeshAgent` by sending the leg it is walking, not its pose. The peer that controls the object captures a leg — the point it is heading for, the point it set off from, and the agent's speed, angular speed, and acceleration — only when a new leg begins. Every other peer walks its own copy of that agent from one point to the other at the replicated settings, turning toward its direction of travel, with its own `NavMeshAgent` switched off so nothing path-finds twice.
 
-An agent that holds its course costs nothing however far it travels: silence means the follower is still walking the leg it was last told about. Use this instead of `NetworkTransform`, not alongside it — the leg origin already carries the object's position, and a `NetworkTransform` added on top would replicate the same motion twice.
+An agent that holds its course costs nothing however far it travels: silence means the follower is still walking the leg it was last told about. Use this instead of `NetworkTransform`, not alongside it — a spawn already carries where the agent stands, and a `NetworkTransform` added on top would replicate the same motion twice.
 
 ## Inspector fields
 
@@ -50,7 +50,7 @@ Behind the `MonoBehaviour` sits `UnityNavMeshAgentComponent`, the replicated `Ne
 - `Speed`, `AngularSpeed`, `Acceleration` — the agent settings a follower needs to reproduce the walk.
 - `IsStopped` — whether the agent is halted.
 
-`NetworkNavMeshAgent` binds this component on link, applies the inspector settings to it, and captures a leg whenever this peer controls the object; on every other peer it seats the object on the leg origin when it spawns and advances it toward `NextPoint` each frame.
+`NetworkNavMeshAgent` binds this component on link, applies the inspector settings to it, and captures a leg whenever this peer controls the object; on every other peer it seats the object where the sender stood when it spawns and advances it toward `NextPoint` each frame.
 
 ## Corrections
 
@@ -60,7 +60,7 @@ A correction must not read as a stop. Re-seating a follower on every new leg wou
 - Between Resync Distance and Teleport Distance, the follower owes the gap as ground to make up, and walks it off over the next moment instead of being moved.
 - At or past Teleport Distance, the gap is treated as a discontinuity, and the follower is placed on the new leg's origin outright.
 
-A received spawn is always seated on the leg origin regardless of these thresholds — a peer arriving mid-leg has no position of its own to correct from.
+A received spawn is always seated regardless of these thresholds, because a peer arriving mid-leg has no position of its own to correct from. It is seated where the sender stood when the spawn was sent, moving at the sender's velocity, rather than on the leg origin, which can be metres behind an agent that is well into a long leg.
 
 ## Requirements
 
