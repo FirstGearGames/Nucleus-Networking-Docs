@@ -76,14 +76,14 @@ Conditions belong to a transport, so a test process that runs a server `CoreMana
 
 Loss is applied by each peer to the packets it sends. A request and its reply each roll independently, so a round trip survives only when both directions do. With `PacketLossChance = 0.2f` on both peers, a round trip's chance of surviving is lower than 80%, because either leg can be the one that is dropped.
 
-## What to watch while you test
+## Watch for the repair, not the breakage
 
 The engine has its own answers to a lossy link: redundancy, targeted recovery, and a retention window. The point of testing under loss is not to watch things break but to confirm the repair actually runs. Watch for these two things:
 
 - Check convergence: the peer should eventually hold exactly what the server holds, even with packets dropped along the way.
 - Check recovery activity: the server should actually serve a repair. A test that asserts convergence without also asserting a recovery happened can pass on a clean run and prove nothing about the repair path.
 
-## Reading the result back
+## Read the result back from the Connection
 
 `Connection` reports what actually happened on the link:
 

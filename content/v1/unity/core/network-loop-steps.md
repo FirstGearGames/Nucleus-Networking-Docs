@@ -37,7 +37,7 @@ The remaining steps — `EarlyStateUpdate`, `Reconcile`, `LateFixedUpdate`, `Var
 
 - **Read replicated state after it has been applied**, not before. `LateStateUpdate` and later is where incoming values are current; a read during `EarlyStateUpdate` or earlier can still see last tick's value.
 - **Write before it is serialized.** `EarlyStateWrite` is the step for setting values you want sent; `LateStateWrite` serializes whatever changed, so a write registered for `LateStateWrite` itself may miss the packet.
-- **Do not expect a tick step every frame.** `EarlyTickUpdate`, `LateTickUpdate`, and everything nested between them run at the tick rate, not the frame rate. Code that must run every frame regardless belongs on `VariableUpdate` or one of the other variable steps.
+- **Do not expect a tick step every frame.** `EarlyTickUpdate`, `LateTickUpdate`, and everything nested between them run at the tick rate, not the frame rate. Code that must run every frame regardless belongs on `VariableUpdate` or one of the other variable steps, and anything it moves should move by `StepDelta.NormalizedDelta` rather than the raw frame delta, so each tick sees an even distance.
 
 ## Message and RPC dispatch
 

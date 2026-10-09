@@ -87,6 +87,8 @@ OnLateVariableUpdate
 
 See the tick-loop pages for what each step means and when it runs.
 
+To move an object every frame, override `OnVariableUpdate` and move it by `stepDelta.NormalizedDelta` rather than moving it in Unity's `Update` by `Time.deltaTime`. The normalized delta keeps the distance moved in each tick even, which costs far less to replicate. See [Tick rate and the loop in Unity](../core/unity-tick-rate-and-the-loop.md).
+
 ## CanStartSystem
 
 `protected virtual bool CanStartSystem => true` controls whether the server may start the required system as soon as it is rented. It's read once, when the required system is declared, so a later change to it has no effect, and it's ignored on a receiving client, which is handed a system that already started elsewhere. Override it to return false for an object that must write its opening state before the spawn is announced, then start the system itself.

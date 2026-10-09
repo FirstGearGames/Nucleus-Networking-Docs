@@ -38,8 +38,30 @@ Because the loop is driven from Unity's own `Update`/`LateUpdate`, every network
 - **`Tick`** — the current local tick.
 - **`TickRate`** — the ticks-per-second the session is running at, fixed for the session.
 - **`SubtickPercentage`** — how far the loop is into the current tick, as a 0–1 fraction.
+- **`IsTickFrame`** is true when the current frame runs a network tick. It is set before the frame's first loop step, so every step of the frame, and your own `Update`, reads the same answer.
 
 The Unity provider updates it every frame, through the same loop driver the default .NET provider uses, so `SubtickPercentage` is meaningful in a Unity session. It's what render smoothing between ticks rides on.
+
+## Move objects every frame by the normalized delta, not Time.deltaTime
+
+If your authority moves an object every frame, move it in `OnVariableUpdate` by `stepDelta.NormalizedDelta` rather than in Unity's `Update` by `Time.deltaTime`:
+
+```csharp
+protected override void OnVariableUpdate(StepDelta stepDelta)
+{
+    if (!IsController(ControllerType.AnyController))
+        return;
+
+    float seconds = (float)(stepDelta.NormalizedDelta / 1000.0);
+    transform.position += _velocity * seconds;
+}
+```
+
+Frames never line up with ticks, so an object moved by `Time.deltaTime` covers a different distance in every tick, and that unevenness costs bandwidth to replicate. `NormalizedDelta` is the frame's delta adjusted so the frames between two ticks add up to exactly one tick interval. The object still moves every frame at the same speed, but every tick sees the same distance moved.
+
+The difference is large. In the Belted Asteroid benchmark, moving with `Time.deltaTime` cost 1.52 bytes per object per send, and moving with `NormalizedDelta` cost 0.44, against 0.41 for moving once per tick. In the roaming character benchmark the same three figures were 3.22, 0.52 and 0.48.
+
+`NormalizedDelta` is in milliseconds, like the other `StepDelta` fields. See [Ticks and time](../../core-api/core/ticks-and-time.md) for exactly how it is worked out.
 
 ## See also
 
