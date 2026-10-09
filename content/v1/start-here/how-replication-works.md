@@ -4,11 +4,11 @@ title: "How replication works"
 
 ## The tick
 
-Nucleus advances in fixed steps, not whenever a script happens to run. Every tick invokes twelve named steps in the same order: `EarlyVariableUpdate`, `EarlyTickUpdate`, `EarlyStateUpdate`, `LateStateUpdate`, `Reconcile`, `EarlyFixedUpdate`, `LateFixedUpdate`, `VariableUpdate`, `EarlyStateWrite`, `LateStateWrite`, `LateTickUpdate`, `LateVariableUpdate`.
+Nucleus advances in fixed steps, not whenever a script happens to run. Every tick invokes eleven named steps in the same order: `EarlyVariableUpdate`, `EarlyStateUpdate`, `LateStateUpdate`, `Reconcile`, `EarlyFixedUpdate`, `LateFixedUpdate`, `VariableUpdate`, `EarlySerialize`, `LateSerialize`, `TickAdvance`, `LateVariableUpdate`. The tick advances last, at the end of `TickAdvance`.
 
 That fixed order is what lets two independent peers agree on what happened and when. If game code could read or write networked state at an arbitrary point in a frame, a server and a client would each be comparing values captured at different, unpredictable moments. Instead, every peer applies incoming state at the same step, lets game code run in between, and writes outgoing state at the same later step. Everyone changes state on the same beat.
 
-Two steps matter most for replication: `EarlyStateWrite`, where game code sets a networked value, and `LateStateUpdate`, earlier in the same tick, where values received from the network are applied. Because the apply step runs before the write step, a peer sees the world update before its own game code for that tick runs.
+Two steps matter most for replication: `EarlySerialize`, where game code sets a networked value, and `LateStateUpdate`, earlier in the same tick, where values received from the network are applied. Because the apply step runs before the write step, a peer sees the world update before its own game code for that tick runs.
 
 ## The journey of one value
 
@@ -23,11 +23,11 @@ public partial class DemoScoreComponent : NetworkComponent
 
 One trip across the network looks like this:
 
-1. **Written on the server.** The peer that owns the object and decides its truth (the server, usually the server) sets `Score.Value` during `EarlyStateWrite`. `NetworkMember<T0>.Value` is the current value; setting it also rotates the value ring so the value it replaces becomes readable as `PreviousValue`.
+1. **Written on the server.** The peer that owns the object and decides its truth (the server, usually the server) sets `Score.Value` during `EarlySerialize`. `NetworkMember<T0>.Value` is the current value; setting it also rotates the value ring so the value it replaces becomes readable as `PreviousValue`.
 2. **Change detection notices it.** A member does not serialize just because it exists. Setting `Value` flags the member as changed for this tick, and only changed members are considered for sending.
-3. **Serialized during the tick's write steps.** During `LateStateWrite`, the framework walks every system with changed members and serializes them.
-4. **Travels as part of one combined packet.** Nucleus does not send one packet per member or per component. A tick's outgoing state for a connection is written into a single combined stream, flushed to the transport at `LateVariableUpdate`.
-5. **Applied on the receiver before that peer's own tick work runs.** The receiving peer reads and deserializes incoming packets early (`EarlyVariableUpdate`), then applies the contained state during `LateStateUpdate` — both steps ahead of `EarlyFixedUpdate`, `VariableUpdate`, and that peer's own `EarlyStateWrite`. Game code on the receiver reading `Score.Value` during its own tick sees the value the server wrote, not something stale from before the packet arrived.
+3. **Serialized during the tick's serialize steps.** During `LateSerialize`, the framework walks every system with changed members and serializes them.
+4. **Travels as part of one combined packet.** Nucleus does not send one packet per member or per component. A tick's outgoing state for a connection is written into a single combined stream and handed to the transport during `LateSerialize`.
+5. **Applied on the receiver before that peer's own tick work runs.** The receiving peer reads and deserializes incoming packets early (`EarlyVariableUpdate`), then applies the contained state during `LateStateUpdate`. Both steps come ahead of `EarlyFixedUpdate`, `VariableUpdate`, and that peer's own `EarlySerialize`. Game code on the receiver reading `Score.Value` during its own tick sees the value the server wrote, not something stale from before the packet arrived.
 
 ## Snapshot, then delta
 

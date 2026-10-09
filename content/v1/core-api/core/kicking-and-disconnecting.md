@@ -58,7 +58,7 @@ Once a kick is marked, `Connection` exposes:
 
 ## When the kick actually runs
 
-Marking a connection doesn't tear it down immediately. Kicks are queued and executed at the end of the `LateVariableUpdate` network loop step, after that tick's messages have serialized, so a reason sent during the same tick the kick was marked has already gone out by the time the connection closes.
+Marking a connection doesn't tear it down immediately. Kicks are queued and executed once per frame, at `LateSerialize`'s place in the network loop, after that frame's messages have been sent, so a reason sent before the kick in the same frame has already gone out by the time the connection closes.
 
 A second kick against a connection that already has one pending is ignored; the policy from the first call stands.
 

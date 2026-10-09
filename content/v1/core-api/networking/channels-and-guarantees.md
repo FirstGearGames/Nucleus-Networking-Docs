@@ -23,7 +23,7 @@ This holds identically for messages and calls. A message has no address beyond t
 
 ## Batching and framing
 
-Messages and calls are batched per `Connection` and flushed at the end of the tick, one outbound writer per channel. Each one is length-framed: a message's body is written as `PackedBytes` with a known bit count, and a call's envelope (`RpcPacket`) carries the same for its body.
+Messages and calls are batched per `Connection` and sent once per frame, one outbound writer per channel. Each one is length-framed: a message's body is written as `PackedBytes` with a known bit count, and a call's envelope (`RpcPacket`) carries the same for its body.
 
 That framing is what keeps one bad payload from taking down the rest of the batch. Decoding runs per message and per call, not around the whole drain, so a body that fails to decode leaves nothing misaligned behind it - the reader already knows where that body ends from its declared length, and every payload packed after it in the same batch still dispatches normally.
 

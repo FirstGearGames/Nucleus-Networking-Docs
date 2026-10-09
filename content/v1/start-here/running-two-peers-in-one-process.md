@@ -84,6 +84,9 @@ internal sealed class ManualStepProvider : INetworkLoopStepProvider
 {
     public bool IsStarted { get; private set; }
 
+    // Set by the code driving the loop: true before the steps of a pass that ticks.
+    public bool IsTickFrame { get; set; }
+
     public void Initialize(NetworkLoopManager networkLoopManager) { }
     public void Start() => IsStarted = true;
     public void Stop() => IsStarted = false;
@@ -94,7 +97,8 @@ internal sealed class ManualStepProvider : INetworkLoopStepProvider
 Pass the provider to the `CoreManager` constructor, not by swapping it in later:
 
 ```csharp
-CoreManager coreManager = new(networkLoopStepProvider: new ManualStepProvider());
+ManualStepProvider stepProvider = new();
+CoreManager coreManager = new(networkLoopStepProvider: stepProvider);
 ```
 
 Nothing steps the loop until the constructor's last line, so a provider named there means the default, thread-pool-driven provider never starts at all. Swapping yours in afterward with `UseNetworkLoopStepProvider` is too late: by then the default is already stepping the loop from the thread pool, racing whatever your code does until the swap.
@@ -107,27 +111,28 @@ StepDelta delta = new(0, 0, 0);
 coreManager.NetworkLoopManager.InvokeNetworkLoopStep(NetworkLoopSteps.EarlyVariableUpdate, delta);
 ```
 
-## The twelve-step order
+## Drive the eleven steps in their fixed order
 
-`NetworkLoopSteps` declares twelve steps, and they mean something in this order - state is read and applied at the start of a tick's steps, then serialized and sent at the end of them, with a reconcile in between the two state steps and the fixed-update steps. Driving them out of order applies or sends state at the wrong point in the tick and produces a bug that doesn't exist in the real loop.
+`NetworkLoopSteps` declares eleven steps, and they mean something in this order: state is read and applied at the start of a tick's steps, then serialized and sent near the end of them, with a reconcile and the fixed-update steps in between, and the tick advances last, at the end of `TickAdvance`. Driving them out of order applies or sends state at the wrong point in the tick and produces a bug that doesn't exist in the real loop.
 
-The canonical order, one call per step, per `CoreManager`, per tick:
+Call the steps in this canonical order, once per step, per `CoreManager`, per tick. Set the provider's `IsTickFrame` to true before a pass that ticks; left false, the pass sends its messages but writes no state:
 
 ```csharp
 StepDelta delta = new(0, 0, 0);
 
+stepProvider.IsTickFrame = true;
+
 networkLoopManager.InvokeNetworkLoopStep(NetworkLoopSteps.EarlyVariableUpdate, delta);
-networkLoopManager.InvokeNetworkLoopStep(NetworkLoopSteps.EarlyTickUpdate, delta);
 networkLoopManager.InvokeNetworkLoopStep(NetworkLoopSteps.EarlyStateUpdate, delta);
 networkLoopManager.InvokeNetworkLoopStep(NetworkLoopSteps.LateStateUpdate, delta);
 networkLoopManager.InvokeNetworkLoopStep(NetworkLoopSteps.Reconcile, delta);
 networkLoopManager.InvokeNetworkLoopStep(NetworkLoopSteps.EarlyFixedUpdate, delta);
 networkLoopManager.InvokeNetworkLoopStep(NetworkLoopSteps.LateFixedUpdate, delta);
 networkLoopManager.InvokeNetworkLoopStep(NetworkLoopSteps.VariableUpdate, delta);
-networkLoopManager.InvokeNetworkLoopStep(NetworkLoopSteps.EarlyStateWrite, delta);
-networkLoopManager.InvokeNetworkLoopStep(NetworkLoopSteps.LateStateWrite, delta);
-networkLoopManager.InvokeNetworkLoopStep(NetworkLoopSteps.LateTickUpdate, delta);
+networkLoopManager.InvokeNetworkLoopStep(NetworkLoopSteps.EarlySerialize, delta);
+networkLoopManager.InvokeNetworkLoopStep(NetworkLoopSteps.LateSerialize, delta);
+networkLoopManager.InvokeNetworkLoopStep(NetworkLoopSteps.TickAdvance, delta);
 networkLoopManager.InvokeNetworkLoopStep(NetworkLoopSteps.LateVariableUpdate, delta);
 ```
 
-For two peers, drive one full pass of all twelve steps on one `CoreManager`, then the same pass on the other, per simulated tick.
+For two peers, drive one full pass of all eleven steps on one `CoreManager`, then the same pass on the other, per simulated tick.

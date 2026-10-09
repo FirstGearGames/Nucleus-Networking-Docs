@@ -21,6 +21,8 @@ public interface INetworkLoopStepProvider
 {
     public bool IsStarted { get; }
 
+    public bool IsTickFrame { get; }
+
     public void Initialize(NetworkLoopManager networkLoopManager);
 
     public void Start();
@@ -33,9 +35,11 @@ public interface INetworkLoopStepProvider
 
 `Initialize` hands the provider the `NetworkLoopManager` it will drive; `Start` and `Stop` bracket the period the provider may raise steps; `Return` tells the provider it is being let go and may pool itself. `Stop` is always called before `Return`.
 
+`IsTickFrame` answers whether the frame the provider is driving runs a tick. The engine reads it to decide whether the frame's serialize steps write state and raise their callbacks. A provider built on `NetworkLoopStepDriver` forwards `NetworkLoopStepDriver.IsTickFrame`. A provider that invokes the steps itself answers true before the steps of a pass that ticks and false otherwise; left false, the pass sends its messages but writes no state.
+
 ## Building a provider on NetworkLoopStepDriver
 
-Both shipped providers, `SystemNetworkLoopStepProvider` and the Unity integration's, drive a `NetworkLoopStepDriver` rather than calling `NetworkLoopManager.InvokeNetworkLoopStep` themselves. The driver is the shared cadence engine: it owns the tick accumulator, the two-tick catch-up clamp, and the one canonical order the twelve `NetworkLoopSteps` are emitted in, so a provider only has to feed it a frame delta and let it decide when a tick actually runs.
+Both shipped providers, `SystemNetworkLoopStepProvider` and the Unity integration's, drive a `NetworkLoopStepDriver` rather than calling `NetworkLoopManager.InvokeNetworkLoopStep` themselves. The driver is the shared cadence engine: it owns the tick accumulator, the two-tick catch-up clamp, and the one canonical order the eleven `NetworkLoopSteps` are emitted in, so a provider only has to feed it a frame delta and let it decide when a tick actually runs.
 
 ```csharp
 public sealed class HostClockStepProvider : INetworkLoopStepProvider
@@ -43,6 +47,8 @@ public sealed class HostClockStepProvider : INetworkLoopStepProvider
     private readonly NetworkLoopStepDriver _driver = new();
 
     public bool IsStarted { get; private set; }
+
+    public bool IsTickFrame => _driver.IsTickFrame;
 
     public void Initialize(NetworkLoopManager networkLoopManager)
     {
@@ -69,7 +75,7 @@ public sealed class HostClockStepProvider : INetworkLoopStepProvider
 }
 ```
 
-`AdvanceEarly` accumulates the frame, decides whether a tick fires, and invokes everything from `EarlyVariableUpdate` through the mid-cycle `VariableUpdate`. `AdvanceLate` invokes the state-write and late tick steps for the same frame. The split exists so a host that runs distinct early/late phases (Unity's `Update`/`LateUpdate`) can call them separately; a host with one frame callback, like the one above, calls both back to back, the same way `SystemNetworkLoopStepProvider` does in its timer handler.
+`AdvanceEarly` accumulates the frame, decides whether a tick fires, and invokes everything from `EarlyVariableUpdate` through the mid-cycle `VariableUpdate`. `AdvanceLate` finishes the same frame: on a frame that ticks it runs `EarlySerialize`, `LateSerialize` and `TickAdvance`, on every frame it sends that frame's messages, and it ends with `LateVariableUpdate`. The split exists so a host that runs distinct early/late phases (Unity's `Update`/`LateUpdate`) can call them separately; a host with one frame callback, like the one above, calls both back to back, the same way `SystemNetworkLoopStepProvider` does in its timer handler.
 
 ## Naming your provider in the constructor
 
@@ -83,26 +89,51 @@ CoreManager coreManager = new(tickRate: 30, networkLoopStepProvider: new HostClo
 
 ## Hand-driving for tests and deterministic simulation
 
-For deterministic simulation, or a test that must control exactly when a tick happens, drive the loop directly with `NetworkLoopManager.InvokeNetworkLoopStep(NetworkLoopSteps, StepDelta)` instead of going through a provider's timer. Install a provider that never steps on its own (one whose methods just flip `IsStarted` and do nothing else), then invoke all twelve steps yourself, in the framework's canonical order:
+For deterministic simulation, or a test that must control exactly when a tick happens, drive the loop directly with `NetworkLoopManager.InvokeNetworkLoopStep(NetworkLoopSteps, StepDelta)` instead of going through a provider's timer. Install a provider that never steps on its own and lets you say whether a pass ticks:
 
 ```csharp
+public sealed class HandDrivenStepProvider : INetworkLoopStepProvider
+{
+    public bool IsStarted { get; private set; }
+
+    // Set by the code driving the loop: true before the steps of a pass that ticks.
+    public bool IsTickFrame { get; set; }
+
+    public void Initialize(NetworkLoopManager networkLoopManager) { }
+
+    public void Start() => IsStarted = true;
+
+    public void Stop() => IsStarted = false;
+
+    public void Return() { }
+}
+```
+
+Then set its `IsTickFrame` to true and invoke all eleven steps yourself, in the framework's canonical order:
+
+```csharp
+HandDrivenStepProvider stepProvider = new();
+CoreManager coreManager = new(networkLoopStepProvider: stepProvider);
+
+NetworkLoopManager networkLoopManager = coreManager.NetworkLoopManager;
 StepDelta delta = new(0, 0, 0);
 
+stepProvider.IsTickFrame = true;
+
 networkLoopManager.InvokeNetworkLoopStep(NetworkLoopSteps.EarlyVariableUpdate, delta);
-networkLoopManager.InvokeNetworkLoopStep(NetworkLoopSteps.EarlyTickUpdate, delta);
 networkLoopManager.InvokeNetworkLoopStep(NetworkLoopSteps.EarlyStateUpdate, delta);
 networkLoopManager.InvokeNetworkLoopStep(NetworkLoopSteps.LateStateUpdate, delta);
 networkLoopManager.InvokeNetworkLoopStep(NetworkLoopSteps.Reconcile, delta);
 networkLoopManager.InvokeNetworkLoopStep(NetworkLoopSteps.EarlyFixedUpdate, delta);
 networkLoopManager.InvokeNetworkLoopStep(NetworkLoopSteps.LateFixedUpdate, delta);
 networkLoopManager.InvokeNetworkLoopStep(NetworkLoopSteps.VariableUpdate, delta);
-networkLoopManager.InvokeNetworkLoopStep(NetworkLoopSteps.EarlyStateWrite, delta);
-networkLoopManager.InvokeNetworkLoopStep(NetworkLoopSteps.LateStateWrite, delta);
-networkLoopManager.InvokeNetworkLoopStep(NetworkLoopSteps.LateTickUpdate, delta);
+networkLoopManager.InvokeNetworkLoopStep(NetworkLoopSteps.EarlySerialize, delta);
+networkLoopManager.InvokeNetworkLoopStep(NetworkLoopSteps.LateSerialize, delta);
+networkLoopManager.InvokeNetworkLoopStep(NetworkLoopSteps.TickAdvance, delta);
 networkLoopManager.InvokeNetworkLoopStep(NetworkLoopSteps.LateVariableUpdate, delta);
 ```
 
-This is exactly the order Nucleus's own test harness drives a full tick in. Do not reorder or skip steps: framework work is woven into specific steps (packet receive and deserialize on `EarlyVariableUpdate`, system deserialize and RPC dispatch on `LateStateUpdate`, state serialization on `LateStateWrite`, message and RPC serialization on `LateVariableUpdate`, among others), and tests that assert on replicated state depend on that order holding.
+This is exactly the order Nucleus's own test harness drives a full tick in. Do not reorder or skip steps: framework work is woven into specific steps (packet receive and message dispatch on `EarlyVariableUpdate`, state apply and RPC dispatch on `LateStateUpdate`, state serialization and the send of messages, RPCs and kicks on `LateSerialize`, the tick advance at the end of `TickAdvance`, among others), and tests that assert on replicated state depend on that order holding. Only `TickAdvance` advances `Tick`. Left false, `IsTickFrame` makes `EarlySerialize` and `LateSerialize` write no state and raise no callbacks, though the pass still sends its messages.
 
 ## One loop, one manager
 

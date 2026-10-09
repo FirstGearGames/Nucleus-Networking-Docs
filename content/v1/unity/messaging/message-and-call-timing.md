@@ -2,9 +2,9 @@
 title: "When a Message or Call Reaches Its Handler"
 ---
 
-## Outbound: LateVariableUpdate
+## Outbound messages and calls leave once per frame
 
-Messages and calls sent by your code do not go on the wire the instant you call the send method. They queue, and the queue flushes on `NetworkLoopSteps.LateVariableUpdate`, the last step of a variable update. Both flush at the same step, so a message and a call sent in the same frame leave together.
+Messages and calls sent by your code do not go on the wire the instant you call the send method. They queue, and the engine sends the queue once per frame, on every frame, at `NetworkLoopSteps.LateSerialize`'s place in the order. On a frame that ticks, the send happens after the `LateSerialize` callbacks, so a message or call sent from a `LateSerialize` callback or any earlier step still leaves this frame. One sent from a `TickAdvance` or `LateVariableUpdate` callback leaves on the next frame. Messages and calls go out in the same send, so a message and a call sent in the same frame leave together.
 
 ## Inbound calls: LateStateUpdate, deliberately after messages
 
@@ -22,7 +22,7 @@ A host is one `CoreManager` holding both the server and client roles. When one h
 
 ## Re-entrancy
 
-Because `Immediate` runs a handler at the send site, a handler that sends something back re-enters the same pass that sent the original message or call. The engine supports this. The one consequence worth knowing: if a handler reached this way starts a spawn, and the sending step is already past `LateVariableUpdate`, that spawn is deferred to the next tick — the same deferral any other late spawn gets, not a special case for loopback.
+Because `Immediate` runs a handler at the send site, a handler that sends something back re-enters the same pass that sent the original message or call. The engine supports this. The one consequence worth knowing: if a handler reached this way starts a spawn, and the sending step is `LateSerialize` or `TickAdvance`, after the tick's state was sent, that spawn is deferred until the tick advances. That is the same deferral any other late spawn gets, not a special case for loopback.
 
 ## A handler throw costs only its own payload
 

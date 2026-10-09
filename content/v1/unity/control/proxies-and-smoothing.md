@@ -6,12 +6,12 @@ Most objects in a session run on peers that don't control them: every client wat
 
 ## What still fires
 
-`NucleusBehaviourBase` dispatches its per-step hooks (`OnEarlyVariableUpdate`, `OnEarlyTickUpdate`, `OnEarlyStateUpdate`, `OnLateStateUpdate`, `OnReconcile`, `OnEarlyFixedUpdate`, `OnLateFixedUpdate`, `OnVariableUpdate`, `OnEarlyStateWrite`, `OnLateStateWrite`, `OnLateTickUpdate`, `OnLateVariableUpdate`) whenever the concrete type overrides them, regardless of whether this peer controls the linked system. `OnControllerChanged` is the same: it runs on every peer the moment control moves, not just the one gaining or losing it.
+`NucleusBehaviourBase` dispatches its per-step hooks (`OnEarlyVariableUpdate`, `OnEarlyStateUpdate`, `OnLateStateUpdate`, `OnReconcile`, `OnEarlyFixedUpdate`, `OnLateFixedUpdate`, `OnVariableUpdate`, `OnEarlySerialize`, `OnLateSerialize`, `OnTickAdvance`, `OnLateVariableUpdate`) whenever the concrete type overrides them, regardless of whether this peer controls the linked system. `OnControllerChanged` is the same: it runs on every peer the moment control moves, not just the one gaining or losing it.
 
 Control is a question a hook answers for itself, with `IsController`:
 
 ```csharp
-protected override void OnEarlyStateWrite(StepDelta stepDelta)
+protected override void OnEarlySerialize(StepDelta stepDelta)
 {
     if (!IsController(ControllerType.AnyController))
         return;
@@ -31,7 +31,7 @@ protected override void OnEarlyStateWrite(StepDelta stepDelta)
 - **Kinematic Management Enabled** (`_kinematicManagementEnabled`, default `true`) holds an attached `Rigidbody` kinematic on every non-controlling peer — including the server while a client controls the system — and returns it to simulation on the controller. The switch is a straight assignment, applied only when the role actually changes: `_rigidbody.isKinematic = !isController;`. Turn it off only when other code already owns that rigidbody's kinematic state.
 - **Interpolate Scale Enabled** (`_interpolateScaleEnabled`, default `true`) has a proxy interpolate the replicated scale alongside position and rotation. Disabled, the local scale keeps whatever value it already holds — it's excluded from the sweep, not zeroed.
 
-Both only matter on a peer that isn't the controller. On `VariableUpdate`, a non-controlling, started system calls `_transformComponent.Interpolate(_interpolateScaleEnabled)`; on `EarlyStateWrite`, a controller calls `_transformComponent.WriteState()`. A given peer runs exactly one side of that split per tick, decided by the same `IsController(ControllerType.AnyController)` check every other hook uses.
+Both only matter on a peer that isn't the controller. On `VariableUpdate`, a non-controlling, started system calls `_transformComponent.Interpolate(_interpolateScaleEnabled)`; on `EarlySerialize`, a controller calls `_transformComponent.WriteState()`. A given peer runs exactly one side of that split per tick, decided by the same `IsController(ControllerType.AnyController)` check every other hook uses.
 
 ## Buffering: State Interpolation
 
@@ -53,7 +53,7 @@ _networkLoopManager.SetSubtickPercentage(SubtickPercentage);
 _networkLoopManager.InvokeNetworkLoopStep(NetworkLoopSteps.VariableUpdate, BuildStepDelta(frameDeltaMilliseconds, hasFixedDelta: false));
 ```
 
-Anything that reads it — `NetworkTransform`'s sweep included — reads it back through `NetworkLoopManager.SubtickPercentage`. `UnityNetworkLoopStepProvider` does **not** publish this itself; its own remarks are explicit that the subtick fraction for interpolation smoothing is not published from there, because publishing after its `Update` returned would leave `VariableUpdate` smoothing against the previous frame's fraction instead of the current one. What the Unity provider does own is the split around that shared driver: `Update`, at `[DefaultExecutionOrder(-10000)]`, runs the early steps; `LateUpdate` runs the state-write and late steps.
+Anything that reads it, `NetworkTransform`'s sweep included, reads it back through `NetworkLoopManager.SubtickPercentage`. `UnityNetworkLoopStepProvider` does **not** publish this itself; its own remarks are explicit that the subtick fraction for interpolation smoothing is not published from there, because publishing after its `Update` returned would leave `VariableUpdate` smoothing against the previous frame's fraction instead of the current one. What the Unity provider does own is the split around that shared driver: `Update`, at `[DefaultExecutionOrder(-10000)]`, runs the early steps; `LateUpdate` runs the serialize steps, `TickAdvance` and `LateVariableUpdate`.
 
 ## A pose follower, not a simulation
 

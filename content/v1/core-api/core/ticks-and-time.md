@@ -23,11 +23,13 @@ uint rate = coreManager.NetworkLoopManager.TickRate; // 60
 
 ## The tick counter
 
-`NetworkLoopManager.Tick` is the current local tick, incremented once per tick on the `EarlyTickUpdate` step:
+`NetworkLoopManager.Tick` is the current local tick, incremented once per tick at the very end of the `TickAdvance` step, after its callbacks have run:
 
 ```csharp
 public uint Tick { get; private set; } = FirstTick;
 ```
+
+Because it advances as the last thing a tick does, `LateVariableUpdate`, the frames between ticks and every message handler already read the tick their writes will ride.
 
 It starts at `FirstTick` (1), never at zero. `UnsetTick` is 0, and the framework relies on "a live tick is never the unset value" wherever a tick doubles as a presence flag, such as a `NetworkMember`'s self-clearing writer stamp.
 
@@ -86,16 +88,6 @@ public void OnNetworkLoopStep(NetworkLoopSteps networkLoopStep, StepDelta stepDe
 ```
 
 In the belted asteroid and roaming character benchmarks, moving every frame by the raw frame delta cost between three and six times as much as moving once per tick. Moving every frame by `NormalizedDelta` brought it back to within a tenth of the once-per-tick cost.
-
-## Tell whether the current frame ticks with IsTickFrame
-
-`IsTickFrame` is true when the current frame runs a network tick:
-
-```csharp
-public bool IsTickFrame { get; }
-```
-
-`NetworkLoopStepDriver` sets it once it decides whether the frame ticks, before any step of that frame runs, so it already answers on `EarlyVariableUpdate` and holds the same value through `LateVariableUpdate`. A frame that catches up with more than one fixed update is still one tick frame. A loop driven by calling `InvokeNetworkLoopStep` yourself leaves it false.
 
 ## Running your own code on the loop
 
