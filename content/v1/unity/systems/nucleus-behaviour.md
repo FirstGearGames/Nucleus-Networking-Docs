@@ -10,7 +10,7 @@ title: "NucleusBehaviour: the script base class"
 
 The class splits in two:
 
-- `NucleusBehaviourBase` is the non-generic half: the `NetworkSystem` reference, role and control checks, the loud guards, and the twelve per-step virtuals. It never declares a required system, so it is not the type a script inherits directly.
+- `NucleusBehaviourBase` is the non-generic half: the `NetworkSystem` reference, role and control checks, the loud guards, and the eleven per-step virtuals. It never declares a required system, so it is not the type a script inherits directly.
 - `NucleusBehaviour<TComponent0>` requires a `NetworkSystem` carrying `TComponent0` and exposes it as `Component`.
 
 A script that only needs the role and control checks and the hooks, on an object where another component (a `NetworkTransform` or a `ProjectedRigidbody`, say) already declares the system, inherits the non-generic `NucleusBehaviour` instead. It declares nothing and adopts whichever system the object's `NetworkSystemObject` links, so something else on the object must declare one or it waits for the object's whole life.
@@ -36,10 +36,10 @@ Both have loud counterparts that log instead of failing silently:
 - `EnsureIsController(ControllerType controllerType, [CallerMemberName] string callerMemberName = null)`
 - `EnsureIsStarted(Invoker invoker, [CallerMemberName] string callerMemberName = null)`
 
-Each returns the same answer as its plain counterpart, and when that answer is false, logs a warning naming the calling member (supplied automatically via `[CallerMemberName]`). Each behaviour warns once per calling member and argument, so a guard that keeps failing from the same place warns the first time and then stays quiet. Reach for the loud form where a failure means a real bug worth surfacing loudly: a one-off action like handling a button press or an RPC, not a per-tick callback. A per-tick write like `OnEarlyStateWrite` runs every tick on every peer, so a non-controlling peer failing the check is the normal, expected case, not a bug - use the plain form there so an expected outcome logs no warning at all:
+Each returns the same answer as its plain counterpart, and when that answer is false, logs a warning naming the calling member (supplied automatically via `[CallerMemberName]`). Each behaviour warns once per calling member and argument, so a guard that keeps failing from the same place warns the first time and then stays quiet. Reach for the loud form where a failure means a real bug worth surfacing loudly: a one-off action like handling a button press or an RPC, not a per-tick callback. A per-tick write like `OnEarlySerialize` runs every tick on every peer, so a non-controlling peer failing the check is the normal, expected case, not a bug. Use the plain form there so an expected outcome logs no warning at all:
 
 ```csharp
-protected override void OnEarlyStateWrite(StepDelta stepDelta)
+protected override void OnEarlySerialize(StepDelta stepDelta)
 {
     if (!IsController(ControllerType.AnyController))
         return;
@@ -66,22 +66,23 @@ Linking adopts whichever roles are already started rather than waiting for an ed
 
 ## Per-step virtuals
 
-Twelve `protected virtual void On...(StepDelta stepDelta)` methods, one per tick-loop step, in loop order:
+`NucleusBehaviourBase` declares eleven `protected virtual void On...(StepDelta stepDelta)` methods, one per loop step, in loop order:
 
 ```
 OnEarlyVariableUpdate
-OnEarlyTickUpdate
 OnEarlyStateUpdate
 OnLateStateUpdate
 OnReconcile
 OnEarlyFixedUpdate
 OnLateFixedUpdate
 OnVariableUpdate
-OnEarlyStateWrite
-OnLateStateWrite
-OnLateTickUpdate
+OnEarlySerialize
+OnLateSerialize
+OnTickAdvance
 OnLateVariableUpdate
 ```
+
+`OnEarlyVariableUpdate`, `OnVariableUpdate` and `OnLateVariableUpdate` run every frame. `OnEarlyStateUpdate`, `OnLateStateUpdate`, `OnReconcile`, `OnEarlySerialize`, `OnLateSerialize` and `OnTickAdvance` run once per tick, on the frame that ticks. `OnEarlyFixedUpdate` and `OnLateFixedUpdate` run once per elapsed tick interval, so they can run twice on one frame after a long frame.
 
 `Awake` reflects over these once to find which ones this instance's concrete type overrides, and only those steps are ever dispatched to. Registration for the loop steps a type overrides is taken and dropped alongside `OnEnable`/`OnDisable` (and tied to whether a system is linked), so a disabled or pooled-and-despawned behaviour costs nothing per tick.
 

@@ -63,6 +63,8 @@ sealed class MainThreadStepProvider : INetworkLoopStepProvider
 
     public bool IsStarted { get; private set; }
 
+    public bool IsTickFrame => _driver.IsTickFrame;
+
     public void Initialize(NetworkLoopManager networkLoopManager) => _driver.Initialize(networkLoopManager, 1000f / networkLoopManager.TickRate);
 
     public void Start() => IsStarted = true;

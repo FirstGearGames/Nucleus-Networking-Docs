@@ -38,7 +38,6 @@ Because the loop is driven from Unity's own `Update`/`LateUpdate`, every network
 - **`Tick`** — the current local tick.
 - **`TickRate`** — the ticks-per-second the session is running at, fixed for the session.
 - **`SubtickPercentage`** — how far the loop is into the current tick, as a 0–1 fraction.
-- **`IsTickFrame`** is true when the current frame runs a network tick. It is set before the frame's first loop step, so every step of the frame, and your own `Update`, reads the same answer.
 
 The Unity provider updates it every frame, through the same loop driver the default .NET provider uses, so `SubtickPercentage` is meaningful in a Unity session. It's what render smoothing between ticks rides on.
 

@@ -57,7 +57,7 @@ if (networkSystem.TryGetInputComponent<DriveInputComponent>(out DriveInputCompon
 
 ## Fill it from Update, not a tick callback
 
-Write the controlling client's fields from Unity's `Update`, not from a tick-aligned loop-step override such as `OnEarlyTickUpdate`. A held key is a property of the frame, not an event, so it cannot arrive as a callback the way a tick step does — the read has to happen every rendered frame to see the key while it's down. The member ring still lands the value on the correct tick: whatever `Direction` holds when the framework serializes this tick's input is what goes out.
+Write the controlling client's fields from Unity's `Update`, not from a tick-aligned loop-step override such as `OnEarlyStateUpdate`. A held key is a property of the frame, not an event, so it cannot arrive as a callback the way a tick step does; the read has to happen every rendered frame to see the key while it's down. The member ring still lands the value on the correct tick: whatever `Direction` holds when the framework serializes this tick's input is what goes out.
 
 ```csharp
 private void Update()
