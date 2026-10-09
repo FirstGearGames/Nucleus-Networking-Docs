@@ -52,7 +52,7 @@ It is set through `SetSubtickPercentage`, which clamps the value into the 0-1 ra
 
 ## StepDelta
 
-Every loop step callback receives a `StepDelta`, carrying three millisecond fields:
+Every loop step callback receives a `StepDelta`, carrying four millisecond fields:
 
 ```csharp
 public struct StepDelta
@@ -60,12 +60,42 @@ public struct StepDelta
     public long Delta;
     public long FixedDelta;
     public long TimeSinceLastFixedUpdate;
+    public double NormalizedDelta;
 }
 ```
 
 - `Delta` — milliseconds since the step last ran. Use it for variable-timing work.
 - `FixedDelta` — the fixed delta for the step, when one applies; zero otherwise. Use it for work that needs consistent timing, such as physics or anything keyed to the tick rate.
 - `TimeSinceLastFixedUpdate` — milliseconds since the last fixed update completed. Not modified until that fixed update finishes.
+- `NormalizedDelta` is the frame's delta adjusted so the frames between two ticks add up to exactly one tick interval. Use it for anything you move every frame, as the next section explains. `NetworkLoopStepDriver` sets it, so it is zero when you invoke the steps yourself.
+
+## Move per-frame work by the normalized delta
+
+Moving an object by the raw frame delta is the most common way to spend bandwidth without noticing. Frames never line up with ticks, so an object moved by each frame's own delta covers a different distance in every tick, and an object whose per-tick movement keeps changing costs more to replicate than one moving evenly.
+
+`NormalizedDelta` removes that unevenness while keeping the object moving every frame. Each frame gets its delta plus anything held back from the frame before. On a frame that ticks, whatever the frames since the last tick add up to beyond one tick interval is held back and added onto the next frame, so no time is lost and the object's speed is unchanged. A single frame longer than a tick interval runs its whole delta plus anything held back.
+
+Read it on `VariableUpdate`, and convert it to seconds yourself:
+
+```csharp
+public void OnNetworkLoopStep(NetworkLoopSteps networkLoopStep, StepDelta stepDelta)
+{
+    float seconds = (float)(stepDelta.NormalizedDelta / 1000.0);
+    position += velocity * seconds;
+}
+```
+
+In the belted asteroid and roaming character benchmarks, moving every frame by the raw frame delta cost between three and six times as much as moving once per tick. Moving every frame by `NormalizedDelta` brought it back to within a tenth of the once-per-tick cost.
+
+## Tell whether the current frame ticks with IsTickFrame
+
+`IsTickFrame` is true when the current frame runs a network tick:
+
+```csharp
+public bool IsTickFrame { get; }
+```
+
+`NetworkLoopStepDriver` sets it once it decides whether the frame ticks, before any step of that frame runs, so it already answers on `EarlyVariableUpdate` and holds the same value through `LateVariableUpdate`. A frame that catches up with more than one fixed update is still one tick frame. A loop driven by calling `InvokeNetworkLoopStep` yourself leaves it false.
 
 ## Running your own code on the loop
 

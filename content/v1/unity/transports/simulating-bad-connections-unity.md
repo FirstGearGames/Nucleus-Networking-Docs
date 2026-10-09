@@ -18,9 +18,15 @@ Playing in the editor runs over loopback, which is instant and lossless. You can
 
 The Synapse transport supports every field except `DuplicateChance`, which it ignores. A transport that supports none of them logs a warning when you set them.
 
-## Pass the conditions to the TransportManager
+## Set them in the inspector
 
-`UnityTransportManager.NucleusTransportManager` is the core `TransportManager`. Call `SetNetworkConditions` on it to set every transport, or `SetNetworkConditions<Synapse>` to set only the Synapse ones. Passing null goes back to a clean connection.
+`UnityTransportManager` has a **Network Conditions** section in the inspector. Tick **Network Conditions Enabled** and fill in the values. When the transports are added, just before they start, it sets those conditions on every transport, or clears them when the box is unticked. This works with any **Automatic Start Mode**.
+
+Each editor reads its own inspector, so in a ParrelSync pair you can make only the clone's connection bad.
+
+## Set them from code
+
+Call `SetNetworkConditions` on `UnityTransportManager` to set every transport, or `SetNetworkConditions<Synapse>` to set only the Synapse ones. Passing null goes back to a clean connection. Conditions set from code replace the inspector's.
 
 The transports have to exist before they can take the conditions, and Synapse decides whether to simulate at all when it connects. So set **Automatic Start Mode** on `UnityTransportManager` to `None`, and start the network yourself: add the transports, set the conditions, then start.
 
@@ -38,7 +44,7 @@ public class ConnectionSimulator : MonoBehaviour
     {
         await _unityTransportManager.EnsureAddedAsync();
 
-        _unityTransportManager.NucleusTransportManager.SetNetworkConditions(new NetworkConditions
+        _unityTransportManager.SetNetworkConditions(new NetworkConditions
         {
             LatencyMilliseconds = 100,
             JitterMilliseconds = 40,
@@ -52,7 +58,7 @@ public class ConnectionSimulator : MonoBehaviour
 
 Use `StartServerAsync` or `StartClientAsync` in place of `StartHostAsync` for the other roles.
 
-## Changing the conditions while playing
+## The conditions can change while playing
 
 A Synapse transport that connected with conditions takes new values straight away, so you can raise or lower them mid-session. One that connected with no conditions ignores them until it next connects. If you plan to change them while playing, start with a small condition, such as a latency of 1 ms, so the simulation is running from the start.
 
@@ -64,7 +70,7 @@ Conditions belong to the transports in one editor. In a ParrelSync pair, each ed
 
 Each peer applies loss to the packets it sends. A request and its reply each roll independently, so a round trip only survives when both directions do.
 
-## Reading the effect back
+## Read the effect back from the Connection
 
 While playing, read the measured effect off `Connection`:
 
@@ -74,10 +80,10 @@ While playing, read the measured effect off `Connection`:
 
 These are measured by the engine's own round trip probes, so they are the right numbers to check that the conditions are actually taking effect, not just an echo of the values you set.
 
-## Values worth testing at
+## Test at more than one setting
 
 A steady 100 ms latency and a link swinging between 20 ms and 180 ms average the same but feel nothing alike, so set jitter as well as latency to catch bugs that only show up when timing varies. Try loss in the 1 to 5% range for typical broadband, and higher, around 10 to 20%, to stress recovery.
 
-## What this cannot reproduce
+## Some real network faults cannot be reproduced
 
 The simulation delays, drops and reorders packets inside the process. It does not model a slow upload beside a fast download, or a real path that silently drops packets over some size. Loopback with conditions set tells you how your game feels on a poor connection, but it is not a substitute for testing over an actual network.
