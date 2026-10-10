@@ -64,13 +64,15 @@ void OnSpawnCompensationStepped(in SpawnCompensationDelta delta)
 
 How much a peer can be asked to compensate is capped, in milliseconds:
 
-- `NetworkSystem.DefaultMaximumSpawnCompensationMilliseconds` is 150, the default cap.
-- `NetworkSystem.MaximumSpawnCompensationCeilingMilliseconds` is 500, the highest the live setting can be raised to.
-- `SystemManager.MaximumSpawnCompensationMilliseconds` is the live setting; its setter clamps to the ceiling above.
+- `LagCompensationManager.DefaultMaximumSpawnCompensationMilliseconds` is 150, the default cap.
+- `LagCompensationManager.MaximumSpawnCompensationCeilingMilliseconds` is 500, the highest the live setting can be raised to.
+- `LagCompensationManager.MaximumSpawnCompensationMilliseconds` is the live setting; its setter clamps to the ceiling above.
 
 ```csharp
-CoreManager.SystemManager.MaximumSpawnCompensationMilliseconds = 300;
+CoreManager.LagCompensationManager.MaximumSpawnCompensationMilliseconds = 300;
 ```
+
+The setting lives beside lag compensation's because the two are halves of one problem: lag compensation judges a shot against the past, and spawn compensation brings a freshly spawned object up to the present. In Unity it is **Max Spawn Compensation (ms)** on the Unity Lag Compensation Manager.
 
 The cap bounds the whole of one peer's catch-up, counted across every hop the object travelled. Under `SpawnCompensationScope.All`, a remote client adds what the server already spent to its own delay and holds the sum to the cap, so an object that crossed two links is displaced no further than one that crossed a single slow link. Because a schedule is never longer than its budget, the cap also bounds how long a catch-up runs.
 
