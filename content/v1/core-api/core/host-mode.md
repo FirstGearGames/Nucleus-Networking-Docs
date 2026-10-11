@@ -6,22 +6,17 @@ title: "Host mode"
 
 A host is one process running both roles at once: it starts a server and connects its own client to that server. `TransportManager.IsServerStarted` and `TransportManager.IsClientStarted` are both true, and `IsHostStarted` is defined as `IsServerStarted && IsClientStarted`. Nothing else distinguishes host mode from a pure server or a pure client: the same `CoreManager`, the same transport, both halves live in one process.
 
-## Two Connections, one player
+## A host holds one Connection for its own player
 
-A host's own client is described by more than one `Connection` at once. The server side holds a roster entry for that client, the same as it holds one for every other connected player, while the client side holds its own local `Connection` for itself. On a transport that mints its roster entry fresh (Synapse does, under either pairing), these are two distinct objects describing the same peer.
+A host's own client is described by one `Connection`. The server side keeps a roster entry for every connected player, and for the host's own client that roster entry is the client side's local `Connection` itself, under either Synapse pairing. A call that names the host's own player by its local `Connection`, such as `RpcTarget.To` or `RpcTarget.ObserversExcept`, therefore matches the roster entry the server holds.
 
-Comparing them by reference fails even though they name the same player:
-
-```csharp
-// Wrong: these are two different Connection instances for the same peer.
-bool isSelf = someRosterConnection == localClientConnection;
-```
-
-Compare `Connection.Id` instead, which is the same value on both:
+Compare players by `Connection.Id` all the same:
 
 ```csharp
-bool isSelf = someRosterConnection.Id == localClientConnection.Id;
+bool isSelf = someConnection.Id == localClientConnection.Id;
 ```
+
+A `Connection` is pooled and reused once its link ends, so a reference kept past that point names whoever rents the instance next, while the Id is what names a player on the wire.
 
 Or resolve each side explicitly through the `TransportManager` rather than holding a reference across the two halves:
 
@@ -34,7 +29,7 @@ transportManager.TryGetServerConnection(out Connection localServer);
 
 ## IsHostLoopback
 
-Both halves of the pairing above, plus the server's roster entry for its own client, are marked `Connection.IsHostLoopback`. The mark identifies a link whose two ends are the same process. It is neither `IsEmulated` (no socket at all) nor `IsPeerStandIn` (a peer this client cannot reach directly) — it names a real, live link where both ends happen to be this peer.
+Both halves of the pairing above are marked `Connection.IsHostLoopback`, and the client half is also the server's roster entry for its own client. The mark identifies a link whose two ends are the same process. It is neither `IsEmulated` (no socket at all) nor `IsPeerStandIn` (a peer this client cannot reach directly) — it names a real, live link where both ends happen to be this peer.
 
 State addressed across a loopback link is discarded on arrival rather than applied: whatever was sent was written by the process it would be delivered to, so there is nothing to learn from serializing it and reading it back. Neither half owes the other an acknowledgment either; the sending half settles its own outstanding ticks as it serializes them.
 
