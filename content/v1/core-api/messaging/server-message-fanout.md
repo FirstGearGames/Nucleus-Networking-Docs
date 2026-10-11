@@ -28,7 +28,7 @@ CoreManager.ServerManager.SendMessage(Channel.Reliable, new SomeMessage(), myCon
 CoreManager.ServerManager.SendMessageExcept(Channel.Reliable, new SomeMessage(), excludedConnection);
 ```
 
-The exclusion is matched on `Connection.Id`, not by reference. A host holds two `Connection` instances for its own client, and either one names the same player, so a reference comparison would let one of the two through. `excludedConnection` may be null, and null excludes nobody.
+The exclusion is matched on `Connection.Id`, not by reference, so a `Connection` from any lookup, or one held from an earlier one, still names the same player. `excludedConnection` may be null, and null excludes nobody.
 
 ## Sending to a scene's occupants
 
