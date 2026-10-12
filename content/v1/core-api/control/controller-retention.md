@@ -44,7 +44,7 @@ Three events report what happens to a record over its lifetime:
 - `Reclaimed` (0) - a returning connection redeemed the token and was handed the objects.
 - `Expired` (1) - the record outlived `SystemManager.ControllerRetentionSeconds` without being redeemed.
 - `Evicted` (2) - the record was the oldest standing when a new one needed room under `SystemManager.MaximumRetainedControllerRecords`.
-- `Emptied` (3) - every object the record held left the world, so there was nothing left to redeem.
+- `Emptied` (3) - every object the record held left the world or was handed to another controller, so there was nothing left to redeem.
 
 Every reason but `Reclaimed` leaves the objects uncontrolled and nothing relating them to one another. A handler that wants to act on a record's objects as a set - despawning a player's belongings when they don't return, for example - has to do it from `ControllerRetentionEnded`, before that reason takes effect.
 
