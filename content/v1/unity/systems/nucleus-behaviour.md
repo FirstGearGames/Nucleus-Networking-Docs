@@ -64,6 +64,30 @@ Override these `protected virtual` methods on `NucleusBehaviourBase`:
 
 Linking adopts whichever roles are already started rather than waiting for an edge: `LinkSystem` reseeds its tracked server/client flags from the live state and immediately raises `OnServerStarted`/`OnClientStarted` for any role already up, instead of only firing on a later start/stop transition. A scene object's `Awake` runs on every peer regardless of which of them already has a role running, so a script that only reacted to edges would miss a role that started before it linked.
 
+## Overriding Awake, OnEnable, OnDisable and OnDestroy
+
+The base classes do required setup in their own `Awake`, `OnEnable`, `OnDisable` and `OnDestroy`: `Awake` resolves the `CoreManager` and, in `NucleusBehaviour<TComponent0>`, requires the system, `OnEnable` and `OnDisable` take and drop the per-step registration, and `OnDestroy` unlinks the system. Unity calls only the most derived method of each name, so a script that needs one of these must override it and call the base method:
+
+```csharp
+protected override void Awake()
+{
+    base.Awake();
+
+    _renderer = GetComponent<Renderer>();
+}
+```
+
+Call the base method first, unless the work must be ready before the system links: `base.Awake()` can link a system that is already present and raise `OnSystemLinked` on the spot, so a reference that hook reads is cached before the call. Setup that wants the system anyway belongs in `OnSystemLinked`.
+
+The build enforces both halves of this rule, as errors:
+
+| Id | Reported when |
+|---|---|
+| `NUCLEUS001` | A class deriving, directly or indirectly, from `NucleusBehaviourBase` declares `Awake`, `OnEnable`, `OnDisable` or `OnDestroy` without `override`, hiding the base method. |
+| `NUCLEUS002` | An override of one of those four methods never calls the base method. |
+
+Either mistake would otherwise leave the behaviour unlinked with nothing logged. The lifecycle hooks above and the per-step virtuals below are empty in the base class, so an override of those may skip the base call and is never reported.
+
 ## Per-step virtuals
 
 `NucleusBehaviourBase` declares eleven `protected virtual void On...(StepDelta stepDelta)` methods, one per loop step, in loop order:
