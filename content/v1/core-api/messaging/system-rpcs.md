@@ -29,7 +29,7 @@ bool sent = TrySendRpc(RpcTarget.Observers, Channel.Reliable, new DamageRpc { Am
 ```
 
 - `RpcTarget` is who the call is for: `RpcTarget.Server` (client to server only), `RpcTarget.Observers` (fan-out to every observer), `RpcTarget.ObserversExcept(connection, isControllerExcluded)` (server only), or `RpcTarget.To(connection)` (one named connection).
-- `Channel` is the channel to send on; a call larger than the MTU is promoted to `Channel.Reliable`.
+- `Channel` is the channel to send on, which a call keeps whatever its size; an unreliable call larger than the MTU is split by the engine and arrives whole or not at all.
 - `RpcSelfDelivery` controls when this peer sees its own call back (`RpcSelfDelivery.None` by default).
 
 The return value reports only what this peer can see: a client cannot know the server's observer set, so a call it routed returning `true` means it was queued, not that it was delivered.

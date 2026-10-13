@@ -17,10 +17,11 @@ Every send picks a `Channel`:
 
 Nucleus is unreliable-first: state, RPCs, and messages default to `Channel.Unreliable` and only move to `Channel.Reliable` when something requires it.
 
-Promotion past the transmission unit differs by what is being sent:
+What happens past the transmission unit differs by what is being sent:
 
-- A message or a remote call that will not fit is promoted to `Channel.Reliable`, because an unreliable transport cannot fragment it and would drop it silently.
-- A state write that will not fit is fragmented instead (`SegmentMode.Split`), sent across multiple segments on whichever channel it was already using.
+- A reliable message or remote call that will not fit is handed to the transport whole, and the transport splits it.
+- An unreliable message or remote call that will not fit is split by the engine into pieces that each fit one datagram, so it stays unreliable on every transport, the relay included. It arrives whole or not at all.
+- A state write that will not fit is sent across several packets on whichever channel it was already using.
 
 ## Maximum Transmission Unit
 
