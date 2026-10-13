@@ -8,10 +8,10 @@ There is no engine-wide configuration object. Every setting is a public field or
 
 ## Construction-only values
 
-Most settings can change at any time. Two cannot, because the engine builds fixed-size structures around them at construction:
+Most settings can change at any time. Two are exceptions:
 
 - **Tick rate.** `NetworkLoopManager.TickRate` is get-only, fixed by the `tickRate` argument passed when the loop starts. `DefaultTickRate` is 30. A requested rate below `MinimumTickRate` (5) or above `MaximumTickRate` (128) is clamped into range and logged, not rejected.
-- **`ServerConfiguration.MaximumConnections`** is a readonly field on the transport's server configuration struct, set once when that struct is constructed.
+- **`ServerConfiguration.MaximumConnections`** is read-only to your code. Change it with `transport.SetMaximumConnections(uint)`, and Synapse applies the new cap the next time the server starts.
 
 The step provider is not on this list. `NetworkLoopManager.UseNetworkLoopStepProvider(INetworkLoopStepProvider)` swaps it at runtime, stopping the previous provider and returning it. To use your own provider from the start, pass it to the `CoreManager` constructor instead: swapped in after construction, it replaces a default provider that has already been stepping the loop from the thread pool.
 
@@ -104,7 +104,7 @@ Pro only.
 
 | Field | Default | Notes |
 |---|---|---|
-| `MaximumConnections` | `UnsetMaximumConnections` (0) | Readonly; set only when the struct is constructed. |
+| `MaximumConnections` | `UnsetMaximumConnections` (0) | Accepts any number at 0. Set it with `transport.SetMaximumConnections(uint)`; Synapse applies it at the next server start. |
 
 ## Local vs. shared values
 

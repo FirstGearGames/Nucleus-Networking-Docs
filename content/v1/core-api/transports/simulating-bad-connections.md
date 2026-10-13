@@ -62,6 +62,8 @@ A transport that cannot simulate a bad connection logs a warning when you set co
 
 `Synapse` supports everything except `DuplicateChance`, which it ignores. A packet it puts out of order is held back by up to 100 ms.
 
+`Synapse` sends its connection setup packets, the handshake and the NAT traversal probes, without any simulated delay or loss, so a connection always opens however bad the conditions are. A connect that succeeds under simulated conditions does not show that the handshake copes with that link.
+
 ## Set the conditions before Synapse connects
 
 `Synapse` decides whether to simulate anything at all when it connects. Set the conditions after adding the transport and before calling `ConnectAsync`, and the connection starts out simulating them.
