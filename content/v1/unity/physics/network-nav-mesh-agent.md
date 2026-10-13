@@ -8,6 +8,10 @@ title: "NetworkNavMeshAgent"
 
 An agent that holds its course costs nothing however far it travels: silence means the follower is still walking the leg it was last told about. Use this instead of `NetworkTransform`, not alongside it — a spawn already carries where the agent stands, and a `NetworkTransform` added on top would replicate the same motion twice.
 
+## NetworkNavMeshAgent needs Unity's AI module
+
+`NetworkNavMeshAgent` compiles only while Unity's AI module (`com.unity.modules.ai`) is enabled, as it is in a new project. The integration sets the `NUCLEUS_NAVMESH` define for you when the module is present. With the module disabled, the component is left out and the rest of the integration still compiles.
+
 ## Inspector fields
 
 | Field | Default | Purpose |
