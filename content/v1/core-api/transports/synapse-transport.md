@@ -35,6 +35,31 @@ A host process calls `ConnectAsync` with both invokers on the same `Synapse` ins
 
 Cap how many clients the server accepts with `synapse.SetMaximumConnections(uint)`. The value lands in `ServerConfiguration.MaximumConnections`, which your code can read but not write, and `ServerConfiguration.UnsetMaximumConnections` (`0`, the default) accepts any number. Synapse applies the cap the next time the server starts. A client beyond it is refused during its handshake without an answer, so it gives up as it would on a server that never answered.
 
+## Finding out why a connection dropped
+
+A connection reported `Disconnected` carries no reason. To learn why, subscribe to `ViolationObserved` on the `Synapse` transport. It is raised for every violation the socket layer reports, before the socket layer acts on it, so a timeout or a reliable message that could not be delivered arrives just before the connection is reported `Disconnected`.
+
+```csharp
+using SynapseSocket.Core.Events;
+
+Synapse synapse = (Synapse)await coreManager.TransportManager.AddTransportAsync<Synapse>();
+synapse.ViolationObserved += OnViolationObserved;
+
+void OnViolationObserved(Connection? connection, in ViolationEventArgs violationEventArgs)
+{
+    if (violationEventArgs.Reason is ViolationReason.Timeout or ViolationReason.ReliableExhausted)
+    {
+        // Record why this connection is about to drop.
+    }
+}
+```
+
+- `Reason` names the cause: `Timeout` when nothing was heard within `ConnectedTimeoutSeconds`, `ReliableExhausted` when a reliable message ran out of resends, `PeerDisconnect` when the other side said goodbye, and the security reasons when a peer sends something malformed, oversized or too fast.
+- `Action` is the response the socket layer has already settled on. The event only reports it and cannot change it.
+- On a server, `connection` is the remote client, still registered. On a client it is the server. It is null for a sender that never connected.
+
+The event is raised on the network loop thread and allocates nothing. A handler may read what it is given, but must not block, stop the transport or disconnect anyone from inside it.
+
 ## Starting and stopping
 
 - `ConnectAsync(Invoker.Server)` starts listening for remote clients.
@@ -58,6 +83,6 @@ Cap how many clients the server accepts with `synapse.SetMaximumConnections(uint
 
 ## Other members
 
-`SetPort` is not overridden by Synapse, so calling it falls through to the base `Transport.SetPort`, which logs a warning that the transport doesn't support it. Set `Configuration.Port` directly instead.
+`SetPort(ushort)` sets both `Configuration.Port`, the port the server binds, and `RemotePort`, the port the client dials.
 
 `IsLocalTransport()` returns `false`. Synapse always uses a real UDP socket, even under `HostPairing.Local`, where the traffic just never crosses one.
