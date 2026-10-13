@@ -18,6 +18,8 @@ Playing in the editor runs over loopback, which is instant and lossless. You can
 
 The Synapse transport supports every field except `DuplicateChance`, which it ignores. A transport that supports none of them logs a warning when you set them.
 
+Synapse sends its connection setup packets, the handshake and the NAT traversal probes, without any simulated delay or loss, so a connection always opens however bad the conditions are. A connect that succeeds under simulated conditions does not show that the handshake copes with that link.
+
 ## Set them in the inspector
 
 `UnityTransportManager` has a **Network Conditions** section in the inspector. Tick **Network Conditions Enabled** and fill in the values. When the transports are added, just before they start, it sets those conditions on every transport, or clears them when the box is unticked. This works with any **Automatic Start Mode**.

@@ -33,7 +33,7 @@ A host process calls `ConnectAsync` with both invokers on the same `Synapse` ins
 | `ConnectedTimeoutSeconds` | `15` | How long a connected socket waits without remote data before the connection is considered timed out. One second is the floor, whatever value is set. Synapse also holds the heartbeat interval to at most a third of this value, so a link carrying nothing else is still heard from twice over before its peer gives up on it. |
 | `ConnectingTimeoutSeconds` | `10` | Not applied by Synapse yet. A connect that goes unanswered is bounded by `ConnectedTimeoutSeconds` instead: Synapse gives up on a pending handshake after the same window it uses for a connected link. |
 
-`Synapse.ServerConfiguration.MaximumConnections` is a readonly field on `ServerConfiguration`, a struct with only a no-argument constructor. There is currently no public way to set it, so every Synapse server runs at `ServerConfiguration.UnsetMaximumConnections`.
+Cap how many clients the server accepts with `synapse.SetMaximumConnections(uint)`. The value lands in `ServerConfiguration.MaximumConnections`, which your code can read but not write, and `ServerConfiguration.UnsetMaximumConnections` (`0`, the default) accepts any number. Synapse applies the cap the next time the server starts. A client beyond it is refused during its handshake without an answer, so it gives up as it would on a server that never answered.
 
 ## Starting and stopping
 
