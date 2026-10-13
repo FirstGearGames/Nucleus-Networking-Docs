@@ -97,7 +97,7 @@ Pro only.
 |---|---|---|
 | `Port` | 0 | |
 | `MaximumTransmissionUnit` | 1200 | Packets longer than this are split into multiple packets. |
-| `ConnectingTimeoutSeconds` | 10 | Synapse does not apply this yet. An unanswered connect times out after `ConnectedTimeoutSeconds` instead. |
+| `ConnectingTimeoutSeconds` | 10 | How long a client waits for the server to answer its connect. Zero falls back to `ConnectedTimeoutSeconds`. |
 | `ConnectedTimeoutSeconds` | 15 | Least applied value is one second. Times out a connection that has received no remote data within this window. |
 
 **`ServerConfiguration`**
@@ -111,7 +111,3 @@ Pro only.
 Most manager settings are purely local: a server and its clients can each run different `StateInterpolation`, `EvaluationCadenceTicks`, timeout, or retention values without breaking the connection, because each peer only governs its own side of the exchange.
 
 Tick rate is the exception that must match. A server and client running different `TickRate` values are ticking at different real-world speeds, which the replication and interpolation built on top of the tick assume does not happen.
-
-## RemoteTimeoutType is declared but nothing reads it
-
-`RemoteTimeoutType` is declared in `Nucleus.Managers.Core` but nothing in the engine reads it. Setting it has no effect.
