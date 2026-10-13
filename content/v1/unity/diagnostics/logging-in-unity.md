@@ -16,9 +16,9 @@ LoggingService.UseLogger(new Logging.Logger());
 
 `Nucleus.Integrations.Unity.Logging.Logger` implements `ILogger` and routes each level to the matching `UnityEngine.Debug` call: `LogInformation` to `Debug.Log`, `LogWarning` to `Debug.LogWarning`, `LogError` to `Debug.LogError`. Because these are the same calls Unity's own code uses, console lines from the engine click through to their call site like any other Unity log.
 
-## Why lines carry a stack trace
+## Lines carry Unity's own stack trace
 
-The Unity `Logger` appends a full stack trace to every message it logs, so you can always see where a line came from even without clicking through. To avoid printing that trace twice, it also overrides `DisableUnconditionalDevelopmentStacktrace()` to return `true`, telling the engine not to add its own unconditional development stack trace on top.
+The Unity `Logger` hands each message to `Debug` unchanged, and Unity attaches its own stack trace as the project's Stack Trace Logging settings allow (Project Settings > Player > Other Settings). It overrides `DisableUnconditionalDevelopmentStacktrace()` to return `true`, so the engine does not add a second trace on top.
 
 ## Reading a line
 
