@@ -19,10 +19,13 @@ A few integration paths are gated behind package presence, and only compile in w
 | Dependency | Define | Gates |
 |---|---|---|
 | `com.unity.addressables` 1.19+ | `NUCLEUS_ADDRESSABLES` | Addressables-based asset loading |
+| `com.unity.modules.ai`, the AI module, enabled in a new project | `NUCLEUS_NAVMESH` | `NetworkNavMeshAgent` and its inspector |
 | `Unity.ResourceManager` | — | Referenced alongside Addressables |
 | Relay transport | `BLITZ_RELAY` | The Blitz Relay transport (Pro only) |
 
 Without these packages installed, the corresponding code simply isn't compiled in — no stub, no runtime check.
+
+The demos have requirements of their own: the Input System, uGUI 2.0 or newer (for TextMeshPro), AI Navigation and Multiplayer Play Mode packages, and the Vehicles and Terrain modules. Every demo assembly is gated on them, so a project without one of them still compiles. The demos are skipped, and the editor warns once per session naming the packages to install.
 
 ## Toolchain for building from source
 
