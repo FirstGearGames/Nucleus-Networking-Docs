@@ -31,7 +31,7 @@ A host process calls `ConnectAsync` with both invokers on the same `Synapse` ins
 | `Port` | `0` | Server listen port and the port the client connects to. The engine's own default is `0`; the Unity component sets it to `7777`, but that default lives on the component, not here. |
 | `MaximumTransmissionUnit` | `1200` | Packets beyond this length are split into multiple packets. |
 | `ConnectedTimeoutSeconds` | `15` | How long a connected socket waits without remote data before the connection is considered timed out. One second is the floor, whatever value is set. Synapse also holds the heartbeat interval to at most a third of this value, so a link carrying nothing else is still heard from twice over before its peer gives up on it. |
-| `ConnectingTimeoutSeconds` | `10` | Not applied by Synapse yet. A connect that goes unanswered is bounded by `ConnectedTimeoutSeconds` instead: Synapse gives up on a pending handshake after the same window it uses for a connected link. |
+| `ConnectingTimeoutSeconds` | `10` | How long a client waits for the server to answer its connect before giving up and returning to `Disconnected`. Zero falls back to `ConnectedTimeoutSeconds`. Only the client applies it, since a server answers every handshake as it arrives. |
 
 Cap how many clients the server accepts with `synapse.SetMaximumConnections(uint)`. The value lands in `ServerConfiguration.MaximumConnections`, which your code can read but not write, and `ServerConfiguration.UnsetMaximumConnections` (`0`, the default) accepts any number. Synapse applies the cap the next time the server starts. A client beyond it is refused during its handshake without an answer, so it gives up as it would on a server that never answered.
 

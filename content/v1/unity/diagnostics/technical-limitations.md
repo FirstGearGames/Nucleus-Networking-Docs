@@ -6,7 +6,6 @@ title: "Technical limitations"
 
 Some names exist in the engine but nothing wires them up yet. Treat them as documentation of intent, not as working settings.
 
-- **Remote-timeout selection** — `RemoteTimeoutType` (`Disabled`, `Release`, `Development`) is a real, documented enum, but no engine code reads it to decide when dead-connection timeouts run. Setting it has no effect today.
 
 ## These features were built and then deliberately removed
 
