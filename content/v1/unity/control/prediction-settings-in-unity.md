@@ -37,6 +37,18 @@ Two consequences follow directly from this:
 - Raising the manager's field does not always change a given member's ring. If a member's served-interval history or its own `GetRingDepth()` already exceeds `PredictionHistoryTicks`, the field has no effect on that member.
 - Changing the field after systems have started does not resize rings already allocated. The comparison happens at member initialization, not continuously.
 
+## Replay Hold Radius
+
+The **Replay Hold Radius** field (backed by `_replayHoldRadius`) sets `SystemManager.ReplayHoldRadius` as the managers come up. When a reconcile restores the objects this client controls, every object it does not control is held at the reconcile's start tick while they replay; with a radius set, only the ones within it of a restored object are held. Distances are read through the interest position reader, so an object whose position cannot be read is always held, and only Pro reads positions. Zero, the default, holds every object. The inspector corrects a negative value to zero.
+
+## Send Result Values
+
+The **Send Result Values** field (backed by `_resultValueSendEnabled`, on by default) sets `SystemManager.IsResultValueSendEnabled`. It is read on the controller: while it is on, the controller sends its `PredictionMode.Validate` result values beside the hash every tick, so a server that finds a result different can name the members and both values through `NetworkSystem.ResultMismatched`. The values cost bandwidth on every tick, so turn it off for a release build to keep the hash alone.
+
+## Predicted By Observers
+
+The **Predicted By Observers** toggle sits under Prediction on the `NetworkSystemObject` inspector. Ticked, it sets `NetworkSystem.IsObserverPredictionEnabled` on every system as it links to the object, on every peer, so a client that observes the object predicts it as its controller does. It has an effect only on an observing client that itself controls an object sending client state. The object's simulation must carry missing client state with `TryGetLastState`, and each observing client pays a simulation per tick and a replay per reconcile for it. See [Predicting another client's object](../../core-api/control/reconciliation.md#predicting-another-clients-object).
+
 ## Where to go next
 
 For what a predicted member does with the ring once it is sized, see [Predicted members and prediction history](../../core-api/control/prediction-history-and-predicted-members.md).
