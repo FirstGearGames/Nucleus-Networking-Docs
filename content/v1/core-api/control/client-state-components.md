@@ -29,8 +29,10 @@ Each component is stamped with a `byte Id` unique within its containing system, 
 The declarative route is to expose client state fields as `NetworkMemberBase` members and register each one from the subclass constructor:
 
 ```csharp
-protected void RegisterMember(NetworkMemberBase networkMember)
+protected void RegisterMember(NetworkMemberBase networkMember, bool isCarriedForward = true)
 ```
+
+Pass `isCarriedForward: false` for a member that must not repeat when the last client state is carried across a tick that has none, such as a jump press (see [Ticks whose client state did not arrive](#ticks-whose-client-state-did-not-arrive)).
 
 Call `RegisterMember` once per member before the system initializes the component. Each registered member is wired with a ring depth of at least `SystemManager.PredictionHistoryTicks` (or the member's own default ring depth, if that is larger), so a tick's value stays addressable for as long as a replay might need to walk back to it. Components built entirely from registered members need no `Write`/`Read` overrides at all — the default implementations serialize and deserialize every registered member, in registration order, through each member's own encoding.
 
@@ -55,6 +57,44 @@ protected virtual bool TryValidateState(uint tick) => true;
 
 It runs after `Read` deserializes the fields and before `ClientStateReceived` fires. It may mutate the deserialized field values directly (a denied jump becomes `false`), and its return value reports whether the client state was accepted unchanged: `true` if nothing was touched, `false` if anything was rejected or modified. A `false` result queues a correction that is forwarded back to the controller.
 
+## The server takes one tick of client state per server tick
+
+Client state is ordinary per-tick state: one entry per tick per component, released through the same State Interpolation as every other state. The server takes one of the controller's ticks per server tick, so a burst that arrives together is spread over the ticks that follow. A tick it cannot take in time is dropped and one that arrives after its tick was simulated is late; both are counted on the controller's `Connection`:
+
+```csharp
+public uint ClientStateDroppedCount { get; }
+public uint ClientStateLateCount { get; }
+public uint ClientStateReanchorCount { get; }
+```
+
+A client that stalls and resumes is re-anchored: when its client state arrives further behind the ticks the server already simulated for it than the State Interpolation, the server re-bases onto the client's ticks, sends a reconcile for each system the client controls, and counts it in `ClientStateReanchorCount`.
+
+## Ticks whose client state did not arrive
+
+A system a remote client drives is simulated on every server tick whether or not that tick's client state arrived: before the first one, and while the client's packets are lost. That is what lets the server act on the object in its own world, a collision for instance. On such a step `StepDelta.IsClientStateMissing` is true, `ClientStateReceived` is not raised, and every registered member reads its default. To carry the previous tick's client state forward instead, call:
+
+```csharp
+public bool TryGetLastState(bool isEveryMemberCarried)
+```
+
+The members then read the client state as it stood at the end of the previous tick: the client's own when that tick's arrived, and whatever the server's step left in the members otherwise, so a value the server writes into a member is what the next tick carries. Pass `false` to keep the members registered with `isCarriedForward: false` at their defaults. It returns `false`, leaving the defaults, before any client state has arrived. Nothing is carried unless you call it, so a game that does not carry is reconciled back to what the server simulated.
+
+```csharp
+protected override void OnEarlyFixedUpdate(StepDelta stepDelta, SimulationType simulationType)
+{
+    if (!NetworkSystem.TryGetClientStateComponent(out MoveClientState clientState))
+        return;
+
+    // The walk goes on and a press count, which only goes up, repeats nothing.
+    if (stepDelta.IsClientStateMissing)
+        clientState.TryGetLastState(isEveryMemberCarried: true);
+
+    Position.Value += clientState.Direction * Speed;
+}
+```
+
+A tick runs missing only once the State Interpolation says it should have arrived. Just after a stall drained the buffer, or with a client clock running slower than the server's, the next client tick runs when it arrives instead, so those are the server ticks that pass the object by.
+
 ## ClientStateReceived and ClientStateCorrected
 
 ```csharp
@@ -64,7 +104,7 @@ public event ClientStateCorrectedHandler ClientStateCorrected;  // delegate void
 
 `ClientStateReceived` fires whenever a client state payload has been applied to the fields: on the server after `TryValidateState` runs for the controller's tick, and on a remote observer after a forwarded, validated payload is applied. Read the fields inside the handler; they're already updated.
 
-On a host, which is the server for the system it controls, `ClientStateReceived` is always raised for that tick. `ClientStateCorrected` is raised alongside it only when `TryValidateState` returned `false` for that tick — never unconditionally. On a remote (non-host) controller, `ClientStateCorrected` fires when the server forwards a correction, and the corrected values land in the member's ring history at the corrected tick so a later replay uses the validated client state.
+On a host, which is the server for the system it controls, `ClientStateReceived` is always raised for that tick. `ClientStateCorrected` is raised alongside it only when `TryValidateState` returned `false` for that tick — never unconditionally. On a remote (non-host) controller, `ClientStateCorrected` fires when the server's client state for a tick differs from the controller's own, carried by a forwarded correction or by a reconcile the server ordered, and the server's values land in the member's ring history at that tick so a later replay uses the validated client state. It is raised once per tick however many of those carry it.
 
 ## Forwarding to observers
 
@@ -72,7 +112,7 @@ On a host, which is the server for the system it controls, `ClientStateReceived`
 public bool ForwardingEnabled = true;
 ```
 
-When `ForwardingEnabled` is true, the server includes the component in the forwarded client state subpacket sent to the system's delta observers each tick. Remote observers receive the validated values through their own `ClientStateReceived`, letting them drive presentation (audio, animation) from the controller's actions; the controller itself receives only the correction flag, surfaced through `ClientStateCorrected`. A component with `ForwardingEnabled` false is validated and raises events locally but is never sent to observers.
+When `ForwardingEnabled` is true, the server includes the component in the forwarded client state subpacket sent to the system's delta observers each tick. Remote observers receive the validated values through their own `ClientStateReceived`, letting them drive presentation (audio, animation) from the controller's actions; the controller itself receives only the correction flag, surfaced through `ClientStateCorrected`. A component with `ForwardingEnabled` false is validated and raises events locally but is never sent to observers. A reconcile the server orders still carries its validated client state for the reconcile's start tick to the controller, whatever the flag says.
 
 ## Client state components are pooled, so they must reset themselves
 
