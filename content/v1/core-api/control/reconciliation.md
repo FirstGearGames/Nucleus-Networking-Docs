@@ -57,6 +57,30 @@ Only the server can call it; a client attempting to reconcile a system is refuse
 
 A server reaches for this when it needs to force a correction outside the normal predicted-member compare: for example, after a gameplay event that invalidates a controller's prediction in a way the ordinary tolerance check would not catch (a teleport, a respawn, an out-of-band state change the client could not have predicted from its own client state). On arrival, the receiving system applies the full state and then requests a replay itself, so `ReconcileRequired` fires even for systems whose predicted members had nothing to compare against.
 
+## Holding only the systems near a replay
+
+Systems the client does not control are held at the start tick while the ones it controls replay. In a crowded scene, set a radius so only those near a restored system are held:
+
+```csharp
+coreManager.SystemManager.ReplayHoldRadius = 20f;
+```
+
+Distances are read through the interest position reader (`InterestManager.SetPositionReader`). A system whose position cannot be read is always held, and the rest keep their latest values and raise no replay events. `SystemManager.UnsetReplayHoldRadius`, the default, holds every system, and so does a build without distance interest.
+
+## Predicting another client's object
+
+A client can predict a system another client controls instead of holding it, opted in per system on that client:
+
+```csharp
+observedSystem.IsObserverPredictionEnabled = true;
+```
+
+Its fixed updates then run as `SimulationType.Forward` on every live tick, from the client state the server forwards, which lands on the local tick its packet's echo names. On a live tick that client state has not arrived yet, so the step says `StepDelta.IsClientStateMissing` and the game carries the last client state forward with `TryGetLastState`, exactly as the server does. The server's outcomes are compared with the prediction at the observer's echo, and a reconcile restores and replays the system with the ones the observer controls. Nothing new travels. The component must leave `ForwardingEnabled` on, and the observer needs an echo of its own, so it must control a system that sends client state.
+
+## Validate results the server found different
+
+For `PredictionMode.Validate` members the server compares a hash of the controller's result. When one differs it queues the correcting reconcile and raises `NetworkSystem.ResultMismatched` with a `ResultMismatchReport`: the controller's `Connection`, the `Tick` and, when the controller sent its values beside the hash, the `Members` that differed. Each of those answers `TryGetResultMismatchValues(out controllerValue, out serverValue)` until the tick advances. The controller sends the values while its `SystemManager.IsResultValueSendEnabled` is set, the default; turn it off in a release build to keep the hash alone. No violation is raised, so what to do about the client is the game's call.
+
 ## See also
 
 Physics convergence followers can hide the visual jump a rewind produces — see the Physics documentation for how a follower interpolates toward the corrected pose instead of snapping to it.
