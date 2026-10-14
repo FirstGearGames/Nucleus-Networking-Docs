@@ -4,18 +4,18 @@ title: "Predicted members and prediction history"
 
 > **Using Unity?** See [Prediction settings on the Unity manager](../../unity/control/prediction-settings-in-unity.md).
 
-## The isPredicted constructor argument
+## The predictionMode constructor argument
 
-`NetworkMember<T0>` takes an `isPredicted` constructor argument, false by default:
+`NetworkMember<T0>` takes a `predictionMode` constructor argument, `PredictionMode.None` by default:
 
 ```csharp
-public readonly NetworkMember<int> Counter = new(isPredicted: true);
-public readonly NetworkMember<System.Numerics.Vector3> Position = new(isPredicted: true);
+public readonly NetworkMember<int> Counter = new(predictionMode: PredictionMode.Input);
+public readonly NetworkMember<System.Numerics.Vector3> Position = new(predictionMode: PredictionMode.Input);
 ```
 
 A predicted member rides its inputs instead of accepting upstream state directly. On a pure client controller it is excluded from the state the controller serializes upstream: `TryFlagAsChanged` refuses to flag it as changed while the local peer is a client controller and not server-started, because the value is produced locally from inputs rather than sent. On inbound server outcomes it is compare-gated against the controller's own ring rather than applied outright, and on divergence it is rewound to the disagreeing tick and replayed forward from there.
 
-Prediction is per member, not per method. Nothing about `isPredicted` generates code or requires a matched pair of predict/reconcile methods; a member either opts in at construction or it does not, and the compare gate and replay machinery apply uniformly to whichever members did.
+Prediction is per member, not per method. Nothing about `predictionMode` generates code or requires a matched pair of predict/reconcile methods; a member either opts in at construction or it does not, and the compare gate and replay machinery apply uniformly to whichever members did.
 
 ## The compare gate
 
@@ -69,6 +69,6 @@ It carries the `SystemId` of the `NetworkSystem` whose predicted member the send
 
 ## Opting in
 
-No shipped component in the engine or the Unity integration sets `isPredicted: true`; only test components (`PredictedStateComponent`, `InterpolationStateComponent`) do. Prediction is an explicit, per-member opt-in you add to your own `NetworkMember<T0>` field declarations, not a default behavior or something a base class turns on for you.
+No shipped component in the engine or the Unity integration sets `predictionMode: PredictionMode.Input`; only test components (`PredictedStateComponent`, `InterpolationStateComponent`) do. Prediction is an explicit, per-member opt-in you add to your own `NetworkMember<T0>` field declarations, not a default behavior or something a base class turns on for you.
 
 See [Reconciliation](./reconciliation.md) for what happens after a rewind, including how a replay re-runs the ticks between the corrected tick and the present.
