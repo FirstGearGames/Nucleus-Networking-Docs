@@ -13,10 +13,10 @@ That is the entire benefit. Prediction does not make an object more accurate, mo
 Turning prediction on for a `NetworkMember<T0>` is one constructor argument:
 
 ```csharp
-public NetworkMember(CompressionLevel deltaCompressionLevel = CompressionLevel.Tight, bool isAutomaticPoolingEnabled = false, bool isPredicted = false, float accuracy = float.NaN, float interpolationSnapThreshold = float.NaN, SendInterval sendInterval = SendInterval.Normal, TransmissionMode transmissionMode = TransmissionMode.Interval, bool isExtrapolationEnabled = true)
+public NetworkMember(CompressionLevel deltaCompressionLevel = CompressionLevel.Tight, bool isAutomaticPoolingEnabled = false, PredictionMode predictionMode = PredictionMode.None, float accuracy = float.NaN, float interpolationSnapThreshold = float.NaN, SendInterval sendInterval = SendInterval.Normal, TransmissionMode transmissionMode = TransmissionMode.Interval, bool isExtrapolationEnabled = true, byte correctionSmoothingTicks = 0)
 ```
 
-`isPredicted: true` does three things, and each one is a real cost:
+`predictionMode: PredictionMode.Input` does three things, and each one is a real cost:
 
 - **A history ring, not just a live value.** A predicted member's ring depth is sized to cover the round trip: it adopts `SystemManager.PredictionHistoryTicks` when that is configured wider than the member's own default depth (two slots), because the compare gate has to still be able to address the tick a server outcome echoes back. A member served on a wider interval than the tick rate widens its own ring further, since the gap between its writes has to fit in the ring too. None of this is allocated for an unpredicted member.
 - **A replay whenever the compare gate misses.** On every inbound server outcome, the predicted member's ring value is compared against what actually arrived. A match costs nothing further. A miss rewinds the member to the corrected tick and fires `NetworkSystem.ReconcileRequired`, which hands back the corrected tick; the replay runs from the tick after it. Game code that subscribes to it wraps each re-simulated tick in `BeginReplayTick(tick)` and `EndReplayTick()`, re-running its own simulation inside so state member writes land in that tick's ring slot instead of stomping the live head, until it's caught back up to the present.
@@ -27,7 +27,7 @@ public NetworkMember(CompressionLevel deltaCompressionLevel = CompressionLevel.T
 Most objects do not need any of this. In order of cost:
 
 - **An uncontrolled object with interpolation.** No controller, no ring beyond the ordinary two slots, no compare gate, no replay. The receiver just animates between the values it receives, paced by `SystemManager.StateInterpolation` (0 by default, capped at `MaximumStateInterpolation`). This is the default for anything nobody is driving.
-- **A controller-written value with no prediction.** The controller still writes the member every tick, but `isPredicted` stays `false`. The controller sees its own writes with the same round-trip delay as everyone else; no local guess, no rewind, no replay. Cheaper than prediction, more responsive than a purely server-driven value the controller doesn't write at all.
+- **A controller-written value with no prediction.** The controller still writes the member every tick, but `predictionMode` stays `PredictionMode.None`. The controller sees its own writes with the same round-trip delay as everyone else; no local guess, no rewind, no replay. Cheaper than prediction, more responsive than a purely server-driven value the controller doesn't write at all.
 - **A purely local visual that is never replicated.** Not a `NetworkMember<T0>` at all. Particle effects, camera shake, UI feedback — anything that only needs to look right on the machine that triggered it costs nothing on the wire and needs no reconciliation, because there is nothing to reconcile.
 
 ## The rule that disqualifies a candidate
@@ -40,7 +40,7 @@ Prediction only matters to the peer that controls the object, because it's the o
 
 ## The choice is per member
 
-`isPredicted` is a per-`NetworkMember<T0>` constructor argument, not a project setting or even a per-object one. A single component can predict its transform while leaving its health, ammo count, or any other member unpredicted — each one is its own opt-in. As of this writing, no shipped component in the codebase passes `isPredicted: true`; the only members that do live in the test tree (`Nucleus.Tests/Components/Testing/PredictedStateComponent.cs`, `InterpolationStateComponent.cs`). Prediction is available, per member, wherever the compare-gate-and-replay cost is worth paying — it just isn't turned on anywhere by default.
+`predictionMode` is a per-`NetworkMember<T0>` constructor argument, not a project setting or even a per-object one. A single component can predict its transform while leaving its health, ammo count, or any other member unpredicted — each one is its own opt-in. As of this writing, no shipped component in the codebase passes `predictionMode: PredictionMode.Input`; the only members that do live in the test tree (`Nucleus.Tests/Components/Testing/PredictedStateComponent.cs`, `InterpolationStateComponent.cs`). Prediction is available, per member, wherever the compare-gate-and-replay cost is worth paying — it just isn't turned on anywhere by default.
 
 ## Predicted spawning is Pro, predicted motion is not
 

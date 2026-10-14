@@ -36,21 +36,22 @@ Returns the value committed to the slot before the live one, together with the t
 public NetworkMember(
     CompressionLevel deltaCompressionLevel = CompressionLevel.Tight,
     bool isAutomaticPoolingEnabled = false,
-    bool isPredicted = false,
+    PredictionMode predictionMode = PredictionMode.None,
     float accuracy = float.NaN,
     float interpolationSnapThreshold = float.NaN,
     SendInterval sendInterval = SendInterval.Normal,
     TransmissionMode transmissionMode = TransmissionMode.Interval,
-    bool isExtrapolationEnabled = true);
+    bool isExtrapolationEnabled = true,
+    byte correctionSmoothingTicks = 0);
 ```
 
-All eight arguments are supplied by name at the field declaration, e.g. `NetworkMember<T> _x = new(isPredicted: true);`.
+All nine arguments are supplied by name at the field declaration, e.g. `NetworkMember<T> _x = new(predictionMode: PredictionMode.Input);`.
 
 | Argument | Construction-time only? | Meaning |
 | --- | --- | --- |
 | `deltaCompressionLevel` | Yes | The compression level used when delta-encoding this member's value. Defaults to `CompressionLevel.Tight`. |
 | `isAutomaticPoolingEnabled` | Yes | Returns dropped `IPoolResettable` ring occupants to their pool through `NetworkTypePoolReturner<T0>`. When true, the member owns instances assigned to `Value`: rent them from `ResettableObjectPool<T0>` and never retain or mutate an instance after assigning it. |
-| `isPredicted` | Yes | Includes this member in client-side prediction: excluded from the controller's upstream state, compare-gated against the controller's own ring history on inbound server outcomes, rewound and replayed on divergence. |
+| `predictionMode` | Yes | `PredictionMode.None` (the default) leaves the member unpredicted. `PredictionMode.Input` includes it in client-side prediction: excluded from the controller's upstream state, compare-gated against the controller's own ring history on inbound server outcomes, rewound and replayed on divergence. `PredictionMode.Validate` has the server check the controller's result, checked the same way as `Input` for now. |
 | `accuracy` | Construction default only | The wire accuracy for delta encoding, loss recovery, and lossy serialization. `float.NaN` (the default) defers to the per-type default accuracy. A per-call accuracy passed to `Initialize` still overrides it, and coarser values trade precision for bandwidth on quantities that tolerate more error than position. |
 | `interpolationSnapThreshold` | Yes | The distance beyond which `InterpolatedValue` snaps to `Value` instead of animating from `PreviousValue`. `float.NaN` (the default) disables snapping. Usable only on numeric types with a registered tolerance comparer. |
 | `sendInterval` | No — see `SetSendInterval` | The span between deltas while `TransmissionMode.Interval` is in force. `SendInterval.Normal` sends every tick. |
