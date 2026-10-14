@@ -23,7 +23,7 @@ A `State` packet's body is not one thing — it is a sequence of framed subpacke
 | `Delta` | Delta-serialized system state: members encoded against their shared baseline, for a change the sender made itself. The default, cheapest kind — a world that never grants write access emits only this one. |
 | `Full` | Full-serialized system state, used for spawns and resyncs. |
 | `Controller` | Controller changes, as a list of `(SystemId, ControllerConnectionId, ControllerRetentionToken)` entries. |
-| `Input` | Tick-aligned input from the controlling client. Only ever sent client→server, never replicated downstream. |
+| `ClientState` | Tick-aligned client state from the controlling client. Only ever sent client→server, never replicated downstream. |
 | `Reconcile` | Server→controller state correction carrying the server's full state for a system at the current tick. |
 | `Ack` | A standalone acknowledgment carrying the receiver's highest fully-applied tick that carried state. Written only when that value has advanced and there's no other outbound traffic to piggyback it on. |
 | `Recovery` | Targeted loss recovery: the served-through tick followed by absolute full values for each recovered system's changed components. Systems spawned since the acknowledged tick ride `Full` instead. |

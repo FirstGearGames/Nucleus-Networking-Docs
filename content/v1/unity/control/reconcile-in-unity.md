@@ -46,7 +46,7 @@ private void OnReconcileRequired(uint rewoundTick)
 }
 ```
 
-`rewoundTick` is the local tick the server's values were rewound onto. The server's value at that tick already includes that tick's input, so replay starts at the tick after it. It is `NetworkLoopManager.UnsetTick` when the correction was a snap with no replay target (a server `SendReconcile` that landed with no processed-input echo to rewind against); skip the replay in that case.
+`rewoundTick` is the local tick the server's values were rewound onto. The server's value at that tick already includes that tick's client state, so replay starts at the tick after it. It is `NetworkLoopManager.UnsetTick` when the correction was a snap with no replay target (a server `SendReconcile` that landed with no echo of the processed client state tick to rewind against); skip the replay in that case.
 
 ## Replay each invalidated tick
 
@@ -64,7 +64,7 @@ protected override void OnReconcile(StepDelta stepDelta)
     {
         NetworkSystem.BeginReplayTick(tick);
 
-        // Re-run this tick's simulation: read its recorded input, advance movement/physics as it
+        // Re-run this tick's simulation: read its recorded client state, advance movement/physics as it
         // would have run live.
 
         NetworkSystem.EndReplayTick();
@@ -80,7 +80,7 @@ protected override void OnReconcile(StepDelta stepDelta)
 
 A single inbound pass can correct several members on the same system: several predicted members that diverged, or a full-state correction the server sent with `SendReconcile`. `NetworkSystem` accumulates all of them internally and raises `ReconcileRequired` once, with the earliest rewound tick among them. A handler therefore replays once per correcting pass, not once per corrected member.
 
-A server correction of your inputs does not raise `ReconcileRequired`. It raises `NetworkInputComponent.InputCorrected` with the corrected tick instead.
+A server correction of your client state does not raise `ReconcileRequired`. It raises `NetworkClientStateComponent.ClientStateCorrected` with the corrected tick instead.
 
 ## See also
 

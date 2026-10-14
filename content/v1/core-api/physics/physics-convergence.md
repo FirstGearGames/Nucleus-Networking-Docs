@@ -59,4 +59,4 @@ By default `Step` projects the snapshot with a closed-form trajectory. Setting `
 
 ## Locally predicted bodies
 
-`IsLocallyPredicted`, `PredictionMaximumProjectionSeconds`, and `PredictionCorrectionRate` only apply to a body this peer is driving with its own input rather than following from the server. See [locally predicted bodies](./locally-predicted-bodies.md).
+`IsLocallyPredicted`, `PredictionMaximumProjectionSeconds`, and `PredictionCorrectionRate` only apply to a body this peer is driving with its own client state rather than following from the server. See [locally predicted bodies](./locally-predicted-bodies.md).

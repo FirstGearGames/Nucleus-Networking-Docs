@@ -18,11 +18,11 @@ Pass a `Connection` to make that client the controller, or `null` to return cont
 
 A single comparison - "does this connection hold `ControllerConnectionId`" - decides three separate things at once:
 
-- **Input routing**: which connection's inputs the system applies.
+- **Client state routing**: which connection's client state the system applies.
 - **Prediction**: whether this peer predicts the system locally at all.
 - **State write permission**: the controller may always write state, regardless of `StateWriteAccess`.
 
-They're decided by the same comparison because they describe the same relationship from three angles: the connection driving the object, the peer allowed to run it ahead of the network, and the peer allowed to tell the server what its state is. Splitting them would let a system take input from one connection while writing state for another, which is not a state Nucleus represents.
+They're decided by the same comparison because they describe the same relationship from three angles: the connection driving the object, the peer allowed to run it ahead of the network, and the peer allowed to tell the server what its state is. Splitting them would let a system take client state from one connection while writing state for another, which is not a state Nucleus represents.
 
 A client write for a system it does not control - or a client delta that isn't fully absolute, since a client's write always has to be - is rejected by the server and raised as an `UncontrolledStateChangeViolation`:
 

@@ -14,14 +14,14 @@ Scenes that share a physics world (every scene not loaded with a local physics w
 
 | Event | Signature | Fires |
 |---|---|---|
-| `WorldStepStarted` | `WorldStepStartedHandler(uint tick, float stepDelta)` | Before each world step. This is where gameplay applies per-step input forces on the simulated cadence, since Unity's own `FixedUpdate` no longer matches when the world actually steps. |
+| `WorldStepStarted` | `WorldStepStartedHandler(uint tick, float stepDelta)` | Before each world step. This is where gameplay applies per-step forces from client state on the simulated cadence, since Unity's own `FixedUpdate` no longer matches when the world actually steps. |
 | `BodyRegistered` | `BodyRegisteredHandler(ProjectedRigidbody projectedRigidbody)` | When a body joins the driver's step set. |
 | `BodyDeregistered` | `BodyDeregisteredHandler(ProjectedRigidbody projectedRigidbody)` | When a body leaves the driver's step set. |
 
 ```csharp
 driver.WorldStepStarted += (tick, stepDelta) =>
 {
-    // Apply per-step input forces here.
+    // Apply per-step forces from client state here.
 };
 ```
 

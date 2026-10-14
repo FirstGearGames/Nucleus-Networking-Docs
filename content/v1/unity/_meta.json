@@ -19,7 +19,7 @@
   },
   {
     "slug": "control",
-    "title": "Control, Inputs and Prediction",
+    "title": "Control, Client State and Prediction",
     "type": "folder",
     "defaultOpen": false
   },
