@@ -8,7 +8,7 @@ title: "Prediction settings on the Unity manager"
 
 The Unity system manager exposes a **Prediction History Ticks** field (backed by `_predictionHistoryTicks`). It defaults to `SystemManager.UnsetPredictionHistoryTicks`, which is zero.
 
-Zero means "leave the per-member defaults alone." Every predicted member and input member already sizes its own ring; this field only raises that ring when a value is set.
+Zero means "leave the per-member defaults alone." Every predicted member and client state member already sizes its own ring; this field only raises that ring when a value is set.
 
 ## The field is pushed onto the core manager as it comes up
 
