@@ -24,6 +24,14 @@ These fire from state application, spawning, and RPC dispatch. All default to `I
 | `RpcSendPermissionViolation` | `SystemId` | Whether permission was revoked while calls already sent were still in flight; a well-behaved client reaches this on that race alone. |
 | `RpcFloodViolation` | `ReceivedRpcCount`, `AllowedRpcCount` | `RpcManager.MaximumInboundRpcsPerConnectionPerDrain` against what the client actually needs to send in one drain, before assuming a flood attempt. |
 
+## Malformed-data violation
+
+`MalformedDataViolation` fires on the server when reading data a client sent throws, so the data is not applied. A well-behaved client never sends data the server cannot read, so it defaults to `Kick` in a release build and logs `Sent data the server could not read.` as a warning. A debug build (`#if DEBUG`) raises it with `Ignore` and no log line, and the read site logs the exception instead, since there the usual cause is a serializer under development.
+
+| Type | Payload | Check first |
+|---|---|---|
+| `MalformedDataViolation` | `Kind` (`State`, `FullBody`, `Recovery`, `ClientState`, `Message`, `Rpc`), `SystemId` (zero when not for a system) | Whether both builds share the same serializers and member layout for that `Kind`; a version mismatch between client and server builds reads exactly like a forged packet. Run a debug build to see the exception. |
+
 ## Protocol-direction violations
 
 These fire when a client answers about a bundle or scene it was never asked about. The server drives every load and release with a reliable request; nothing in the engine sends these messages upstream, so a well-behaved client cannot produce any of the four. They default to `Kick`.
