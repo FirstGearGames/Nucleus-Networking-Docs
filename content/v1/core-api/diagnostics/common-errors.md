@@ -55,6 +55,7 @@ A violation writes one of these lines only when its settled action is `Log` or `
 
 - `EmptyCollectionDeltaViolation` — a collection member delta declaring no operations; a compliant sender can't produce one.
 - `InvalidStateAckViolation` — a Connection acknowledged a state tick above the local tick.
+- `MalformedDataViolation` — reading data a client sent threw on the server; kicks in a release build, logs the exception in a debug build.
 - `PredictedStateChangeViolation` — a controller sent state for a member that should only ride upstream as client state.
 - `RecoveryUnconfirmedViolation` — a served recovery went unconfirmed for the full patience window and had to be re-served.
 - `RetentionExceededViolation` — an acked tick fell beyond the retention window, forcing a full-world recovery.
