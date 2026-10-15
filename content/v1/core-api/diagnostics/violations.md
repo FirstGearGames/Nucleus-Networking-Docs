@@ -38,7 +38,7 @@ The handler receives a `ViolationContext<T0>` and returns a `ViolationAction`:
 - `Connection` — the offending Connection, read-only.
 - `Violation` — the typed violation payload, read-only.
 - `Action` — seeded with the framework default for this raise; the handler can read it back and return it unchanged to accept the default, or return something else to override it.
-- `Log` — seeded by the raise site, if it set one; the handler can leave it, replace it with its own `LogEntry`, or clear it with `context.Log = default` to silence it.
+- `Log`: seeded by the raise site, if it set one; the handler can leave it, replace it with its own `LogEntry`, or clear it with `context.Log = default` to silence it.
 
 ```csharp
 public delegate ViolationAction ViolationHandler<T0>(ref ViolationContext<T0> violationContext)
@@ -49,8 +49,8 @@ public delegate ViolationAction ViolationHandler<T0>(ref ViolationContext<T0> vi
 
 `ViolationAction` has two values:
 
-- `Ignore` — no consequence, Connection stays intact.
-- `Kick` — disconnects the Connection.
+- `Ignore`: no consequence, Connection stays intact.
+- `Kick`: disconnects the Connection.
 
 `ViolationManager.DefaultAction` is `Ignore`. Each violation type is raised with its own default, which overrides `DefaultAction` when no handler is registered for that type: most types default to `Ignore`, and the bundle- and scene-protocol faults (unsolicited bundle/scene reports, unexpected bundle/scene load requests) default to `Kick`. A registered handler can still return whatever action it wants regardless of that per-raise default.
 
