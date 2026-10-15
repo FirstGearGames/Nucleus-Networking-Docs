@@ -62,10 +62,10 @@ A registration is not scoped to the scene or to the GameObject that made it - it
 
 ## Reading a violation from the console
 
-With no handler registered, most violations are raised with `ViolationAction.Ignore` and write nothing to the console. The scene- and bundle-protocol faults default to `Kick`, and only `PacketTransformRejectedViolation` (Pro) falls back to `ViolationManager.DefaultAction`, which is `ViolationAction.Log`. To see the silent ones, register an `IViolationObserver` or a per-type subscriber as above and log them yourself. A `Log` action writes a warning of the form:
+With no handler registered, most violations are raised with `ViolationAction.Ignore` and write nothing to the console. The scene- and bundle-protocol faults default to `Kick`, and only `PacketTransformRejectedViolation` (Pro) falls back to `ViolationManager.DefaultAction` (`ViolationAction.Ignore`), which always logs a warning. Logging no longer rides on the action: it is carried on `violationContext.Log`, a `LogEntry` the raise site may seed and the deciding handler may change or clear. To see the silent ones, register an `IViolationObserver` or a per-type subscriber as above and log them yourself. A set `Log` writes a line of the form:
 
 ```
-Violation [<ViolationTypeName>] from Connection [<connection>].
+Violation [<ViolationTypeName>] from Connection [<connection>]: <message>
 ```
 
 A `Kick` action logs a similar line before disconnecting; a `Kick` settled on a non-server peer logs that it was not enforced.
