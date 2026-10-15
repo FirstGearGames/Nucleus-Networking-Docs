@@ -39,6 +39,16 @@ With `SystemManager.PartialStateApplyEnabled` on, which is the default, the rece
 
 A tick is still discarded whole when a missing packet carried a change the rest of the tick relies on, such as a despawn, a controller change or a reparent. Applying around such a change could put state on the wrong object.
 
+## A client's own writes are recovered too
+
+What a client writes to a system it controls, or one it has been allowed to write, always reaches the server eventually, however much of the upstream link is lost. Messages and remote calls are not covered: those are allowed to drop.
+
+The server reports a gap in a client's stream exactly as a client reports one in the server's: as soon as a later tick reveals it, or when a tick arrives in part. The client answers by resending the current value of exactly the members those ticks carried, and nothing else. A tick lost with nothing sent after it is invisible to the server, so a client also resends whatever the server has not acknowledged once a patience window has passed, and again each window until it is acknowledged. A repair that is itself lost is a gap like any other and is repaired the same way.
+
+A member the server has written since the client's lost write is skipped: the client would otherwise reassert a value older than the one the server now holds. A client that may no longer write the system resends nothing for it, and nothing older than the retention window can be resent, so a link silent for longer than that loses what it was carrying.
+
+None of this costs anything on a link that loses nothing. `ClientRedundancy` keeps the repair rare on one that does.
+
 The setting is the receiver's alone. The sender writes the same packets either way, so the two peers do not need to match.
 
 ```csharp
