@@ -22,7 +22,13 @@ title: "NetworkMember"
 public bool TryGetValueByTick(uint tick, out T0 value);
 ```
 
-Returns true and outputs the value when a ring slot tagged with the supplied tick still holds it. The ring is sparse and only a few slots deep, so an old enough tick simply is not there anymore.
+Returns true and outputs the value when a ring slot tagged with the supplied tick still holds it. A member is written only on the ticks it changes, so a tick between two writes has no slot of its own, and an old enough tick is no longer held. An unpredicted member keeps two slots; a predicted one keeps the prediction history (see [Predicted members and prediction history](../control/prediction-history-and-predicted-members.md)).
+
+```csharp
+public bool TryGetValueAtOrBeforeTick(uint tick, out T0 value);
+```
+
+Returns the value the member held as of the supplied tick: the newest slot at or before it. This answers for the ticks between two writes, and is false only when every slot the ring holds is newer.
 
 ```csharp
 public bool TryGetPreviousValueAndTickGap(out T0 previousValue, out uint tickGap);
@@ -51,12 +57,13 @@ All nine arguments are supplied by name at the field declaration, e.g. `NetworkM
 | --- | --- | --- |
 | `deltaCompressionLevel` | Yes | The compression level used when delta-encoding this member's value. Defaults to `CompressionLevel.Tight`. |
 | `isAutomaticPoolingEnabled` | Yes | Returns dropped `IPoolResettable` ring occupants to their pool through `NetworkTypePoolReturner<T0>`. When true, the member owns instances assigned to `Value`: rent them from `ResettableObjectPool<T0>` and never retain or mutate an instance after assigning it. |
-| `predictionMode` | Yes | `PredictionMode.None` (the default) leaves the member unpredicted. `PredictionMode.Compare` includes it in client-side prediction: excluded from the controller's upstream state, compare-gated against the controller's own ring history on inbound server outcomes, rewound and replayed on divergence. `PredictionMode.Validate` has the server check the controller's result, checked the same way as `Compare` for now. |
+| `predictionMode` | Yes | `PredictionMode.None` (the default) leaves the member unpredicted. `PredictionMode.Compare` includes it in client-side prediction: excluded from the controller's upstream state, compared on the controller against its own history as of the tick the server echoes, and restored and replayed by the engine on divergence. `PredictionMode.Validate` has the server compare a hash of the controller's result for each tick of client state and order the reconcile when they differ; its value is quantized to its accuracy on every write. See [Predicted members and prediction history](../control/prediction-history-and-predicted-members.md). |
 | `accuracy` | Construction default only | The wire accuracy for delta encoding, loss recovery, and lossy serialization. `float.NaN` (the default) defers to the per-type default accuracy. A per-call accuracy passed to `Initialize` still overrides it, and coarser values trade precision for bandwidth on quantities that tolerate more error than position. |
 | `interpolationSnapThreshold` | Yes | The distance beyond which `InterpolatedValue` snaps to `Value` instead of animating from `PreviousValue`. `float.NaN` (the default) disables snapping. Usable only on numeric types with a registered tolerance comparer. |
 | `sendInterval` | No — see `SetSendInterval` | The span between deltas while `TransmissionMode.Interval` is in force. `SendInterval.Normal` sends every tick. |
 | `transmissionMode` | No — see `SetTransmissionMode` | The transmission strategy: `TransmissionMode.Interval` (the default) encodes ordinary deltas paced to `sendInterval`; `TransmissionMode.Divine` (Pro) projects motion instead, for values that tend to move predictably. |
 | `isExtrapolationEnabled` | No — see `SetExtrapolationEnabled` | Whether receivers keep the value moving through the sender's silence, under either mode. `true` (the default) favors staying live when an update is lost; `false` holds still until told and favors staying accurate. Under `TransmissionMode.Interval`, `true` costs a tiny overhead on each update plus one extra update each time the value stops; `false` costs nothing extra. See [How Often a Member Is Sent](./send-pacing.md). |
+| `correctionSmoothingTicks` | Yes | How many ticks `InterpolatedValue` takes to glide from the value shown before a reconcile to the corrected one, on a client that predicts the member, while `Value` is already correct. `0` (the default) shows the correction at once. |
 
 ## Interpolation
 
