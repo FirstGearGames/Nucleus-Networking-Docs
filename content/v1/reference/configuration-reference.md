@@ -69,7 +69,7 @@ The step provider is not on this list. `NetworkLoopManager.UseNetworkLoopStepPro
 
 | Setting | Default | Notes |
 |---|---|---|
-| `DefaultAction` | `ViolationAction.Log` | A constant. Used only when a violation type is raised with no default of its own and no handler is registered; `PacketTransformRejectedViolation` (Pro) is the one such type. Every other type carries its own default, mostly `Ignore`. |
+| `DefaultAction` | `ViolationAction.Ignore` | A constant. Used only when a violation type is raised with no default of its own and no handler is registered; `PacketTransformRejectedViolation` (Pro) is the one such type, and that raise always logs a warning. Every other type carries its own default, mostly `Ignore`. |
 
 ## TransportManager
 

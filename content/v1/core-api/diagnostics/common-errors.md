@@ -65,7 +65,7 @@ A violation writes one of these lines only when its settled action is `Log` or `
 - `UnexpectedBundleRequestViolation` / `UnexpectedSceneRequestViolation` — a client sent a request only the server ever sends.
 - `UnsolicitedBundleReportViolation` / `UnsolicitedSceneReportViolation` — a client reported a load or unload it was never asked to make.
 
-Each violation has a default `ViolationAction` (`Log`, `Ignore`, or `Kick`) and a registered handler can override it per Connection. The action only governs the Connection consequence — the offending operation itself is always rejected regardless of what the action does.
+Each violation has a default `ViolationAction` (`Ignore` or `Kick`) and a registered handler can override it per Connection. The action only governs the Connection consequence — the offending operation itself is always rejected regardless of what the action does. Logging is separate: it rides on `ViolationContext<T0>.Log`, which the raise site or the handler can set.
 
 ## Recovery and retention
 

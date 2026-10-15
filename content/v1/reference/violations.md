@@ -4,7 +4,7 @@ title: "Violation reference"
 
 ## What a violation is
 
-A violation is a struct implementing `IViolation`, raised through `ViolationManager` when a peer sends something the protocol does not permit. The offending operation is always rejected regardless of what happens next; the violation only decides the `ViolationAction` taken against the `Connection` that sent it: `Log`, `Ignore`, or `Kick`. Register a `ViolationHandler<T0>` to override the default action per type, or subscribe a `ViolationDetectedHandler<T0>` (or `IViolationObserver`) to be told about one without changing the outcome.
+A violation is a struct implementing `IViolation`, raised through `ViolationManager` when a peer sends something the protocol does not permit. The offending operation is always rejected regardless of what happens next; the violation only decides the `ViolationAction` taken against the `Connection` that sent it: `Ignore` or `Kick`. Logging is separate from the action, carried on `ViolationContext<T0>.Log`, a `LogEntry` the raise site may seed and the deciding handler may change or clear. Register a `ViolationHandler<T0>` to override the default action per type, or subscribe a `ViolationDetectedHandler<T0>` (or `IViolationObserver`) to be told about one without changing the outcome.
 
 There are fifteen shipped violation types. Two exist only in Pro.
 
@@ -41,11 +41,11 @@ These fire when a client answers about a bundle or scene it was never asked abou
 
 | Type | Payload | Default | Check first |
 |---|---|---|---|
-| `PacketTransformRejectedViolation` | `Channel`, `PayloadByteCount` | No explicit default is passed at the raise site, so it takes `ViolationManager.DefaultAction`, which is `Log`, not `Ignore`. | Whether the peer is running the same `IPacketTransform` configuration; a stray packet from something that is not this game reaches the port too, so this is not evidence of an attack against a legitimate peer. |
+| `PacketTransformRejectedViolation` | `Channel`, `PayloadByteCount` | No explicit default is passed at the raise site, so it takes `ViolationManager.DefaultAction` (`Ignore`), and because it is the plain framework default it always logs a warning. | Whether the peer is running the same `IPacketTransform` configuration; a stray packet from something that is not this game reaches the port too, so this is not evidence of an attack against a legitimate peer. |
 | `UnauthorizedDespawnViolation` | `SystemId` | `Ignore` | Whether the client and server builds actually agree on that prefab's removal policy; a version skew between them reaches this honestly. |
 
 ## Reading a violation you just saw
 
-Most types default to `Ignore` or `Log` because a well-behaved peer can reach them through an ordinary race (a control handoff, a revocation, a recovery re-serve) or ordinary loss (`RetentionExceededViolation`, `RecoveryUnconfirmedViolation`, `PacketTransformRejectedViolation`). Treat a single raise of any of those as lossy-edge noise and do not kick for it.
+Most types default to `Ignore` and stay silent unless something sets `Log` because a well-behaved peer can reach them through an ordinary race (a control handoff, a revocation, a recovery re-serve) or ordinary loss (`RetentionExceededViolation`, `RecoveryUnconfirmedViolation`, `PacketTransformRejectedViolation`). Treat a single raise of any of those as lossy-edge noise and do not kick for it.
 
 The four protocol-direction violations are different: no engine path on a compliant client produces them at all, which is why they default to `Kick`. A raise there means either a deliberately crafted client or your own code driving the request/report path from the wrong side - check the latter first.
