@@ -20,7 +20,8 @@ The step provider is not on this list. `NetworkLoopManager.UseNetworkLoopStepPro
 | Setting | Default | Notes |
 |---|---|---|
 | `StateInterpolation` | 0 | Capped at `MaximumStateInterpolation` (7) when applied. |
-| `Redundancy` | 0 | Only usable when the transport's default channel is unreliable. |
+| `GlobalRedundancy` | 0 | Only usable when the transport's default channel is unreliable. Capped at `StateInterpolation` on the server's sends. |
+| `ClientRedundancy` | 3 | Extra resends a pure client adds to everything it sends upstream, on top of `GlobalRedundancy`. Not capped. |
 | `StateRetentionMilliseconds` | 1000 | Capped at `MaximumStateRetentionMilliseconds` (2000). |
 | `PartialStateApplyEnabled` | true | A tick that loses some of its packets applies the ones that arrived. Off, the whole tick is discarded and recovered. The receiver's choice alone. |
 | `PredictionHistoryTicks` | `UnsetPredictionHistoryTicks` (0) | Leaves the default history ring in place when unset. |

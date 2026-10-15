@@ -6,15 +6,23 @@ title: "Retention, redundancy and recovery"
 
 `SystemManager.StateInterpolation` sets how many ticks the receiver buffers a state packet before applying it. `0` applies immediately; `1` holds a packet until the next tick before applying; and so on. It is capped at `SystemManager.MaximumStateInterpolation` (`7`) — a higher value is silently clamped at runtime.
 
-This value is the ceiling for everything else on this page. Redundant resends and recovery only work within the window the receiver is already buffering, so both `Redundancy` and the interpolation itself are bounded by it.
+This value is the ceiling for most of what is on this page. The server's redundant resends and recovery only work within the window the receiver is already buffering, so both `GlobalRedundancy` and the interpolation itself are bounded by it. A client's upstream resends are the one exception, described below.
 
 ## Redundancy
 
-`SystemManager.Redundancy` is how many past serializations of each unreliable state packet to resend alongside the current one. A value of `N` retransmits each tick's unreliable packets on the following `N` ticks — a value of `2` puts 3 copies of every tick on the wire (the current send plus 2 redundant resends), so the receiver can recover a tick whose earlier copies were lost.
+`SystemManager.GlobalRedundancy` is how many past serializations of each unreliable state packet every peer resends alongside the current one. A value of `N` retransmits each tick's unreliable packets on the following `N` ticks. A value of `2` puts 3 copies of every tick on the wire (the current send plus 2 redundant resends), so the receiver can recover a tick whose earlier copies were lost.
 
-Each redundant copy arrives one tick later than the last, so a value larger than `StateInterpolation` would resend copies that always arrive too late to apply. The engine clamps for this automatically.
+Each redundant copy arrives one tick later than the last, so on the server's sends a value larger than `StateInterpolation` would resend copies that always arrive too late to apply. The engine clamps for this automatically.
 
-Redundancy only matters on an unreliable channel — a reliable one already guarantees delivery, so resending is wasted bandwidth. Check `SystemManager.CanUseRedundancy()` rather than reading `Redundancy` directly: it reports true only when the effective redundancy is above zero *and* the transport's default channel is unreliable.
+Redundancy only matters on an unreliable channel, since a reliable one already guarantees delivery and resending is wasted bandwidth. Check `SystemManager.CanUseRedundancy()` rather than reading `GlobalRedundancy` directly: it reports true only when the server's effective redundancy is above zero *and* the transport's default channel is unreliable.
+
+### Client redundancy
+
+`SystemManager.ClientRedundancy` (default `3`) is how many extra copies a client adds, on top of `GlobalRedundancy`, to everything it sends the server: its predicted spawns and its own writes. A client with the defaults therefore sends each upstream tick four times.
+
+It is not capped at `StateInterpolation`. A copy that arrives after the server has moved past its tick is discarded as stale and costs only its upstream bytes, while one that arrives during a burst of loss, when the ticks in between were lost too, is applied. A host's own client does not use it, since what it sends never leaves the process.
+
+Redundancy is the first defence, not the guarantee. A predicted spawn whose copies are all lost is despawned locally, and a client's write that still goes missing is repaired by upstream loss recovery.
 
 ```csharp
 if (systemManager.CanUseRedundancy())
@@ -50,9 +58,9 @@ A peer whose acknowledged tick has aged past the full retention window can no lo
 
 ## Setting them, and setting them together
 
-Set `StateInterpolation`, `Redundancy`, and `StateRetentionMilliseconds` the same on both peers. Interpolation determines how large a buffer the receiver actually has, so a mismatch means one side is budgeting for recovery capacity the other side isn't providing.
+Set `StateInterpolation`, `GlobalRedundancy`, `ClientRedundancy` and `StateRetentionMilliseconds` the same on both peers. Interpolation determines how large a buffer the receiver actually has, so a mismatch means one side is budgeting for recovery capacity the other side isn't providing.
 
-A deeper `StateInterpolation` (and the `Redundancy` it permits) buys more loss tolerance — more room for a redundant resend to land, more ticks a late packet can still be applied within. It costs latency directly: every buffered tick is a tick of delay before state is applied. A longer `StateRetentionMilliseconds` buys a wider recovery window on struggling connections, at the cost of a larger history ring (fixed at the maximum) and a longer tail before a slow-but-healthy peer would be mistaken for a lossy one.
+A deeper `StateInterpolation` (and the `GlobalRedundancy` it permits) buys more loss tolerance — more room for a redundant resend to land, more ticks a late packet can still be applied within. It costs latency directly: every buffered tick is a tick of delay before state is applied. A longer `StateRetentionMilliseconds` buys a wider recovery window on struggling connections, at the cost of a larger history ring (fixed at the maximum) and a longer tail before a slow-but-healthy peer would be mistaken for a lossy one.
 
 ## Member-granular repair
 
@@ -88,4 +96,4 @@ systemManager.GetRecentlySerializedSystemIds(changedSystemIds);
 
 See the Diagnostics page for what a `RetentionExceededViolation` or a `RecoveryUnconfirmedViolation` means when one is raised — they're the signal that retention or recovery settings are undersized for what a connection is actually experiencing.
 
-In the Unity inspector, `UnitySystemManager` exposes `Redundancy`, `StateInterpolation` and `PartialStateApplyEnabled` (labelled Partial State Apply) as fields. `StateRetentionMilliseconds` has no inspector field; set it in code.
+In the Unity inspector, `UnitySystemManager` exposes `GlobalRedundancy` (labelled Global Redundancy), `ClientRedundancy` (labelled Client Redundancy), `StateInterpolation` and `PartialStateApplyEnabled` (labelled Partial State Apply) as fields. `StateRetentionMilliseconds` has no inspector field; set it in code.
