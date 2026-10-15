@@ -46,7 +46,7 @@ A receiving peer does not render the newest value the instant it applies. `Netwo
 Loss recovery here is not a reliable channel retransmitting a dropped packet. There is no such channel underneath state replication. Instead:
 
 - Every outbound packet carries an acknowledgment in its header: the highest tick the receiver has fully applied. Acks only move forward.
-- `SystemManager.Redundancy` lets an unreliable state tick resend itself on the following ticks, so a single lost packet is often covered by a later one that repeats the same change.
+- `SystemManager.GlobalRedundancy` lets an unreliable state tick resend itself on the following ticks, so a single lost packet is often covered by a later one that repeats the same change.
 - When the gap between the last acknowledged tick and the current one grows too wide, the sender re-serves specifically the components that never landed, rather than resending everything or waiting on a generic retransmit.
 
 The effect is that a lost packet is repaired by the next relevant state, not by a transport-level resend of the exact bytes that went missing.
