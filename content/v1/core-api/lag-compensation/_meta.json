@@ -1,0 +1,22 @@
+[
+  {
+    "slug": "how-lag-compensation-works",
+    "title": "How lag compensation works"
+  },
+  {
+    "slug": "registering-hitboxes",
+    "title": "Registering hitboxes"
+  },
+  {
+    "slug": "capturing-a-shot",
+    "title": "Capturing a shot"
+  },
+  {
+    "slug": "rewound-queries",
+    "title": "Judging a shot with rewound queries"
+  },
+  {
+    "slug": "the-rewind-window",
+    "title": "The rewind window and the view clamp"
+  }
+]

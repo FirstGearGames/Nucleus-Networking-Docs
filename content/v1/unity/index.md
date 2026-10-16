@@ -12,6 +12,7 @@ Documentation for the Unity integration, organized by subject. Each category bel
 - [Interest Management and Scaling](./interest/index.md)
 - [Networked Scenes, Content Bundles and Persistence](./scenes/index.md)
 - [Physics Synchronization](./physics/index.md)
+- [Lag Compensation](./lag-compensation/index.md)
 - [Transports, Connectivity and Hosting](./transports/index.md)
 - [Serialization, Codegen and the Wire](./wire/index.md)
 - [Diagnostics and Troubleshooting](./diagnostics/index.md)

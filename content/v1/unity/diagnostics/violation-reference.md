@@ -26,7 +26,7 @@ These fire from state application, spawning, and RPC dispatch. All default to `I
 
 ## Malformed-data violation
 
-`MalformedDataViolation` fires on the server when reading data a client sent throws, so the data is not applied. A well-behaved client never sends data the server cannot read, so it defaults to `Kick` in a release build and logs `Sent data the server could not read.` as a warning. A debug build (`#if DEBUG`) raises it with `Ignore` and no log line, and the read site logs the exception instead, since there the usual cause is a serializer under development.
+`MalformedDataViolation` fires on the server when reading data a client sent throws, so the data is not applied. A well-behaved client never sends data the server cannot read, so it defaults to `Kick` in a release build and logs `Sent data the server could not read.` as a warning. A debug build (`#if DEBUG`) raises it with `Ignore` and no log line, and the read site logs the exception instead, since there the usual cause is a serializer under development. It is never raised on a client, for data with no known sender, for a server Connection (a host that dialled its own address reads from one as a client), or for a host's own client; in those cases the read site logs the exception and nobody is kicked, so a host never drops its own link or its own player over a bad read.
 
 | Type | Payload | Check first |
 |---|---|---|
@@ -51,6 +51,14 @@ These fire when a client answers about a bundle or scene it was never asked abou
 |---|---|---|---|
 | `PacketTransformRejectedViolation` | `Channel`, `PayloadByteCount` | No explicit default is passed at the raise site, so it takes `ViolationManager.DefaultAction` (`Ignore`), and because it is the plain framework default it always logs a warning. | Whether the peer is running the same `IPacketTransform` configuration; a stray packet from something that is not this game reaches the port too, so this is not evidence of an attack against a legitimate peer. |
 | `UnauthorizedDespawnViolation` | `SystemId` | `Ignore` | Whether the client and server builds actually agree on that prefab's removal policy; a version skew between them reaches this honestly. |
+
+## Lag compensation violation
+
+`LagCompensationViewClampedViolation` exists in every edition, but only lag compensation (Pro) raises it: a lag-compensated query raises it, at most once per query, when the shooter's view is older than the rewind window or newer than anything the server has recorded. The view is clamped into range and the shot is still judged. See [UnityLagCompensationManager](../lag-compensation/unity-lag-compensation-manager.md#the-view-clamp-violation).
+
+| Type | Payload | Default | Check first |
+|---|---|---|---|
+| `LagCompensationViewClampedViolation` | `ReportedTick`, `ClampedTick` | `Ignore` | The shooter's latency against `LagCompensationManager.MaximumRewindMilliseconds`; a single raise is a link that spiked, while a steady stream is either a very slow link or a client asking to be judged against the oldest world it can get. |
 
 ## Reading a violation you just saw
 

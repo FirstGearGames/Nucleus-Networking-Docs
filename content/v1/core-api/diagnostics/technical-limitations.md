@@ -18,8 +18,6 @@ These were built, shipped for a time, and then deliberately torn out. If you fin
 
 Distinct from the permanent limits above: these are absent because the work hasn't happened, not because the design forbids them. They may ship later.
 
-- **Server-side rewind** — validating a shot against the world as the shooter saw it. Planned, not built.
-- **Lag-compensated queries** — raycast, sphere and box overlap resolved against historical state at sub-tick accuracy. Planned, not built.
 - **Network profiler window** — an editor window attributing traffic to messages, objects and members. The counters it would read already exist; the window itself does not.
 
-Hitbox history and a browser/WebGL transport have no register entry either way — neither shipped nor recorded as planned.
+A browser/WebGL transport has no register entry either way: it has neither shipped nor been recorded as planned. Server-side rewind, lag-compensated queries and hitbox history are not on this list because they are built, as the Pro feature described in [How lag compensation works](../lag-compensation/how-lag-compensation-works.md).

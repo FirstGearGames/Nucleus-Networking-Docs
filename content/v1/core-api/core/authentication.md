@@ -24,14 +24,16 @@ Call one of these from anywhere in your authenticator once you've reached a verd
 ```csharp
 void ApproveClient(Connection connection, string identity = null);
 void DenyClient(Connection connection);
-void DenyClient(Connection connection, string denialReason);
+void DenyClient(Connection connection, ulong timeoutMilliseconds);
+void DenyClient<T0>(Connection connection, T0 notice) where T0 : IMessage, new();
+void DenyClient<T0>(Connection connection, T0 notice, ulong timeoutMilliseconds) where T0 : IMessage, new();
 ```
 
 `ApproveClient` marks the connection authenticated and stamps `identity` onto `Connection.Identity`, the value that names this client across reconnects. Pass `null` to leave it unidentified. What the identity means, and how you correlate a returning peer with what it previously owned, is your code's business — the engine only carries the value.
 
-`DenyClient(connection)` refuses the client and disconnects it, telling it nothing. That's the right default for a failed authentication: a refused peer is owed no explanation, and an explanation can help an attacker. `DenyClient(connection, denialReason)` delivers a reason over the reliable channel before disconnecting, if you want the client to know why.
+`DenyClient(connection)` refuses the client and disconnects it, telling it nothing. That's the right default for a failed authentication: a refused peer is owed no explanation, and an explanation can help an attacker. `DenyClient(connection, notice)` sends a message of your own on the reliable channel before disconnecting, if you want the client to know why. The notice is any `IMessage` type you define, and its type is how the client tells a refusal apart from any other disconnect. It needs no authentication exemption: leave `IsAuthenticationRequired` at its default, and the refused client still receives it. A refusal is a kick, so the notice and the optional timeout behave exactly as they do for [kicking a client](./kicking-and-disconnecting.md#telling-the-client-why).
 
-A connection that's already resolved, or gone, is ignored by either call.
+A connection that's already resolved, or gone, is ignored by any of these calls.
 
 ## The shipped default
 
@@ -75,12 +77,11 @@ The check runs once per tick, on the `TickAdvance` step. Set `AuthenticationTime
 On the server, `ServerManager` raises:
 
 - `ClientAuthenticated(Connection connection)` — after the client is marked authenticated and its `Identity` is stamped, so a handler can read both.
-- `ClientAuthenticationDenied(Connection connection, string denialReason)` — for a client that was denied or timed out, never for one that merely dropped its connection.
+- `ClientAuthenticationDenied(Connection connection)`: for a client that was denied or timed out, never for one that merely dropped its connection. It is raised before the client is disconnected.
 
 On the client, `ClientManager` raises:
 
 - `LocalClientAuthenticated(Connection localClientConnection)` — once this client's connection is authenticated and carries its assigned Id.
-- `LastAuthenticationDenialReason` — a `string` property holding the reason from the last denial, populated when the server sends one.
 
 Approval sends the client an `AuthenticationResponse`, a reliable message carrying the `ClientId` the server assigned it — the Id the client learns itself by. It's sent before anything else, so the client knows its own identifier before any other state that might reference it.
 
@@ -120,8 +121,18 @@ public sealed class TokenClientAuthenticator : IClientAuthenticator
         if (TryResolveIdentity(tokenAuthentication.Token, out string identity))
             connection.CoreManager.ServerManager.ApproveClient(connection, identity);
         else
-            connection.CoreManager.ServerManager.DenyClient(connection, "Invalid token.");
+            connection.CoreManager.ServerManager.DenyClient(connection, new TokenRefusedNotice { Reason = "Invalid token." });
     }
+}
+```
+
+The refusal notice is an ordinary message of your own, and the client registers an ordinary message handler for it to show the reason:
+
+```csharp
+[NetworkType]
+public struct TokenRefusedNotice : IMessage
+{
+    public string Reason;
 }
 ```
 

@@ -12,7 +12,7 @@ CodeBoost is a separate library that ships beside Nucleus and that the engine co
 LoggingService.UseLogger(new MyServiceLogger());
 ```
 
-`LoggerSetting` carries three `LoggerLevel` values — `Editor`, `DevelopmentBuilds`, `ReleaseBuilds` — each one of `Disabled`, `Error`, `Warning`, or `Information`. `LoggingService` reads whichever applies to the current environment and caches it. Check `LoggingService.IsInformationEnabled` / `IsWarningEnabled` / `IsErrorEnabled` before formatting an interpolated log argument, so the string isn't built when the level would drop it anyway.
+`LoggerSetting` carries three `LoggerLevel` values (`Editor`, `DevelopmentBuilds`, `ReleaseBuilds`), each one of `Disabled`, `Error`, `Warning`, or `Information`. `LoggingService` reads whichever applies to the current environment and caches it. Check `LoggingService.IsInformationEnabled` / `IsWarningEnabled` / `IsErrorEnabled` before formatting an interpolated log argument, so the string isn't built when the level would drop it anyway. For a level chosen at runtime, `Logger.IsEnabled(LoggerLevel)` answers the same question, `Logger.Log` takes the level as an argument, and a `LogEntry` carries a level and a message together so a line can be decided in one place and written in another; see [Logging](../core-api/diagnostics/logging.md#choosing-the-level-at-runtime).
 
 `DisableUnconditionalDevelopmentStacktrace()` on `ILogger` controls whether a development build appends a stack trace to every log call regardless of level; `ConsoleLogger` returns `false`, because nothing else adds a trace to console output, so a development build traces its info and warning logs too. Errors always carry one.
 
@@ -54,6 +54,6 @@ An analyzer in `CodeBoost.CodeAnalysis.Analyzers` checks every `IPoolResettable`
 
 ## Environment and Mathematics
 
-`IApplicationState`, reached through the static `ApplicationState` class, answers `IsEditor()`, `IsDevelopmentBuild()`, `IsGuiBuild()`, `IsHeadlessBuild()`, `IsPlaying()`, and `IsQuitting()`. `LoggingService` uses it to pick which `LoggerLevel` applies.
+`IApplicationState`, reached through the static `ApplicationState` class, answers `IsEditor()`, `IsDevelopment()`, `IsGuiBuild()`, `IsHeadlessBuild()`, `IsPlaying()`, and `IsQuitting()`. `LoggingService` uses it to pick which `LoggerLevel` applies.
 
 `MathCb`, in `CodeBoost.Mathematics`, is a static partial class of floating-point and vector utility methods. `RoundingType` (`Down`, `Up`, `UpNonZero`, `ToEven`, `AwayFromZero`) selects the rounding rule for the integer divide extension methods.

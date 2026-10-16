@@ -28,6 +28,7 @@ Resolution and per-object cost (what it costs the server to decide what to send,
 | `ObserverWalkBenchmarkTests` | Cost of walking an object's observer set. |
 | `NetworkComponentBenchmarkTests` | Per-component overhead on a `NetworkSystem`. |
 | `ControllerReleaseBenchmarkTests` | Cost of releasing a controller. |
+| `RpcDispatchBenchmarkTests` | Cost of dispatching a received remote call to its handlers as the number of objects handling the same call grows. |
 
 ## Running the suites and reading a result
 

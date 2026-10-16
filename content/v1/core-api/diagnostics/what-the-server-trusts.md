@@ -20,7 +20,7 @@ The capability hint exists only so a well-behaved client avoids sending somethin
 
 An identifier a client places in a payload is a claim about itself, nothing more. What a handler is handed as the sender is the `Connection` the transport resolved for that packet - `RpcContext.SenderConnection` for a call, the equivalent resolved connection for a state write. That resolution happens below any code the client controls, so there is no field a client can set to speak as someone else.
 
-For a call the server relays on to other observers, the relayed copy still carries the original sender's connection id, so attribution survives the hop; a client that receives a relayed call is being told who actually said it, not who forwarded it.
+For a call the server relays on to other observers, the relayed copy still carries the original sender's connection id, so attribution survives the hop; a client that receives a relayed call is being told who actually said it, not who forwarded it. Only the authority writes that original-sender id. A call arriving from a client is attributed to the client that sent it, whatever originator id its packet names, so a client cannot dress a call up as coming from another client to fool a handler, the relay's sender exclusion, or `RpcContext.SenderConnection`.
 
 ## Connections are not players
 
@@ -36,9 +36,13 @@ Contested multi-writer arbitration - resolving which of several observers' simul
 
 ## What Nucleus does not do
 
-Nucleus does not encrypt transport traffic, does not run a server-side rewind, and provides no lag-compensated queries or hitbox history. None of that is built in; each is a client-observable, server-trusted primitive, and adding history, rewind, or encryption on top is game code's responsibility.
+Nucleus does not encrypt transport traffic. That is not built in, and adding encryption on top is game code's responsibility.
 
 If you need to protect the bytes themselves - encryption, compression, obfuscation, or a custom integrity check - the one seam for it is the packet-transform layer, `TransportManager.PacketTransform` (Pro-only): it rewrites every packet's payload on its way to and from the transport, on both peers, before anything else in the engine sees it. That layer is not otherwise documented on this page.
+
+## A shooter's view is bounded, not trusted
+
+Lag compensation (Pro) judges a client's shot against the moment the client says its screen was showing. That view is the client's claim, so the server bounds it: a view older than `MaximumRewindMilliseconds`, or newer than anything the server has recorded, is clamped into range, still judged, and raises `LagCompensationViewClampedViolation`, ignored by default. Within the window a client can still name any moment, so the window itself is the limit on how far a shooter is favored. The ray is the client's claim too: clip it at walls on the server against the present-time scene, and the queries test it only against the hitboxes the server's own history holds, never against anything the client reports about a target. See [The rewind window and the view clamp](../lag-compensation/the-rewind-window.md).
 
 ## Enforcement only happens on the server
 

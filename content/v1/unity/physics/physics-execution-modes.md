@@ -17,7 +17,7 @@ Both fields are read once at session start and are disabled in the inspector whi
 
 ## PhysicsExecutionMode.NucleusPerTick
 
-The default. `PhysicsSimulationCoordinator` takes `UnityEngine.Physics.simulationMode` to `SimulationMode.Script` and steps every physics world itself, once per network tick, removing the sampling phase error `FixedUpdate` would otherwise introduce between the tick and the physics step. Nucleus projected physics on the default world requires this mode.
+The default. `PhysicsSimulationCoordinator` takes `UnityEngine.Physics.simulationMode` to `SimulationMode.Script` and steps every physics world itself, once per network tick, removing the sampling phase error `FixedUpdate` would otherwise introduce between the tick and the physics step. Nucleus projected physics on the default world requires this mode. Because the network loop runs on unscaled time, physics in this mode keeps stepping at the tick rate while `Time.timeScale` is zero or slowed.
 
 ## PhysicsExecutionMode.UnityRun
 

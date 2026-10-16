@@ -4,13 +4,13 @@ title: "Versioning, upgrading and release notes"
 
 ## Checking your build
 
-Nucleus does not stamp a version today. `Nucleus.csproj` sets `GenerateAssemblyInfo` to `false`, and `AssemblyInfo.cs` declares only the title, product, company, copyright and a licence metadata string — there is no `AssemblyVersion` or `AssemblyFileVersion` attribute anywhere in it. There is no changelog file in the repository, and no protocol-version handshake between peers at connect time.
+Every Unity release names itself in two places. `Assets/Nucleus/VERSION.txt` reads `Nucleus <version>`, so you can check what a project has installed without building anything, and a running player writes `Thank you for using Nucleus Networking <version>.` to its log at launch, so you can check what a built player is running.
 
-The only place a build is identified today is the download listing you got it from. Whatever name or date that listing gives your download is your version, and it's worth keeping a note of it yourself: which archive you pulled, and when.
+The DLLs themselves carry no version: `Nucleus.csproj` sets `GenerateAssemblyInfo` to `false`, and `AssemblyInfo.cs` declares only the title, product, company, copyright and a licence metadata string, with no `AssemblyVersion` or `AssemblyFileVersion` attribute. There is no protocol-version handshake between peers at connect time either, so the version a peer runs is something you check, not something the connection checks for you.
 
 ## What this page will become
 
-Once builds carry a version, this page holds two things:
+As releases accumulate, this page holds two things:
 
 - **Release notes** — one entry per build, describing what changed.
 - **API change register** — a table of deliberate breaking changes, each row keyed to the build it landed in and naming the direct replacement for whatever it removed.
