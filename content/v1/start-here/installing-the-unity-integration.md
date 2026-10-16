@@ -6,12 +6,13 @@ title: "Installing the Unity integration"
 
 ## What you get
 
-Nucleus for Unity ships as prebuilt DLLs, not source, for the engine itself. Copy the whole `Assets/Nucleus` folder into your project. It contains:
+Nucleus for Unity ships as prebuilt DLLs, not source, for the engine itself. Import the release's `.unitypackage` (**Assets > Import Package > Custom Package**), or copy the whole `Assets/Nucleus` folder into your project. It contains:
 
 - `Nucleus.dll`, `CodeBoost.dll`, `SynapseSocket.dll` — the engine and its dependencies.
 - `Nucleus.CodeAnalysis.SourceGenerators.dll` — the Roslyn source generator that makes networked types compile.
 - A `.pdb` next to `Nucleus.dll`, `CodeBoost.dll`, and `SynapseSocket.dll`, for debuggable stack traces. The source generator DLL doesn't ship one.
-- `LICENSE.txt`.
+- `Nucleus.xml` and `SynapseSocket.xml`, the API documentation your IDE shows on hover.
+- `LICENSE.txt`, and `VERSION.txt`, which names the release you installed.
 - An `Integrations` folder.
 
 `Integrations` holds four sub-folders — `Unity`, `Blitz Relay`, `Newfarm Client`, `Newfarm Migration` — each its own assembly definition. Mostly this is C# source and `.asmdef` files, not DLLs. Blitz Relay is the exception: alongside its own source and `.asmdef`, it also ships one precompiled dependency, `BlitzRelay.Protocol.dll`.

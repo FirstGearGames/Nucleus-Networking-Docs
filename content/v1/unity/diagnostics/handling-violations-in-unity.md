@@ -56,6 +56,8 @@ private void OnDestroy()
 
 A registration is not scoped to the scene or to the GameObject that made it - it lives for the lifetime of the `ViolationManager`, which outlives a scene load and, with fast enter-play-mode (no domain reload), can outlive a whole play session. A handler you never unregister keeps a reference to a destroyed `MonoBehaviour` alive in the manager's dictionary, and on the next raise the manager invokes a delegate whose target no longer exists. That is a leak, not a convenience - unregister it every time, including on an object a pool recycles rather than destroys.
 
+If a handler, observer or subscriber does throw (a `MissingReferenceException` from a destroyed target is the usual one), the manager contains it: a throwing handler falls back to the violation's default action, a throwing observer does not stop the ones after it, and a throwing subscriber does not stop enforcement. The exception is logged to the console as an error, so the bug is visible, but the offending client is still dealt with.
+
 ## Only a server enforces a kick
 
 `ViolationManager` settles an action for each violation and then enforces it. A `ViolationAction.Kick` is only ever carried out when the local peer has a server started; on a client-only peer the manager logs that the kick settled but was not enforced, and the connection is left alone. A deciding handler registered on a client-only build therefore never actually kicks anyone - it can still log or observe, but nothing it returns changes what happens to the offending connection. Put the handler that decides `Kick` on the build that runs the server; a client-only handler that only observes or logs is fine anywhere.

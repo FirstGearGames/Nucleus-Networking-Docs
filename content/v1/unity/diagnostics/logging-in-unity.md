@@ -28,7 +28,7 @@ A line is prefixed with `[Type::Method]`, built from the calling type and a `Cal
 
 `LoggerSetting` declares three levels: `Editor`, `DevelopmentBuilds`, and `ReleaseBuilds`. The Unity logger's defaults are Information for the editor, Information for development builds, and Error for release builds.
 
-In practice, only the `Editor` level matters right now. The active level is cached once, at the moment `UseLogger` runs, from CodeBoost's `IdeApplicationState`. That state's `IsEditor()` reports `true` unconditionally, so every Unity build - editor, development, or release - is cached at the `Editor` level and never re-evaluates `DevelopmentBuilds` or `ReleaseBuilds` afterward. If you need less noise in a build, don't rely on those two settings yet; the only lever that actually changes it today is swapping the registered logger.
+Which of the three applies is decided by the Unity application state the integration registers before the first scene loads: the editor uses `Editor`, a development player uses `DevelopmentBuilds`, and a release player uses `ReleaseBuilds`. The level is worked out again whenever the logger or the application state is set, so the order the two are registered in does not matter, and a release build logs only errors by default. To change the volume, register your own logger whose `GetLoggerSetting` returns the levels you want (below).
 
 ## Replacing the sink
 

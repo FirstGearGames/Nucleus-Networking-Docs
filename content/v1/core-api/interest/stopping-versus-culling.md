@@ -48,3 +48,56 @@ It is passed by reference through every subscriber in subscription order, seeded
 It is never raised for an emulated connection or one sharing an in-memory transport. A host's own client is the one exception in the other direction: it is raised for while `InterestManager.HostInterestEnabled` is set, though a stop settled for it is only reported through `HostInterestMembership` rather than acted on.
 
 Subscribing is itself a reason the pass walks the system. A `NetworkSystem` carrying no interest condition at all is normally skipped by the interest pass; adding an `InterestStopResolving` subscriber puts it back in front of the pass even with nothing else registered, and removing the last subscriber takes it back out.
+
+## Reacting when interest moves
+
+Conditions and the stop seam decide interest; they must not act on it. To act when a pair actually moves (show a "player left your view" marker, start a server-side effect for a player who just gained an object, record analytics), subscribe to one of the two interest change events. Both are raised on the authority only, after the tick's state has been sent, on the network loop thread, so every move is settled when a handler reads it and a handler is free to do engine work: a system it starts goes live with the next tick.
+
+For one object, subscribe to `NetworkSystem.InterestChanged`:
+
+```csharp
+public delegate void InterestChangedHandler(Connection connection, InterestMembership previousInterestMembership, InterestMembership interestMembership);
+public event InterestChangedHandler? InterestChanged;
+```
+
+```csharp
+networkSystem.InterestChanged += OnInterestChanged;
+
+void OnInterestChanged(Connection connection, InterestMembership previousInterestMembership, InterestMembership interestMembership)
+{
+    if (interestMembership is InterestMembership.Unspawned)
+    {
+        // This client no longer has the object at all.
+    }
+}
+```
+
+A subclass of `NetworkSystem` can override `OnInterestChanged` instead of subscribing. The event is raised only for a move: an object that reaches a connection with no condition ever restricting it raises nothing, and neither does a system leaving the world or a connection leaving it, since their own events already say so. It is never raised for a host's own client, which is reported through `HostInterestChanged` instead (see [Host interest report](./host-interest-report.md)).
+
+For the whole world, subscribe to `InterestManager.InterestChanged`, which is raised once per tick that moved anything, with every move that tick:
+
+```csharp
+public delegate void InterestChangesHandler(IReadOnlyList<InterestChange> interestChanges);
+public event InterestChangesHandler? InterestChanged;
+```
+
+```csharp
+coreManager.InterestManager.InterestChanged += OnInterestChanges;
+
+void OnInterestChanges(IReadOnlyList<InterestChange> interestChanges)
+{
+    for (int i = 0; i < interestChanges.Count; i++)
+    {
+        InterestChange interestChange = interestChanges[i];
+
+        if (interestChange.InterestMembership is InterestMembership.Streamed)
+        {
+            // interestChange.Connection gained interestChange.NetworkSystem.
+        }
+    }
+}
+```
+
+Each `InterestChange` carries the `NetworkSystem`, the `Connection`, the `PreviousInterestMembership` and the new `InterestMembership`. One call carries the whole tick, so a player joining and receiving a thousand objects costs one invocation rather than a thousand, which makes this the right event for a per-player visibility tracker. The list belongs to the engine and is cleared once your handler returns: read it inside the handler and copy whatever must outlive the call. Every recorded move is handed over, including one whose system has since left the world, so check `NetworkSystem.IsStarted` where that matters.
+
+To read where a pair stands right now instead of waiting for a move, call `NetworkSystem.GetInterestMembership(connection)` on the authority. A connection the system holds no entry for reads `Streamed`.

@@ -13,7 +13,7 @@ Pages in this category:
 - [Threading and lifetime](./threading-and-lifetime.md)
 - [Creating a CoreManager](./core-manager.md)
 - [Authenticating clients](./authentication.md)
-- [Server notices](./server-notices.md)
+- [Kick and refusal notices](./server-notices.md)
 - [The manager map](./manager-map.md)
 - [Driving the loop yourself](./custom-loop-step-provider.md)
 - [Kicking and disconnecting a client](./kicking-and-disconnecting.md)

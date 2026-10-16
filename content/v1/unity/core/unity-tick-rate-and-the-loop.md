@@ -20,10 +20,12 @@ To run at a different rate, stop play mode, change the value, and start again.
 
 Rather than the engine's default background-timer provider, a Unity session is driven by loop-stepping behaviour that `UnityCoreManager` adds to the scene at runtime, alongside `UnityNetworkLoopManager` (or the `UnityCoreManager`'s own object, when no `UnityNetworkLoopManager` is present). You never add or reference this behaviour yourself.
 
-It splits the loop across Unity's own update methods, both driven from `Time.deltaTime`:
+It splits the loop across Unity's own update methods, both driven from `Time.unscaledDeltaTime`:
 
 - **`Update`** advances the early half of the loop.
 - **`LateUpdate`** advances the late half of the loop.
+
+Because the loop runs on unscaled time, `Time.timeScale` does not touch networking. Pausing the game with `Time.timeScale = 0` keeps receiving, ticking and sending, so a paused client stays connected and keeps up with the server, and slow motion does not drift the tick away from the other peers. If a pause should freeze your networked gameplay, stop your own simulation in your callbacks (for example, skip your movement code while paused) rather than relying on the time scale.
 
 It runs at a negative execution order, so its `Update` executes before your own scripts' `Update` for the frame. A tick's early steps, and anything they trigger, have already happened by the time your gameplay code runs.
 

@@ -41,6 +41,14 @@ title: "Component Index"
 | `PhysicsSimulationDriver` | Aligns one scene's physics world with the network tick instead of Unity's own FixedUpdate. |
 | `ProjectedRigidbody` | Declares a rigidbody's replicated physics component and drives its sync, adopting, interpolating, or converging as needed. |
 
+## Lag compensation
+
+| Component | Description |
+| --- | --- |
+| `UnityLagCompensationManager` | Inspector-side seat for lag compensation (Pro): the rewind window, whether 2D queries reach 3D hitboxes, whether queries start in hitboxes, and the spawn compensation cap. |
+| `NetworkHitboxRoot` | Gathers every `NetworkHitbox` on a networked object and registers them with the server, so shots can be judged against where they were; disabling it makes the object unhittable. |
+| `NetworkHitbox` | One lag-compensated volume, a sphere, box or capsule or a 2D circle, box or capsule, copied from a collider beside it or typed in. |
+
 ## Transports
 
 | Component | Description |
@@ -67,3 +75,10 @@ title: "Component Index"
 | `NetworkInterestObject` | Authors an object's interest rules once, for every NetworkSystem it carries. |
 | `NetworkHostVisibility` | Hides an object's renderers on a host while its own client half would not have been holding the object. |
 | `NucleusBehaviour<TComponent0>` | Base for a script whose lifetime is one networked system; exposes the typed component it carries and this peer's role and control. |
+
+## Developer tools
+
+| Component | Description |
+| --- | --- |
+| `NetworkCorrectionVisualizer` | Flashes a line from where a predicted position was shown to where a reconcile corrected it, on the client that predicts the object. |
+| `NetworkInterestOverlay` | While selected on a server or host, draws a line to every networked object, colored by what the object's controller holds of it. |

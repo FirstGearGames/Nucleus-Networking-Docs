@@ -19,7 +19,7 @@ public interface IMessage
 
 `IsAuthenticationRequired` is the only member. It defaults to `true`, so an ordinary type needs no override: the sender must be authenticated or the message is refused. This is read once per type, from a throwaway instance, when the type's handler is first registered.
 
-Only the handful of types that take part in the authentication handshake itself override it to `false`, because they must arrive before anyone is authenticated. `AuthenticationDenied` is one of these and answers `false`. The ordinary `AuthenticationResponse` answers `true` like everything else, because by the time it is sent authentication has already happened. Write your own custom authenticator's pre-auth message types the same way `AuthenticationDenied` does: answer `false`, or an unauthenticated peer can never receive them.
+Only types that take part in an authentication handshake override it to `false`, because they must arrive before anyone is authenticated. The engine ships none of its own: the `AuthenticationResponse` it sends on approval answers `true` like everything else, because by the time it is sent authentication has already happened. Write your own authenticator's pre-auth message types (the client's token, say) to answer `false`, or the server refuses them from the unauthenticated client trying to authenticate with them. The check is on the sender: a message from the server reaches a client that is not yet authenticated whatever its type says, so a refusal notice sent with `DenyClient` needs no override.
 
 ## Registering a handler
 

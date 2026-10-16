@@ -45,7 +45,7 @@ Because control is exclusive, a system is never controlled by two clients at onc
 Three things ride on who the controller is, and all three are controller-only regardless of any write-access setting:
 
 - **Who may send client state.** Only the controller's client state is accepted for the system.
-- **Whose predicted members ride that client state.** Prediction and reconcile are controller-only - a non-controlling observer never predicts or reconciles the system, it only receives the server's replicated state.
+- **Who predicts.** The controlling client predicts the system from its own client state, and the server checks its result and corrects it when they differ. Any other client receives the server's state instead, and during a reconcile holds the system at the server's values while its own systems replay, unless it opts into predicting it as well with `NetworkSystem.IsObserverPredictionEnabled`.
 - **Who may write state by default.** `StateWriteAccess.Controller` - "the server, or the single controlling client" - is the default access, and it is also the behavior every system had before write access existed as a setting at all. The controller can always write state; widening that to other observers is a separate, additive Pro setting (`StateWriteAccess.AnyClient`), covered on [Letting clients write state](../../core-api/state/state-write-access.md).
 
 The same shape holds for RPCs: `RpcSendAccess.Controller` is the default there too, and its own doc comment puts it plainly - "only whoever drives the object may ask it to do anything."

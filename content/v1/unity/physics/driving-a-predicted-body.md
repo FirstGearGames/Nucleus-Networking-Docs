@@ -36,13 +36,13 @@ driver.WorldStepStarted += (tick, stepDelta) =>
 - Or, on a `NucleusBehaviourBase` (the base every Nucleus MonoBehaviour that participates in the network loop derives from), override `OnEarlyFixedUpdate`:
 
 ```csharp
-protected override void OnEarlyFixedUpdate(StepDelta stepDelta)
+protected override void OnEarlyFixedUpdate(StepDelta stepDelta, SimulationContext simulationContext)
 {
     rigidbody.AddForce(clientStateDirection * forceScale);
 }
 ```
 
-`OnEarlyFixedUpdate` maps to `NetworkLoopSteps.EarlyFixedUpdate`, which runs before the world step - the same point `WorldStepStarted` fires. Note its parameter is a `StepDelta`, not a plain `float`; use its `FixedDelta` for the step's fixed timing.
+`OnEarlyFixedUpdate` maps to `NetworkLoopSteps.EarlyFixedUpdate`, which runs before the world step - the same point `WorldStepStarted` fires. Its parameters are a `StepDelta`, not a plain `float` (use its `FixedDelta` for the step's fixed timing), and a `SimulationContext` naming the pass the step belongs to (see [Replaying a correction in Unity](../control/reconcile-in-unity.md)).
 
 ## Tuning the feel
 

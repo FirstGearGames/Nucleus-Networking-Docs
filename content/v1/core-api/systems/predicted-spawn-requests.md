@@ -99,6 +99,12 @@ What happens to a predicted object's simulated state once the server confirms it
 - `ApplyAuthoritativeState` (default) — the confirming snapshot applies in full, so the object lands exactly where the server built it. Any divergence between what the client predicted and what the server built is shown, not hidden.
 - `KeepPredictedState` — the snapshot is still read, but its member values are discarded; the object keeps the path the client already simulated, adopting only identity, controller and placement from the confirmation. Use this for an object whose local path must not visibly jump, typically a projectile the player is already watching.
 
+### When the server never answers
+
+The request is sent once, and the client's upstream redundancy (`ClientRedundancy`) resends it on the ticks after, so a single lost packet does not lose it. If no answer arrives at all, the client gives up and despawns its local copy, raising `PredictedSpawnRejected` with `NotPermitted` first, as for an ordinary refusal. It waits two round trips, but never less than half a second and never more than three seconds, so on a bad link an object nobody agreed to does not stay on screen for long.
+
+An answer can still arrive after the client gave up: the server admitted the spawn, but its confirmation was lost until after the timeout. The client then receives the server's object as an ordinary spawn, with the server's values, so both peers still end up holding the same object.
+
 ## Inspecting state before deciding
 
 `PredictedSpawnStateInspectionEnabled` builds the predicted object and reads its opening state before the validator runs, so the validator can judge actual values — a projectile's speed, a spawn position — rather than only the object's declared shape and type. It's off by default, because most validators don't need it: a composition and a prefab identity answer most questions.

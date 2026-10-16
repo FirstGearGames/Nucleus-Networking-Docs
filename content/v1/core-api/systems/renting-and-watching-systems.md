@@ -21,6 +21,32 @@ if (networkSystem.TryGetComponent(out MatchClockComponent matchClockComponent))
 
 `TSystem` is nearly always the plain `NetworkSystem` type itself; what distinguishes one rent from another is the component list, not the system type.
 
+### Renting a count decided at runtime
+
+The generated overloads fix the component list when your code compiles. When the number comes from data instead (one component per seat in a vehicle the level designer configured, say), rent one component type a runtime number of times:
+
+```csharp
+public partial class SeatComponent : NetworkComponent
+{
+    public readonly NetworkMember<bool> IsOccupied = new();
+}
+```
+
+```csharp
+byte seatCount = 4;
+
+if (!NetworkSystemPool.TryRent<NetworkSystem, SeatComponent>(coreManager, seatCount, out NetworkSystem vehicleSystem))
+    return; // no CoreManager, a count outside 1 to NetworkSystem.MaximumComponentCount, or the start was refused
+
+for (byte componentId = 0; componentId < seatCount; componentId++)
+{
+    if (vehicleSystem.TryGetComponent(componentId, out SeatComponent seatComponent))
+        seatComponent.IsOccupied.Value = false;
+}
+```
+
+The components take the Ids `0` to `seatCount - 1` in the order they were added, which is also the order a receiver rebuilds them in, so component Id 2 is the same seat on every peer. Nothing extra rides the wire for this: a spawn already carries each component's type. A count of zero, or more than `NetworkSystem.MaximumComponentCount` (31), is refused and logged.
+
 ### Returning one
 
 A rented system is pooled, not `new`'d, so give it back rather than letting it fall out of scope:

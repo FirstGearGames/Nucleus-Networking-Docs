@@ -67,6 +67,12 @@ projectileSystem.PredictedSpawnConfirmed += OnShotConfirmed;
 projectileSystem.PredictedSpawnRejected += reason => OnShotRejected(projectileObject, reason);
 ```
 
+### When the server never answers
+
+The request is sent once, and the client's upstream redundancy (`ClientRedundancy`) resends it on the ticks after, so a single lost packet does not lose it. If no answer arrives at all, the client gives up and despawns its local copy, raising `PredictedSpawnRejected` with `NotPermitted` first, as for an ordinary refusal. It waits two round trips, but never less than half a second and never more than three seconds, so on a bad link an object nobody agreed to does not stay on screen for long.
+
+An answer can still arrive after the client gave up: the server admitted the spawn, but its confirmation was lost until after the timeout. The client then receives the server's object as an ordinary spawn, with the server's values, so both peers still end up holding the same object.
+
 ## Predicted despawn
 
 The same system exposes the mirror image for removal, gated by the `Despawn` flag:

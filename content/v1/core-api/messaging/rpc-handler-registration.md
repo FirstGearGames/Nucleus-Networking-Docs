@@ -53,6 +53,10 @@ Calling `RegisterRpcHandler` before the system has spawned is legal. The handler
 
 A handler is live with the manager exactly while the object is in the world, and a caller never has to time registration to the spawn.
 
+## What dispatch costs
+
+A handler registered through a `NetworkSystem` is scoped to that system, and the engine files it by the system itself. A received call addressed to a system finds that system's handlers with one lookup, however many other objects handle the same call type, so a world of a thousand objects each handling the same call pays the same per call as a world of one. Only handlers registered with no scope, or against an `IRpcScope` that is not a `NetworkSystem`, are walked and asked one by one, because an arbitrary scope can only be asked. Prefer registering through the system unless the handler genuinely speaks for many systems.
+
 ## Re-registration and unregistration are idempotent and identity-scoped
 
 Re-registering the same handler is a no-op: `NetworkSystem` checks whether the handler already has a tracked record before adding another, matching `RpcManager`'s own de-duplication.
