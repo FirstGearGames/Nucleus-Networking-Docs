@@ -80,13 +80,15 @@ An overlap's `Point` is a contact, not the hitbox's position. Code that needs wh
 
 ## Ignoring an object
 
-Every query, 3D and 2D, has an overload that takes a `NetworkSystem ignoredNetworkSystem` straight after the shooter. Pass the object to ignore, normally the shooter's own root object, or `null` to ignore nothing:
+Every query, 3D and 2D, has an overload that takes a `NetworkSystem ignoredNetworkSystem` straight after the shooter. Pass the root of the object to ignore, normally the shooter's own root object, or `null` to ignore nothing. Everything nested under it is ignored too:
 
 ```csharp
 bool isHit = lagCompensationManager.TryRaycast(shooterConnection: null, turretSystem, view, muzzle, aim, MaximumDistance, HitboxLayerMask, out LagCompensatedHit lagCompensatedHit);
 ```
 
 The shooter's connection already skips what that connection controls, so the overload is for the cases it cannot cover: a host firing for its own avatar, which passes a `null` shooter, or a turret or NPC the server fires for itself. Naming any member of a grouped object skips the whole object, because a grouped object records its hitboxes under one member, which need not be the member you hold. A history that has ended keeps the group its system had, so a shot judged just after the object despawned still skips it.
+
+Every object parented under the ignored one with `SystemManager.EnsureSetSystemParent`, at any depth, is skipped as well, so a weapon or shield a character carries never blocks that character's own shot. This is why you pass the root: naming a nested object skips only that object and what is nested under it, and leaves its parent hittable. Detaching an object ends the skip from that tick on. One case is not covered: a nested object that despawned before the shot is judged has no live parent left to follow, so only its own system and group are matched.
 
 ## A ray can start inside a hitbox
 

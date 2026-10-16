@@ -111,7 +111,7 @@ A query's layer mask is a `uint`, one bit per layer; a `LayerMask`'s `value` cas
 
 ## Ignoring an object
 
-Every query has an overload taking a `NetworkSystem ignoredNetworkSystem` straight after the shooter, whose hitboxes it skips. Pass the object to ignore, normally the shooter's own root object, or `null` to ignore nothing. A host firing for its own avatar, which judges with a `null` shooter, passes its avatar, and a turret or NPC the server fires for passes itself. Naming any member of a grouped object skips the whole object.
+Every query has an overload taking a `NetworkSystem ignoredNetworkSystem` straight after the shooter, whose hitboxes it skips. Pass the root of the object to ignore, normally the shooter's own root object, or `null` to ignore nothing. A host firing for its own avatar, which judges with a `null` shooter, passes its avatar, and a turret or NPC the server fires for passes itself. Everything nested under the root is skipped too: naming any member of a grouped object skips the whole object, and every object parented under it with `SystemManager.EnsureSetSystemParent`, such as a carried weapon or shield, is skipped with it at any depth. Naming a nested object instead skips only it and what is under it.
 
 ## Reading the hit
 
