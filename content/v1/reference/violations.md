@@ -26,7 +26,7 @@ These fire from state application, spawning, and RPC dispatch. All default to `I
 
 ## Malformed-data violation
 
-`MalformedDataViolation` fires on the server when reading data a client sent throws, so the data is not applied. A well-behaved client never sends data the server cannot read, so it defaults to `Kick` in a release build and logs `Sent data the server could not read.` as a warning. A debug build (`#if DEBUG`) raises it with `Ignore` and no log line, and the read site logs the exception instead, since there the usual cause is a serializer under development.
+`MalformedDataViolation` fires on the server when reading data a client sent throws, so the data is not applied. A well-behaved client never sends data the server cannot read, so it defaults to `Kick` in a release build and logs `Sent data the server could not read.` as a warning. A debug build (`#if DEBUG`) raises it with `Ignore` and no log line, and the read site logs the exception instead, since there the usual cause is a serializer under development. It is never raised on a client, for data with no known sender, for a server Connection (a host that dialled its own address reads from one as a client), or for a host's own client; in those cases the read site logs the exception and nobody is kicked, so a host never drops its own link or its own player over a bad read.
 
 | Type | Payload | Check first |
 |---|---|---|

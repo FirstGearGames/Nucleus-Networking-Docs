@@ -68,6 +68,27 @@ An identifier overload, `TryGetControlledSystems(uint connectionId, out IReadOnl
 
 This is not a player-object lookup. A connection controlling a character, a vehicle, and a turret is returned all three, in no particular order — the core has no concept of a player, and no opinion about which controlled system is "the" player. That distinction belongs to the game. The returned collection is a live view, not a copy, so copy it before doing anything that can reassign a controller while walking it.
 
+### Walking it in code that runs often
+
+The view is an interface, so a `foreach` over it allocates an enumerator on every walk. That is fine for a one-off lookup, but not for code that runs every tick or for every pair, such as an interest condition. There, fill a list you keep instead:
+
+```csharp
+private readonly List<NetworkSystem> _controlledSystems = new();
+
+private void CheckControlledSystems(CoreManager coreManager, Connection connection)
+{
+    int count = coreManager.InterestManager.GetControlledSystems(connection, _controlledSystems);
+
+    for (int i = 0; i < count; i++)
+    {
+        NetworkSystem controlledSystem = _controlledSystems[i];
+        // ...
+    }
+}
+```
+
+`GetControlledSystems` clears the list, fills it with every system the connection controls, and returns the count; it allocates nothing once the list has grown to fit. Because it is a copy, control may be reassigned while you walk it.
+
 ## Control is exclusive
 
 A system is controlled by the server or by exactly one client, never both. `ControllerConnectionId` is either `UnsetId` (server) or a single client's Id at any moment.

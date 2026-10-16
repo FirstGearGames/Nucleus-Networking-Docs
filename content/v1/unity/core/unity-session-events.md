@@ -40,7 +40,7 @@ Reached through the manager components once bound:
 
 - `NucleusServerManager.ClientAuthenticated` — a `ServerManager.ClientAuthenticatedHandler(Connection connection)`, raised after the client is marked authenticated.
 - `NucleusServerManager.ClientDisconnecting` — a `ServerManager.ClientDisconnectingHandler(Connection connection)`, raised while the objects the departing client controlled are still readable through it.
-- `NucleusServerManager.ClientAuthenticationDenied` — a `ServerManager.AuthenticationDeniedHandler(Connection connection, string denialReason)`, raised for a client refused or timed out, before it disconnects.
+- `NucleusServerManager.ClientAuthenticationDenied`: a `ServerManager.AuthenticationDeniedHandler(Connection connection)`, raised for a client refused or timed out, before it disconnects.
 - `NucleusClientManager.LocalClientAuthenticated` — a `ClientManager.LocalClientAuthenticatedHandler(Connection localClientConnection)`, for the local client's own authentication.
 
 ```csharp
@@ -60,7 +60,7 @@ public class SessionLogger : UnityManager
 
     private void OnClientAuthenticated(Connection connection) { }
     private void OnClientDisconnecting(Connection connection) { }
-    private void OnClientAuthenticationDenied(Connection connection, string denialReason) { }
+    private void OnClientAuthenticationDenied(Connection connection) { }
 
     private void OnDestroy()
     {

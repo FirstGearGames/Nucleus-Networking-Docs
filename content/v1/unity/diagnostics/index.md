@@ -11,6 +11,7 @@ Pages in this category:
 - [Engine logging in the Unity console](./logging-in-unity.md)
 - [Handling violations in Unity](./handling-violations-in-unity.md)
 - [Reading network statistics in Unity](./network-statistics-in-unity.md)
+- [Developer tools in the editor](./developer-tools-in-unity.md)
 - [Diagnosing desync](./diagnosing-desync.md)
 - [Frequently asked questions](./faq.md)
 - [Filing a bug report](./filing-a-bug-report.md)

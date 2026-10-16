@@ -32,12 +32,11 @@ Position and rotation ride Divine or Interval transmission like any other member
 
 This model does not include:
 
-- Server-side rewind
-- Lag-compensated queries
-- Projectile catch-up compensation
 - Replay-correct collision callbacks
 
-These are planned, not hidden. A resimulated, full-world rollback approach to physics was tried and archived; the model here — capture, project, converge — is what shipped in its place.
+This is planned, not hidden. A resimulated, full-world rollback approach to physics was tried and archived; the model here (capture, project, converge) is what shipped in its place.
+
+Judging a shot against where targets were is a separate feature that does not touch physics bodies at all: [lag compensation](../lag-compensation/how-lag-compensation-works.md) (Pro) keeps its own hitbox history and its own geometry. Catching a freshly spawned projectile up through the latency it lost is [spawn compensation](../systems/spawn-compensation.md) (Pro).
 
 ## Where core ends and integration begins
 

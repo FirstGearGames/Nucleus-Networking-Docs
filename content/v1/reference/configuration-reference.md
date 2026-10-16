@@ -24,7 +24,10 @@ The step provider is not on this list. `NetworkLoopManager.UseNetworkLoopStepPro
 | `ClientRedundancy` | 3 | Extra resends a pure client adds to everything it sends upstream, on top of `GlobalRedundancy`. Not capped. |
 | `StateRetentionMilliseconds` | 1000 | Capped at `MaximumStateRetentionMilliseconds` (2000). |
 | `PartialStateApplyEnabled` | true | A tick that loses some of its packets applies the ones that arrived. Off, the whole tick is discarded and recovered. The receiver's choice alone. |
-| `PredictionHistoryTicks` | `UnsetPredictionHistoryTicks` (0) | Leaves the default history ring in place when unset. |
+| `PredictionHistoryTicks` | `UnsetPredictionHistoryTicks` (0) | How many ticks of history `Predict` and `Validate` members keep. Unset, every client keeps `DefaultPredictionHistoryTicks` (64) and the server keeps two. |
+| `MaximumReplayTicks` | `UnsetMaximumReplayTicks` (0) | Most ticks a reconcile replays; a longer one lands the server's values at its start tick without replaying. 0 sets no limit. |
+| `ReplayHoldRadius` | `UnsetReplayHoldRadius` (0) | Client: only systems it does not control within this distance of a restored system are held during a replay. 0 holds every one. |
+| `IsResultValueSendEnabled` | true | Read on the controller: sends `Validate` result values beside the hash so `NetworkSystem.ResultMismatched` can name what differed. Off keeps the hash alone. |
 | `DefaultControllerRetentionPolicy` | `ControllerRetentionPolicy.Release` | Resolved most specific first: a system's own override, then its group's, then this. |
 | `ControllerRetentionSeconds` | 120 (`DefaultControllerRetentionSeconds`) | `UnlimitedControllerRetentionSeconds` (0) removes the limit. |
 | `MaximumRetainedControllerRecords` | 64 (`DefaultMaximumRetainedControllerRecords`) | |
@@ -58,13 +61,13 @@ The step provider is not on this list. `NetworkLoopManager.UseNetworkLoopStepPro
 | Setting | Default | Notes |
 |---|---|---|
 | `AuthenticationTimeoutSeconds` | 30 | `UnsetAuthenticationTimeout` (0) disables the timeout; a connecting client that never authenticates is disconnected after this. |
+| `KickTimeoutMilliseconds` | 500 | How long a kicked or refused client's link may stay open after its kick before it is closed outright. Overloads that take a `timeoutMilliseconds` override it for one kick. |
 
 ## ClientManager
 
 | Setting | Default | Notes |
 |---|---|---|
 | `DisconnectResetMode` | `DisconnectResetMode.ClearReceivedWorld` | What the client keeps of its received world on disconnect. |
-| `DefaultServerNoticeAction` | `ServerNoticeAction.Log` | Used when no handler is registered for a server notice. |
 
 ## ViolationManager
 

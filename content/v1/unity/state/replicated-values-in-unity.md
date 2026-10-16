@@ -52,7 +52,7 @@ protected override void OnSystemLinked()
 When a failed guard is a bug rather than an expected outcome, use the loud forms instead: `EnsureIsController(ControllerType)` and `EnsureIsStarted(Invoker)` return the same answer but also log a warning naming the calling member, once per calling member on each behaviour. Reach for the loud forms in one-off code that must never run on the wrong peer - a button handler, an RPC. A per-tick write like the one below runs on every peer every tick, and a non-controlling peer failing the check there is the normal, expected outcome, not a bug, so use the quiet form:
 
 ```csharp
-protected override void OnEarlyFixedUpdate(StepDelta stepDelta)
+protected override void OnEarlyFixedUpdate(StepDelta stepDelta, SimulationContext simulationContext)
 {
     if (!IsController(ControllerType.Server))
         return;

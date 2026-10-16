@@ -106,7 +106,7 @@ OnTickAdvance
 OnLateVariableUpdate
 ```
 
-`OnEarlyVariableUpdate`, `OnVariableUpdate` and `OnLateVariableUpdate` run every frame. `OnEarlyStateUpdate`, `OnLateStateUpdate`, `OnReconcile`, `OnEarlySerialize`, `OnLateSerialize` and `OnTickAdvance` run once per tick, on the frame that ticks. `OnEarlyFixedUpdate` and `OnLateFixedUpdate` run once per elapsed tick interval, so they can run twice on one frame after a long frame.
+`OnEarlyVariableUpdate`, `OnVariableUpdate` and `OnLateVariableUpdate` run every frame. `OnEarlyStateUpdate`, `OnLateStateUpdate`, `OnReconcile`, `OnEarlySerialize`, `OnLateSerialize` and `OnTickAdvance` run once per tick, on the frame that ticks. `OnEarlyFixedUpdate` and `OnLateFixedUpdate` run once per elapsed tick interval, so they can run twice on one frame after a long frame. They follow the linked system's simulation rather than the loop alone: each takes a `SimulationContext` naming the pass, and on a client that predicts the object they run again for every tick a reconcile replays (see [Replaying a correction in Unity](../control/reconcile-in-unity.md)).
 
 `Awake` reflects over these once to find which ones this instance's concrete type overrides, and only those steps are ever dispatched to. Registration for the loop steps a type overrides is taken and dropped alongside `OnEnable`/`OnDisable` (and tied to whether a system is linked), so a disabled or pooled-and-despawned behaviour costs nothing per tick.
 

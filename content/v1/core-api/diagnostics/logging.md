@@ -62,9 +62,33 @@ if (LoggingService.IsInformationEnabled)
 
 When a level is disabled, the guarded branch never runs, so the interpolated string is never built.
 
+### Choosing the level at runtime
+
+Sometimes the level is not known until the code runs: a warning the first time, an error once it keeps happening. `Logger.Log` takes the level as an argument, and `Logger.IsEnabled` answers the same question as the three checks above for a level held in a variable:
+
+```csharp
+LoggerLevel loggerLevel = desyncCount > 10 ? LoggerLevel.Error : LoggerLevel.Warning;
+
+if (Logger.IsEnabled(loggerLevel))
+    Logger.Log(typeof(MatchService), loggerLevel, $"Player {playerName} desynced {desyncCount} times.");
+```
+
+`IsEnabled` is always false for `LoggerLevel.Disabled`, and `Log` with `Disabled` writes nothing, so `Disabled` doubles as "decided not to log".
+
+When the decision and the write happen in different places, carry the line as a `LogEntry`: a level and a message together. `LogEntry.Information`, `LogEntry.Warning` and `LogEntry.Error` build one, and the default `LogEntry` is unset (`IsSet` is false) and logs nothing. The engine uses this for violations, where a handler can change or clear the line a raise site seeded (see [Violations](./violations.md)):
+
+```csharp
+LogEntry logEntry = isLobbyFull ? LogEntry.Warning("Lobby is full; the join was refused.") : default;
+
+// Later, wherever the line is written. An unset entry writes nothing.
+Logger<MatchService>.Log(logEntry);
+```
+
+Pass a constant message to a `LogEntry` where you can: an entry built from a constant string allocates nothing, which matters on a path that runs per packet.
+
 ## Set this before new CoreManager()
 
-Swap the logger before you construct the `CoreManager`. The constructor already logs (a clamped tick rate, for one), and with the default provider the loop starts stepping the moment the constructor returns, so anything raised during bring-up goes to the old sink if you swap afterward. The level is also only re-read inside `UseLogger`, so calling it is what makes a later level change take effect, not just the sink change.
+Swap the logger before you construct the `CoreManager`. The constructor already logs (a clamped tick rate, for one), and with the default provider the loop starts stepping the moment the constructor returns, so anything raised during bring-up goes to the old sink if you swap afterward. The level is re-read inside `UseLogger`, and again whenever CodeBoost's application state is set, so a host may register its logger and its application state in either order and still log at the level the environment calls for. Calling `UseLogger` again is what makes a level change in your own logger take effect.
 
 ```csharp
 LoggingService.UseLogger(new MyServiceLogger());

@@ -42,28 +42,30 @@ Returns the value committed to the slot before the live one, together with the t
 public NetworkMember(
     CompressionLevel deltaCompressionLevel = CompressionLevel.Tight,
     bool isAutomaticPoolingEnabled = false,
-    PredictionMode predictionMode = PredictionMode.None,
+    MemberRole role = MemberRole.State,
     float accuracy = float.NaN,
     float interpolationSnapThreshold = float.NaN,
     SendInterval sendInterval = SendInterval.Normal,
     TransmissionMode transmissionMode = TransmissionMode.Interval,
     bool isExtrapolationEnabled = true,
-    byte correctionSmoothingTicks = 0);
+    byte correctionSmoothingTicks = 0,
+    bool isCarriedForward = true);
 ```
 
-All nine arguments are supplied by name at the field declaration, e.g. `NetworkMember<T> _x = new(predictionMode: PredictionMode.Compare);`.
+All ten arguments are supplied by name at the field declaration, e.g. `NetworkMember<T> _x = new(role: MemberRole.Validate);`.
 
 | Argument | Construction-time only? | Meaning |
 | --- | --- | --- |
 | `deltaCompressionLevel` | Yes | The compression level used when delta-encoding this member's value. Defaults to `CompressionLevel.Tight`. |
 | `isAutomaticPoolingEnabled` | Yes | Returns dropped `IPoolResettable` ring occupants to their pool through `NetworkTypePoolReturner<T0>`. When true, the member owns instances assigned to `Value`: rent them from `ResettableObjectPool<T0>` and never retain or mutate an instance after assigning it. |
-| `predictionMode` | Yes | `PredictionMode.None` (the default) leaves the member unpredicted. `PredictionMode.Compare` includes it in client-side prediction: excluded from the controller's upstream state, compared on the controller against its own history as of the tick the server echoes, and restored and replayed by the engine on divergence. `PredictionMode.Validate` has the server compare a hash of the controller's result for each tick of client state and order the reconcile when they differ; its value is quantized to its accuracy on every write. See [Predicted members and prediction history](../control/prediction-history-and-predicted-members.md). |
+| `role` | Yes | What the member is for. `MemberRole.State` (the default) is ordinary state: inbound values apply as they arrive. `MemberRole.Predict` makes it client state, a per-tick value the simulation reads (a move direction, a jump press), written by whoever controls the system and sent upstream by a controlling client every tick; see [Client state](../control/client-state-components.md). `MemberRole.Validate` makes it a predicted result: the controlling client computes it ahead of the server and never sends it upstream, the server simulates the same tick and orders a reconcile when its result differs, and its value is quantized to its accuracy on every write. On a client that does not control the system, any role other than `State` is held at the server's values while a reconcile replays. See [Predicted members and prediction history](../control/prediction-history-and-predicted-members.md). |
 | `accuracy` | Construction default only | The wire accuracy for delta encoding, loss recovery, and lossy serialization. `float.NaN` (the default) defers to the per-type default accuracy. A per-call accuracy passed to `Initialize` still overrides it, and coarser values trade precision for bandwidth on quantities that tolerate more error than position. |
 | `interpolationSnapThreshold` | Yes | The distance beyond which `InterpolatedValue` snaps to `Value` instead of animating from `PreviousValue`. `float.NaN` (the default) disables snapping. Usable only on numeric types with a registered tolerance comparer. |
-| `sendInterval` | No — see `SetSendInterval` | The span between deltas while `TransmissionMode.Interval` is in force. `SendInterval.Normal` sends every tick. |
-| `transmissionMode` | No — see `SetTransmissionMode` | The transmission strategy: `TransmissionMode.Interval` (the default) encodes ordinary deltas paced to `sendInterval`; `TransmissionMode.Divine` (Pro) projects motion instead, for values that tend to move predictably. |
-| `isExtrapolationEnabled` | No — see `SetExtrapolationEnabled` | Whether receivers keep the value moving through the sender's silence, under either mode. `true` (the default) favors staying live when an update is lost; `false` holds still until told and favors staying accurate. Under `TransmissionMode.Interval`, `true` costs a tiny overhead on each update plus one extra update each time the value stops; `false` costs nothing extra. See [How Often a Member Is Sent](./send-pacing.md). |
+| `sendInterval` | No, see `SetSendInterval` | The span between deltas while `TransmissionMode.Interval` is in force. `SendInterval.Normal` sends every tick. |
+| `transmissionMode` | No, see `SetTransmissionMode` | The transmission strategy: `TransmissionMode.Interval` (the default) encodes ordinary deltas paced to `sendInterval`; `TransmissionMode.Divine` (Pro) projects motion instead, for values that tend to move predictably. |
+| `isExtrapolationEnabled` | No, see `SetExtrapolationEnabled` | Whether receivers keep the value moving through the sender's silence, under either mode. `true` (the default) favors staying live when an update is lost; `false` holds still until told and favors staying accurate. Under `TransmissionMode.Interval`, `true` costs a tiny overhead on each update plus one extra update each time the value stops; `false` costs nothing extra. See [How Often a Member Is Sent](./send-pacing.md). |
 | `correctionSmoothingTicks` | Yes | How many ticks `InterpolatedValue` takes to glide from the value shown before a reconcile to the corrected one, on a client that predicts the member, while `Value` is already correct. `0` (the default) shows the correction at once. |
+| `isCarriedForward` | Yes | For a `MemberRole.Predict` member only: `false` keeps it at its default when `NetworkComponent.TryGetLastState(false)` carries the previous tick's client state across a tick whose client state did not arrive, for a value that must not repeat, such as a jump press. Ignored for every other role. |
 
 ## Interpolation
 
