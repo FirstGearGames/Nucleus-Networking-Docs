@@ -22,7 +22,7 @@ A custom editor (`SynapseTransportEditor`) groups the fields into three labeled 
 
 **Idle Timeout Seconds** (`ushort`, default `15`): how long a connected peer waits without hearing from the other side before it drops the link. One second is the least value applied.
 
-**Connecting Timeout Seconds** (`ushort`, default `10`): how long a client waits for its connection to be accepted. Synapse does not apply this yet; the field and its tooltip say so directly. A connect that goes unanswered times out after **Idle Timeout Seconds** instead, the same window Synapse uses for a connected link.
+**Connecting Timeout Seconds** (`ushort`, default `10`): how long a client waits for the server to answer its connect before giving up and returning to `Disconnected`. Zero falls back to **Idle Timeout Seconds**.
 
 ### Hosting
 

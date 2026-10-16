@@ -74,7 +74,7 @@ A system is controlled by the server or by exactly one client, never both. `Cont
 
 ## Comparing controllers: use the Id, not the reference
 
-A host holds two `Connection` instances for its own client: one from the transport's roster, and one for the local client. Resolving "the local client's Connection" through different paths on a host can return different instances that both refer to the same peer.
+A `Connection` is pooled and reused once its link ends, so a reference kept from an earlier lookup can name a different peer later, while `ControllerConnectionId` is an Id to begin with.
 
 Never compare `Connection` references to decide whether a peer controls a system. Compare `Connection.Id` values instead:
 

@@ -22,7 +22,7 @@ An object replicates its pose through one system or the other, never both.
 
 ## Choosing by object
 
-- **Player capsules, doors** — `NetworkTransform`. The pose is driven by input or a controller, proxies don't need to be physically bumpable, and pose-follow interpolation is cheap and smooth.
+- **Player capsules, doors** — `NetworkTransform`. The pose is driven by client state or a controller, proxies don't need to be physically bumpable, and pose-follow interpolation is cheap and smooth.
 - **Thrown and bumped bodies** — `ProjectedRigidbody`. These need to collide correctly on every peer — a thrown grenade or a kicked prop has to bounce off geometry the same way for everyone watching, not just the controller.
 - **Debris nobody steers** — `ProjectedRigidbody`, or nothing at all if it never needs to agree across peers. If it's not gameplay-relevant, it may not need replication at all.
 - **Agents that walk a path** — neither. See [NetworkNavMeshAgent](../network-nav-mesh-agent.md) — a path-following agent replicates the leg it's walking, not a per-tick pose or a physics body.

@@ -15,6 +15,7 @@ A loopback connection is instant and lossless, which means anything that only ma
 - `PacketLossChance` is the chance, from 0 to 1, that a packet is dropped. `0.2f` drops one packet in five.
 - `OutOfOrderChance` is the chance, from 0 to 1, that a packet is held back long enough to arrive after packets sent later.
 - `DuplicateChance` is the chance, from 0 to 1, that a packet is also sent a second time.
+- `Seed` fixes the random choices behind the other fields, so a test can be run again with the same choices for the same packets. `0`, the default, leaves them different on every run. The same seed repeats the choices, but a networked run can still differ, because how many packets are sent and when depends on timing. To replay a failing run, pick a seed yourself, log it, and set it.
 
 ```csharp
 using Nucleus.Transports;
@@ -61,6 +62,8 @@ A transport can also be set directly with `transport.SetNetworkConditions(networ
 A transport that cannot simulate a bad connection logs a warning when you set conditions on it, and reads back null. A transport that can may still support only some of the fields.
 
 `Synapse` supports everything except `DuplicateChance`, which it ignores. A packet it puts out of order is held back by up to 100 ms.
+
+`Synapse` sends its connection setup packets, the handshake and the NAT traversal probes, without any simulated delay or loss, so a connection always opens however bad the conditions are. A connect that succeeds under simulated conditions does not show that the handshake copes with that link.
 
 ## Set the conditions before Synapse connects
 

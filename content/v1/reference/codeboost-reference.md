@@ -14,7 +14,7 @@ LoggingService.UseLogger(new MyServiceLogger());
 
 `LoggerSetting` carries three `LoggerLevel` values — `Editor`, `DevelopmentBuilds`, `ReleaseBuilds` — each one of `Disabled`, `Error`, `Warning`, or `Information`. `LoggingService` reads whichever applies to the current environment and caches it. Check `LoggingService.IsInformationEnabled` / `IsWarningEnabled` / `IsErrorEnabled` before formatting an interpolated log argument, so the string isn't built when the level would drop it anyway.
 
-`DisableUnconditionalDevelopmentStacktrace()` on `ILogger` controls whether a development build appends a stack trace to every log call regardless of level; `ConsoleLogger` returns `true`, so its info/warning logs stay plain.
+`DisableUnconditionalDevelopmentStacktrace()` on `ILogger` controls whether a development build appends a stack trace to every log call regardless of level; `ConsoleLogger` returns `false`, because nothing else adds a trace to console output, so a development build traces its info and warning logs too. Errors always carry one.
 
 ## CodeBoost provides two object pools
 

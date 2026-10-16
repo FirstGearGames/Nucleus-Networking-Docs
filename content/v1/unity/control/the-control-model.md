@@ -44,8 +44,8 @@ Because control is exclusive, a system is never controlled by two clients at onc
 
 Three things ride on who the controller is, and all three are controller-only regardless of any write-access setting:
 
-- **Who may send inputs.** Only the controller's inputs are accepted for the system.
-- **Whose predicted members ride those inputs.** Prediction and reconcile are controller-only - a non-controlling observer never predicts or reconciles the system, it only receives the server's replicated state.
+- **Who may send client state.** Only the controller's client state is accepted for the system.
+- **Whose predicted members ride that client state.** Prediction and reconcile are controller-only - a non-controlling observer never predicts or reconciles the system, it only receives the server's replicated state.
 - **Who may write state by default.** `StateWriteAccess.Controller` - "the server, or the single controlling client" - is the default access, and it is also the behavior every system had before write access existed as a setting at all. The controller can always write state; widening that to other observers is a separate, additive Pro setting (`StateWriteAccess.AnyClient`), covered on [Letting clients write state](../../core-api/state/state-write-access.md).
 
 The same shape holds for RPCs: `RpcSendAccess.Controller` is the default there too, and its own doc comment puts it plainly - "only whoever drives the object may ask it to do anything."
@@ -64,4 +64,4 @@ State writes and remote calls both go through this same check. A client that doe
 
 A host runs the server and a client in the same process. That peer's `IsServerStarted` is true, so it is the server. If it also controls a given system - the ordinary case for a host's own player object - it satisfies `IsController(ControllerType.Client)` as well. And because a host holds every system in its own process, its own peer is exempt from being culled by interest: it observes everything by construction.
 
-So on a host, one process can be server, controller and observer for the same system simultaneously. That collapses three checks that are independent everywhere else into one that always passes, which is exactly what hides the bugs that show up the moment a second machine joins: a missing observer registration, a write-access setting that was never actually exercised, an input path that assumed the controller and the server were the same connection. None of those fail on a host, because on a host they can't - there is only one peer to be all three roles at once.
+So on a host, one process can be server, controller and observer for the same system simultaneously. That collapses three checks that are independent everywhere else into one that always passes, which is exactly what hides the bugs that show up the moment a second machine joins: a missing observer registration, a write-access setting that was never actually exercised, a client state path that assumed the controller and the server were the same connection. None of those fail on a host, because on a host they can't - there is only one peer to be all three roles at once.

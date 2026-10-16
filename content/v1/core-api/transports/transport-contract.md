@@ -13,8 +13,8 @@ A concrete `Transport` must implement all of these:
 1. `InitializeAsync(CoreManager coreManager, uint transportId)` - sets up the transport. The base assigns `CoreManager` and `Id`; an override calls base and does its own setup.
 2. `ConnectAsync(Invoker invoker)` - begins a connection using the current configuration. A client invoker connects the local client to the server; a server invoker starts listening.
 3. `OnSendPacket(OutgoingPacket outgoingPacket)` - the abstract method that actually transmits a packet. `SendPacket(OutgoingPacket)` is concrete: it runs the outbound packet transform, counts the transmitted bytes, and then calls `OnSendPacket`. Never override `SendPacket` itself; implement `OnSendPacket`.
-4. `PollForIncomingPackets(Invoker invoker)` - polls the underlying transport for newly arrived packets.
-5. `ReceivePackets(Invoker invoker, ref List<IncomingPacket> receivedPackets)` - drains polled packets onto the caller's list.
+4. `PollForIncomingPackets(Invoker invoker)` - required by the base class, but the engine never calls it. Do any polling your transport needs inside `ReceivePackets`, or from a method of your own.
+5. `ReceivePackets(Invoker invoker, ref List<IncomingPacket> receivedPackets)` - the one receive call the engine makes, once per frame for each half of the transport that is running: the server while it listens, and the client while it connects or is connected. Add every packet that has arrived since the last call to the caller's list.
 6. `TryGetConnection(Invoker invoker, out Connection connection)` - returns the `Connection` for the socket belonging to an `Invoker`.
 7. `IsOwnClientConnection(Connection serverSideClientConnection)` - answers whether a `Connection` the server holds for a peer is in fact this transport's own client half. This one has no default and no warning: a transport that cannot tell must still return `false` rather than guess. Answering `false` costs a host the in-process delivery of its own traffic; a wrong `true` hands a stranger the server's own half.
 8. `DisconnectLocalConnectionAsync(Invoker invoker)` - disconnects a local connection and closes any related open sockets.

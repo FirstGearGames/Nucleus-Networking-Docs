@@ -8,8 +8,8 @@
     "title": "What control means"
   },
   {
-    "slug": "writing-an-input-component-unity",
-    "title": "Sending player input from Unity"
+    "slug": "writing-a-client-state-component-unity",
+    "title": "Sending client state from Unity"
   },
   {
     "slug": "control-in-unity-scripts",

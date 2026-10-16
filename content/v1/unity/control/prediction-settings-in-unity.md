@@ -4,39 +4,40 @@ title: "Prediction settings on the Unity manager"
 
 > **Driving the core API directly?** See [Predicted members and prediction history](../../core-api/control/prediction-history-and-predicted-members.md).
 
+The Unity system manager groups its prediction fields under **Prediction**. Each one is assigned onto the core `SystemManager` in `UnitySystemManager.ManagersInstantiated`, before any user script's `Awake` or `Start` can observe `SystemManager`, so script execution order cannot get ahead of them. Set them in the inspector before play.
+
 ## Prediction History Ticks
 
-The Unity system manager exposes a **Prediction History Ticks** field (backed by `_predictionHistoryTicks`). It defaults to `SystemManager.UnsetPredictionHistoryTicks`, which is zero.
-
-Zero means "leave the per-member defaults alone." Every predicted member and input member already sizes its own ring; this field only raises that ring when a value is set.
-
-## The field is pushed onto the core manager as it comes up
-
-`UnitySystemManager.ManagersInstantiated` assigns the field straight onto the core manager:
+The **Prediction History Ticks** field (backed by `_predictionHistoryTicks`) sets `SystemManager.PredictionHistoryTicks`: how many ticks of history predicted members and client state members keep, so a server outcome can still be compared at the tick it echoes and a reconcile can restore any object to a past tick.
 
 ```csharp
 NucleusSystemManager.PredictionHistoryTicks = _predictionHistoryTicks;
 ```
 
-This runs inside `ManagersInstantiated`, before any user script's `Awake` or `Start` can observe `SystemManager`. Script execution order cannot get ahead of it, so there is no ordering trap to work around.
+It defaults to `SystemManager.UnsetPredictionHistoryTicks`, zero. Left at zero, every client keeps `SystemManager.DefaultPredictionHistoryTicks` (64 ticks, about a second at 60 ticks per second) for every object it holds, controlled or not, which covers most games. The server, which never rolls back, keeps two ticks.
 
-## The value must cover the round trip plus interpolation
+## Sizing it
 
-`SystemManager.PredictionHistoryTicks` must cover the round trip plus the state interpolation depth (`StateInterpolation`). A predicted member's compare gate has to still hold the tick a server outcome echoes, and that echo arrives a round trip plus interpolation later. A member's own default ring depth is two slots, which spans only a single tick of history — not enough to address a compare tick more than one tick back, so a networked prediction setup almost always needs this field raised above zero.
+Set a value only when the default does not fit. It must cover the worst round trip in ticks plus **State Interpolation**, with headroom: a 250 ms round trip at 60 ticks per second is 15 ticks, so with an interpolation of 2 use 24 or more. A history that falls short logs a warning once per system saying the server's value was older than any tick its predicted history still holds; every outcome on that system then reconciles with `MismatchCause.HistoryMissing`.
 
-## How the value is actually used
+A member takes the history when it initializes, so changing the field after objects have spawned does not resize the members that already exist. A member served on a paced send interval keeps a longer history on its own, sized from its send cadence, whatever this field says.
 
-The depth is read once, when a member initializes. The ring it allocates is the largest of three numbers:
+## Maximum replay length
 
-- the member's own default ring depth (`GetRingDepth()`)
-- `PredictionHistoryTicks`
-- the member's served-interval history, sized from its own send cadence, which the prediction history figure does not cover
+`SystemManager.MaximumReplayTicks` has no inspector field. Set it from code once the managers exist to cap how many ticks a reconcile replays; a longer one lands the server's values at its start tick without replaying and sets `ReplayReport.IsReplaySkipped`. Zero, the default, sets no limit.
 
-Two consequences follow directly from this:
+## Replay Hold Radius
 
-- Raising the manager's field does not always change a given member's ring. If a member's served-interval history or its own `GetRingDepth()` already exceeds `PredictionHistoryTicks`, the field has no effect on that member.
-- Changing the field after systems have started does not resize rings already allocated. The comparison happens at member initialization, not continuously.
+The **Replay Hold Radius** field (backed by `_replayHoldRadius`) sets `SystemManager.ReplayHoldRadius` as the managers come up. When a reconcile restores the objects this client controls, every object it does not control is held at the reconcile's start tick while they replay; with a radius set, only the ones within it of a restored object are held. Distances are read through the interest position reader, so an object whose position cannot be read is always held, and only Pro reads positions. Zero, the default, holds every object. The inspector corrects a negative value to zero.
+
+## Send Result Values
+
+The **Send Result Values** field (backed by `_resultValueSendEnabled`, on by default) sets `SystemManager.IsResultValueSendEnabled`. It is read on the controller: while it is on, the controller sends its `PredictionMode.Validate` result values beside the hash every tick, so a server that finds a result different can name the members and both values through `NetworkSystem.ResultMismatched`. The values cost bandwidth on every tick, so turn it off for a release build to keep the hash alone.
+
+## Predicted By Observers
+
+The **Predicted By Observers** toggle sits under Prediction on the `NetworkSystemObject` inspector. Ticked, it sets `NetworkSystem.IsObserverPredictionEnabled` on every system as it links to the object, on every peer, so a client that observes the object predicts it as its controller does. It has an effect only on an observing client that itself controls an object sending client state. The object's simulation must carry missing client state with `TryGetLastState`, and each observing client pays a simulation per tick and a replay per reconcile for it. See [Predicting another client's object](../../core-api/control/reconciliation.md#predicting-another-clients-object).
 
 ## Where to go next
 
-For what a predicted member does with the ring once it is sized, see [Predicted members and prediction history](../../core-api/control/prediction-history-and-predicted-members.md).
+For what a predicted member does with its history, see [Predicted members and prediction history](../../core-api/control/prediction-history-and-predicted-members.md); for the replay that follows a correction, see [Replaying a correction in Unity](./reconcile-in-unity.md).

@@ -97,5 +97,5 @@ This page indexes identity, lifecycle, role and composition. The rest of `Networ
 | Write access | `StateWriteAccess` and per-member write permissions. |
 | Interest | Observer registration and what a connection is served. |
 | RPCs | `IRpcScope`, `RpcSendAccess`, and remote procedure calls scoped to a system. |
-| Inputs | `NetworkInputComponent` and upstream input serialization. |
+| Client state | `NetworkClientStateComponent` and upstream client state serialization. |
 | Reconcile | `ReconcileRequired` and correcting predicted state. |
