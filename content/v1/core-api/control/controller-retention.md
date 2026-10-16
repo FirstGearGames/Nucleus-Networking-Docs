@@ -4,7 +4,7 @@ title: "Controller retention"
 
 > **Using Unity?** See [Keeping a player's objects across a disconnect](../../unity/control/controller-retention-in-unity.md).
 
-Connection ids are recycled. An object left naming a departed controller is one the next renter of that id inherits, along with its state write permission and its input routing, because both are decided by the same comparison against `ControllerConnectionId`. Control is therefore always surrendered the moment a connection leaves - there is no configuration that keeps an object controlled by somebody who is gone. `ControllerRetentionPolicy` only decides whether a token is issued so the objects can be handed back to whoever comes next.
+Connection ids are recycled. An object left naming a departed controller is one the next renter of that id inherits, along with its state write permission and its client state routing, because both are decided by the same comparison against `ControllerConnectionId`. Control is therefore always surrendered the moment a connection leaves - there is no configuration that keeps an object controlled by somebody who is gone. `ControllerRetentionPolicy` only decides whether a token is issued so the objects can be handed back to whoever comes next.
 
 ## A policy either releases a departing controller or retains it
 
@@ -44,7 +44,7 @@ Three events report what happens to a record over its lifetime:
 - `Reclaimed` (0) - a returning connection redeemed the token and was handed the objects.
 - `Expired` (1) - the record outlived `SystemManager.ControllerRetentionSeconds` without being redeemed.
 - `Evicted` (2) - the record was the oldest standing when a new one needed room under `SystemManager.MaximumRetainedControllerRecords`.
-- `Emptied` (3) - every object the record held left the world, so there was nothing left to redeem.
+- `Emptied` (3) - every object the record held left the world or was handed to another controller, so there was nothing left to redeem.
 
 Every reason but `Reclaimed` leaves the objects uncontrolled and nothing relating them to one another. A handler that wants to act on a record's objects as a set - despawning a player's belongings when they don't return, for example - has to do it from `ControllerRetentionEnded`, before that reason takes effect.
 

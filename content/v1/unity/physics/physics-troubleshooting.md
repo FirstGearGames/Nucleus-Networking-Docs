@@ -52,9 +52,9 @@ Call `ProjectedRigidbody.NotifySceneChanged()` right after the move. It deregist
 
 ## A NetworkTransform and a ProjectedRigidbody on the same object
 
-`ProjectedRigidbody` follows a non-server body as a proxy: it either adopts the first received state, follows a remote-input proxy on the interpolation buffer as a kinematic body, or runs the convergence follower. When a remote-controlled proxy follows the interpolation buffer, `RefreshRemoteInputProxy` forces the rigidbody kinematic (`Rigidbody.isKinematic = true`) for as long as that role holds, restoring the original flag when it ends.
+`ProjectedRigidbody` follows a non-server body as a proxy: it either adopts the first received state, follows a remote client state proxy on the interpolation buffer as a kinematic body, or runs the convergence follower. When a remote-controlled proxy follows the interpolation buffer, `RefreshRemoteClientStateProxy` forces the rigidbody kinematic (`Rigidbody.isKinematic = true`) for as long as that role holds, restoring the original flag when it ends.
 
-Putting a `NetworkTransform` on the same object as a `ProjectedRigidbody` means two components are both trying to move the same transform from replicated state: the `ProjectedRigidbody` drives the physics body (kinematically, while it is a remote-input proxy), and the `NetworkTransform` drives the same transform independently. Use one or the other for a given object's pose, not both.
+Putting a `NetworkTransform` on the same object as a `ProjectedRigidbody` means two components are both trying to move the same transform from replicated state: the `ProjectedRigidbody` drives the physics body (kinematically, while it is a remote client state proxy), and the `NetworkTransform` drives the same transform independently. Use one or the other for a given object's pose, not both.
 
 ## Reading bandwidth and round-trip time
 

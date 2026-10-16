@@ -38,7 +38,7 @@ The consequence worth repeating: losing interest in a system silently removes wr
 
 ## What access does not change
 
-`ControllerConnectionId` stays exclusive and server-assigned regardless of write access. Inputs, prediction, and reconcile remain controller-only whatever the access says - widening write access adds a path for state members, it doesn't touch control.
+`ControllerConnectionId` stays exclusive and server-assigned regardless of write access. Client state, prediction, and reconcile remain controller-only whatever the access says - widening write access adds a path for state members, it doesn't touch control.
 
 ## Nothing travels as a grant
 

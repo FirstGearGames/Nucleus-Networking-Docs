@@ -8,10 +8,10 @@ There is no engine-wide configuration object. Every setting is a public field or
 
 ## Construction-only values
 
-Most settings can change at any time. Two cannot, because the engine builds fixed-size structures around them at construction:
+Most settings can change at any time. Two are exceptions:
 
 - **Tick rate.** `NetworkLoopManager.TickRate` is get-only, fixed by the `tickRate` argument passed when the loop starts. `DefaultTickRate` is 30. A requested rate below `MinimumTickRate` (5) or above `MaximumTickRate` (128) is clamped into range and logged, not rejected.
-- **`ServerConfiguration.MaximumConnections`** is a readonly field on the transport's server configuration struct, set once when that struct is constructed.
+- **`ServerConfiguration.MaximumConnections`** is read-only to your code. Change it with `transport.SetMaximumConnections(uint)`, and Synapse applies the new cap the next time the server starts.
 
 The step provider is not on this list. `NetworkLoopManager.UseNetworkLoopStepProvider(INetworkLoopStepProvider)` swaps it at runtime, stopping the previous provider and returning it. To use your own provider from the start, pass it to the `CoreManager` constructor instead: swapped in after construction, it replaces a default provider that has already been stepping the loop from the thread pool.
 
@@ -20,7 +20,8 @@ The step provider is not on this list. `NetworkLoopManager.UseNetworkLoopStepPro
 | Setting | Default | Notes |
 |---|---|---|
 | `StateInterpolation` | 0 | Capped at `MaximumStateInterpolation` (7) when applied. |
-| `Redundancy` | 0 | Only usable when the transport's default channel is unreliable. |
+| `GlobalRedundancy` | 0 | Only usable when the transport's default channel is unreliable. Capped at `StateInterpolation` on the server's sends. |
+| `ClientRedundancy` | 3 | Extra resends a pure client adds to everything it sends upstream, on top of `GlobalRedundancy`. Not capped. |
 | `StateRetentionMilliseconds` | 1000 | Capped at `MaximumStateRetentionMilliseconds` (2000). |
 | `PartialStateApplyEnabled` | true | A tick that loses some of its packets applies the ones that arrived. Off, the whole tick is discarded and recovered. The receiver's choice alone. |
 | `PredictionHistoryTicks` | `UnsetPredictionHistoryTicks` (0) | Leaves the default history ring in place when unset. |
@@ -69,7 +70,7 @@ The step provider is not on this list. `NetworkLoopManager.UseNetworkLoopStepPro
 
 | Setting | Default | Notes |
 |---|---|---|
-| `DefaultAction` | `ViolationAction.Log` | A constant. Used only when a violation type is raised with no default of its own and no handler is registered; `PacketTransformRejectedViolation` (Pro) is the one such type. Every other type carries its own default, mostly `Ignore`. |
+| `DefaultAction` | `ViolationAction.Ignore` | A constant. Used only when a violation type is raised with no default of its own and no handler is registered; `PacketTransformRejectedViolation` (Pro) is the one such type, and that raise always logs a warning. Every other type carries its own default, mostly `Ignore`. |
 
 ## TransportManager
 
@@ -97,21 +98,17 @@ Pro only.
 |---|---|---|
 | `Port` | 0 | |
 | `MaximumTransmissionUnit` | 1200 | Packets longer than this are split into multiple packets. |
-| `ConnectingTimeoutSeconds` | 10 | Synapse does not apply this yet. An unanswered connect times out after `ConnectedTimeoutSeconds` instead. |
+| `ConnectingTimeoutSeconds` | 10 | How long a client waits for the server to answer its connect. Zero falls back to `ConnectedTimeoutSeconds`. |
 | `ConnectedTimeoutSeconds` | 15 | Least applied value is one second. Times out a connection that has received no remote data within this window. |
 
 **`ServerConfiguration`**
 
 | Field | Default | Notes |
 |---|---|---|
-| `MaximumConnections` | `UnsetMaximumConnections` (0) | Readonly; set only when the struct is constructed. |
+| `MaximumConnections` | `UnsetMaximumConnections` (0) | Accepts any number at 0. Set it with `transport.SetMaximumConnections(uint)`; Synapse applies it at the next server start. |
 
 ## Local vs. shared values
 
 Most manager settings are purely local: a server and its clients can each run different `StateInterpolation`, `EvaluationCadenceTicks`, timeout, or retention values without breaking the connection, because each peer only governs its own side of the exchange.
 
 Tick rate is the exception that must match. A server and client running different `TickRate` values are ticking at different real-world speeds, which the replication and interpolation built on top of the tick assume does not happen.
-
-## RemoteTimeoutType is declared but nothing reads it
-
-`RemoteTimeoutType` is declared in `Nucleus.Managers.Core` but nothing in the engine reads it. Setting it has no effect.

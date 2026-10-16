@@ -48,7 +48,7 @@ A fixed-length, index-addressable collection with per-element interpolation.
 |---|---|---|
 | `Set` | `void Set(int index, T0 item)` | Replaces one element. A write of the value already held is discarded before anything is recorded. |
 | `Fill` | `void Fill(T0 item)` | Sets every element to the same value; length is unchanged. |
-| `Resize` | `void Resize(int newLength)` | Grows or shrinks the array. New slots from a grow are default-filled; truncated slots are dropped. |
+| `Resize` | `void Resize(int newLength)` | Grows or shrinks the array. New slots from a grow are default-filled; truncated slots are dropped. Throws `ArgumentOutOfRangeException` above 65,536, the largest length a receiver honors. |
 | `Clear` | `void Clear()` | Sets every element to the default of `T0`; length is unchanged. |
 | `IndexOf` | `int IndexOf(T0 item)` | Returns `-1` when not found. |
 | `Count` / `Length` | `int Count { get; }` / `int Length { get; }` | Equivalent; `Length` is provided for the array idiom. |

@@ -1,10 +1,10 @@
 ---
-title: "Control, Inputs and Prediction"
+title: "Control, Client State and Prediction"
 ---
 
 Pages in this category:
 
-- [Input components](./input-components.md)
+- [Client state components](./client-state-components.md)
 - [Reading who controls a system](./controlling-a-system.md)
 - [Predicted members and prediction history](./prediction-history-and-predicted-members.md)
 - [Reconciliation and replay](./reconciliation.md)

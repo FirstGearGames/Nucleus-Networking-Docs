@@ -30,7 +30,7 @@ public DistanceInterestLadder(float stopDistance, float spawnDistance)
 
 The measurement is always from a connection's controlled objects to the system being evaluated, never from a fixed camera or observer point. `InterestPositionConditionBase.TryGetNearestControlledDistance` walks the connection's controlled `NetworkSystem`s, reads each one's position through the same `TryReadSourcePosition` hook, and keeps the nearest. Nearest wins across multiple controlled objects, so a system is interesting if it's near any of them — a player driving both a character and a vehicle stays covered.
 
-How many controlled objects are measured is capped by `InterestManager.MaximumControlledInterestObjects`, defaulting to `DefaultMaximumControlledInterestObjects` (`1`). Set it to `InterestManager.UnlimitedControlledInterestObjects` (`0`) to measure every controlled object instead.
+How many controlled systems are measured is capped by `InterestManager.MaximumControlledInterestObjects`, defaulting to `DefaultMaximumControlledInterestObjects` (`1`). The cap counts NetworkSystems, not objects: a controlled prefab made of two systems takes two slots, and below the count the systems measured are arbitrary rather than the nearest, so size it to the total systems a player controls. Set it to `InterestManager.UnlimitedControlledInterestObjects` (`0`) to measure every controlled object instead.
 
 ```csharp
 public uint MaximumControlledInterestObjects = DefaultMaximumControlledInterestObjects;

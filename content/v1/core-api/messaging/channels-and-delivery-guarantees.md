@@ -27,11 +27,11 @@ Messages and calls are batched per `Connection` and sent once per frame, one out
 
 That framing is what keeps one bad payload from taking down the rest of the batch. Decoding runs per message and per call, not around the whole drain, so a body that fails to decode leaves nothing misaligned behind it - the reader already knows where that body ends from its declared length, and every payload packed after it in the same batch still dispatches normally.
 
-## The MTU caveat
+## A large unreliable send stays unreliable
 
-There is one case where the channel you asked for is not the channel you get. If a payload is larger than the transport's maximum transmission unit, it is silently promoted from `Unreliable` to `Reliable` - for both messages and calls. An unreliable transport cannot fragment an oversized payload, and sending it anyway would just mean it gets dropped without anyone knowing, so the engine reliably sends it instead of unreliably dropping it.
+A message or call larger than the transport's maximum transmission unit keeps the channel you asked for. A reliable one is handed to the transport, which splits it and delivers every piece. An unreliable one is split by the engine into pieces that each fit one datagram, on every transport, and the receiving peer rebuilds it once all of its pieces have arrived.
 
-This promotion happens with no log line and no return value telling you it occurred. If you send something large on `Channel.Unreliable` expecting the loss tolerance that implies, that expectation quietly stops being true once the payload crosses the MTU. Keep payloads you actually intend to send unreliably well under the MTU if you're relying on that distinction.
+A split unreliable payload arrives whole or not at all. Losing any one piece loses the payload, so the more pieces it needs, the more often it is lost, and the receiver drops it once it has waited five seconds for a missing piece. An unreliable payload too large to split at all, more than 255 pieces or close to 300 KB at the default transmission unit, is dropped with an error, so send data that large reliably.
 
 ## When neither one is the right tool
 

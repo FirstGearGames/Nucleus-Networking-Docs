@@ -6,7 +6,7 @@ A quickstart gets one object moving between two peers. It does not tell you whic
 
 ## If you're building on Unity
 
-- **A player-controlled character.** Start with control and `NucleusBehaviour` — how a system decides who may drive it, and `IsController` as the check your scripts gate input and movement on. `NetworkPlayerSpawner` hands each authenticated connection its own object automatically; you still write what a script does with it once `IsController` says this peer drives it.
+- **A player-controlled character.** Start with control and `NucleusBehaviour`: how a system decides who may drive it, and `IsController` as the check your scripts gate client state and movement on. `NetworkPlayerSpawner` hands each authenticated connection its own object automatically; you still write what a script does with it once `IsController` says this peer drives it.
 - **A world with more objects than one peer can hold.** Read interest next: how `InterestManager` decides which spawns, despawns, and state updates a connection actually receives.
 - **A game with several rooms or matches.** Read up on scenes and per-room worlds — each room opening its own copy of a scene, and how a system finds the copy it belongs to rather than the first one loaded.
 - **A dedicated server.** Read the server/headless setup page, then control — a dedicated server is the clearest case of a peer that drives everything and controls nothing itself.

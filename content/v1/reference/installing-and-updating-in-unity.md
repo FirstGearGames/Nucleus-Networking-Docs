@@ -46,9 +46,10 @@ Unity 2021.3 is the effective minimum for a build target — older versions neve
 
 `Nucleus.Integrations.Unity.asmdef` is the main integration assembly. It sits beside two sibling assemblies for the same code: `Nucleus.Integrations.Unity.Editor.asmdef` under `Editor/`, and `Nucleus.Integrations.Unity.Tests.asmdef` under `Tests/`.
 
-Two scripting defines control optional pieces:
+Three scripting defines control optional pieces:
 
 - `NUCLEUS_ADDRESSABLES` — a `versionDefines` entry keyed to `com.unity.addressables` version `1.19` and up. Set automatically once that package is present at a matching version; nothing to do by hand.
+- `NUCLEUS_NAVMESH` — a `versionDefines` entry keyed to `com.unity.modules.ai`, Unity's AI module. Set automatically while the module is enabled, as it is in a new project. With the module disabled, `NetworkNavMeshAgent` is left out and the rest of the integration still compiles.
 - `BLITZ_RELAY` — a `defineConstraints` gate on the Blitz Relay assembly itself. The relay transport only compiles when this define is set in your project; the main Unity integration assembly references it unconditionally but the relay code stays out until you opt in.
 
 ## Updating

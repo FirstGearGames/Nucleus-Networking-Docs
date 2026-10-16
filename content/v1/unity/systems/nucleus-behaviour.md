@@ -13,7 +13,7 @@ The class splits in two:
 - `NucleusBehaviourBase` is the non-generic half: the `NetworkSystem` reference, role and control checks, the loud guards, and the eleven per-step virtuals. It never declares a required system, so it is not the type a script inherits directly.
 - `NucleusBehaviour<TComponent0>` requires a `NetworkSystem` carrying `TComponent0` and exposes it as `Component`.
 
-A script that only needs the role and control checks and the hooks, on an object where another component (a `NetworkTransform` or a `ProjectedRigidbody`, say) already declares the system, inherits the non-generic `NucleusBehaviour` instead. It declares nothing and adopts whichever system the object's `NetworkSystemObject` links, so something else on the object must declare one or it waits for the object's whole life.
+A script that only needs the role and control checks and the hooks, on an object where another component (a `NetworkTransform` or a `ProjectedRigidbody`, say) already declares the system, inherits the non-generic `NucleusBehaviour` instead. It declares nothing and adopts whichever system the object's `NetworkSystemObject` links, so something else on the object must declare one or it waits for the object's whole life. If the system it adopted is stopped on its own while the object keeps another, it re-adopts the one that remains at the end of that frame; a whole-object despawn unlinks it once and adopts nothing.
 
 A generated family widens this to more component types: `NucleusBehaviour<TSystem, TComponent0>` through `NucleusBehaviour<TSystem, TComponent0, TComponent1, ..., TComponent31>`, one overload per arity from 1 to 32 component types, each naming the system type explicitly and each calling the matching `NetworkSystemObjectPool.RequireSystem<TSystem, TComponent0, ...>` overload. Use the generated form when a script needs a system that isn't just `NetworkSystem`, or needs more than one component off it.
 
@@ -63,6 +63,30 @@ Override these `protected virtual` methods on `NucleusBehaviourBase`:
 | `OnControllerChanged(Connection previousControllerConnection, Connection currentControllerConnection)` | Called on every peer when control of the linked system moves. |
 
 Linking adopts whichever roles are already started rather than waiting for an edge: `LinkSystem` reseeds its tracked server/client flags from the live state and immediately raises `OnServerStarted`/`OnClientStarted` for any role already up, instead of only firing on a later start/stop transition. A scene object's `Awake` runs on every peer regardless of which of them already has a role running, so a script that only reacted to edges would miss a role that started before it linked.
+
+## Overriding Awake, OnEnable, OnDisable and OnDestroy
+
+The base classes do required setup in their own `Awake`, `OnEnable`, `OnDisable` and `OnDestroy`: `Awake` resolves the `CoreManager` and, in `NucleusBehaviour<TComponent0>`, requires the system, `OnEnable` and `OnDisable` take and drop the per-step registration, and `OnDestroy` unlinks the system. Unity calls only the most derived method of each name, so a script that needs one of these must override it and call the base method:
+
+```csharp
+protected override void Awake()
+{
+    base.Awake();
+
+    _renderer = GetComponent<Renderer>();
+}
+```
+
+Call the base method first, unless the work must be ready before the system links: `base.Awake()` can link a system that is already present and raise `OnSystemLinked` on the spot, so a reference that hook reads is cached before the call. Setup that wants the system anyway belongs in `OnSystemLinked`.
+
+The build enforces both halves of this rule, as errors:
+
+| Id | Reported when |
+|---|---|
+| `NUCLEUS001` | A class deriving, directly or indirectly, from `NucleusBehaviourBase` declares `Awake`, `OnEnable`, `OnDisable` or `OnDestroy` without `override`, hiding the base method. |
+| `NUCLEUS002` | An override of one of those four methods never calls the base method. |
+
+Either mistake would otherwise leave the behaviour unlinked with nothing logged. The lifecycle hooks above and the per-step virtuals below are empty in the base class, so an override of those may skip the base call and is never reported.
 
 ## Per-step virtuals
 
