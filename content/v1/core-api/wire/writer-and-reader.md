@@ -170,7 +170,7 @@ These write and read a `Connection` reference by id. Treat that id as a claim, n
 
 ## Reading values back
 
-A `Reader` mirrors the writer's typed reads one for one (`ReadInt8`, `ReadSingle`, `ReadString`, `ReadDelta<T0>`, and so on). A full read takes the `CompressionLevel` the write used. A delta read takes the previous value and no `DeltaCheckMode`; its compression level is `Reader.DeltaCompressionLevel`. Pass the level explicitly on both sides rather than relying on the defaults, because they do not always match: `WriteString` defaults to `Loose` while `ReadString` defaults to `Uncompressed`, and `ReadQuaternion` has no default level at all. Beyond the per-value reads, a `Reader` carries:
+A `Reader` mirrors the writer's typed reads one for one (`ReadInt8`, `ReadSingle`, `ReadString`, `ReadDelta<T0>`, and so on). A full read takes the `CompressionLevel` the write used. A delta read takes the previous value and no `DeltaCheckMode`; its compression level is `Reader.DeltaCompressionLevel`. Every read that has a default uses the same default as its write (`Loose`, including `ReadString`), so a pair called with no level on either side agrees. `ReadQuaternion` is the exception that has no default level at all, so it must be told the level the write used. Passing the level explicitly on both sides is still the clearest way to keep a pair in step when you change one of them. Beyond the per-value reads, a `Reader` carries:
 
 ```csharp
 CoreManager CoreManager { get; }

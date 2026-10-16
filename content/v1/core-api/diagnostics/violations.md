@@ -21,6 +21,8 @@ A raised violation passes through the same four stages, in order, every time:
 
 Only the deciding handler can change the outcome. Observers and per-type subscribers receive the context by read-only reference after the action is already settled — they can log, alert, or count, but they cannot influence what happens.
 
+A throwing stage does not break the pipeline. If the deciding handler throws, the violation falls back to its default action and log line, as though no handler were registered. If an observer throws, the observers after it are still told, and if a per-type subscriber throws, enforcement still happens. Each failure is logged as an error with the exception attached, so a bug in your handler shows up in the log, while a client that tripped a violation is still kicked rather than escaping because your code threw.
+
 ## Deciding the action
 
 Register at most one deciding handler per violation type through `ViolationManager.RegisterViolationHandler<T0>(ViolationHandler<T0> violationHandler)`. Registering a second handler for the same type replaces the first. Remove it with `TryUnregisterViolationHandler<T0>()`, which takes no argument — it always targets the one handler for `T0`.

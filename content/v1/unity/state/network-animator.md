@@ -6,7 +6,11 @@ title: "NetworkAnimator"
 
 `NetworkAnimator` replicates a GameObject's `Animator` across peers. Parameters are the primary channel: the peer driving the object reads its float, int, bool and trigger parameters, its layer weights and its playback speed, and every other peer applies those values and lets its own `Animator` run its own state machine from them.
 
-The layer state — each layer's current state hash and normalized time — rides on top as a correction, not as the primary replication path. It costs nothing between transitions, because a hash only changes when a layer transitions. It serves two purposes: a peer whose state machine branched differently from the controller is pulled back onto the server's state, and a peer that joins mid-session opens each layer on the reported state and phase instead of at the controller's entry state.
+The layer state (each layer's current state hash and normalized time) rides on top as a correction, not as the primary replication path. It costs nothing between transitions, because a hash only changes when a layer transitions. It serves two purposes: a peer whose state machine branched differently from the controller is pulled back onto the server's state, and a peer that joins mid-session opens each layer on the reported state instead of at the controller's entry state.
+
+The phase a joiner opens on is the live one. A spawn, a late join, an interest serve and a resync each carry every layer's phase as the authority's animator holds it at that moment, so a joiner opens a looping idle where the authority is now, not where the authority entered the state.
+
+When parameters alone are not close enough, for example an animated part that lag-compensated hitboxes are judged against, turn on [Precise Playback](#precise-playback-enabled) and followers play the authority's exact pose instead.
 
 Add `NetworkAnimator` to the same GameObject as the `Animator` it should replicate; it requires a `NetworkSystemObject`.
 
@@ -19,7 +23,9 @@ private Animator _animator;
 
 The `Animator` to replicate. Left empty in the inspector, the component falls back to the `Animator` on its own GameObject at `Awake`.
 
-The values actually captured and applied live on `UnityAnimatorComponent`, the replicated component `NetworkAnimator` binds to through its `NetworkSystem`: `FloatParameters`, `IntParameters`, `BoolParameters` (packed one bit per parameter, up to 64), `TriggerPulses`, `LayerWeights`, `Speed`, `LayerStateHashes` and `LayerNormalizedTimes`. `NetworkAnimator` is the MonoBehaviour surface over that component; it doesn't hold the replicated data itself.
+The values actually captured and applied live on `UnityAnimatorComponent`, the replicated component `NetworkAnimator` binds to through its `NetworkSystem`: `FloatParameters`, `IntParameters`, `BoolParameters` (packed one bit per parameter, up to 64), `TriggerPulses`, `LayerWeights`, `Speed`, `LayerStateHashes` and `LayerNormalizedTimes`, plus `LayerPlaybackPositions`, `LayerNextStateHashes`, `LayerNextPlaybackPositions` and `LayerTransitionProgress`, which stay empty and cost nothing unless Precise Playback is on. `NetworkAnimator` is the MonoBehaviour surface over that component; it doesn't hold the replicated data itself.
+
+An animator with more than 64 bool parameters replicates the first 64 and drops the rest. `NetworkAnimator` logs an error naming the count when it binds, so split the extra bools into int parameters or a second animator if they need to reach other peers.
 
 ## State Correction Interval
 
@@ -33,16 +39,29 @@ public enum StateCorrectionInterval : byte
 }
 ```
 
-Controls how often the replicated normalized time of each layer is refreshed while no layer is transitioning. The state hash costs nothing between transitions since it doesn't change, but the phase advances every tick a clip plays, so refreshing it on a cadence means a character idling in a loop pays for that idle forever.
+Controls how often the replicated normalized time of each layer is refreshed while no layer is transitioning, which bounds how far a follower already in the session can drift from the authority's phase during a long loop. The state hash costs nothing between transitions since it doesn't change, but the phase advances every tick a clip plays, so refreshing it on a cadence means a character idling in a loop pays for that idle forever.
 
-- **Disabled** (default) — the phase only updates on a transition. A joining peer opens a looping state at the point the server entered it, not the point the server has since reached.
+- **Disabled** (default): the phase only updates on a transition. A joiner still opens on the live phase, because the statement it joins on carries it; after that, a follower in a long loop runs on its own animator's clock until the next transition.
 - **Always** — refreshed every tick. The most expensive tier; a follower's phase tracks the server's exactly rather than merely opening near it.
 - **Short** — refreshed at most every 250ms.
 - **Long** — refreshed at most once a second, for a loop a joiner only needs to open roughly in the right place.
 
-`Short` and `Long` mirror the same-named `SendInterval` tiers and resolve through the same `SendIntervalTicks.Resolve`, so a span read on this field means the same thing it means on a send interval. Correction of a peer whose state machine took a different branch doesn't depend on this setting at all — the state hash carries that on the tick the divergence happens either way; this setting only bounds how stale a joiner's phase can be.
+`Short` and `Long` mirror the same-named `SendInterval` tiers and resolve through the same `SendIntervalTicks.Resolve`, so a span read on this field means the same thing it means on a send interval. Correction of a peer whose state machine took a different branch doesn't depend on this setting at all: the state hash carries that on the tick the divergence happens either way; this setting only bounds how far a follower's phase can drift between transitions.
 
 Unlike a paced send interval, none of this is a Pro feature. It's a local decision about how often to re-read an animator, so every tier here paces in a free build.
+
+## Precise Playback Enabled
+
+```csharp
+[SerializeField]
+private bool _precisePlaybackEnabled;
+```
+
+Off by default. With it on, the authority captures every layer's playback position each tick, and during a transition also the next state, its position and how far the blend has progressed. A follower stops running its own state machine: it holds its animator still and places each layer at the authority's position, interpolated between the two newest ticks it applied, cross-fading at the replicated progress. The pose is evaluated at once, so a raycast in the same frame sees it.
+
+Use it for an animated part whose pose has to match the authority's, such as a limb carrying hitboxes that a lag-compensated shot is judged against. Measured at 30 Hz, a precisely played part sits within about a millimetre of the server's recorded pose, where parameters alone sit a few centimetres off.
+
+It costs a value per layer every tick, and more during a transition, where parameters alone cost nothing between changes. A state that does not loop is held at its end, so a finished or static clip stops being sent. Animation events do not fire on a follower in this mode, because its clips are placed rather than played through; fire game logic from replicated state or a remote call instead.
 
 ## Root Motion Management Enabled
 

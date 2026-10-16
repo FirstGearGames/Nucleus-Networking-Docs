@@ -47,6 +47,20 @@ uint removedCount = coreManager.InterestManager.RemoveDefaultConditions();
 
 It is the single call for a game that wants to arbitrate everything itself. Systems already started keep the fold they took at spawn and drop it when they next start, exactly as `TryRemoveCondition` does.
 
+## Showing an object only to its controller
+
+Some objects belong to one player alone: an inventory, a private quest log, a hand of cards. `ControllerOnlyInterestCondition` shows a system only to the client that controls it, so the object never reaches any other client at all:
+
+```csharp
+ControllerOnlyInterestCondition controllerOnlyInterestCondition = new();
+
+inventorySystem.AddInterestCondition(controllerOnlyInterestCondition);
+```
+
+It is a `Spawn` condition: a client that does not control the object never holds it, rather than holding a stopped copy. When control moves, the next evaluation takes the object away from the previous controller and spawns it for the new one. A group is answered as one object, so every member of a group is shown to a client that controls any one of them. The condition holds no state, so one instance can be registered on any number of systems.
+
+Register it per system. Registered globally with `AddCondition`, it scopes every object in the world, and a system no client controls is shown to no client, so every server-controlled object would disappear from every client.
+
 ## Evaluation cadence
 
 `EvaluationCadenceTicks` controls how many ticks pass between evaluations of any one system's conditions. It defaults to 5. Systems are staggered across the cadence by their `Id`, so each tick evaluates roughly one cadence-th of the world rather than spiking the whole of it onto one tick.

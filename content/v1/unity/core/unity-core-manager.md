@@ -25,7 +25,7 @@ Add `UnityCoreManager` to a single GameObject. Its `Awake` constructs the sessio
 - `UnitySceneManager`
 - `UnityPhysicsManager`
 
-`EnsureManagers` only adds to the `UnityCoreManager`'s own GameObject, but the notify pass afterward uses `GetComponentsInChildren<UnityManager>()`, so a manager authored on a child GameObject is still found and bound. `EnsureManagers` does not see a child's manager, though, and adds a second one of the same type to the `UnityCoreManager`'s own GameObject, so author the managers on that GameObject to avoid the duplicate. Each one is notified through `ManagersInstantiated`.
+`EnsureManagers` only adds to the `UnityCoreManager`'s own GameObject, but the notify pass afterward uses `GetComponentsInChildren<UnityManager>()`, so a manager authored on a child GameObject is still found and bound. `EnsureManagers` checks the children too, inactive ones included, before adding a default, so a manager you placed on a child is used as it is and never gains a default twin on the root. Each one is notified through `ManagersInstantiated`.
 
 ## Execution order
 

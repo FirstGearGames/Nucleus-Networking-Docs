@@ -20,11 +20,11 @@ Start every networked object the same way: create the prefab, add `NetworkSystem
 
 A prefab with no `PrefabId` can't spawn over the network. Run **Nucleus > Rebuild Network Prefab Collection** from the Unity menu (`NetworkPrefabCollectionBuilder.Rebuild`, on `[MenuItem("Nucleus/Rebuild Network Prefab Collection")]`) after adding a new networked prefab, and again any time you add or remove one. It scans the project for prefabs carrying a `NetworkSystemObject`, stamps each with a prefab id and its bundle's id, and writes the shard's prefab collection asset.
 
-The id lives on the prefab asset itself, which is where the trap comes from: duplicate a networked prefab in the Project window and the copy carries the same stamped `_prefabId` as the original, because duplication copies the serialized data verbatim. Until you rebuild, both prefabs claim the same identifier and the wrong one can end up resolved on the receiving end. Rebuilding gives the copy a fresh identifier and leaves the original's alone: the rebuild keeps an identifier on the prefab the collection already lists, and on a base over its own variant, so you don't need to clear anything by hand.
+The id lives on the prefab asset itself, which is where the trap comes from: duplicate a networked prefab in the Project window and the copy carries the same stamped `_prefabId` as the original, because duplication copies the serialized data verbatim. Until you rebuild, both prefabs claim the same identifier and the wrong one can end up resolved on the receiving end, and a player build fails with the clash listed. Rebuilding gives the copy a fresh identifier and leaves the original's alone: the rebuild keeps an identifier on the prefab the collection already lists, and on a base over its own variant, so you don't need to clear anything by hand.
 
 ## Adding NetworkTransform
 
-Add `NetworkTransform` to the same GameObject and the object's position, rotation, and scale replicate with no code: the controller writes the transform each frame, and every other peer applies it through an interpolation buffer. It also requires a `NetworkSystemObject` on the same object.
+Add `NetworkTransform` to the same GameObject and the object's position, rotation, and scale replicate with no code: the controller writes the transform each frame, and every other peer applies it through an interpolation buffer. It belongs to the nearest `NetworkSystemObject` at or above it, so on this object it uses the root's marker.
 
 Two fields are worth knowing on day one:
 

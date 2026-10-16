@@ -1,0 +1,26 @@
+[
+  {
+    "slug": "how-lag-compensation-works",
+    "title": "How lag compensation works"
+  },
+  {
+    "slug": "making-an-object-hittable",
+    "title": "Making an object hittable"
+  },
+  {
+    "slug": "firing-and-judging-a-shot",
+    "title": "Firing and judging a shot"
+  },
+  {
+    "slug": "clipping-shots-at-walls",
+    "title": "Clipping shots at walls"
+  },
+  {
+    "slug": "unity-lag-compensation-manager",
+    "title": "UnityLagCompensationManager"
+  },
+  {
+    "slug": "hitscan-rewind-demo",
+    "title": "Worked example: the HitscanRewind demo"
+  }
+]

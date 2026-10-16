@@ -69,7 +69,9 @@ if (system.IsServerStarted)
 | Member | Meaning |
 |---|---|
 | `ComponentCount` | The number of `NetworkComponent`s attached to this system. |
-| `TryGetComponent<T0>(out T0 component)` | Retrieves a contained `NetworkComponent` of type `T0`, such as a transform component. Returns false when none is attached. |
+| `TryGetComponent<T0>(out T0 component)` | Retrieves a contained `NetworkComponent` of type `T0`, such as a transform component. Returns false when none is attached. When the system carries the type more than once, this is the first. |
+| `TryGetComponent<T0>(byte componentId, out T0 component)` | Retrieves the component at a component Id when it is of type `T0`. The Id is the order the component was added in, the same on every peer, so this reaches every instance of a repeated type. |
+| `MaximumComponentCount` | The most components one system can hold: 31. |
 | `GroupMemberCount` | The number of members this system's group currently holds. Zero for an ungrouped system. On the server this is the live group count; on a receiver it is the count the full header carried. |
 
 ```csharp
@@ -97,5 +99,5 @@ This page indexes identity, lifecycle, role and composition. The rest of `Networ
 | Write access | `StateWriteAccess` and per-member write permissions. |
 | Interest | Observer registration and what a connection is served. |
 | RPCs | `IRpcScope`, `RpcSendAccess`, and remote procedure calls scoped to a system. |
-| Client state | `NetworkClientStateComponent` and upstream client state serialization. |
-| Reconcile | `ReconcileRequired` and correcting predicted state. |
+| Client state | `MemberRole.Predict` members, sent upstream by the controlling client every tick. |
+| Reconcile | `ReconcileRequired`, `ResultMismatched`, the simulation callbacks and correcting predicted state. |

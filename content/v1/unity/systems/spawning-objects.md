@@ -57,6 +57,8 @@ NetworkSystemObjectPool.TryRent<NetworkSystem, ColorPulseComponent>(this, out _)
 
 What is refused is a rent whose composition does not match a staged wire spawn: on a receiving client, a rent inside a freshly instantiated prefab's `Awake` must ask for the same `TSystem` and the same NetworkComponent types the wire actually sent for that member, or the call logs an error and returns `false`. Up to 31 NetworkComponent type arguments are generated for both `TryRent` and `RequireSystem` (`TComponent0` through `TComponent30`), and both also have a form that takes none, for a system that carries only a spawn payload.
 
+When the number of components comes from data rather than from your code, both also take a count: `TryRent<TSystem, TComponent0>(this, componentCount, out networkSystem)` and `RequireSystem<TSystem, TComponent0>(this, componentCount, onAcquired)` give one system carrying `TComponent0` that many times. A system satisfies the request only when it holds exactly that many components, all of that type, and each one is reached by its component Id with `NetworkSystem.TryGetComponent(componentId, out component)`. This is how `NetworkTransform` puts every part it lists on one system.
+
 ## Despawning
 
 `NetworkSystemObject.Despawn()` despawns the object on the server. It stops every system linked to the marker, which replicates the despawn to observers, and requests the systems return to their pool once the stop completes:

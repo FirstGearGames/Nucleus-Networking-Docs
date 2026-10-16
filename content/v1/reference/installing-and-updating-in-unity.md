@@ -10,10 +10,11 @@ Nucleus for Unity ships as prebuilt DLLs plus source for its integration layer. 
 
 - `Nucleus.dll`, `CodeBoost.dll`, `SynapseSocket.dll` — each with a `.pdb` alongside it for debuggable stack traces.
 - `Nucleus.CodeAnalysis.SourceGenerators.dll` — the Roslyn source generator that makes networked types compile. No `.pdb` ships for it.
-- `LICENSE.txt`.
+- `Nucleus.xml` and `SynapseSocket.xml` beside their DLLs: the XML documentation for the public API, so your IDE shows hover docs for every engine type and member you can use.
+- `LICENSE.txt`, and `VERSION.txt`, which names the release (see [Identifying what you're running](#identifying-what-youre-running)).
 - An `Integrations` folder holding four source trees, each its own assembly definition: `Unity`, `Blitz Relay`, `Newfarm Client`, `Newfarm Migration`.
 
-Copy the whole `Assets/Nucleus` folder into your project. That's the only supported install method — there is no `.unitypackage`, no UPM package, no Asset Store listing, and no git-URL install.
+Install it either by importing the release's `.unitypackage` (**Assets > Import Package > Custom Package**) or by copying the whole `Assets/Nucleus` folder into your project. Those are the two supported methods: there is no UPM package, no Asset Store listing, and no git-URL install.
 
 ## The one rule that decides whether it works
 
@@ -54,13 +55,13 @@ Three scripting defines control optional pieces:
 
 ## Updating
 
-Replace the four DLLs and their `.pdb`s, `LICENSE.txt`, and the `Integrations` source trees with the new build's copies. Leave every `.meta` file in the project untouched — they're already there from your first install, and they're what keeps the source generator running and the asset GUIDs stable.
+Replace the four DLLs and their `.pdb` and `.xml` files, `LICENSE.txt`, `VERSION.txt`, and the `Integrations` source trees with the new build's copies. Leave every `.meta` file in the project untouched; they're already there from your first install, and they're what keeps the source generator running and the asset GUIDs stable.
 
 If the editor is in Play mode when you replace the files, Unity reimports and triggers a domain reload mid-play. Expect play mode to reset; don't replace files while relying on play-mode state you haven't saved.
 
 ## Identifying what you're running
 
-Nothing in the package is stamped with a version today — no version number in the DLLs, no marker file to check against. See [Versioning, upgrading and release notes](./versioning-and-upgrading.md) for what's tracked there instead.
+`Assets/Nucleus/VERSION.txt` names the installed release (it reads `Nucleus <version>`), and a built player writes `Thank you for using Nucleus Networking <version>.` to its log at launch. The DLLs carry no version number of their own. See [Versioning, upgrading and release notes](./versioning-and-upgrading.md).
 
 ## Not using Unity?
 

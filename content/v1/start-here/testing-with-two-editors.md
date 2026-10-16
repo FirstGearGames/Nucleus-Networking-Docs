@@ -41,6 +41,8 @@ It's called with `Application.dataPath.Contains("_clone")` for `isCloneProject` 
 
 This is demo code, not engine behavior — it exists so the sample scenes work without any setup. A real project decides its own role, typically through `UnityTransportManager`'s `Automatic Start Mode` field or by calling `StartServerAsync` / `StartClientAsync` / `StartHostAsync` explicitly.
 
+Setting both editors to start as host also works, on purpose. `StartHostAsync` starts the client half whether or not the server half bound its port, so the first editor to press play takes the port and hosts, and the second fails to bind and its client half joins the first as an ordinary client. The second editor needs no separate client setup.
+
 ## The trap: two main editors
 
 `isMainEditor` is true for any plain editor instance, not just the "real" one — a second, independently-installed editor pointed at a plain copy of the project also reports as the main editor. Only the `_clone` path check tells two ParrelSync-related instances apart. Pair anything that isn't a clone-plus-primary (two separate checkouts, two machines) and `Auto` resolves both to `Server`; set the driver's role field to `Server` on one side and `Client` on the other instead.

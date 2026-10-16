@@ -4,7 +4,7 @@ title: "Control, Client State and Prediction"
 
 Pages in this category:
 
-- [Client state components](./client-state-components.md)
+- [Client state](./client-state-components.md)
 - [Reading who controls a system](./controlling-a-system.md)
 - [Predicted members and prediction history](./prediction-history-and-predicted-members.md)
 - [Reconciliation and replay](./reconciliation.md)

@@ -4,7 +4,7 @@ title: "What a system is"
 
 ## The replicated unit
 
-A `NetworkSystem` is the thing Nucleus replicates. It is not a data container itself — the data lives in the `NetworkComponent` instances attached to it. A system can hold up to 64 components, and you read them back with `TryGetComponent<T0>` or check how many are attached with `ComponentCount`.
+A `NetworkSystem` is the thing Nucleus replicates. It is not a data container itself; the data lives in the `NetworkComponent` instances attached to it. A system can hold up to 31 components (`NetworkSystem.MaximumComponentCount`), and you read them back with `TryGetComponent<T0>` or check how many are attached with `ComponentCount`.
 
 ```csharp
 if (system.TryGetComponent<TransformComponent>(out TransformComponent transform))
@@ -16,6 +16,19 @@ int attached = system.ComponentCount;
 ```
 
 Think of the system as the identity and lifecycle; the components are the fields that get serialized onto the wire.
+
+Each component also has a component Id: the order it was added in, starting at zero. Every peer builds the system's components in the same order, so an Id names the same component everywhere. `TryGetComponent<T0>(out T0)` returns the first component of a type, which is all you need while each type appears once. A system can carry one type several times, though (a `NetworkTransform` replicating several parts does exactly that), and then you reach each instance by its Id:
+
+```csharp
+for (byte componentId = 0; componentId < system.ComponentCount; componentId++)
+{
+    if (system.TryGetComponent(componentId, out TransformComponent part))
+    {
+        // part is the component added at position componentId, the same one on every peer.
+    }
+}
+```
+
 
 ## Lifecycle
 

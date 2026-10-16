@@ -8,7 +8,7 @@ The Unity system manager groups its prediction fields under **Prediction**. Each
 
 ## Prediction History Ticks
 
-The **Prediction History Ticks** field (backed by `_predictionHistoryTicks`) sets `SystemManager.PredictionHistoryTicks`: how many ticks of history predicted members and client state members keep, so a server outcome can still be compared at the tick it echoes and a reconcile can restore any object to a past tick.
+The **Prediction History Ticks** field (backed by `_predictionHistoryTicks`) sets `SystemManager.PredictionHistoryTicks`: how many ticks of history `MemberRole.Predict` and `MemberRole.Validate` members keep, so a reconcile can restore any object to a past tick and a replay can read each past tick's client state.
 
 ```csharp
 NucleusSystemManager.PredictionHistoryTicks = _predictionHistoryTicks;
@@ -32,7 +32,7 @@ The **Replay Hold Radius** field (backed by `_replayHoldRadius`) sets `SystemMan
 
 ## Send Result Values
 
-The **Send Result Values** field (backed by `_resultValueSendEnabled`, on by default) sets `SystemManager.IsResultValueSendEnabled`. It is read on the controller: while it is on, the controller sends its `PredictionMode.Validate` result values beside the hash every tick, so a server that finds a result different can name the members and both values through `NetworkSystem.ResultMismatched`. The values cost bandwidth on every tick, so turn it off for a release build to keep the hash alone.
+The **Send Result Values** field (backed by `_resultValueSendEnabled`, on by default) sets `SystemManager.IsResultValueSendEnabled`. It is read on the controller: while it is on, the controller sends its `MemberRole.Validate` result values beside the hash every tick, so a server that finds a result different can name the members and both values through `NetworkSystem.ResultMismatched`. The values cost bandwidth on every tick, so turn it off for a release build to keep the hash alone.
 
 ## Predicted By Observers
 

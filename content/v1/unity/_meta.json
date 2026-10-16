@@ -48,6 +48,12 @@
     "defaultOpen": false
   },
   {
+    "slug": "lag-compensation",
+    "title": "Lag Compensation",
+    "type": "folder",
+    "defaultOpen": false
+  },
+  {
     "slug": "transports",
     "title": "Transports, Connectivity and Hosting",
     "type": "folder",

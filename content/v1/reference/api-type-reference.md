@@ -55,7 +55,6 @@ public WorldPersistenceManager WorldPersistenceManager;
 | `Nucleus.Packets` | Wire packet types |
 | `Nucleus.Physics` | Physics-adjacent components and adapters |
 | `Nucleus.Transports` | Transport base types, plus the `Synapse`, `Yak`, and `Sockets` sub-namespaces for the shipped transport implementations |
-| `Nucleus.ClientStates` | Client state components |
 
 Everything reachable from a `CoreManager` field lives under `Nucleus.Managers.*`; the types those managers hand you (systems, components, connections, packets, serializers) live in the flatter namespaces above.
 

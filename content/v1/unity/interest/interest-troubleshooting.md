@@ -2,6 +2,8 @@
 title: "An object is missing, or will not go away"
 ---
 
+Before working through the cases below, it helps to see what interest resolved. Add a `NetworkInterestOverlay` to the player object, switch it on, and select the object on the server or host while playing: a line goes to every other networked object, colored by whether the player is streamed it, stopped for it, or does not have it at all (see [Developer tools in the editor](../diagnostics/developer-tools-in-unity.md#seeing-what-an-objects-controller-is-sent)).
+
 ## A client receives objects from a scene it never loaded
 
 No rule gates scenes by default in a way you can see failing: an ungated spawn is not an error anywhere on the server, it simply lands in the wrong scene on the client. The Unity inspector for `UnityInterestManager` warns about exactly this when its rule list has no scene rule registered: "No rule gates scenes. A client will receive objects from scenes it never loaded, which puts them in the wrong scene rather than raising an error, and several open instances of one scene cannot be told apart by distance."
