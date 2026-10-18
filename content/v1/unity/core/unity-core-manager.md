@@ -1,5 +1,6 @@
 ---
 title: "The Nucleus Core Manager component"
+components: "UnityCoreManager"
 ---
 
 > **Driving the core API directly?** See [Creating a CoreManager](../../core-api/core/core-manager.md).

@@ -6,4 +6,5 @@
 const path = require('path');
 process.env.DOCS_ROOT = __dirname;
 if (!process.env.DOCS_OUT) process.env.DOCS_OUT = path.join(__dirname, 'out');
+require('./build-component-index.js');
 require('./.zerodocs/build-static.js');

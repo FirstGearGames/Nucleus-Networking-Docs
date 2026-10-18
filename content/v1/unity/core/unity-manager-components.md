@@ -1,5 +1,6 @@
 ---
 title: "Manager components reference"
+components: "UnityManager, UnitySystemManager, UnityClientManager, UnityServerManager, UnityPacketManager, UnityMessageManager"
 ---
 
 ## UnityManager, the base
