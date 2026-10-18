@@ -1,5 +1,6 @@
 ---
 title: "Transport Manager component"
+components: "UnityTransportManager"
 ---
 
 > **Driving the core API directly?** See [TransportManager](../../core-api/transports/transport-manager.md).

@@ -1,5 +1,6 @@
 ---
 title: "NucleusBehaviour: the script base class"
+components: "NucleusBehaviour"
 ---
 
 > **Driving the core API directly?** See [Renting and finding systems in code](../../core-api/systems/renting-and-watching-systems.md).
