@@ -39,7 +39,7 @@ title: "Component Index"
 | Component | Description |
 | --- | --- |
 | `PhysicsSimulationDriver` | Aligns one scene's physics world with the network tick instead of Unity's own FixedUpdate. |
-| `ProjectedRigidbody` | Declares a rigidbody's replicated physics component and drives its sync, adopting, interpolating, or converging as needed. |
+| `NetworkRigidbody` | Declares a rigidbody's replicated physics component and drives its sync, adopting, interpolating, or converging as needed. |
 
 ## Lag compensation
 

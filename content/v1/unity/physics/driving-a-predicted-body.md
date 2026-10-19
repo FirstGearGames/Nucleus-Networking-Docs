@@ -4,17 +4,17 @@ title: "Driving a predicted body"
 
 > **Driving the core API directly?** See [Locally predicted bodies](../../core-api/physics/locally-predicted-bodies.md).
 
-A body a client drives directly - a player's own physics character, for example - should not wait a round trip to respond. `ProjectedRigidbody` supports this: the driving peer predicts the body locally, applying its own client state the instant it arrives, while the server still owns where the body really is and the driver reconciles toward it as confirmations return.
+A body a client drives directly - a player's own physics character, for example - should not wait a round trip to respond. `NetworkRigidbody` supports this: the driving peer predicts the body locally, applying its own client state the instant it arrives, while the server still owns where the body really is and the driver reconciles toward it as confirmations return.
 
 ## Turning prediction on
 
-`ProjectedRigidbody.Convergence` is a `PhysicsConvergence`. Set `Convergence.IsLocallyPredicted` to `true` on the peer steering the body with its own client state, and back to `false` when it stops:
+`NetworkRigidbody.Convergence` is a `PhysicsConvergence`. Set `Convergence.IsLocallyPredicted` to `true` on the peer steering the body with its own client state, and back to `false` when it stops:
 
 ```csharp
-projectedRigidbody.Convergence.IsLocallyPredicted = true;
+networkRigidbody.Convergence.IsLocallyPredicted = true;
 ```
 
-The flag only has an effect on a peer that is not the body's controller. `ProjectedRigidbody` runs its follower only where `NetworkSystem.IsController(ControllerType.AnyController)` is false; on the controlling peer the body simulates freely and its result is sent, so there is nothing to predict. The pattern the flag is for is the one the PhysicsBallMover demo uses: the server controls and simulates the body, and one client steers it through its own client state channel while applying the same client state to its local copy.
+The flag only has an effect on a peer that is not the body's controller. `NetworkRigidbody` runs its follower only where `NetworkSystem.IsController(ControllerType.AnyController)` is false; on the controlling peer the body simulates freely and its result is sent, so there is nothing to predict. The pattern the flag is for is the one the PhysicsBallMover demo uses: the server controls and simulates the body, and one client steers it through its own client state channel while applying the same client state to its local copy.
 
 While it is set, the follower only trims a position or rotation error once that error passes its threshold, and never teleports the body. It does not keep the velocity your own simulation produced: every step it sets the body's velocity from its projected target, as it does for any proxy. For your client state to show up at once, the target has to include it; the PhysicsBallMover demo assigns `Convergence.TargetProvider` a provider that does. Clear the flag the moment this peer stops driving the body - a proxy left with `IsLocallyPredicted` set has no client state of its own to trust.
 

@@ -4,17 +4,17 @@ title: "Replicate a rigidbody"
 
 > **Driving the core API directly?** See [Replicate a physics body](../../core-api/physics/replicate-a-body.md).
 
-Add `ProjectedRigidbody` to a GameObject that has a `Rigidbody`. That's the whole setup.
+Add `NetworkRigidbody` to a GameObject that has a `Rigidbody`. That's the whole setup.
 
-## Adding ProjectedRigidbody pulls in two more components
+## Adding NetworkRigidbody pulls in two more components
 
-`ProjectedRigidbody` carries two `[RequireComponent]` attributes, so adding it pulls in the other two components you need:
+`NetworkRigidbody` carries two `[RequireComponent]` attributes, so adding it pulls in the other two components you need:
 
-- **Rigidbody** — the physics body itself. `ProjectedRigidbody` never simulates on its own; it steps and reads Unity's own rigidbody.
+- **Rigidbody** — the physics body itself. `NetworkRigidbody` never simulates on its own; it steps and reads Unity's own rigidbody.
 - **NetworkSystemObject** — the marker that gets this object a `NetworkSystem` to belong to.
-- **ProjectedRigidbody** — the component you actually add, which ties the two together.
+- **NetworkRigidbody** — the component you actually add, which ties the two together.
 
-You never rent or spawn anything by hand. In its own `Awake`, `ProjectedRigidbody` calls `NetworkSystemObjectPool.RequireSystem<NetworkSystem, NetworkPhysicsComponent>`, declaring that this object needs a system carrying a replicated `NetworkPhysicsComponent`. Once that requirement is satisfied, three properties are populated for you to read:
+You never rent or spawn anything by hand. In its own `Awake`, `NetworkRigidbody` calls `NetworkSystemObjectPool.RequireSystem<NetworkSystem, NetworkPhysicsComponent>`, declaring that this object needs a system carrying a replicated `NetworkPhysicsComponent`. Once that requirement is satisfied, three properties are populated for you to read:
 
 - `NetworkSystem` — the system this body belongs to; its controller state decides which peer's simulation is treated as ground truth.
 - `PhysicsComponent` — the replicated `NetworkPhysicsComponent` this body captures into or converges from.
@@ -36,7 +36,7 @@ Every other peer's `Rigidbody` does not run free simulation. Instead it follows:
 
 ## Don't also add NetworkTransform
 
-This object replicates its pose through `ProjectedRigidbody`'s own `NetworkPhysicsComponent`. Adding `NetworkTransform` to the same object as well double-replicates the pose through two independent systems. See the transform-replication choosing page for which component fits which object.
+This object replicates its pose through `NetworkRigidbody`'s own `NetworkPhysicsComponent`. Adding `NetworkTransform` to the same object as well double-replicates the pose through two independent systems. See the transform-replication choosing page for which component fits which object.
 
 A `PhysicsSimulationDriver` present in this body's scene is what puts the body on the tick cadence: it calls the pre- and post-step halves around the world step so capture and follow line up with ticks. You don't have to add one yourself. A `UnityPhysicsManager` is added to the manager graph automatically, and under its default execution mode, `PhysicsExecutionMode.NucleusPerTick`, a `PhysicsSimulationDriver` for the default physics world is added with the managers too, so a body in an ordinary scene is on the tick from the start. A stacked local-physics scene gets its own driver when it loads. Under `PhysicsExecutionMode.UnityRun` the default world is left to Unity and projected physics is unavailable there; see [Physics execution modes](./physics-execution-modes.md).
 
