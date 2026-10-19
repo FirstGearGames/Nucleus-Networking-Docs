@@ -2,7 +2,7 @@
 title: "PhysicsConvergence"
 ---
 
-> **Using Unity?** See [ProjectedRigidbody](../../unity/physics/projected-rigidbody.md).
+> **Using Unity?** See [NetworkRigidbody](../../unity/physics/network-rigidbody.md).
 
 `PhysicsConvergence` is the per-body follower behind Projected physics sync. It takes the latest server snapshot, projects it to now, rides its velocity, and blends or teleports a diverged pose back onto it. Call `Step` once per physics step for each proxy body, before the engine simulates.
 
