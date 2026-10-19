@@ -16,13 +16,13 @@ Unity never auto-simulates a local physics scene. A scene loaded with `LocalPhys
 
 ## What changes for a body
 
-A body only collides within its own scene's physics world. Moving a `ProjectedRigidbody` to another scene changes what it can hit: it stops seeing the bodies it left behind and starts seeing whatever local world it landed in.
+A body only collides within its own scene's physics world. Moving a `NetworkRigidbody` to another scene changes what it can hit: it stops seeing the bodies it left behind and starts seeing whatever local world it landed in.
 
 ## Moving a body across scenes
 
-`ProjectedRigidbody.NotifySceneChanged` re-resolves which driver a body steps under. A scene move made with `MoveGameObjectToScene` fires no `OnEnable` or `OnDisable` on the component, and the driver is cached at `OnEnable`, so without this call the body keeps stepping the world it left. `NotifySceneChanged` leaves the old driver and asks the new scene for its driver; a local-physics destination already has its driver attached from load, so the ask resolves immediately and the body steps the right world from the next tick.
+`NetworkRigidbody.NotifySceneChanged` re-resolves which driver a body steps under. A scene move made with `MoveGameObjectToScene` fires no `OnEnable` or `OnDisable` on the component, and the driver is cached at `OnEnable`, so without this call the body keeps stepping the world it left. `NotifySceneChanged` leaves the old driver and asks the new scene for its driver; a local-physics destination already has its driver attached from load, so the ask resolves immediately and the body steps the right world from the next tick.
 
-You don't need to call this yourself for a spawn move: the spawn handler calls it on every `ProjectedRigidbody` under a moved system right after the move.
+You don't need to call this yourself for a spawn move: the spawn handler calls it on every `NetworkRigidbody` under a moved system right after the move.
 
 ## Honest limits
 

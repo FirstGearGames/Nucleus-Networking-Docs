@@ -85,6 +85,6 @@ Twenty-seven components have a `[CustomEditor]`, which is where to look for auth
 - `UnitySceneManagerEditor`
 - `UnitySystemManagerEditor`
 - `PhysicsSimulationDriverEditor`
-- `ProjectedRigidbodyEditor`
+- `NetworkRigidbodyEditor`
 - `BlitzRelayTransportEditor`
 - `SynapseTransportEditor`

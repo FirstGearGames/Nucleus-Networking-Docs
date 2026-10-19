@@ -15,8 +15,8 @@ Scenes that share a physics world (every scene not loaded with a local physics w
 | Event | Signature | Fires |
 |---|---|---|
 | `WorldStepStarted` | `WorldStepStartedHandler(uint tick, float stepDelta)` | Before each world step. This is where gameplay applies per-step forces from client state on the simulated cadence, since Unity's own `FixedUpdate` no longer matches when the world actually steps. |
-| `BodyRegistered` | `BodyRegisteredHandler(ProjectedRigidbody projectedRigidbody)` | When a body joins the driver's step set. |
-| `BodyDeregistered` | `BodyDeregisteredHandler(ProjectedRigidbody projectedRigidbody)` | When a body leaves the driver's step set. |
+| `BodyRegistered` | `BodyRegisteredHandler(NetworkRigidbody networkRigidbody)` | When a body joins the driver's step set. |
+| `BodyDeregistered` | `BodyDeregisteredHandler(NetworkRigidbody networkRigidbody)` | When a body leaves the driver's step set. |
 
 ```csharp
 driver.WorldStepStarted += (tick, stepDelta) =>
@@ -31,7 +31,7 @@ driver.WorldStepStarted += (tick, stepDelta) =>
 
 - `CurrentTick` (`uint`) - the network loop tick currently being simulated.
 - `SubtickFraction` (`float`) - how far the render frame has progressed through the current tick, for phasing smoothed visuals between the last two stepped poses.
-- `Bodies` (`IReadOnlyList<ProjectedRigidbody>`) - the bodies this driver steps, in registration order. A diagnostic reads this instead of walking the scene.
+- `Bodies` (`IReadOnlyList<NetworkRigidbody>`) - the bodies this driver steps, in registration order. A diagnostic reads this instead of walking the scene.
 - `TryGetSnapshotLocalTick(uint captureTick, out uint snapshotLocalTick)` - maps a received capture tick into local ticks, through the session's shared drift-adaptive anchor. Returns `false` when the capture tick carried no attribution or nothing mapped.
 
 ## Finding the driver for a scene
@@ -57,7 +57,7 @@ PhysicsSimulationDriver.UnregisterForScene(gameObject.scene, OnDriverReady);
 
 ## Register / Deregister
 
-`Register(ProjectedRigidbody projectedRigidbody)` and `Deregister(ProjectedRigidbody projectedRigidbody)` add and remove a body from the driver's step set. `Register` is idempotent.
+`Register(NetworkRigidbody networkRigidbody)` and `Deregister(NetworkRigidbody networkRigidbody)` add and remove a body from the driver's step set. `Register` is idempotent.
 
 Two drivers cannot claim the same scene. If a second driver enables on a scene a driver already steps, it logs an error naming both GameObjects and does nothing - the first driver keeps stepping the scene, the second driver's bodies are simply never registered to it.
 

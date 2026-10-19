@@ -4,8 +4,8 @@
     "title": "Physics execution modes"
   },
   {
-    "slug": "projected-rigidbody",
-    "title": "ProjectedRigidbody"
+    "slug": "network-rigidbody",
+    "title": "NetworkRigidbody"
   },
   {
     "slug": "how-physics-replication-works",
@@ -13,7 +13,7 @@
   },
   {
     "slug": "transform-or-rigidbody",
-    "title": "NetworkTransform or ProjectedRigidbody"
+    "title": "NetworkTransform or NetworkRigidbody"
   },
   {
     "slug": "replicate-a-rigidbody",
