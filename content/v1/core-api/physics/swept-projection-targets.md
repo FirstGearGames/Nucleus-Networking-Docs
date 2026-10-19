@@ -55,4 +55,4 @@ A sweep is an extra collision query every physics step the provider runs, so it 
 
 ## Unity always wires it up
 
-`ProjectedRigidbody.BindSystem` installs `SweptTargetProvider(UnitySweepProvider.Shared)` on every body it binds, unconditionally. A gravity projection on a proxy with no sweep target would otherwise carry it straight through the floor between ticks; the Unity integration doesn't leave that as an opt-in. Leaving `TargetProvider` null is the ordinary case only for the core API used outside the Unity integration — a Unity project always has a swept provider installed underneath it.
+`NetworkRigidbody.BindSystem` installs `SweptTargetProvider(UnitySweepProvider.Shared)` on every body it binds, unconditionally. A gravity projection on a proxy with no sweep target would otherwise carry it straight through the floor between ticks; the Unity integration doesn't leave that as an opt-in. Leaving `TargetProvider` null is the ordinary case only for the core API used outside the Unity integration — a Unity project always has a swept provider installed underneath it.

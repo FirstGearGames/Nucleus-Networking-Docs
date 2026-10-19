@@ -54,7 +54,7 @@ This happens for every system the spawned object carries, not just the first, an
 
 ## The Instantiate trap
 
-Placing a controlled object with `Instantiate(prefab, position, rotation)` works in the ordinary case - that is exactly what `NetworkPlayerSpawner` does. The trap is narrower, and specific to an object whose *pose* the controller itself simulates, such as a `ProjectedRigidbody`. Once that component links to its system, the controller's own simulation asserts its projected pose back onto the object within a tick, overwriting whatever position and rotation `Instantiate` set.
+Placing a controlled object with `Instantiate(prefab, position, rotation)` works in the ordinary case - that is exactly what `NetworkPlayerSpawner` does. The trap is narrower, and specific to an object whose *pose* the controller itself simulates, such as a `NetworkRigidbody`. Once that component links to its system, the controller's own simulation asserts its projected pose back onto the object within a tick, overwriting whatever position and rotation `Instantiate` set.
 
 This is easy to miss on a host, because the host's own client is often the same peer whose simulated pose is being asserted - the overwrite lands on the pose the host expected anyway, so nothing looks wrong until a second peer, whose simulation starts from the true placement, shows the object snap.
 

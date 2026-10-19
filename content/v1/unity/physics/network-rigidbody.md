@@ -1,10 +1,10 @@
 ---
-title: "ProjectedRigidbody"
+title: "NetworkRigidbody"
 ---
 
 > **Driving the core API directly?** See [PhysicsConvergence](../../core-api/physics/physics-convergence.md).
 
-`ProjectedRigidbody` is a `MonoBehaviour` that drives physics sync for one rigidbody. It requires a `Rigidbody` and a `NetworkSystemObject`, declares its need for the `NetworkSystem` carrying that body's replicated `NetworkPhysicsComponent`, and steps the body each tick: proxies adopt, follow the interpolation buffer, or run its `PhysicsConvergence` follower before the world simulates, and the server captures the stepped result afterward.
+`NetworkRigidbody` is a `MonoBehaviour` that drives physics sync for one rigidbody. It requires a `Rigidbody` and a `NetworkSystemObject`, declares its need for the `NetworkSystem` carrying that body's replicated `NetworkPhysicsComponent`, and steps the body each tick: proxies adopt, follow the interpolation buffer, or run its `PhysicsConvergence` follower before the world simulates, and the server captures the stepped result afterward.
 
 ## Runtime surface
 
@@ -29,7 +29,7 @@ These gate both the predicted and the proxy correction paths.
 How a body over its threshold corrects splits by role:
 
 - **Blend Per Tick** (`_blendPerTick`) — the fraction of the remaining gap a *proxy* closes per tick while over threshold. A predicted body ignores this.
-- **Prediction Correction Rate** (`_predictionCorrectionRate`, default `0.1`): how aggressively a *predicted* body (one whose `Convergence.IsLocallyPredicted` is set) corrects toward the server: the fraction of the gap taken off per tick, once past Position Threshold. Higher snaps back harder and sooner; lower lets the prediction ride looser. `ProjectedRigidbody` runs its follower only on a peer that is not the body's controller, so this field only acts where such a peer steers the body with its own client state and sets `IsLocallyPredicted`.
+- **Prediction Correction Rate** (`_predictionCorrectionRate`, default `0.1`): how aggressively a *predicted* body (one whose `Convergence.IsLocallyPredicted` is set) corrects toward the server: the fraction of the gap taken off per tick, once past Position Threshold. Higher snaps back harder and sooner; lower lets the prediction ride looser. `NetworkRigidbody` runs its follower only on a peer that is not the body's controller, so this field only acts where such a peer steers the body with its own client state and sets `IsLocallyPredicted`.
 - **Blend Mode** (`_blendMode`, `ConvergenceBlendMode.Position` or `.Velocity`) — how the closing fraction is applied. `Position` writes the pose directly toward the target each step, identical to `Velocity` in free space, but bypasses the solver, so a blend into geometry penetrates and depenetrates rather than resolving as a contact. `Velocity` applies the same closing fraction as a solver-integrated velocity bias, so contacts, stacks, and other bodies are never disrupted — a blend against geometry becomes a bounded press instead of a penetration.
 
 ## Residual fields
@@ -57,7 +57,7 @@ The maths behind each of these values, and the full settings surface, live on th
 
 ## Methods you can call
 
-`ProjectedRigidbody` exposes three public methods, all already called for you by the `PhysicsSimulationDriver` and the spawn handler:
+`NetworkRigidbody` exposes three public methods, all already called for you by the `PhysicsSimulationDriver` and the spawn handler:
 
 - `PreSimulate(float stepDelta)` — the pre-step half of a tick-aligned world step. Proxies adopt, follow, or run the follower here; authorities do their work post-step.
 - `PostSimulate(uint tick)` — the post-step half. A server captures the freshly stepped state into its replicated component, and the step-pose window advances for the smoothed visual's render interpolation.
