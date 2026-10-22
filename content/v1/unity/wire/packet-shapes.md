@@ -28,7 +28,7 @@ A `State` packet's body is not one thing — it is a sequence of framed subpacke
 | `Ack` | A standalone acknowledgment carrying the receiver's highest fully-applied tick that carried state. Written only when that value has advanced and there's no other outbound traffic to piggyback it on. |
 | `Recovery` | Targeted loss recovery: the served-through tick followed by absolute full values for each recovered system's changed components. Systems spawned since the acknowledged tick ride `Full` instead. |
 | `Despawn` | System despawns, as a count followed by the stopped systems' Ids. Server-only; written after that tick's state subpackets. |
-| `WriteAccess` | Who may write a system's state, as `(SystemId, access, may-this-connection-write)` entries. Server→client only. |
+| `WriteAccess` | Who may set a system's members, as `(SystemId, access, may-this-connection-write)` entries. Server→client only. |
 | `RpcAccess` | Who may send a system a remote call, as `(SystemId, access, may-this-connection-send)` entries. Server→client only. |
 | `DeltaRelayed` | Delta-serialized state the sender is passing on from another peer, rather than a change it made itself. |
 | `DeltaAbsolute` | Delta-serialized state whose changed members carry self-contained absolute values (not baseline-encoded), for a change the sender made itself. |

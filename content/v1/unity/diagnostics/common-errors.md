@@ -56,13 +56,13 @@ A violation writes one of these lines only when its settled action is `Log` or `
 - `EmptyCollectionDeltaViolation` — a collection member delta declaring no operations; a compliant sender can't produce one.
 - `InvalidStateAckViolation` — a Connection acknowledged a state tick above the local tick.
 - `MalformedDataViolation`: reading data a client sent threw on the server; kicks in a release build, logs the exception in a debug build.
-- `PredictedMemberChangeViolation` — a controller sent state for a member that should only ride upstream as client state.
+- `PredictedMemberChangeViolation`: a controller sent a value for a member that should only ride upstream as client state.
 - `RecoveryUnconfirmedViolation` — a served recovery went unconfirmed for the full patience window and had to be re-served.
 - `RetentionExceededViolation` — an acked tick fell beyond the retention window, forcing a full-world recovery.
 - `RpcFloodViolation` — more remote calls arrived in one drain than the receiver admits.
 - `RpcSendPermissionViolation` — a remote call was sent without permission (often a well-behaved client racing a permission revocation).
 - `UnauthorizedSpawnViolation` — a client sent a full serialize for a system Id the server doesn't hold.
-- `UnauthorizedMemberChangeViolation` — a Connection sent state for a system it doesn't control.
+- `UnauthorizedMemberChangeViolation`: a Connection set members of a system it doesn't control.
 - `UnexpectedBundleRequestViolation` / `UnexpectedSceneRequestViolation` — a client sent a request only the server ever sends.
 - `UnsolicitedBundleReportViolation` / `UnsolicitedSceneReportViolation` — a client reported a load or unload it was never asked to make.
 

@@ -4,7 +4,7 @@ title: "Controller retention"
 
 > **Using Unity?** See [Keeping a player's objects across a disconnect](../../unity/control/controller-retention-in-unity.md).
 
-Connection ids are recycled. An object left naming a departed controller is one the next renter of that id inherits, along with its state write permission and its client state routing, because both are decided by the same comparison against `ControllerConnectionId`. Control is therefore always surrendered the moment a connection leaves - there is no configuration that keeps an object controlled by somebody who is gone. `ControllerRetentionPolicy` only decides whether a token is issued so the objects can be handed back to whoever comes next.
+Connection ids are recycled. An object left naming a departed controller is one the next renter of that id inherits, along with its write permission and its client state routing, because both are decided by the same comparison against `ControllerConnectionId`. Control is therefore always surrendered the moment a connection leaves - there is no configuration that keeps an object controlled by somebody who is gone. `ControllerRetentionPolicy` only decides whether a token is issued so the objects can be handed back to whoever comes next.
 
 ## A policy either releases a departing controller or retains it
 

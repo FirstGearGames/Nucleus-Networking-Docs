@@ -46,19 +46,19 @@ Three things ride on who the controller is, and all three are controller-only re
 
 - **Who may send client state.** Only the controller's client state is accepted for the system.
 - **Who predicts.** The controlling client predicts the system from its own client state, and the server checks its result and corrects it when they differ. Any other client receives the server's state instead, and during a reconcile holds the system at the server's values while its own systems replay, unless it opts into predicting it as well with `NetworkSystem.IsObserverPredictionEnabled`.
-- **Who may write state by default.** `StateWriteAccess.Controller` - "the server, or the single controlling client" - is the default access, and it is also the behavior every system had before write access existed as a setting at all. The controller can always write state; widening that to other observers is a separate, additive Pro setting (`StateWriteAccess.AnyClient`), covered on [Letting clients write state](../state/state-write-access.md).
+- **Who may set members by default.** `MemberWriteAccess.Controller`, "the server, or the single controlling client", is the default access, and it is also the behavior every system had before write access existed as a setting at all. The controller can always set members; widening that to other observers is a separate, additive Pro setting (`MemberWriteAccess.AnyClient`), covered on [Letting clients set members](../state/state-write-access.md).
 
 The same shape holds for RPCs: `RpcSendAccess.Controller` is the default there too, and its own doc comment puts it plainly - "only whoever drives the object may ask it to do anything."
 
 ## Observation is required under every check
 
-Control and write access decide what a connection is *permitted* to do once it is already being told about the system. Being told about it - observation - is checked first, unconditionally, before either of them is consulted. The server asks the same three questions of a client's state write and of a client's remote call:
+Control and write access decide what a connection is *permitted* to do once it is already being told about the system. Being told about it - observation - is checked first, unconditionally, before either of them is consulted. The server asks the same three questions when a client sets a member and when it makes a remote call:
 
 1. Does the connection observe the system? If not, it is refused.
 2. Is it the system's controller (`ControllerConnectionId`)? If so, it is admitted.
-3. Otherwise it is admitted only when the access in force is the any-client one (`StateWriteAccess.AnyClient` or `RpcSendAccess.AnyClient`).
+3. Otherwise it is admitted only when the access in force is the any-client one (`MemberWriteAccess.AnyClient` or `RpcSendAccess.AnyClient`).
 
-State writes and remote calls both go through this same check. A client that does not observe a system fails it immediately, regardless of whether it is the controller or the write access has been widened to any client. Widening control or write access never substitutes for being an observer - a connection has to be told about a system before anything it does about that system means anything. Observation itself is decided by the interest system, covered on [What area of interest is](../interest/area-of-interest.md).
+Setting a member and making a remote call both go through this same check. A client that does not observe a system fails it immediately, regardless of whether it is the controller or the write access has been widened to any client. Widening control or write access never substitutes for being an observer - a connection has to be told about a system before anything it does about that system means anything. Observation itself is decided by the interest system, covered on [What area of interest is](../interest/area-of-interest.md).
 
 ## The host case
 

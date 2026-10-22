@@ -14,8 +14,8 @@ These fire from state application, spawning, and RPC dispatch. All default to `I
 
 | Type | Payload | Check first |
 |---|---|---|
-| `UnauthorizedMemberChangeViolation` | `SystemId` | Whether the sender actually holds control of that `NetworkSystem` right now; control handoffs racing a state send look identical to this from the receiving side. |
-| `PredictedMemberChangeViolation` | `SystemId` | Whether the member is really predicted; a controller never serializes a predicted member's state, so this usually means the member's transmission setup changed without the controller rebuilding. |
+| `UnauthorizedMemberChangeViolation` | `SystemId` | Whether the sender actually holds control of that `NetworkSystem` right now; control handoffs racing a member change look identical to this from the receiving side. |
+| `PredictedMemberChangeViolation` | `SystemId` | Whether the member is really predicted; a controller never serializes a predicted member's value, so this usually means the member's transmission setup changed without the controller rebuilding. |
 | `EmptyCollectionDeltaViolation` | `SystemId`, `MemberId` | A compliant sender cannot produce a collection delta with no operations, so first suspect a diverged serializer pair between the two builds, not the sender's intent. |
 | `InvalidStateAckViolation` | `AckedTick` | Whether the two peers' tick counters have actually diverged (a restart, a save/load, a manual tick reset) rather than assuming a forged ack. |
 | `RetentionExceededViolation` | `AckedTick` | The peer's latency against `SystemManager.StateRetentionMilliseconds`; a single raise is ordinary heavy loss, not abuse. |

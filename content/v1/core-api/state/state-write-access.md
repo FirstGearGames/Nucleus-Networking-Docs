@@ -1,13 +1,13 @@
 ---
-title: "Letting clients write state"
+title: "Letting clients set members"
 ---
 
 ## What write access controls
 
-Every `NetworkSystem` has a `StateWriteAccess`, layered beside control rather than replacing it. The controller may always write state; access widens who else can, beyond the controller alone.
+Every `NetworkSystem` has a `MemberWriteAccess`, layered beside control rather than replacing it. The controller may always set members; access widens who else can, beyond the controller alone.
 
 ```csharp
-public enum StateWriteAccess : byte
+public enum MemberWriteAccess : byte
 {
     Controller = 0,
     AnyClient = 2,
@@ -16,19 +16,19 @@ public enum StateWriteAccess : byte
 
 `Controller` is the default and the behavior every system had before write access existed: the server, or the single controlling client. `AnyClient` opens writes to the server and to any client that currently observes the system.
 
-Ordinal 1 is deliberately vacant. `StateWriteAccess` is serialized into authored scenes, so renumbering `AnyClient` would silently reinterpret every scene that already carries a value of 1 as something else.
+Ordinal 1 is deliberately vacant. `MemberWriteAccess` is serialized into authored scenes, so renumbering `AnyClient` would silently reinterpret every scene that already carries a value of 1 as something else.
 
 ## Setting and reading access
 
 The server sets access with `TrySetWriteAccess`:
 
 ```csharp
-public bool TrySetWriteAccess(StateWriteAccess stateWriteAccess)
+public bool TrySetWriteAccess(MemberWriteAccess stateWriteAccess)
 ```
 
 It's server-only; a client call is rejected. Widening a system's own permission state through a client call would make the permission client-settable, so the guard exists at the entry point rather than downstream. It also refuses to widen a system that holds a collection member (see below).
 
-The current setting is readable from `WriteAccess`. On the client side, the read that matters is `CanLocalClientWriteState`: whether the server most recently told this client it may write. It's a capability hint the server pushes down, not something the client derives locally, and it's always `false` on the server.
+The current setting is readable from `WriteAccess`. On the client side, the read that matters is `CanLocalClientWriteMembers`: whether the server most recently told this client it may write. It's a capability hint the server pushes down, not something the client derives locally, and it's always `false` on the server.
 
 ## Access widens permission, it never replaces observation
 
@@ -38,27 +38,27 @@ The consequence worth repeating: losing interest in a system silently removes wr
 
 ## What access does not change
 
-`ControllerConnectionId` stays exclusive and server-assigned regardless of write access. Client state, prediction, and reconcile remain controller-only whatever the access says - widening write access adds a path for state members, it doesn't touch control.
+`ControllerConnectionId` stays exclusive and server-assigned regardless of write access. Client state, prediction, and reconcile remain controller-only whatever the access says - widening write access adds a path for setting members, it doesn't touch control.
 
 ## Nothing travels as a grant
 
-The server enforces every write from its own copy of `WriteAccess`. A client is told only which access is in force and whether it personally may write (`CanLocalClientWriteState`); it is never handed anything resembling a permission token. A forged or replayed "I may write" claim from a client is inert, because the server never trusts the client's own read of its permission - it re-checks against `WriteAccess` on every incoming write.
+The server enforces every write from its own copy of `WriteAccess`. A client is told only which access is in force and whether it personally may write (`CanLocalClientWriteMembers`); it is never handed anything resembling a permission token. A forged or replayed "I may write" claim from a client is inert, because the server never trusts the client's own read of its permission - it re-checks against `WriteAccess` on every incoming write.
 
 ## The echo-withholding window
 
-A client that writes state upstream would otherwise receive its own write back as a correction and stutter on it. To prevent that, a losing or contested write is shown locally for a window before the server's value is accepted:
+A client that sets a member would otherwise receive its own write back as a correction and stutter on it. To prevent that, a losing or contested write is shown locally for a window before the server's value is accepted:
 
 ```csharp
-public uint StateWriteConvergenceDeadlineTicks = UnsetConvergenceDeadlineTicks;
+public uint MemberWriteConvergenceDeadlineTicks = UnsetConvergenceDeadlineTicks;
 
 public const uint UnsetConvergenceDeadlineTicks = uint.MaxValue;
 ```
 
-Left at `UnsetConvergenceDeadlineTicks`, the deadline is derived from the connection's measured round-trip time rather than fixed. Set it explicitly per system when the default feel is wrong - a shared UI value and a contested physics object don't want the same answer. `StateWriteConvergenceDeadlineTicks` itself is declared alongside the widening logic, so this window exists only in a Pro build; a free build has no echo-withholding at all.
+Left at `UnsetConvergenceDeadlineTicks`, the deadline is derived from the connection's measured round-trip time rather than fixed. Set it explicitly per system when the default feel is wrong - a shared UI value and a contested physics object don't want the same answer. `MemberWriteConvergenceDeadlineTicks` itself is declared alongside the widening logic, so this window exists only in a Pro build; a free build has no echo-withholding at all.
 
 ## Write access beyond the controller ships only in Pro
 
-Write access beyond `Controller`, and the echo-withholding window that goes with it, are Pro. The gate is structural: both live in `NetworkSystem.WriteAccess.Pro.cs`, split from the free-side `NetworkSystem.WriteAccess.cs`. `StateWriteAccess` itself, `NetworkSystem.WriteAccess` and `NetworkSystem.TrySetWriteAccess` are Pro-only too, so a free build has none of them and code naming them does not compile. A free build's eligibility check admits the controller alone.
+Write access beyond `Controller`, and the echo-withholding window that goes with it, are Pro. The gate is structural: both live in `NetworkSystem.WriteAccess.Pro.cs`, split from the free-side `NetworkSystem.WriteAccess.cs`. `MemberWriteAccess` itself, `NetworkSystem.WriteAccess` and `NetworkSystem.TrySetWriteAccess` are Pro-only too, so a free build has none of them and code naming them does not compile. A free build's eligibility check admits the controller alone.
 
 Two limits apply even with Pro:
 

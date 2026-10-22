@@ -4,7 +4,7 @@ title: "The network loop steps"
 
 ## Eleven steps run in a fixed order
 
-Nucleus never lets game code touch networked state at an arbitrary point in a frame. Every frame walks the loop's named steps in one fixed order, and a frame that runs a tick walks all eleven:
+Nucleus never lets game code touch member values at an arbitrary point in a frame. Every frame walks the loop's named steps in one fixed order, and a frame that runs a tick walks all eleven:
 
 `EarlyVariableUpdate`, `EarlyStateUpdate`, `LateStateUpdate`, `Reconcile`, `EarlyFixedUpdate`, `LateFixedUpdate`, `VariableUpdate`, `EarlySerialize`, `LateSerialize`, `TickAdvance`, `LateVariableUpdate`.
 

@@ -6,7 +6,7 @@ title: "How replication works"
 
 Nucleus advances in fixed steps, not whenever a script happens to run. Every tick invokes eleven named steps in the same order: `EarlyVariableUpdate`, `EarlyStateUpdate`, `LateStateUpdate`, `Reconcile`, `EarlyFixedUpdate`, `LateFixedUpdate`, `VariableUpdate`, `EarlySerialize`, `LateSerialize`, `TickAdvance`, `LateVariableUpdate`. The tick advances last, at the end of `TickAdvance`.
 
-That fixed order is what lets two independent peers agree on what happened and when. If game code could read or write networked state at an arbitrary point in a frame, a server and a client would each be comparing values captured at different, unpredictable moments. Instead, every peer applies incoming state at the same step, lets game code run in between, and writes outgoing state at the same later step. Everyone changes state on the same beat.
+That fixed order is what lets two independent peers agree on what happened and when. If game code could read or set member values at an arbitrary point in a frame, a server and a client would each be comparing values captured at different, unpredictable moments. Instead, every peer applies incoming state at the same step, lets game code run in between, and writes outgoing state at the same later step. Every peer's values change on the same beat.
 
 Two steps matter most for replication: `EarlySerialize`, where game code sets a networked value, and `LateStateUpdate`, earlier in the same tick, where values received from the network are applied. Because the apply step runs before the write step, a peer sees the world update before its own game code for that tick runs.
 

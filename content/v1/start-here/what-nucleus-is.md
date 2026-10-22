@@ -36,7 +36,7 @@ A `NetworkMember<T0>` is the unit of replication. Nothing above it — the `Netw
 
 ## State arrives over an unreliable channel by design
 
-There is no reliable channel underneath replication quietly retransmitting every state change until it lands. Acknowledgment rides the packet header of the traffic already flowing, and recovery is targeted at what a peer is actually missing rather than a blanket retransmit. If you're used to a reliable-by-default RPC layer, read the reliability and redundancy docs before assuming state "just arrives" — here, arriving is something the system has to actively account for, not a channel guarantee you get for free.
+There is no reliable channel underneath replication quietly retransmitting every member change until it lands. Acknowledgment rides the packet header of the traffic already flowing, and recovery is targeted at what a peer is actually missing rather than a blanket retransmit. If you're used to a reliable-by-default RPC layer, read the reliability and redundancy docs before assuming state "just arrives". Here, arriving is something the system has to actively account for, not a channel guarantee you get for free.
 
 ## Where the pieces live
 

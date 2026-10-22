@@ -96,7 +96,7 @@ This page indexes identity, lifecycle, role and composition. The rest of `Networ
 | Category | Covers |
 |---|---|
 | Control | `ControllerConnectionId` and who drives the system. |
-| Write access | `StateWriteAccess` and per-member write permissions. |
+| Write access | `MemberWriteAccess` and per-member write permissions. |
 | Interest | Observer registration and what a connection is served. |
 | RPCs | `IRpcScope`, `RpcSendAccess`, and remote procedure calls scoped to a system. |
 | Client state | `MemberRole.Predict` members, sent upstream by the controlling client every tick. |
