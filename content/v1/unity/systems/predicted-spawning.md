@@ -77,11 +77,11 @@ An answer can still arrive after the client gave up: the server admitted the spa
 
 The same system exposes the mirror image for removal, gated by the `Despawn` flag:
 
-- `IsPredictedDespawnPending`: true between a client asking the server to remove the object and hearing back. The object is not despawned locally while this is set. Its GameObject is parked instead: deactivated, so its renderers and colliders leave the world and its behaviours stop running, but still linked to a system that stays started and replicating.
+- `IsPredictedDespawnPending`: true between a client asking the server to remove the object and hearing back. The object is not despawned locally while this is set. It is parked instead: the GameObject is deactivated, so its renderers and colliders leave the world and its behaviours stop running, and the client can no longer change it (member writes from any script are ignored and it sends no client state or remote calls). It stays linked to a system that keeps receiving the server's state.
 - `PredictedDespawnPending`: raised when the client's removal request goes out, after the GameObject has been parked.
 - `PredictedDespawnRejected(PredictedDespawnRejectReason reason)`: raised when the server refuses the removal, after the GameObject has been reactivated. Its system kept receiving the server's values while it was parked, so it reappears where the server has it. This is the same instance throughout.
 
-Ask with `coreManager.SystemManager.EnsureStopPredictedSystem(networkSystemObject.System, out PredictedSpawnRefusal refusal)`. When the server agrees, the GameObject stays parked until the server has also confirmed the client tick you asked on, so a reconcile in the meantime can still read the object's states, and is then returned to the prefab pool like any despawned object.
+Ask with `coreManager.SystemManager.EnsureStopPredictedSystem(networkSystemObject.System, out PredictedSpawnRefusal refusal)`. The request travels with your client's state for that tick, so the server removes the object when it processes that tick, and the GameObject is then returned to the prefab pool like any despawned object. If the request is lost on the way, the client brings the GameObject back after at most three seconds and raises `PredictedDespawnRejected` with `NotPermitted`.
 
 **Never destroy a networked GameObject on a client.** Asking is the only way a client removes one: a destroyed object cannot be brought back if the server refuses, and the stop its destruction triggers is refused on a client with an error, leaving the system registered with nothing linked to it.
 
