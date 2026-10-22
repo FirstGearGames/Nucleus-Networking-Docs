@@ -45,12 +45,13 @@ These fire when a client answers about a bundle or scene it was never asked abou
 
 ## Pro-only violations
 
-`PacketTransformRejectedViolation` and `UnauthorizedDespawnViolation` do not exist in a Free build; their events live on Pro partials of `ViolationManager`.
+`PacketTransformRejectedViolation`, `UnauthorizedDespawnViolation` and `UnsolicitedLeaseAcknowledgementViolation` do not exist in a Free build; their events live on Pro partials of `ViolationManager`.
 
 | Type | Payload | Default | Check first |
 |---|---|---|---|
 | `PacketTransformRejectedViolation` | `Channel`, `PayloadByteCount` | No explicit default is passed at the raise site, so it takes `ViolationManager.DefaultAction` (`Ignore`), and because it is the plain framework default it always logs a warning. | Whether the peer is running the same `IPacketTransform` configuration; a stray packet from something that is not this game reaches the port too, so this is not evidence of an attack against a legitimate peer. |
 | `UnauthorizedDespawnViolation` | `SystemId` | `Ignore` | Whether the client and server builds actually agree on that prefab's removal policy; a version skew between them reaches this honestly. |
+| `UnsolicitedLeaseAcknowledgementViolation` | none | `Kick` | Whether the client build matches the server's. An honest client acknowledges only the predicted spawn top-ups the server sent it, so anything else is a modified client. |
 
 ## Lag compensation violation
 
