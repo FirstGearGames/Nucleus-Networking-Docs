@@ -75,13 +75,13 @@ A client can't spend an identifier it doesn't already have, so the server leases
 | `PredictedSpawnLeaseSize` | How many spawns a client is kept holding — the burst it can predict in one round trip before waiting on the server. Default 8. |
 | `PredictedSpawnSystemIdsPerSpawn` | How many `NetworkSystem` identifiers each leased spawn carries — the most systems one predicted object can be built from. Default 8. An object needing more is refused as `PredictedSpawnRefusal.LeaseExhausted`. |
 | `PredictedSpawnSystemLeaseSize` | `PredictedSpawnLeaseSize * PredictedSpawnSystemIdsPerSpawn` — the total system identifiers a client is kept holding. Read-only; it's the product, not a separate knob. |
-| `PredictedSpawnsPerSecond` | How fast a client earns replacement identifiers, in spawns per second, or zero to replace them as fast as they're spent. Default 30. |
+| `PredictedSpawnsPerSecond` | How fast a client earns replacement spawns, in spawns per second, or zero to leave the top-up cadence as the only limit. Default 30. |
 | `PredictedSpawnLeaseCount` | On a client, how many more objects it can predict right now. Zero on the server. |
 | `PredictedSpawnSystemLeaseCount` | On a client, how many more `NetworkSystem` identifiers it's holding. Zero on the server. |
 
 `PredictedSpawnLeaseSize` and `PredictedSpawnSystemIdsPerSpawn` count different things and it's easy to conflate them: the lease size is a quota on *objects* (one grouped prefab of five systems still draws one, the same as a single ungrouped system), while the per-spawn identifier count is the *supply* each of those objects draws from. Raise the lease size for a weapon that fires in real bursts; raise the per-spawn count for a prefab built from more systems.
 
-`PredictedSpawnsPerSecond` is what stops the lease size alone from setting the real ceiling. Without pacing, a replacement served the instant a spawn is admitted makes the effective limit one lease per round trip — which hands the best-connected client the highest ceiling, since a 20ms link earns replacements far faster than a 200ms one for the same lease. The rate is what actually bounds a client, with the lease size only as the burst on top of it. It's counted per identifier rather than per object: a grouped prefab of three systems draws three against the rate, whatever the game calls one spawn.
+Spent identifiers come back as top-ups. The server tops a client up at most once every 0.3 seconds, and never sends a second top-up before the client has acknowledged the first, so on a link slower than that a client is topped up once per round trip. Each top-up replaces everything the client has spent, which at the default lease of eight is about twenty-six spawns a second. `PredictedSpawnsPerSecond` sets a lower sustained rate on top of that, for objects that are expensive to build. It counts spawns, like the lease size, however many systems each object is made of.
 
 A lease that's run dry answers `PredictedSpawnRefusal.LeaseExhausted` locally, without a request ever reaching the server.
 
