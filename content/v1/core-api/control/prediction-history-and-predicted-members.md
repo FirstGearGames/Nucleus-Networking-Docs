@@ -6,7 +6,7 @@ title: "Predicted members and prediction history"
 
 ## A member's role says what it is for
 
-`NetworkMember<T0>` takes a `role` constructor argument, `MemberRole.State` by default, readable afterwards as `NetworkMember<T0>.Role`:
+`NetworkMember<T0>` takes a `role` constructor argument, `MemberRole.Replicate` by default, readable afterwards as `NetworkMember<T0>.Role`:
 
 ```csharp
 public readonly NetworkMember<System.Numerics.Vector2> MoveDirection = new(role: MemberRole.Predict);
@@ -16,7 +16,7 @@ public readonly NetworkMember<ushort> Health = new();
 
 | Role | What it is | Who writes it | What the controller sends upstream |
 | --- | --- | --- | --- |
-| `State` | An ordinary member. Inbound values apply as they arrive. | The server, or a client its write access allows. | The value, when it changes and write access allows it |
+| `Replicate` | An ordinary member. Inbound values apply as they arrive. | The server, or a client its write access allows. | The value, when it changes and write access allows it |
 | `Predict` | Client state: a per-tick value the simulation reads. | Whoever controls the system, on its live tick. | The value, every tick (see [Client state](./client-state-components.md)) |
 | `Validate` | A predicted result, computed from the client state. | Every peer that simulates the system. | Never the value: a hash of the tick's results, with its client state |
 
