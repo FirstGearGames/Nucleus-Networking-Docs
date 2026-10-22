@@ -92,9 +92,9 @@ This is why a mutator that ran and then refilled a collection back to its previo
 
 ## The upstream-write exception
 
-Operations are an encoding against what the receiver already holds, so they only work where the sender knows what that receiver's previous state was. A client's upstream write breaks that assumption — nothing downstream serves recovery for an upstream delta — so a client writing a collection member, and the server relaying that write for the tick, both carry the whole collection as an absolute rather than as operations. The encoding rides as the delta's subpacket kind rather than a bit in the body, so the receiver always knows which shape to expect before decoding.
+Operations are an encoding against what the receiver already holds, so they only work where the sender knows what that receiver's previous value was. A client's upstream write breaks that assumption (nothing downstream serves recovery for an upstream delta), so a client writing a collection member, and the server relaying that write for the tick, both carry the whole collection as an absolute rather than as operations. The encoding rides as the delta's subpacket kind rather than a bit in the body, so the receiver always knows which shape to expect before decoding.
 
-## Reading the previous state
+## Reading the previous values
 
 Every member exposes:
 
@@ -126,15 +126,15 @@ public IReadOnlyList<TChange> Changes => ChangeLog;
 
 ## Collections cannot be multi-writer
 
-A collection member closes off `StateWriteAccess.AnyClient` by construction, not just by convention. `NetworkSystem.TrySetWriteAccess` refuses to widen a system's access beyond `StateWriteAccess.Controller` when that system holds any collection member:
+A collection member closes off `MemberWriteAccess.AnyClient` by construction, not just by convention. `NetworkSystem.TrySetWriteAccess` refuses to widen a system's access beyond `MemberWriteAccess.Controller` when that system holds any collection member:
 
 ```csharp
-if (stateWriteAccess is not StateWriteAccess.Controller && HasCollectionMember())
+if (stateWriteAccess is not MemberWriteAccess.Controller && HasCollectionMember())
 {
-    Logger<NetworkSystem>.LogError($"NetworkSystem [{AsStringInternal()}] holds a collection NetworkMember, so its write access cannot be widened beyond [{nameof(StateWriteAccess.Controller)}].");
+    Logger<NetworkSystem>.LogError($"NetworkSystem [{AsStringInternal()}] holds a collection NetworkMember, so its write access cannot be widened beyond [{nameof(MemberWriteAccess.Controller)}].");
 
     return false;
 }
 ```
 
-The collection families take wire-supplied counts and read through their own paths, which never reach the scalar guard stack that keeps `AnyClient` safe for a plain `NetworkMember<T0>`. Rather than guard every one of those read paths individually, multi-writer access is refused for the whole system up front.
+The collection families take wire-supplied counts and read through their own paths, which never reach the scalar guard stack that keeps `AnyClient` safe for a plain `NetworkMember<T0>`. Rather than guard every one of those read paths individually, member write access is refused for the whole system up front.

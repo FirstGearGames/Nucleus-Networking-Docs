@@ -4,33 +4,33 @@ title: "Judging and arbitrating client writes"
 
 ## Declining a value
 
-Whether a client may write a `NetworkMember<T0>` at all is settled by control (and, in Pro, by `StateWriteAccess`) before the payload is even read. What the value should be is a separate question, and it can only be asked once the value is decoded. To answer it, implement `IStateWriteValidator<T0>` on the `NetworkComponent` that owns the member and return a `StateWriteAction` from `ValidateStateWrite`:
+Whether a client may write a `NetworkMember<T0>` at all is settled by control (and, in Pro, by `MemberWriteAccess`) before the payload is even read. What the value should be is a separate question, and it can only be asked once the value is decoded. To answer it, implement `IMemberWriteValidator<T0>` on the `NetworkComponent` that owns the member and return a `MemberWriteAction` from `ValidateMemberWrite`:
 
 ```csharp
-public partial class SwitchBankComponent : NetworkComponent, IStateWriteValidator<uint>
+public partial class SwitchBankComponent : NetworkComponent, IMemberWriteValidator<uint>
 {
     private const uint SwitchCount = 3;
 
     public readonly NetworkMember<uint> ActiveSwitchIndex = new();
 
-    public StateWriteAction ValidateStateWrite(NetworkMember<uint> networkMember, uint proposedValue, Connection writingClientConnection) =>
-        proposedValue < SwitchCount ? StateWriteAction.Accept : StateWriteAction.Decline;
+    public MemberWriteAction ValidateMemberWrite(NetworkMember<uint> networkMember, uint proposedValue, Connection writingClientConnection) =>
+        proposedValue < SwitchCount ? MemberWriteAction.Accept : MemberWriteAction.Decline;
 }
 ```
 
-`StateWriteAction.Accept` lands the value exactly as it would with no validator present. `StateWriteAction.Decline` leaves the member on the value it already holds. `Accept` is the zero value, so a validator that falls through without expressing an opinion never accidentally declines a write.
+`MemberWriteAction.Accept` lands the value exactly as it would with no validator present. `MemberWriteAction.Decline` leaves the member on the value it already holds. `Accept` is the zero value, so a validator that falls through without expressing an opinion never accidentally declines a write.
 
 The member's current value is still readable through `networkMember.Value` inside the call — the proposed value hasn't replaced it yet, which is what makes comparing the two possible here and nowhere else.
 
 ## Why it's generic, and implemented once per type
 
-`IStateWriteValidator<T0>` is generic over the member's value type, and a component implements it once for each type it wants judged. A component holding a `NetworkMember<uint>` and a `NetworkMember<bool>` implements the interface twice if it wants to judge both.
+`IMemberWriteValidator<T0>` is generic over the member's value type, and a component implements it once for each type it wants judged. A component holding a `NetworkMember<uint>` and a `NetworkMember<bool>` implements the interface twice if it wants to judge both.
 
 That's what keeps the value typed and off the heap. `NetworkComponent` itself is not generic, so a single non-generic hook would have to hand every value over as `object` and box each one on the inbound apply path. Splitting the hook per type avoids that entirely.
 
 ## Telling two members of the same type apart
 
-A component can hold more than one `NetworkMember<uint>`, and both route through the same `ValidateStateWrite(NetworkMember<uint>, uint, Connection)` implementation. The member is passed as a parameter for exactly this reason — the type alone doesn't identify which one is being written. Compare the passed member against your own fields instead of keying on anything the framework supplies:
+A component can hold more than one `NetworkMember<uint>`, and both route through the same `ValidateMemberWrite(NetworkMember<uint>, uint, Connection)` implementation. The member is passed as a parameter for exactly this reason — the type alone doesn't identify which one is being written. Compare the passed member against your own fields instead of keying on anything the framework supplies:
 
 ```csharp
 if (ReferenceEquals(networkMember, ActiveSwitchIndex))
@@ -41,9 +41,9 @@ if (ReferenceEquals(networkMember, ActiveSwitchIndex))
 
 ## Authority-side only
 
-`ValidateStateWrite` is never consulted on a client, and never for the server's own writes. A client running it would be vetoing the value it's being told to hold; a server judging its own write would be asking permission from the code that just made the decision.
+`ValidateMemberWrite` is never consulted on a client, and never for the server's own writes. A client running it would be vetoing the value it's being told to hold; a server judging its own write would be asking permission from the code that just made the decision.
 
-A component that doesn't implement `IStateWriteValidator<T0>` for a given type isn't consulted at all — it pays a single type test on the apply path, nothing more.
+A component that doesn't implement `IMemberWriteValidator<T0>` for a given type isn't consulted at all — it pays a single type test on the apply path, nothing more.
 
 ## What Decline does on the wire
 

@@ -6,7 +6,7 @@ title: "Violations"
 
 ## What a violation is
 
-A violation is a rejected protocol fault from a peer: writing state it doesn't control, sending a malformed delta, acknowledging a tick it was never sent, answering a report it wasn't awaiting, and similar. The offending operation is always rejected, regardless of what you decide to do about the Connection. `ViolationManager` only controls the consequence for the peer, not whether the bad data gets applied.
+A violation is a rejected protocol fault from a peer: setting members of a system it doesn't control, sending a malformed delta, acknowledging a tick it was never sent, answering a report it wasn't awaiting, and similar. The offending operation is always rejected, regardless of what you decide to do about the Connection. `ViolationManager` only controls the consequence for the peer, not whether the bad data gets applied.
 
 By default almost every violation is silent. Most types are raised with `Ignore`, so the fault is rejected and nothing is logged; the scene-protocol faults (and, in Pro, the bundle-protocol faults) kick the offender. Logging is separate from the action: a violation raised with the framework default still logs a warning ("The offending operation was rejected."), and any raise site or handler can set `context.Log` to log something of its own regardless of the action chosen. To see violations at all, register an `IViolationObserver`. If you want misbehaving clients kicked, or you want to feed violations into your own audit system, you register with `ViolationManager`.
 

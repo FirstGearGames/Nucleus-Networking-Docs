@@ -20,7 +20,7 @@ The policy is authored on the prefab, not passed in code, because it is never re
 
 ## Asking for one
 
-The common case is renting and asking in one step, through the normal pool rent. For an object whose opening state matters — the shot's origin and velocity, for example — rent it unstarted, write that state, then ask:
+The common case is renting and asking in one step, through the normal pool rent. For an object whose opening values matter (the shot's origin and velocity, for example), rent it unstarted, set those values, then ask:
 
 ```csharp
 GameObject projectileObject = Instantiate(_projectilePrefab, _muzzle.position, Quaternion.LookRotation(direction));

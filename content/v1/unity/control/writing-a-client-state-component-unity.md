@@ -8,7 +8,7 @@ Client state is the one kind of data a client sends upstream every tick: the cli
 
 ## Declare the client state in the component
 
-Client state is ordinary `NetworkMember<T0>` fields with `role: MemberRole.Predict`, declared in the object's own `NetworkComponent` beside the state the server computes from them. There is no separate class to write, and nothing to add or register when the object links: the members travel because of their role.
+Client state is ordinary `NetworkMember<T0>` fields with `role: MemberRole.Predict`, declared in the object's own `NetworkComponent` beside the members the server computes from them. There is no separate class to write, and nothing to add or register when the object links: the members travel because of their role.
 
 ```csharp
 using Nucleus.Components;
@@ -18,28 +18,28 @@ using NumericsVector3 = System.Numerics.Vector3;
 
 namespace MyGame
 {
-    public partial class MoverComponent : NetworkComponent, IStateWriteValidator<NumericsVector2>, IStateWriteValidator<NumericsVector3>
+    public partial class MoverComponent : NetworkComponent, IMemberWriteValidator<NumericsVector2>, IMemberWriteValidator<NumericsVector3>
     {
         // Client state: written by the controller on its live tick, sent upstream every tick.
         public readonly NetworkMember<NumericsVector2> Direction = new(role: MemberRole.Predict);
-        // State only the server computes from it.
+        // A member only the server computes from it.
         public readonly NetworkMember<NumericsVector3> Position = new();
 
         // Runs on the server for each tick of client state it takes. Write the member and decline to keep your own value instead.
-        public StateWriteAction ValidateStateWrite(NetworkMember<NumericsVector2> networkMember, NumericsVector2 proposedValue, Connection writingClientConnection)
+        public MemberWriteAction ValidateMemberWrite(NetworkMember<NumericsVector2> networkMember, NumericsVector2 proposedValue, Connection writingClientConnection)
         {
             float length = proposedValue.Length();
 
             if (length <= 1f)
-                return StateWriteAction.Accept;
+                return MemberWriteAction.Accept;
 
             Direction.Value = proposedValue / length;
 
-            return StateWriteAction.Decline;
+            return MemberWriteAction.Decline;
         }
 
         // Only the server moves this object, so a client write to the position is declined.
-        public StateWriteAction ValidateStateWrite(NetworkMember<NumericsVector3> networkMember, NumericsVector3 proposedValue, Connection writingClientConnection) => StateWriteAction.Decline;
+        public MemberWriteAction ValidateMemberWrite(NetworkMember<NumericsVector3> networkMember, NumericsVector3 proposedValue, Connection writingClientConnection) => MemberWriteAction.Decline;
     }
 }
 ```
