@@ -27,16 +27,16 @@ CoreManager coreManager = NucleusUnity.BoundCoreManager;
 
 ```csharp
 private CoreManager _coreManager;
-private ViolationManager.ViolationDetectedHandler<UncontrolledStateChangeViolation> _handler;
+private ViolationManager.ViolationDetectedHandler<UnauthorizedMemberChangeViolation> _handler;
 
 private void Start()
 {
     _coreManager = NucleusUnity.BoundCoreManager;
-    _handler = OnUncontrolledStateChange;
-    _coreManager.ViolationManager.UncontrolledStateChangeViolationDetected += _handler;
+    _handler = OnUnauthorizedMemberChange;
+    _coreManager.ViolationManager.UnauthorizedMemberChangeViolationDetected += _handler;
 }
 
-private void OnUncontrolledStateChange(in ViolationContext<UncontrolledStateChangeViolation> violationContext)
+private void OnUnauthorizedMemberChange(in ViolationContext<UnauthorizedMemberChangeViolation> violationContext)
 {
     // inspect violationContext.Connection, violationContext.Violation, violationContext.Action
 }
@@ -50,7 +50,7 @@ Unregister every handler and subscriber in `OnDestroy`, symmetrically with where
 private void OnDestroy()
 {
     if (_coreManager is not null)
-        _coreManager.ViolationManager.UncontrolledStateChangeViolationDetected -= _handler;
+        _coreManager.ViolationManager.UnauthorizedMemberChangeViolationDetected -= _handler;
 }
 ```
 
@@ -72,7 +72,7 @@ Violation [<ViolationTypeName>] from Connection [<connection>]: <message>
 
 A `Kick` action logs a similar line before disconnecting; a `Kick` settled on a non-server peer logs that it was not enforced.
 
-Several violation payloads carry a `SystemId` (for example `UncontrolledStateChangeViolation.SystemId`) rather than a GameObject reference. To find the GameObject behind that id, resolve the system first and then the marker:
+Several violation payloads carry a `SystemId` (for example `UnauthorizedMemberChangeViolation.SystemId`) rather than a GameObject reference. To find the GameObject behind that id, resolve the system first and then the marker:
 
 ```csharp
 if (_coreManager.SystemManager.TryGetSystemReference(violationContext.Violation.SystemId, out NetworkSystem networkSystem)

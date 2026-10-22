@@ -160,4 +160,4 @@ The simulation reads the members every tick in its fixed update anyway; use the 
 
 ## Controller-only, regardless of state write access
 
-Client state is controller-only no matter what a system's state write access allows. Client state from any connection other than the controller is refused: its bits are still consumed off the wire so stream alignment is not broken, but an `UncontrolledStateChangeViolation` is raised instead of the client state being applied.
+Client state is controller-only no matter what a system's state write access allows. Client state from any connection other than the controller is refused: its bits are still consumed off the wire so stream alignment is not broken, but an `UnauthorizedMemberChangeViolation` is raised instead of the client state being applied.
