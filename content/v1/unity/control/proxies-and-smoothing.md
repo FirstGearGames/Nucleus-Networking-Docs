@@ -31,7 +31,7 @@ protected override void OnEarlySerialize(StepDelta stepDelta)
 - **Kinematic Management Enabled** (`_kinematicManagementEnabled`, default `true`) holds an attached `Rigidbody` kinematic on every non-controlling peer — including the server while a client controls the system — and returns it to simulation on the controller. The switch is a straight assignment, applied only when the role actually changes: `_rigidbody.isKinematic = !isController;`. Turn it off only when other code already owns that rigidbody's kinematic state.
 - **Interpolate Scale Enabled** (`_interpolateScaleEnabled`, default `true`) has a proxy interpolate the replicated scale alongside position and rotation. Disabled, the local scale keeps whatever value it already holds — it's excluded from the sweep, not zeroed.
 
-Both only matter on a peer that isn't the controller. On `VariableUpdate`, a non-controlling, started system calls `_transformComponent.Interpolate(_interpolateScaleEnabled)`; on `EarlySerialize`, a controller calls `_transformComponent.WriteState()`. A given peer runs exactly one side of that split per tick, decided by the same `IsController(ControllerType.AnyController)` check every other hook uses.
+Both only matter on a peer that isn't the controller. On `VariableUpdate`, a non-controlling, started system calls `_transformComponent.Interpolate(_interpolateScaleEnabled)`; on `EarlySerialize`, a controller calls `_transformComponent.CaptureIntoMembers()`. A given peer runs exactly one side of that split per tick, decided by the same `IsController(ControllerType.AnyController)` check every other hook uses.
 
 ## Buffering: State Interpolation
 
