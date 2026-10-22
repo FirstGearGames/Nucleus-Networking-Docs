@@ -80,18 +80,18 @@ public bool TryGetPreRewindValue(out T0 value)
 - `TryGetMismatchValues` returns this client's value and the server's at `ReplayReport.StartTick`, when the latest reconcile found this member wrong, from the restore until the next tick advance.
 - `TryGetPreRewindValue` returns the value the member held before the latest reconcile restored it, the value that was on screen, until the next tick advance.
 
-## PredictedStateChangeViolation
+## PredictedMemberChangeViolation
 
-A controller must not write a `Validate` member's state upstream: its client state carries what the server needs, and the server simulates the outcome. If a client sends state for a member it predicts, `NetworkSystem` raises a `PredictedStateChangeViolation`:
+A controller must not write a `Validate` member's state upstream: its client state carries what the server needs, and the server simulates the outcome. If a client sends state for a member it predicts, `NetworkSystem` raises a `PredictedMemberChangeViolation`:
 
 ```csharp
-public struct PredictedStateChangeViolation : IViolation
+public struct PredictedMemberChangeViolation : IViolation
 {
     public uint SystemId;
 }
 ```
 
-It carries the `SystemId` of the `NetworkSystem` whose predicted member the sender attempted to change, and is raised with `ViolationAction.Ignore`. The incoming bits are consumed either way, by the caller's decode, so the wire stream stays aligned regardless of the verdict; only the ring is left untouched. Subscribe via `ViolationManager.PredictedStateChangeViolationDetected` to observe these without changing the outcome.
+It carries the `SystemId` of the `NetworkSystem` whose predicted member the sender attempted to change, and is raised with `ViolationAction.Ignore`. The incoming bits are consumed either way, by the caller's decode, so the wire stream stays aligned regardless of the verdict; only the ring is left untouched. Subscribe via `ViolationManager.PredictedMemberChangeViolationDetected` to observe these without changing the outcome.
 
 ## Opting in
 
