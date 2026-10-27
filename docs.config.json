@@ -1,7 +1,8 @@
 {
   "title": "Nucleus Networking",
   "description": "Documentation for Nucleus, a .NET networking engine with a Unity integration.",
-  "logo": "",
+  "logo": "/static/logo.png",
+  "logoStyle": { "radius": 7, "border": "#ffffff", "borderDark": "#000000", "borderWidth": 2 },
   "versions": ["v1"],
   "defaultVersion": "v1",
   "github": { "repo": "https://github.com/FirstGearGames/nucleus-networking-docs", "branch": "main", "contentDir": "content" },
