@@ -95,6 +95,6 @@ It carries the `SystemId` of the `NetworkSystem` whose predicted member the send
 
 ## Opting in
 
-Prediction is an explicit, per-member opt-in you add to your own `NetworkMember<T0>` field declarations; no base class turns it on for you. The Unity demo `Demos/Prediction/ValidatedJump` declares its walk direction and jump press count with `MemberRole.Predict`, every movement result of `ValidatedJumpMovementComponent` with `MemberRole.Validate`, and simulates them in its `OnEarlyFixedUpdate`.
+Prediction is an explicit, per-member opt-in you add to your own `NetworkMember<T0>` field declarations; no base class turns it on for you. The Unity demo `Demos/Prediction/ValidatedJump` declares its walk direction and jump press with `MemberRole.Predict`, every movement result of `ValidatedJumpMovementComponent` with `MemberRole.Validate`, and simulates them in its `OnEarlyFixedUpdate`.
 
 See [Reconciliation and replay](./reconciliation.md) for what happens once the server orders a correction: the restore, the replay the engine runs, and the report of what changed.
