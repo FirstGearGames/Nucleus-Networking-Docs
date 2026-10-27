@@ -24,6 +24,7 @@ Before you write any security code, the server already refuses the following. In
 - **An unauthenticated client may only send messages that opt out of authentication.** A message type requires authentication unless it sets `IsAuthenticationRequired` to `false`. A client that sends any other message before it has been approved is kicked.
 - **A client that never finishes authenticating is dropped.** `ServerManager.AuthenticationTimeoutSeconds` (30 by default) disconnects a client that stays unapproved for that long, so a silent client cannot hold a slot open.
 - **Answers the server never asked for get the client kicked.** A client that sends a scene or bundle request, or reports a scene or bundle load the server never requested, raises one of the four protocol-direction violations, which default to `Kick`. See [Violation reference](./violation-reference.md#protocol-direction-violations).
+- **A client cannot stall a scene load forever.** `SceneManager.LoadRequestTimeoutSeconds` (180 by default) gives up on a load a client never answers.
 - **Remote calls are capped per drain.** `RpcManager.MaximumInboundRpcsPerConnectionPerDrain` (64 by default) drops calls past the cap and raises `RpcFloodViolation`.
 - **Requests to repair lost state are capped.** A client may ask for at most four repairs per tick, and the excess is refused with `StateLossReportFloodViolation`. A report sent to a peer that serves it no state is discarded with `UnexpectedStateLossReportViolation`.
 - **Repair traffic is budgeted.** With `SystemManager.RecoveryBudgetEnabled` on (the default), a client that keeps losing packets, or claims to, is not repaired past its budget, so it cannot make the server send many times its normal traffic. `RecoveryBudgetExhaustedViolation` tells you when a client keeps hitting the budget.
@@ -159,12 +160,6 @@ Every server handler returns an `RpcRelayAction`. Return `RpcRelayAction.Cancel`
 
 `RpcManager.MaximumInboundRpcsPerConnectionPerDrain` (64 by default) bounds how many calls one client may deliver in a single drain. Lower it if your clients never send many calls at once. Setting it to `UnsetMaximumInboundRpcsPerConnectionPerDrain` (`0`) removes the cap, which a public server should not do.
 
-## Refuse scene loads a client is not entitled to
-
-A client is only ever in scenes the server asks it into. To refuse a client a scene, for example one that needs a ticket or a party, implement `ISceneLoadValidator` and register it with `SceneManager.RegisterSceneLoadValidator`. The validator runs before the request is sent, so a refused client never learns the scene exists. Any number may be registered, and one refusal is enough. See [Refusing a scene load](../scenes/scene-load-validators.md).
-
-`SceneManager.LoadRequestTimeoutSeconds` (180 by default) gives up on a load a client never answers, so a client cannot stall a load forever.
-
 ## Decide what each violation costs the client
 
 ### Kick for faults an honest client cannot produce
@@ -220,7 +215,6 @@ A kick is only enforced on a peer that has started a server, so register decidin
 - **Access is widened only where it is needed.** Every system on `MemberWriteAccess.AnyClient` or `RpcSendAccess.AnyClient` is there on purpose.
 - **Every value a client can write is validated.** Each component with members a client can write, client state included, implements `IMemberWriteValidator<T0>`.
 - **Every server call handler checks its sender and arguments.** Handlers that relay between clients return `Cancel` for anything you would not show other players.
-- **Scene entitlement is checked on the server.** An `ISceneLoadValidator` guards every scene that is not open to everyone.
 - **The violations you care about kick.** Deciding handlers escalate the faults an honest client cannot produce, and count the ones it can.
 - **Violations are audited.** An `IViolationObserver` and a `Synapse.ViolationObserved` subscriber log what was refused.
 - **The server runs a release build.** A debug build ignores `MalformedDataViolation` instead of kicking for it.

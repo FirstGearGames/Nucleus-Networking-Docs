@@ -67,7 +67,6 @@ public class ServerSecurity : MonoBehaviour
         coreManager.ServerManager.SetAuthenticator(new TokenClientAuthenticator(coreManager.MessageManager));
         coreManager.ServerManager.AuthenticationTimeoutSeconds = 15;
         coreManager.RpcManager.MaximumInboundRpcsPerConnectionPerDrain = 32;
-        coreManager.SceneManager.RegisterSceneLoadValidator(new TicketSceneLoadValidator());
         coreManager.ViolationManager.RegisterViolationHandler<RpcFloodViolation>(OnRpcFlood);
     }
 
@@ -75,7 +74,7 @@ public class ServerSecurity : MonoBehaviour
 }
 ```
 
-`TokenClientAuthenticator` and `TicketSceneLoadValidator` stand for your own types. Unregister handlers and validators in `OnDestroy`, as [Handling violations in Unity](./handling-violations-in-unity.md#unregistering-in-ondestroy) explains.
+`TokenClientAuthenticator` stands for your own type. Unregister handlers in `OnDestroy`, as [Handling violations in Unity](./handling-violations-in-unity.md#unregistering-in-ondestroy) explains.
 
 | Setting | Default | What it guards against | More |
 |---|---|---|---|
@@ -83,7 +82,6 @@ public class ServerSecurity : MonoBehaviour
 | `ServerManager.AuthenticationTimeoutSeconds` | `30` | A client holding a slot open without ever authenticating. Zero disables it. | [Authenticating clients](../../core-api/core/authentication.md#timeout) |
 | `ServerManager.KickTimeoutMilliseconds` | `500` | A kicked client that never acknowledges, keeping its link open. | [Kicking and disconnecting a client](../../core-api/core/kicking-and-disconnecting.md) |
 | `RpcManager.MaximumInboundRpcsPerConnectionPerDrain` | `64` | A client packing many remote calls together to cost the server work. | [Who may send a call, and how many](../../core-api/messaging/rpc-send-access.md#capping-calls-per-drain) |
-| `SceneManager.RegisterSceneLoadValidator` | none registered | A client being placed in a scene it is not entitled to. | [Refusing a scene load](../../core-api/scenes/scene-load-validators.md) |
 | `SystemManager.PredictedSpawnValidator` (Pro) | none, so every predicted spawn is refused | A client creating objects it should not. | [Client-predicted spawning in Unity](../systems/predicted-spawning.md) |
 
 The **Scene Load Timeout (s)** field on the `UnitySceneManager` inspector (180 by default) is the one related setting that does have an inspector field. It gives up on a scene load a client never answers, so a client cannot stall a load forever.
@@ -121,6 +119,5 @@ Most violations are rejected silently and never kick. Register a deciding handle
 - **Access is widened only where it is needed.** Every object on `AnyClient` access is there on purpose.
 - **Every value a client can write is validated.** Each component with members a client can write, input included, implements `IMemberWriteValidator<T0>`.
 - **Every server call handler checks its sender and arguments.** Handlers that relay between clients return `Cancel` for anything you would not show other players.
-- **Scene entitlement is checked on the server.** An `ISceneLoadValidator` guards every scene that is not open to everyone.
 - **The violations you care about kick, and all of them are logged.** Deciding handlers and an `IViolationObserver` are registered on the server build.
 - **The server runs a release build of Nucleus.** A debug build ignores `MalformedDataViolation` instead of kicking for it.
