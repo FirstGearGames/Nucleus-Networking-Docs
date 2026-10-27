@@ -36,7 +36,9 @@ That label is what tells Unity to run the DLL as a Roslyn source generator inste
 
 ## Unity version floor
 
-Every file in the Unity integration opens with the same conditional compilation gate, for example `Managers/Core/UnityCoreManager.cs`:
+The integration supports **Unity 6.5 (6000.5) and newer**. It uses Unity APIs that older editors lack, so it does not compile on them.
+
+Every file in the integration also opens with the same conditional compilation gate, for example `Managers/Core/UnityCoreManager.cs`:
 
 ```csharp
 #if UNITY_EDITOR || UNITY_2021_3_OR_NEWER
@@ -44,7 +46,7 @@ Every file in the Unity integration opens with the same conditional compilation 
 #endif
 ```
 
-The integration only compiles under the editor or Unity 2021.3 and newer. That makes 2021.3 the effective minimum supported version for a build target; anything older won't define `UNITY_ENGINE` and the integration code won't compile in.
+That gate is not the version floor. It only tells a Unity build apart from a plain .NET one, so the same sources can sit in a non-Unity project without pulling in `UnityEngine`. The floor is Unity 6.5.
 
 ## What's in Integrations, and what's gated
 

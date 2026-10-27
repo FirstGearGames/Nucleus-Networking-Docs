@@ -8,7 +8,7 @@ Nucleus's core targets `netstandard2.1`, with nullable reference types enabled a
 
 ## Unity integration
 
-The Unity integration compiles under `UNITY_EDITOR || UNITY_2021_3_OR_NEWER`. Older Unity versions, outside the editor, don't compile it.
+The Unity integration supports **Unity 6.5 (6000.5) and newer**. It uses Unity APIs that older editors lack, so it does not compile on them. Its files are also wrapped in `#if UNITY_EDITOR || UNITY_2021_3_OR_NEWER`, but that gate only tells a Unity build apart from a plain .NET one; it is not the version floor.
 
 Integration and demo source is pinned to `LangVersion 9`, matching what Unity's compiler accepts. This constrains the source shipped in the package, not the compiled DLLs it references — the core engine DLL is built separately and isn't subject to this pin.
 
