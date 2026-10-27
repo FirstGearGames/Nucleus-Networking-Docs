@@ -8,7 +8,7 @@ title: "Diagnosing desync"
 
 1. **Is the object there at all?** If the receiver never spawned it, or the object vanished when it shouldn't have, this is interest: an `IInterestCondition` culled the pair (`InterestEffect.Spawn`, resolving to `InterestMembership.Unspawned`), or a despawn genuinely happened.
 2. **Is it there but frozen?** The object exists on the receiver but stopped updating a while ago. This is `InterestEffect.Stop`: the pair resolved to `InterestMembership.Stopped`, which retains the receiver's object and drops it from the delta stream rather than despawning it. It looks identical to a dead connection from the outside; it isn't.
-3. **Is it there and moving, but wrong?** Position, rotation, or some other member holds a value that doesn't match the sender. This is a state question: either the value never changed on the receiver, or it changed to something incorrect.
+3. **Is it there and moving, but wrong?** Position, rotation, or some other member holds a value that doesn't match the sender. This is a member value question: either the value never changed on the receiver, or it changed to something incorrect.
 4. **Is it there, correct, but late?** The value is right eventually, just visibly behind. This is interpolation and the retention window, not a data bug.
 
 Don't skip ahead. A value that "looks wrong" because the object was actually culled five seconds ago and you're staring at a stale render is not a serializer bug, and chasing it as one wastes time.
@@ -24,12 +24,12 @@ These two failure modes live in different subsystems. Don't debug a serializer b
 
 ## Read the violation stream first
 
-Most desyncs that are actually protocol faults - not just late or stale data - raise a violation before you'd notice anything visually. `ViolationManager` is the framework-wide pipeline for this: register a `ViolationHandler<T0>` to decide the `ViolationAction` for one violation type, or an `IViolationObserver` to hear every type raised, or subscribe the matching per-type event (for example `UncontrolledStateChangeViolationDetected`) to just watch.
+Most desyncs that are actually protocol faults - not just late or stale data - raise a violation before you'd notice anything visually. `ViolationManager` is the framework-wide pipeline for this: register a `ViolationHandler<T0>` to decide the `ViolationAction` for one violation type, or an `IViolationObserver` to hear every type raised, or subscribe the matching per-type event (for example `UnauthorizedMemberChangeViolationDetected`) to just watch.
 
 The types worth knowing when chasing desync:
 
-- `UncontrolledStateChangeViolation` - a peer sent a state change for a `NetworkSystem` it doesn't control.
-- `PredictedStateChangeViolation` - a controller sent state for a predicted member, which should only ride upstream as client state.
+- `UnauthorizedMemberChangeViolation` - a peer changed a member of a `NetworkSystem` it doesn't control.
+- `PredictedMemberChangeViolation` - a controller sent a value for a predicted member, which should only ride upstream as client state.
 - `EmptyCollectionDeltaViolation` - a collection delta declared no operations, which a compliant sender can't produce; usually a crafted packet or a diverged serializer pair.
 - `InvalidStateAckViolation` - a peer acknowledged a tick above anything ever sent to it.
 - `RetentionExceededViolation` - a peer's acknowledged tick fell beyond the retention window and had to be re-served the whole world. A single raise is ordinary heavy loss; chronic raises mean the peer's latency exceeds `SystemManager.StateRetentionMilliseconds`, or it's deliberately withholding acknowledgments.

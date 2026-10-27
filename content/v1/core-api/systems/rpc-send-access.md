@@ -4,7 +4,7 @@ title: "Who May Send a Call, and How Many"
 
 ## What send access controls
 
-Every `NetworkSystem` has an `RpcSendAccess`, layered beside control exactly as `StateWriteAccess` is layered beside write control.
+Every `NetworkSystem` has an `RpcSendAccess`, layered beside control exactly as `MemberWriteAccess` is layered beside write control.
 
 ```csharp
 public enum RpcSendAccess : byte
@@ -38,9 +38,9 @@ The server enforces every call from its own copy of `RpcAccess`. A client is tol
 
 `AnyClient` is scoped to observers, not to every client in the world. Losing interest in a system silently removes the right to call it along with the interest itself - `AnyClient` means you may call what you can see.
 
-## Kept separate from state write access
+## Kept separate from write access
 
-`RpcSendAccess` and `StateWriteAccess` are deliberately different knobs. "You may ask this object to do something" and "you may overwrite this object's state" are different grants - folding them into one would mean a game that wants observers to fire a call at an object has to open its state stream to them as well.
+`RpcSendAccess` and `MemberWriteAccess` are deliberately different knobs. "You may ask this object to do something" and "you may set this object's members" are different grants - folding them into one would mean a game that wants observers to fire a call at an object has to let them set its members as well.
 
 ## RpcSendPermissionViolation
 

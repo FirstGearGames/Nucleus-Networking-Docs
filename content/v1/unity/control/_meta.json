@@ -8,6 +8,10 @@
     "title": "What control means"
   },
   {
+    "slug": "using-prediction",
+    "title": "Using prediction, from start to finish"
+  },
+  {
     "slug": "writing-a-client-state-component-unity",
     "title": "Sending client state from Unity"
   },

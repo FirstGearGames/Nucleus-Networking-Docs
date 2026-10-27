@@ -16,11 +16,11 @@ protected override void OnEarlySerialize(StepDelta stepDelta)
     if (!IsController(ControllerType.AnyController))
         return;
 
-    // Write gameplay state here; a non-controlling peer skips this and falls through to nothing.
+    // Set gameplay members here; a non-controlling peer skips this and falls through to nothing.
 }
 ```
 
-`IsController(ControllerType controllerType)` returns false whenever no system is linked yet, and otherwise the system's own answer. `EnsureIsController` is the loud version of the same check: it returns the same bool but also logs a warning the first time it fails from a given calling member. Neither of them stops the hook from running; a script that doesn't call one of them on a non-controlling peer does its writing work anyway, against state it doesn't own.
+`IsController(ControllerType controllerType)` returns false whenever no system is linked yet, and otherwise the system's own answer. `EnsureIsController` is the loud version of the same check: it returns the same bool but also logs a warning the first time it fails from a given calling member. Neither of them stops the hook from running; a script that doesn't call one of them on a non-controlling peer does its writing work anyway, against members it doesn't own.
 
 `IsStarted(Invoker)` is a separate axis entirely — server-started or client-started — and answers independently of who controls the object. A host can be `IsStarted(Invoker.Server)` and still not be the controller of a client-controlled object.
 
@@ -31,7 +31,7 @@ protected override void OnEarlySerialize(StepDelta stepDelta)
 - **Kinematic Management Enabled** (`_kinematicManagementEnabled`, default `true`) holds an attached `Rigidbody` kinematic on every non-controlling peer — including the server while a client controls the system — and returns it to simulation on the controller. The switch is a straight assignment, applied only when the role actually changes: `_rigidbody.isKinematic = !isController;`. Turn it off only when other code already owns that rigidbody's kinematic state.
 - **Interpolate Scale Enabled** (`_interpolateScaleEnabled`, default `true`) has a proxy interpolate the replicated scale alongside position and rotation. Disabled, the local scale keeps whatever value it already holds — it's excluded from the sweep, not zeroed.
 
-Both only matter on a peer that isn't the controller. On `VariableUpdate`, a non-controlling, started system calls `_transformComponent.Interpolate(_interpolateScaleEnabled)`; on `EarlySerialize`, a controller calls `_transformComponent.WriteState()`. A given peer runs exactly one side of that split per tick, decided by the same `IsController(ControllerType.AnyController)` check every other hook uses.
+Both only matter on a peer that isn't the controller. On `VariableUpdate`, a non-controlling, started system calls `_transformComponent.Interpolate(_interpolateScaleEnabled)`; on `EarlySerialize`, a controller calls `_transformComponent.CaptureIntoMembers()`. A given peer runs exactly one side of that split per tick, decided by the same `IsController(ControllerType.AnyController)` check every other hook uses.
 
 ## Buffering: State Interpolation
 

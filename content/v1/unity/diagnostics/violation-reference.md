@@ -14,8 +14,8 @@ These fire from state application, spawning, and RPC dispatch. All default to `I
 
 | Type | Payload | Check first |
 |---|---|---|
-| `UncontrolledStateChangeViolation` | `SystemId` | Whether the sender actually holds control of that `NetworkSystem` right now; control handoffs racing a state send look identical to this from the receiving side. |
-| `PredictedStateChangeViolation` | `SystemId` | Whether the member is really predicted; a controller never serializes a predicted member's state, so this usually means the member's transmission setup changed without the controller rebuilding. |
+| `UnauthorizedMemberChangeViolation` | `SystemId` | Whether the sender actually holds control of that `NetworkSystem` right now; control handoffs racing a member change look identical to this from the receiving side. |
+| `PredictedMemberChangeViolation` | `SystemId` | Whether the member is really predicted; a controller never serializes a predicted member's value, so this usually means the member's transmission setup changed without the controller rebuilding. |
 | `EmptyCollectionDeltaViolation` | `SystemId`, `MemberId` | A compliant sender cannot produce a collection delta with no operations, so first suspect a diverged serializer pair between the two builds, not the sender's intent. |
 | `InvalidStateAckViolation` | `AckedTick` | Whether the two peers' tick counters have actually diverged (a restart, a save/load, a manual tick reset) rather than assuming a forged ack. |
 | `RetentionExceededViolation` | `AckedTick` | The peer's latency against `SystemManager.StateRetentionMilliseconds`; a single raise is ordinary heavy loss, not abuse. |
@@ -45,12 +45,13 @@ These fire when a client answers about a bundle or scene it was never asked abou
 
 ## Pro-only violations
 
-`PacketTransformRejectedViolation` and `UnauthorizedDespawnViolation` do not exist in a Free build; their events live on Pro partials of `ViolationManager`.
+`PacketTransformRejectedViolation`, `UnauthorizedDespawnViolation` and `UnsolicitedLeaseAcknowledgementViolation` do not exist in a Free build; their events live on Pro partials of `ViolationManager`.
 
 | Type | Payload | Default | Check first |
 |---|---|---|---|
 | `PacketTransformRejectedViolation` | `Channel`, `PayloadByteCount` | No explicit default is passed at the raise site, so it takes `ViolationManager.DefaultAction` (`Ignore`), and because it is the plain framework default it always logs a warning. | Whether the peer is running the same `IPacketTransform` configuration; a stray packet from something that is not this game reaches the port too, so this is not evidence of an attack against a legitimate peer. |
 | `UnauthorizedDespawnViolation` | `SystemId` | `Ignore` | Whether the client and server builds actually agree on that prefab's removal policy; a version skew between them reaches this honestly. |
+| `UnsolicitedLeaseAcknowledgementViolation` | none | `Kick` | Whether the client build matches the server's. An honest client acknowledges only the predicted spawn top-ups the server sent it, so anything else is a modified client. |
 
 ## Lag compensation violation
 

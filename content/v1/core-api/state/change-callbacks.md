@@ -10,7 +10,7 @@ title: "Reacting to changes: OnMembersChanged"
 public virtual void OnMembersChanged(ulong memberFlags, MemberChangeDirection memberChangeDirection) { }
 ```
 
-Override it to react to state without polling.
+Override it to react to member changes without polling.
 
 ## The two arguments
 

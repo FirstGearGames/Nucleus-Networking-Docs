@@ -41,7 +41,7 @@
   },
   {
     "slug": "state-write-access",
-    "title": "Letting clients write state"
+    "title": "Letting clients set members"
   },
   {
     "slug": "retention-redundancy-and-recovery",

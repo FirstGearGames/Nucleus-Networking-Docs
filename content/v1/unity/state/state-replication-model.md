@@ -27,7 +27,7 @@ A host raises both directions in the same frame, write first, without waiting fo
 
 ## Who may write
 
-By default, `StateWriteAccess.Controller` (the enum's `0` value): the server, or the single controlling client, may write a system's state. Letting other observers write as well (`StateWriteAccess.AnyClient`) is a Pro opt-in, covered on its own page. A free build has no `StateWriteAccess` type, so there only the controller writes.
+By default, `MemberWriteAccess.Controller` (the enum's `0` value): the server, or the single controlling client, may set a system's members. Letting other observers write as well (`MemberWriteAccess.AnyClient`) is a Pro opt-in, covered on its own page. A free build has no `MemberWriteAccess` type, so there only the controller writes.
 
 ## What a change costs
 
@@ -45,4 +45,4 @@ Nucleus has its own terms; do not substitute names from another engine's netcode
 - **System**, not object: `NetworkSystem` is the networked entity.
 - **Component**, not behaviour: `NetworkComponent` is a container of members within a system.
 - **Member**, not variable: `NetworkMemberBase` is the individual replicated value.
-- **Controller**, not owner: the client permitted to write a system's state by default.
+- **Controller**, not owner: the client permitted to set a system's members by default.

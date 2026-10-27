@@ -6,7 +6,7 @@ title: "Predicted members and prediction history"
 
 ## A member's role says what it is for
 
-`NetworkMember<T0>` takes a `role` constructor argument, `MemberRole.State` by default, readable afterwards as `NetworkMember<T0>.Role`:
+`NetworkMember<T0>` takes a `role` constructor argument, `MemberRole.Replicate` by default, readable afterwards as `NetworkMember<T0>.Role`:
 
 ```csharp
 public readonly NetworkMember<System.Numerics.Vector2> MoveDirection = new(role: MemberRole.Predict);
@@ -16,7 +16,7 @@ public readonly NetworkMember<ushort> Health = new();
 
 | Role | What it is | Who writes it | What the controller sends upstream |
 | --- | --- | --- | --- |
-| `State` | Ordinary state. Inbound values apply as they arrive. | The server, or a client its write access allows. | The value, when it changes and write access allows it |
+| `Replicate` | An ordinary member. Inbound values apply as they arrive. | The server, or a client its write access allows. | The value, when it changes and write access allows it |
 | `Predict` | Client state: a per-tick value the simulation reads. | Whoever controls the system, on its live tick. | The value, every tick (see [Client state](./client-state-components.md)) |
 | `Validate` | A predicted result, computed from the client state. | Every peer that simulates the system. | Never the value: a hash of the tick's results, with its client state |
 
@@ -37,13 +37,13 @@ A `Validate` member puts the check on the server, which holds the client state a
 2. The server simulates the same tick of client state, hashes its own `Validate` members the same way and compares. On a difference it counts `Connection.ResultMismatchCount`, orders a reconcile (counted in `ReconcileSentCount`) and raises `NetworkSystem.ResultMismatched`; see [Validate results the server found different](./reconciliation.md#validate-results-the-server-found-different).
 3. Results the controller computed before the correction arrived carry the old sequence, so the server passes them over instead of ordering a reconcile for each. If the controller has not echoed the new sequence within a round trip plus `StateInterpolation`, the server sends the reconcile again (`ReconcileResentCount`), so a lost reconcile costs one round trip, not a stuck client. A resend that reaches a controller which already applied the first lands as an ordinary full rather than ordering a second replay.
 
-The controller never judges its own prediction. Every server value for a predicted member that arrives, a full that primes or recovers it included, leaves the prediction standing; only a reconcile the server orders corrects it. That is why the check works for results that depend on state the client cannot see in time: a jump the server refuses because of health only the server drains is still caught, because the server holds both the client state and the health.
+The controller never judges its own prediction. Every server value for a predicted member that arrives, a full that primes or recovers it included, leaves the prediction standing; only a reconcile the server orders corrects it. That is why the check works for results that depend on values the client cannot see in time: a jump the server refuses because of health only the server drains is still caught, because the server holds both the client state and the health.
 
 A hash compares exactly, so a `Validate` member is quantized to its `Accuracy` on every write, on both peers, and each tick starts from the numbers the wire carries. Choose an accuracy the simulation can tolerate rounding to. A `Validate` member may use any `SendInterval`, since the server compares against its own current values every tick and an ordered reconcile is a full.
 
 A predicted system needs `Predict` members: the result check rides each tick of client state, and the reconcile pairs with the server's echo of that tick. A system with `Validate` members and no client state sends nothing for the server to check, and the server's values simply overwrite the prediction.
 
-The result check runs after the client state is validated. A tick the server's `IStateWriteValidator<T0>` corrected therefore produces a different result, and the controller is reconciled onto the server's outcome.
+The result check runs after the client state is validated. A tick the server's `IMemberWriteValidator<T0>` corrected therefore produces a different result, and the controller is reconciled onto the server's outcome.
 
 ## An observer that predicts compares for itself
 
@@ -80,18 +80,18 @@ public bool TryGetPreRewindValue(out T0 value)
 - `TryGetMismatchValues` returns this client's value and the server's at `ReplayReport.StartTick`, when the latest reconcile found this member wrong, from the restore until the next tick advance.
 - `TryGetPreRewindValue` returns the value the member held before the latest reconcile restored it, the value that was on screen, until the next tick advance.
 
-## PredictedStateChangeViolation
+## PredictedMemberChangeViolation
 
-A controller must not write a `Validate` member's state upstream: its client state carries what the server needs, and the server simulates the outcome. If a client sends state for a member it predicts, `NetworkSystem` raises a `PredictedStateChangeViolation`:
+A controller must not send a `Validate` member's value upstream: its client state carries what the server needs, and the server simulates the outcome. If a client sends a value for a member it predicts, `NetworkSystem` raises a `PredictedMemberChangeViolation`:
 
 ```csharp
-public struct PredictedStateChangeViolation : IViolation
+public struct PredictedMemberChangeViolation : IViolation
 {
     public uint SystemId;
 }
 ```
 
-It carries the `SystemId` of the `NetworkSystem` whose predicted member the sender attempted to change, and is raised with `ViolationAction.Ignore`. The incoming bits are consumed either way, by the caller's decode, so the wire stream stays aligned regardless of the verdict; only the ring is left untouched. Subscribe via `ViolationManager.PredictedStateChangeViolationDetected` to observe these without changing the outcome.
+It carries the `SystemId` of the `NetworkSystem` whose predicted member the sender attempted to change, and is raised with `ViolationAction.Ignore`. The incoming bits are consumed either way, by the caller's decode, so the wire stream stays aligned regardless of the verdict; only the ring is left untouched. Subscribe via `ViolationManager.PredictedMemberChangeViolationDetected` to observe these without changing the outcome.
 
 ## Opting in
 

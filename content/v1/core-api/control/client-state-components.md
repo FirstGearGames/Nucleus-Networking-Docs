@@ -6,9 +6,9 @@ title: "Client state"
 
 ## Client state is the per-tick values a simulation reads
 
-Client state is what the controlling client sends the server every tick so the server can simulate the object: a move direction, a jump press, an aim angle. The server runs the same step the client does, from those values, and replicates the result. Sending client state rather than result state means the server only ever trusts what the player asked for, never where the player says it ended up.
+Client state is what the controlling client sends the server every tick so the server can simulate the object: a move direction, a jump press, an aim angle. The server runs the same step the client does, from those values, and replicates the result. Sending client state rather than result values means the server only ever trusts what the player asked for, never where the player says it ended up.
 
-Client state is ordinary `NetworkMember<T0>` fields constructed with `role: MemberRole.Predict`, declared in the system's own `NetworkComponent` beside the state the simulation computes from them. There is no separate client state class to write and nothing to register or attach: a member travels as client state because of its role.
+Client state is ordinary `NetworkMember<T0>` fields constructed with `role: MemberRole.Predict`, declared in the system's own `NetworkComponent` beside the members the simulation computes from them. There is no separate client state class to write and nothing to register or attach: a member travels as client state because of its role.
 
 ## Declaring client state
 
@@ -19,13 +19,13 @@ using Nucleus.Connections;
 using Nucleus.Managers.NetworkLoop;
 using Nucleus.Systems;
 
-public partial class MoverComponent : NetworkComponent, IStateWriteValidator<Vector2>
+public partial class MoverComponent : NetworkComponent, IMemberWriteValidator<Vector2>
 {
     // Client state: written by the controller on its live tick, sent upstream every tick.
     public readonly NetworkMember<Vector2> MoveDirection = new(role: MemberRole.Predict);
     // A press that must not repeat when a missing tick is carried forward.
     public readonly NetworkMember<bool> JumpPressed = new(role: MemberRole.Predict, isCarriedForward: false);
-    // State the server computes from the client state.
+    // A member the server computes from the client state.
     public readonly NetworkMember<Vector3> Position = new();
 
     // Set by the game from the device on the controlling client.
@@ -34,14 +34,14 @@ public partial class MoverComponent : NetworkComponent, IStateWriteValidator<Vec
     private const float Speed = 5f;
 
     // Server: once per Predict member per client tick taken. Write the member and decline to keep your own value.
-    public StateWriteAction ValidateStateWrite(NetworkMember<Vector2> networkMember, Vector2 proposedValue, Connection writingClientConnection)
+    public MemberWriteAction ValidateMemberWrite(NetworkMember<Vector2> networkMember, Vector2 proposedValue, Connection writingClientConnection)
     {
         if (proposedValue.LengthSquared() <= 1f)
-            return StateWriteAction.Accept;
+            return MemberWriteAction.Accept;
 
         MoveDirection.Value = Vector2.Normalize(proposedValue);
 
-        return StateWriteAction.Decline;
+        return MemberWriteAction.Decline;
     }
 
     protected override void OnEarlyFixedUpdate(StepDelta stepDelta, SimulationContext simulationContext)
@@ -66,7 +66,7 @@ public partial class MoverComponent : NetworkComponent, IStateWriteValidator<Vec
 }
 ```
 
-`Position` here is ordinary state the server computes, so the controller sees its own movement a round trip late. To have the controller move at once and be corrected only when it is wrong, make the result `MemberRole.Validate` and let both peers run the step; see [Predicted members and prediction history](./prediction-history-and-predicted-members.md).
+`Position` here is an ordinary member the server computes, so the controller sees its own movement a round trip late. To have the controller move at once and be corrected only when it is wrong, make the result `MemberRole.Validate` and let both peers run the step; see [Predicted members and prediction history](./prediction-history-and-predicted-members.md).
 
 ## Who writes it, and when
 
@@ -78,18 +78,18 @@ A host playing its own object writes the members in the same process, so nothing
 
 ## Validating client state on the server
 
-Implement `IStateWriteValidator<T0>` on the component, once per member type, and the server calls it once per Predict member for each client tick it takes:
+Implement `IMemberWriteValidator<T0>` on the component, once per member type, and the server calls it once per Predict member for each client tick it takes:
 
 ```csharp
-StateWriteAction ValidateStateWrite(NetworkMember<T0> networkMember, T0 proposedValue, Connection writingClientConnection);
+MemberWriteAction ValidateMemberWrite(NetworkMember<T0> networkMember, T0 proposedValue, Connection writingClientConnection);
 ```
 
-- `StateWriteAction.Accept` takes the client's value.
-- `StateWriteAction.Decline` keeps what the member already holds.
+- `MemberWriteAction.Accept` takes the client's value.
+- `MemberWriteAction.Decline` keeps what the member already holds.
 - To clamp rather than refuse, write the member inside the call and decline: the server keeps your value, simulates with it and forwards it.
 - A validator that throws declines.
 
-The same interface judges a client's writes to ordinary state members; see [Validating client writes](../state/validating-client-writes.md). Several members of one type share one implementation, so compare the `networkMember` argument against your fields when they need different rules.
+The same interface judges a client's writes to ordinary members; see [Validating client writes](../state/validating-client-writes.md). Several members of one type share one implementation, so compare the `networkMember` argument against your fields when they need different rules.
 
 ## What the server does with each tick
 
@@ -158,6 +158,6 @@ On the controller a server value for a past tick lands in that tick's history wh
 
 The simulation reads the members every tick in its fixed update anyway; use the callback for presentation, or to react to a correction.
 
-## Controller-only, regardless of state write access
+## Controller-only, regardless of write access
 
-Client state is controller-only no matter what a system's state write access allows. Client state from any connection other than the controller is refused: its bits are still consumed off the wire so stream alignment is not broken, but an `UncontrolledStateChangeViolation` is raised instead of the client state being applied.
+Client state is controller-only no matter what a system's write access allows. Client state from any connection other than the controller is refused: its bits are still consumed off the wire so stream alignment is not broken, but an `UnauthorizedMemberChangeViolation` is raised instead of the client state being applied.

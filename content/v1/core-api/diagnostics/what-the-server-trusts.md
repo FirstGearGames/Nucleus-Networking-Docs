@@ -4,7 +4,7 @@ title: "What the server trusts"
 
 ## Observation gates everything
 
-Every access check the engine makes, for a state write or for a remote call, starts with the same test: is the sending connection an observer of the system being addressed. That test runs first, before the access value and before whether the sender controls the object. A connection that does not observe a system is rejected outright, regardless of `StateWriteAccess` or `RpcSendAccess`.
+Every access check the engine makes, for setting a member or for a remote call, starts with the same test: is the sending connection an observer of the system being addressed. That test runs first, before the access value and before whether the sender controls the object. A connection that does not observe a system is rejected outright, regardless of `MemberWriteAccess` or `RpcSendAccess`.
 
 This means a client cannot reach a system by guessing its id. An identifier that names something the client was never told about, or has since lost interest in, resolves to nothing on the server. Access - `Controller` or `AnyClient` - only decides what an observer may do once it has cleared this gate. It never substitutes for being told about the object in the first place.
 
@@ -18,7 +18,7 @@ The capability hint exists only so a well-behaved client avoids sending somethin
 
 ## Who actually sent it
 
-An identifier a client places in a payload is a claim about itself, nothing more. What a handler is handed as the sender is the `Connection` the transport resolved for that packet - `RpcContext.SenderConnection` for a call, the equivalent resolved connection for a state write. That resolution happens below any code the client controls, so there is no field a client can set to speak as someone else.
+An identifier a client places in a payload is a claim about itself, nothing more. What a handler is handed as the sender is the `Connection` the transport resolved for that packet - `RpcContext.SenderConnection` for a call, the equivalent resolved connection for a member value it sets. That resolution happens below any code the client controls, so there is no field a client can set to speak as someone else.
 
 For a call the server relays on to other observers, the relayed copy still carries the original sender's connection id, so attribution survives the hop; a client that receives a relayed call is being told who actually said it, not who forwarded it. Only the authority writes that original-sender id. A call arriving from a client is attributed to the client that sent it, whatever originator id its packet names, so a client cannot dress a call up as coming from another client to fool a handler, the relay's sender exclusion, or `RpcContext.SenderConnection`.
 
@@ -30,7 +30,7 @@ A `Connection.Id` is assigned per session and reused once a connection is gone; 
 
 ## Arbitration is not a security boundary
 
-`StateWriteAccess.AnyClient` (Pro) lets every observer, not just the controller, write a system's state. A Free build has no `StateWriteAccess` at all: only a system's controller may write its state, so there is never a contested write to arbitrate.
+`MemberWriteAccess.AnyClient` (Pro) lets every observer, not just the controller, set a system's members. A Free build has no `MemberWriteAccess` at all: only a system's controller may set its members, so there is never a contested write to arbitrate.
 
 Contested multi-writer arbitration - resolving which of several observers' simultaneous writes to a system wins - is a Pro feature. Where it exists, the resolution is not adversarially safe: it is arbitrary but stable, and a client that keeps reconnecting to change its own connection id can farm a favorable outcome under it. Arbitration decides whose write is shown when two are equally legitimate; it does not decide whether a write should have been allowed, and it is not a defense against a client trying to win by gaming the mechanism. Anything where that matters needs its own arbiter in game code, sitting on top of the access check, not the arbitration itself.
 

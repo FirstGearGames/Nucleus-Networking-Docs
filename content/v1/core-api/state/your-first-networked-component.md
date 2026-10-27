@@ -17,7 +17,7 @@ public partial class SimpleStateComponent : NetworkComponent
 
 The `partial` keyword is not optional. A source generator scans the class for its `NetworkMember<T0>` fields and emits the other half of the type: `Write`, `WriteDelta`, `Read`, `ReadDelta`, and a per-component flags enum with one bit per member, in member-Id order. Without `partial` there is nowhere for that generated code to attach, and the component never serializes anything.
 
-Add more fields for more state; each gets its own bit in the generated flags enum and its own Id within the component.
+Add more fields for more values; each gets its own bit in the generated flags enum and its own Id within the component.
 
 ## Rent a system that carries it
 
