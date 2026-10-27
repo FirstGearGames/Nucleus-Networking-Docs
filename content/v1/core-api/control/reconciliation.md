@@ -117,7 +117,7 @@ The controller writes the client state for the live tick before the step reads i
 - `Predict` members read the client state recorded for the replayed tick.
 - `State` members keep their live value; writes to them land on the live value.
 - Systems this client does not control read the server values that arrived with the start tick, unless the [hold radius](#holding-only-the-systems-near-a-replay) leaves them out.
-- No physics step runs between the early and late fixed update, so movement that must replay cannot wait on one.
+- The core steps no physics itself. `SystemManager.ReplayEarlyFixedUpdated` is raised between the early and late fixed update of each replayed tick, so an integration can step its physics world there; the Unity integration does, so a body predicted through its `ValidatedRigidbody` replays.
 
 `NetworkLoopManager.SimulationType` is the pass running now (`None` outside a simulate step), mirrored as `NetworkSystem.SimulationType`. `NetworkLoopManager.ReplayTick` is the replayed tick during a replay and `NetworkLoopManager.UnsetTick` otherwise, and `SimulationTick` is the replayed tick during a replay and `Tick`, which stays the live tick throughout, otherwise. `NetworkSystem.IsPredicting` is true on the clients that replay a system: its controller, or an observer predicting it, while it has a predicted member.
 

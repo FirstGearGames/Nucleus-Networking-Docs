@@ -28,13 +28,17 @@ No engine type ever crosses that boundary. The replicated members and the snapsh
 
 Position and rotation ride Divine or Interval transmission like any other member; the choice is per-member, not physics-specific. Divine can go quiet for stretches where Interval would still send every tick. Divine projection is Pro: a free build accepts `Divine` and replicates the member with ordinary deltas, as `Interval` does.
 
+## A replay steps the world, but only predicted bodies rewind
+
+When a client is corrected for an object it predicts, it replays every tick since the one that went wrong, and each replayed tick steps the whole physics world, 3D and 2D, between the early and late fixed updates. Only a body predicted through a validated behaviour, such as `ValidatedRigidbody`, is put back to the server's values and stepped again. A `NetworkRigidbody` body is converged, not rewound, so it adds a `ReplayHeldBody` by default, which holds it kinematic for the replay and lets it go afterwards as it was. See [NetworkRigidbody](./network-rigidbody.md) and [Predicting a body with a validated behaviour](./predicting-a-body-with-a-validated-behaviour.md).
+
 ## What isn't built
 
 This model does not include:
 
 - Replay-correct collision callbacks
 
-This is planned, not hidden. A resimulated, full-world rollback approach to physics was tried and archived; the model here (capture, project, converge) is what shipped in its place.
+This is planned, not hidden. An earlier approach that restored every body in the physics world to a past tick and stepped them all again was tried and archived; the model here (capture, project, converge) is what shipped in its place. A replay today steps the world again but rewinds only the bodies a validated behaviour predicts, as described above.
 
 Judging a shot against where targets were is a separate feature that does not touch physics bodies at all: [lag compensation](../lag-compensation/how-lag-compensation-works.md) (Pro) keeps its own hitbox history and its own geometry. Catching a freshly spawned projectile up through the latency it lost is [spawn compensation](../../core-api/systems/spawn-compensation.md) (Pro).
 

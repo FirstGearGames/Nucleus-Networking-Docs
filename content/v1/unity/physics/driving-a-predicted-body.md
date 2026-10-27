@@ -6,6 +6,8 @@ title: "Driving a predicted body"
 
 A body a client drives directly - a player's own physics character, for example - should not wait a round trip to respond. `NetworkRigidbody` supports this: the driving peer predicts the body locally, applying its own client state the instant it arrives, while the server still owns where the body really is and the driver reconciles toward it as confirmations return.
 
+This page covers a body the server simulates while one client steers it. The other way to predict a body is a validated behaviour: the client controls the body outright, the server checks its result, and a wrong result is replayed. See [Predicting a body with a validated behaviour](./predicting-a-body-with-a-validated-behaviour.md) for that, and for help choosing between the two.
+
 ## Turning prediction on
 
 `NetworkRigidbody.Convergence` is a `PhysicsConvergence`. Set `Convergence.IsLocallyPredicted` to `true` on the peer steering the body with its own client state, and back to `false` when it stops:

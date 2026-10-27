@@ -132,7 +132,7 @@ Follow these rules inside the movement code, or the client and the server will d
 - **Step by the tick, never by the frame.** Use `1f / CoreManager.NetworkLoopManager.TickRate`. `Time.deltaTime` is different on every machine and on every replayed tick.
 - **Read only members and constants.** Everything the step reads must be the same on both peers for that tick. A value read from the scene, a static, `Random` or the current time is not, unless you make it so.
 - **Keep the results in members.** The engine rewinds members, not your private fields. A field the step changes is not rewound, so the replay starts from the wrong value.
-- **Use plain arithmetic or a `CharacterController`.** A `Rigidbody` cannot be re-stepped one object at a time, so it does not replay. For predicted physics bodies, see [Driving a predicted body](../physics/driving-a-predicted-body.md).
+- **Use plain arithmetic, a `CharacterController` or a validated behaviour.** A replay steps the whole physics world once for each replayed tick, so a `Rigidbody` can be predicted too. Add a `ValidatedRigidbody` to the body and apply its forces in `OnEarlyFixedUpdate`; see [Predicting a body with a validated behaviour](../physics/predicting-a-body-with-a-validated-behaviour.md).
 
 ## Step 3: Read the keys in Update and write them on the live tick.
 
@@ -260,7 +260,7 @@ protected override void OnEarlyFixedUpdate(StepDelta stepDelta, SimulationContex
 }
 ```
 
-The component's step has already run for that tick, because a system runs its components before its behaviours. The smoother also glides across a correction, so a taken-back jump drops smoothly instead of snapping.
+The component's step has already run for that tick, because a system runs its components before its behaviours. The smoother also glides across a correction, so a taken-back jump drops smoothly instead of snapping. See [Smoothing a predicted object with GraphicalSmoother](./graphical-smoother.md) for its settings.
 
 The second is to render `InterpolatedValue` from `Update` and construct the member with `correctionSmoothingTicks`:
 
@@ -346,5 +346,5 @@ When the basics work, these pages cover the next steps:
 - **Predict other players' objects too.** Tick **Predicted By Observers** on a `NetworkSystemObject` so that observing clients predict it as its controller does, which matters for players who collide or push each other. See [Prediction settings on the Unity manager](./prediction-settings-in-unity.md).
 - **Hold only the nearby crowd during a replay.** Set **Replay Hold Radius** on the system manager so a replay holds only the objects near the ones it restores.
 - **Spawn objects before the server answers.** A projectile can appear the instant it is fired and be confirmed or refused later. Predicted spawning is a Pro feature; see [Client-predicted spawning in Unity](../systems/predicted-spawning.md) and the two `PredictedProjectile` demos under `Demos/Prediction`.
-- **Predict a physics body.** See [Driving a predicted body](../physics/driving-a-predicted-body.md).
+- **Predict a physics body.** Add a `ValidatedRigidbody` and push the body from `OnEarlyFixedUpdate`; see [Predicting a body with a validated behaviour](../physics/predicting-a-body-with-a-validated-behaviour.md). For a body the server simulates while a client steers it, see [Driving a predicted body](../physics/driving-a-predicted-body.md).
 - **Keep client state flowing through loss.** `TryGetLastState`, carried members, and the late and dropped counts on `Connection` are covered in [Sending client state from Unity](./writing-a-client-state-component-unity.md).
