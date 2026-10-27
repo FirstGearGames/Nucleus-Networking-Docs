@@ -9,8 +9,7 @@
     { "label": "Download PDF", "href": "/static/downloads/latest.pdf" }
   ],
   "announcement": {
-    "text": "See something wrong or missing? File an issue on GitHub. →",
-    "href": "https://github.com/FirstGearGames/Nucleus-Networking-Docs/issues",
+    "text": "See something wrong or missing? File an issue on [GitHub](https://github.com/FirstGearGames/Nucleus-Networking-Docs/issues).",
     "dismissible": true
   },
   "theme": {
