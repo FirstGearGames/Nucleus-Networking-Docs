@@ -6,11 +6,11 @@ title: "Violation reference"
 
 A violation is a struct implementing `IViolation`, raised through `ViolationManager` when a peer sends something the protocol does not permit. The offending operation is always rejected regardless of what happens next; the violation only decides the `ViolationAction` taken against the `Connection` that sent it: `Ignore` or `Kick`. Logging is separate from the action, carried on `ViolationContext<T0>.Log`, a `LogEntry` the raise site may seed and the deciding handler may change or clear. Register a `ViolationHandler<T0>` to override the default action per type, or subscribe a `ViolationDetectedHandler<T0>` (or `IViolationObserver`) to be told about one without changing the outcome.
 
-There are fifteen shipped violation types. Two exist only in Pro.
+There are twenty-two shipped violation types. Three exist only in Pro.
 
 ## Peer-behavior violations
 
-These fire from state application, spawning, and RPC dispatch. All default to `Ignore`.
+These fire from state application, state repair, spawning, and RPC dispatch. All default to `Ignore`.
 
 | Type | Payload | Check first |
 |---|---|---|
@@ -19,6 +19,9 @@ These fire from state application, spawning, and RPC dispatch. All default to `I
 | `EmptyCollectionDeltaViolation` | `SystemId`, `MemberId` | A compliant sender cannot produce a collection delta with no operations, so first suspect a diverged serializer pair between the two builds, not the sender's intent. |
 | `InvalidStateAckViolation` | `AckedTick` | Whether the two peers' tick counters have actually diverged (a restart, a save/load, a manual tick reset) rather than assuming a forged ack. |
 | `RetentionExceededViolation` | `AckedTick` | The peer's latency against `SystemManager.StateRetentionMilliseconds`; a single raise is ordinary heavy loss, not abuse. |
+| `RecoveryBudgetExhaustedViolation` | `ConsecutiveSeconds`, `SecondsInLastMinute` | Both counts before the single raise: it fires at most once a second per Connection, only for a second in which the server refused that peer a repair because its budget under `SystemManager.RecoveryBudgetFullWorlds` was spent. A short run is a burst of loss outlasting the bank, while a long `ConsecutiveSeconds` or a high `SecondsInLastMinute` is a peer on constant heavy loss or one reporting losses it never had. |
+| `StateLossReportFloodViolation` | `AllowedLossRepairCount` | Whether the peer just recovered from a stall; an honest peer names at most one lost tick per tick it applies, and only after a stall does it ask for several at once. The repairs past the allowance are refused either way. |
+| `UnexpectedStateLossReportViolation` | `Tick` | Whether a handover just changed which peer serves the sender its state; a report already in flight across that change reaches this honestly. The report is discarded and a warning is logged. |
 | `RecoveryUnconfirmedViolation` | `UnconfirmedServeCount` | Whether the peer's connection is dropping the recovery serve itself (packet loss eating the recovery, not just the state it was fixing) before assuming it is stalling on purpose. |
 | `UnauthorizedSpawnViolation` | `SystemId`, `SystemBundleId`, `SystemLocalId` | Whether the server just despawned that system id and the client's own recovery pass re-served it as a full before learning of the despawn; that path raises nothing, so a raise here means the id was never one the server despawned. |
 | `RpcSendPermissionViolation` | `SystemId` | Whether permission was revoked while calls already sent were still in flight; a well-behaved client reaches this on that race alone. |
@@ -31,6 +34,14 @@ These fire from state application, spawning, and RPC dispatch. All default to `I
 | Type | Payload | Check first |
 |---|---|---|
 | `MalformedDataViolation` | `Kind` (`State`, `FullBody`, `Recovery`, `ClientState`, `Message`, `Rpc`), `SystemId` (zero when not for a system) | Whether both builds share the same serializers and member layout for that `Kind`; a version mismatch between client and server builds reads exactly like a forged packet. Run a debug build to see the exception. |
+
+## Client limit violation
+
+`ClientLimitViolation` fires on the server only, and only while `ServerManager.ClientLimits` has `Enabled` set, when a client crosses one of those limits. The packet that crossed it is discarded unread. A size limit raises it once per refused packet; a rate limit raises it once per one-second window and discards the rest of that client's packets in the window without raising it again. A host's own client is exempt. It defaults to `Kick` and logs a warning, since the server chose the limits and an honest client is built to stay under them.
+
+| Type | Payload | Check first |
+|---|---|---|
+| `ClientLimitViolation` | `Kind` (`PacketBytes`, `SplitPacketBytes`, `PacketsPerSecond`, `BytesPerSecond`), `MeasuredValue`, `MaximumValue`, `Channel` | `MeasuredValue` against `MaximumValue` and what the game honestly sends at its busiest. A `PacketBytes` or `SplitPacketBytes` limit set too close to the largest honest packet refuses honest split packets, so set `MaximumPacketBytes` at least one transmission unit above it. |
 
 ## Protocol-direction violations
 
@@ -63,6 +74,6 @@ These fire when a client answers about a bundle or scene it was never asked abou
 
 ## Reading a violation you just saw
 
-Most types default to `Ignore` and stay silent unless something sets `Log` because a well-behaved peer can reach them through an ordinary race (a control handoff, a revocation, a recovery re-serve) or ordinary loss (`RetentionExceededViolation`, `RecoveryUnconfirmedViolation`, `PacketTransformRejectedViolation`). Treat a single raise of any of those as lossy-edge noise and do not kick for it.
+Most types default to `Ignore` and stay silent unless something sets `Log` because a well-behaved peer can reach them through an ordinary race (a control handoff, a revocation, a recovery re-serve) or ordinary loss (`RetentionExceededViolation`, `RecoveryUnconfirmedViolation`, `RecoveryBudgetExhaustedViolation`, `StateLossReportFloodViolation`, `PacketTransformRejectedViolation`). Treat a single raise of any of those as lossy-edge noise and do not kick for it.
 
 The four protocol-direction violations are different: no engine path on a compliant client produces them at all, which is why they default to `Kick`. A raise there means either a deliberately crafted client or your own code driving the request/report path from the wrong side - check the latter first.
