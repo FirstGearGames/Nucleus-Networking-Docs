@@ -1,0 +1,16 @@
+name: Bug
+description: Something on the docs site is wrong or broken.
+labels: ["Bug"]
+body:
+  - type: input
+    id: page
+    attributes:
+      label: Page
+      description: Link to the page with the error, if applicable.
+      placeholder: https://...
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+    validations:
+      required: true

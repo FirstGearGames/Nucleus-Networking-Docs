@@ -1,0 +1,16 @@
+name: Enhancement
+description: Suggest an improvement or a missing page.
+labels: ["Enhancement"]
+body:
+  - type: input
+    id: page
+    attributes:
+      label: Page
+      description: Link to the related page, if applicable.
+      placeholder: https://...
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+    validations:
+      required: true
