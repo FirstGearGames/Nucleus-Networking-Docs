@@ -12,6 +12,10 @@
     "title": "What the server trusts"
   },
   {
+    "slug": "securing-a-server",
+    "title": "Securing a server"
+  },
+  {
     "slug": "logging",
     "title": "Logging"
   },

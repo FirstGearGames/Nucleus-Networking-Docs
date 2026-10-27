@@ -4,7 +4,11 @@ title: "Using prediction, from start to finish"
 
 > **Driving the core API directly?** See [Predicted members and prediction history](../../core-api/control/prediction-history-and-predicted-members.md) and [Reconciliation and replay](../../core-api/control/reconciliation.md).
 
-This guide builds a predicted player from nothing: a character that walks and jumps the instant its player presses a key, while the server stays in charge of what really happens. Each step adds one piece and says why it is there. The finished code matches the `ValidatedJump` demo under `Demos/Prediction`, so you can open the demo beside this page and compare.
+This guide builds a predicted player from nothing: a character that walks and jumps the instant its player presses a key, while the server stays in charge of what really happens. Each step adds one piece and says why it is there.
+
+This guide is a recreation of the `ValidatedJump` demo under `Demos/Prediction`. Open the demo beside this page to see the finished code running.
+
+> **The demo, and the player this guide builds, cause desyncs on purpose.** Only the server changes the jumper's health, and the client cannot see it fall in time, so a jump pressed as health drops past the threshold is shown on the client and refused by the server. That gap exists to show prediction validation catching a wrong result and correcting the client. A real game would usually predict a drain the client can work out for itself.
 
 The other pages in this category describe each piece in full. This one shows how they fit together.
 
@@ -33,6 +37,7 @@ The usual predicted object uses all three. Keep that split in mind; nearly every
 Put the members and the movement code in a `NetworkComponent`. A component runs on every peer whether or not a scene object is linked to it, which is what you want for code the client and the server must both run.
 
 ```csharp
+using CodeBoost.Types;
 using Nucleus.Components;
 using NumericsVector3 = System.Numerics.Vector3;
 
@@ -41,8 +46,8 @@ namespace MyGame
     public partial class JumperComponent : NetworkComponent
     {
         // Client state: what the player asked for this tick.
-        public readonly NetworkMember<int> MoveX = new(role: MemberRole.Predict);
-        public readonly NetworkMember<int> MoveZ = new(role: MemberRole.Predict);
+        // The walk direction: x in X, z in Y.
+        public readonly NetworkMember<Vector2Int> MoveDirection = new(role: MemberRole.Predict);
         public readonly NetworkMember<byte> JumpPressCount = new(role: MemberRole.Predict);
 
         // Results: what the movement code works out from the client state.
@@ -51,7 +56,7 @@ namespace MyGame
         public readonly NetworkMember<bool> IsGrounded = new(role: MemberRole.Validate);
         public readonly NetworkMember<byte> JumpPressSeen = new(role: MemberRole.Validate);
 
-        // Only the server changes health, so it keeps the default role.
+        // Only the server changes health, so it keeps the default role. This causes desyncs intentionally, to show prediction validation.
         public readonly NetworkMember<ushort> Health = new();
 
         public const float ValueAccuracy = 0.01f;
@@ -61,7 +66,7 @@ namespace MyGame
 
 Three choices in this declaration matter more than they look:
 
-- **The walk direction is whole numbers.** Each axis is -1, 0 or 1. A normalized float direction would be rounded on its way to the server, so the server would walk a hair differently from the client and report a mismatch on every tick. Send client state in a form that arrives exactly as it was written.
+- **The walk direction is whole numbers.** It is a `CodeBoost.Types.Vector2Int`, not Unity's `Vector2Int`, whose axes are each -1, 0 or 1. A normalized float direction would be rounded on its way to the server, so the server would walk a hair differently from the client and report a mismatch on every tick. Send client state in a form that arrives exactly as it was written.
 - **The jump is a running press count, not a bool.** If the packet carrying a press is lost, the next tick's client state still carries the higher count, so the press is not lost with it. A bool that is true for one tick vanishes with its packet.
 - **Each float result has an accuracy.** A `Validate` member is rounded to its `accuracy` on every write, on the client and on the server alike, so both peers carry on from the same numbers. Choose an accuracy your movement can tolerate being rounded to. 0.01 is a centimetre for a position.
 
@@ -101,11 +106,12 @@ public partial class JumperComponent
 
     private void Move(float deltaSeconds)
     {
+        Vector2Int moveDirection = MoveDirection.Value;
         NumericsVector3 position = Position.Value;
-        float diagonal = MoveX.Value != 0 && MoveZ.Value != 0 ? 1.41421354f : 1f;
+        float diagonal = moveDirection.X != 0 && moveDirection.Y != 0 ? 1.41421354f : 1f;
 
-        position.X += MoveX.Value / diagonal * MoveSpeed * deltaSeconds;
-        position.Z += MoveZ.Value / diagonal * MoveSpeed * deltaSeconds;
+        position.X += moveDirection.X / diagonal * MoveSpeed * deltaSeconds;
+        position.Z += moveDirection.Y / diagonal * MoveSpeed * deltaSeconds;
 
         float verticalSpeed = VerticalSpeed.Value - Gravity * deltaSeconds;
         position.Y += verticalSpeed * deltaSeconds;
@@ -139,8 +145,7 @@ A key press belongs to a rendered frame, so read the device in `Update`. Hand it
 Add this to the component:
 
 ```csharp
-public int IntendedMoveX;
-public int IntendedMoveZ;
+public Vector2Int IntendedMoveDirection;
 
 private byte _localJumpPressCount;
 private bool _isJumpPressPending;
@@ -149,8 +154,7 @@ public void PressJump() => _isJumpPressPending = true;
 
 private void WriteClientState()
 {
-    MoveX.Value = IntendedMoveX;
-    MoveZ.Value = IntendedMoveZ;
+    MoveDirection.Value = IntendedMoveDirection;
 
     if (_isJumpPressPending)
     {
@@ -165,8 +169,7 @@ public override void OnReturn()
 {
     base.OnReturn();
 
-    IntendedMoveX = 0;
-    IntendedMoveZ = 0;
+    IntendedMoveDirection = default;
     _localJumpPressCount = 0;
     _isJumpPressPending = false;
 }
@@ -198,8 +201,7 @@ namespace MyGame
                 return;
 
             // Replace with your project's input system.
-            Component.IntendedMoveX = Mathf.RoundToInt(Input.GetAxisRaw("Horizontal"));
-            Component.IntendedMoveZ = Mathf.RoundToInt(Input.GetAxisRaw("Vertical"));
+            Component.IntendedMoveDirection = new(Mathf.RoundToInt(Input.GetAxisRaw("Horizontal")), Mathf.RoundToInt(Input.GetAxisRaw("Vertical")));
 
             if (Input.GetKeyDown(KeyCode.Space))
                 Component.PressJump();
@@ -228,13 +230,13 @@ protected override void OnSystemLinked()
 Client state comes from a player's machine, so treat it as untrusted. Implement `IMemberWriteValidator<T0>` on the component to check each value on the server before the step reads it. This one stops a modified client from walking faster than a whole step per axis:
 
 ```csharp
-public partial class JumperComponent : NetworkComponent, IMemberWriteValidator<int>
+public partial class JumperComponent : NetworkComponent, IMemberWriteValidator<Vector2Int>
 {
-    public MemberWriteAction ValidateMemberWrite(NetworkMember<int> networkMember, int proposedValue, Connection writingClientConnection)
+    public MemberWriteAction ValidateMemberWrite(NetworkMember<Vector2Int> networkMember, Vector2Int proposedValue, Connection writingClientConnection)
     {
-        int clampedValue = System.Math.Clamp(proposedValue, -1, 1);
+        Vector2Int clampedValue = new(System.Math.Clamp(proposedValue.X, -1, 1), System.Math.Clamp(proposedValue.Y, -1, 1));
 
-        if (clampedValue == proposedValue)
+        if (clampedValue.X == proposedValue.X && clampedValue.Y == proposedValue.Y)
             return MemberWriteAction.Accept;
 
         networkMember.Value = clampedValue;
@@ -253,7 +255,7 @@ if (CoreManager.TransportManager.IsServerStarted)
     DrainOrRecoverHealth();
 ```
 
-This is what makes the demo interesting. The client cannot see its own health fall in time, so it sometimes shows a jump the server refuses. The server catches it because it holds both the client state and the health, and orders a correction.
+This causes desyncs intentionally, to show prediction validation. The client cannot see its own health fall in time, so it sometimes shows a jump the server refuses. The server catches it because it holds both the client state and the health, and orders a correction.
 
 ## Step 5: Draw the object every frame, and smooth the corrections.
 

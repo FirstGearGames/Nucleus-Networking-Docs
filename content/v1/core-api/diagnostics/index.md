@@ -7,6 +7,7 @@ Pages in this category:
 - [Violation reference](./violation-reference.md)
 - [Violations](./violations.md)
 - [What the server trusts](./what-the-server-trusts.md)
+- [Securing a server](./securing-a-server.md)
 - [Logging](./logging.md)
 - [Common errors and what causes them](./common-errors.md)
 - [Network statistics](./network-statistics.md)

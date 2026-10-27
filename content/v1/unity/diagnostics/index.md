@@ -6,6 +6,7 @@ Pages in this category:
 
 - [Violation reference](./violation-reference.md)
 - [What the server trusts](./what-the-server-trusts.md)
+- [Securing a server in Unity](./securing-a-server-in-unity.md)
 - [Common errors and what causes them](./common-errors.md)
 - [Technical limitations](./technical-limitations.md)
 - [Engine logging in the Unity console](./logging-in-unity.md)
