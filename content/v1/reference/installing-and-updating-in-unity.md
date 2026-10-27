@@ -35,7 +35,9 @@ That label is what tells Unity to run the DLL as a Roslyn source generator inste
 
 ## Unity floor and assembly layout
 
-The integration is gated behind:
+The integration supports **Unity 6.5 (6000.5) and newer**. It uses Unity APIs that older editors lack, so it does not compile on them. Check your editor version before updating, since an update never lowers that floor.
+
+Every integration file is also gated behind:
 
 ```csharp
 #if UNITY_EDITOR || UNITY_2021_3_OR_NEWER
@@ -43,7 +45,7 @@ The integration is gated behind:
 #endif
 ```
 
-Unity 2021.3 is the effective minimum for a build target — older versions never define `UNITY_ENGINE`, so the integration code doesn't compile in.
+That gate is not the version floor. It only tells a Unity build apart from a plain .NET one, so the same sources can sit in a non-Unity project without pulling in `UnityEngine`.
 
 `Nucleus.Integrations.Unity.asmdef` is the main integration assembly. It sits beside two sibling assemblies for the same code: `Nucleus.Integrations.Unity.Editor.asmdef` under `Editor/`, and `Nucleus.Integrations.Unity.Tests.asmdef` under `Tests/`.
 
