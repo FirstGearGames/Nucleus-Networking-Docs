@@ -14,3 +14,4 @@ Pages in this category:
 - [When prediction is worth its cost](./when-prediction-is-worth-it.md)
 - [Keeping a player's objects across a disconnect](./controller-retention-in-unity.md)
 - [Replaying a correction in Unity](./reconcile-in-unity.md)
+- [Smoothing a predicted object with GraphicalSmoother](./graphical-smoother.md)

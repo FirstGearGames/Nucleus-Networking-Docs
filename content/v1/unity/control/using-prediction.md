@@ -48,13 +48,12 @@ namespace MyGame
         // Client state: what the player asked for this tick.
         // The walk direction: x in X, z in Y.
         public readonly NetworkMember<Vector2Int> MoveDirection = new(role: MemberRole.Predict);
-        public readonly NetworkMember<byte> JumpPressCount = new(role: MemberRole.Predict);
+        public readonly NetworkMember<bool> IsJumpPressed = new(role: MemberRole.Predict, isCarriedForward: false);
 
         // Results: what the movement code works out from the client state.
         public readonly NetworkMember<NumericsVector3> Position = new(role: MemberRole.Validate, accuracy: ValueAccuracy);
         public readonly NetworkMember<float> VerticalSpeed = new(role: MemberRole.Validate, accuracy: ValueAccuracy);
         public readonly NetworkMember<bool> IsGrounded = new(role: MemberRole.Validate);
-        public readonly NetworkMember<byte> JumpPressSeen = new(role: MemberRole.Validate);
 
         // Only the server changes health, so it keeps the default role. This causes desyncs intentionally, to show prediction validation.
         public readonly NetworkMember<ushort> Health = new();
@@ -67,7 +66,7 @@ namespace MyGame
 Three choices in this declaration matter more than they look:
 
 - **The walk direction is whole numbers.** It is a `CodeBoost.Types.Vector2Int`, not Unity's `Vector2Int`, whose axes are each -1, 0 or 1. A normalized float direction would be rounded on its way to the server, so the server would walk a hair differently from the client and report a mismatch on every tick. Send client state in a form that arrives exactly as it was written.
-- **The jump is a running press count, not a bool.** If the packet carrying a press is lost, the next tick's client state still carries the higher count, so the press is not lost with it. A bool that is true for one tick vanishes with its packet.
+- **The jump press is never carried forward.** `IsJumpPressed` is true only on the tick jump was pressed, and `isCarriedForward: false` keeps it false on a tick whose client state was lost, so the server never jumps twice for one press. A press lost with its packet is simply lost: the client showed a jump the server never made, and the server corrects it like any other desync.
 - **Each float result has an accuracy.** A `Validate` member is rounded to its `accuracy` on every write, on the client and on the server alike, so both peers carry on from the same numbers. Choose an accuracy your movement can tolerate being rounded to. 0.01 is a centimetre for a position.
 
 ## Step 2: Write the movement code once, in OnEarlyFixedUpdate.
@@ -91,14 +90,11 @@ public partial class JumperComponent
         if (simulationContext.Type is SimulationType.None)
             return;
 
-        // The server's step for a tick whose client state never arrived: keep walking with the last tick's input.
+        // The server's step for a tick whose client state never arrived: keep walking with the last tick's input, but never repeat a press.
         if (stepDelta.IsClientStateMissing)
-            TryGetLastState(isEveryMemberCarried: true);
+            TryGetLastState(isEveryMemberCarried: false);
 
-        bool isJumpPressed = JumpPressCount.Value != JumpPressSeen.Value;
-        JumpPressSeen.Value = JumpPressCount.Value;
-
-        if (isJumpPressed && IsGrounded.Value && Health.Value >= JumpMinimumHealth)
+        if (IsJumpPressed.Value && IsGrounded.Value && Health.Value >= JumpMinimumHealth)
             VerticalSpeed.Value = JumpSpeed;
 
         Move(1f / CoreManager.NetworkLoopManager.TickRate);
@@ -136,7 +132,7 @@ Follow these rules inside the movement code, or the client and the server will d
 - **Step by the tick, never by the frame.** Use `1f / CoreManager.NetworkLoopManager.TickRate`. `Time.deltaTime` is different on every machine and on every replayed tick.
 - **Read only members and constants.** Everything the step reads must be the same on both peers for that tick. A value read from the scene, a static, `Random` or the current time is not, unless you make it so.
 - **Keep the results in members.** The engine rewinds members, not your private fields. A field the step changes is not rewound, so the replay starts from the wrong value.
-- **Use plain arithmetic or a `CharacterController`.** A `Rigidbody` cannot be re-stepped one object at a time, so it does not replay. For predicted physics bodies, see [Driving a predicted body](../physics/driving-a-predicted-body.md).
+- **Use plain arithmetic, a `CharacterController` or a validated behaviour.** A replay steps the whole physics world once for each replayed tick, so a `Rigidbody` can be predicted too. Add a `ValidatedRigidbody` to the body and apply its forces in `OnEarlyFixedUpdate`; see [Predicting a body with a validated behaviour](../physics/predicting-a-body-with-a-validated-behaviour.md).
 
 ## Step 3: Read the keys in Update and write them on the live tick.
 
@@ -147,7 +143,6 @@ Add this to the component:
 ```csharp
 public Vector2Int IntendedMoveDirection;
 
-private byte _localJumpPressCount;
 private bool _isJumpPressPending;
 
 public void PressJump() => _isJumpPressPending = true;
@@ -156,13 +151,8 @@ private void WriteClientState()
 {
     MoveDirection.Value = IntendedMoveDirection;
 
-    if (_isJumpPressPending)
-    {
-        _isJumpPressPending = false;
-        _localJumpPressCount++;
-    }
-
-    JumpPressCount.Value = _localJumpPressCount;
+    IsJumpPressed.Value = _isJumpPressPending;
+    _isJumpPressPending = false;
 }
 
 public override void OnReturn()
@@ -170,7 +160,6 @@ public override void OnReturn()
     base.OnReturn();
 
     IntendedMoveDirection = default;
-    _localJumpPressCount = 0;
     _isJumpPressPending = false;
 }
 ```
@@ -271,7 +260,7 @@ protected override void OnEarlyFixedUpdate(StepDelta stepDelta, SimulationContex
 }
 ```
 
-The component's step has already run for that tick, because a system runs its components before its behaviours. The smoother also glides across a correction, so a taken-back jump drops smoothly instead of snapping.
+The component's step has already run for that tick, because a system runs its components before its behaviours. The smoother also glides across a correction, so a taken-back jump drops smoothly instead of snapping. See [Smoothing a predicted object with GraphicalSmoother](./graphical-smoother.md) for its settings.
 
 The second is to render `InterpolatedValue` from `Update` and construct the member with `correctionSmoothingTicks`:
 
@@ -290,7 +279,7 @@ private void Update() => transform.position = Component.Position.InterpolatedVal
 A replay runs your step again for every tick since the one that went wrong. Anything the step does that is not a member write happens again each time. Play sounds, particles and animation triggers only on the live tick:
 
 ```csharp
-if (isJumpPressed && IsGrounded.Value && Health.Value >= JumpMinimumHealth)
+if (IsJumpPressed.Value && IsGrounded.Value && Health.Value >= JumpMinimumHealth)
 {
     VerticalSpeed.Value = JumpSpeed;
 
@@ -357,5 +346,5 @@ When the basics work, these pages cover the next steps:
 - **Predict other players' objects too.** Tick **Predicted By Observers** on a `NetworkSystemObject` so that observing clients predict it as its controller does, which matters for players who collide or push each other. See [Prediction settings on the Unity manager](./prediction-settings-in-unity.md).
 - **Hold only the nearby crowd during a replay.** Set **Replay Hold Radius** on the system manager so a replay holds only the objects near the ones it restores.
 - **Spawn objects before the server answers.** A projectile can appear the instant it is fired and be confirmed or refused later. Predicted spawning is a Pro feature; see [Client-predicted spawning in Unity](../systems/predicted-spawning.md) and the two `PredictedProjectile` demos under `Demos/Prediction`.
-- **Predict a physics body.** See [Driving a predicted body](../physics/driving-a-predicted-body.md).
+- **Predict a physics body.** Add a `ValidatedRigidbody` and push the body from `OnEarlyFixedUpdate`; see [Predicting a body with a validated behaviour](../physics/predicting-a-body-with-a-validated-behaviour.md). For a body the server simulates while a client steers it, see [Driving a predicted body](../physics/driving-a-predicted-body.md).
 - **Keep client state flowing through loss.** `TryGetLastState`, carried members, and the late and dropped counts on `Connection` are covered in [Sending client state from Unity](./writing-a-client-state-component-unity.md).

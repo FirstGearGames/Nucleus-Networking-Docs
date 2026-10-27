@@ -103,7 +103,7 @@ namespace MyGame
 }
 ```
 
-The controller sends a hash of `Position` with each tick of client state, never the value itself. The server simulates the same tick and, when its own result differs, orders a reconcile. Inside a replayed tick the `Validate` members write that tick and the `Predict` members read the client state recorded for it, so the same lines rebuild history instead of moving the live object. A `Validate` member is quantized to its `accuracy` on every write, on both peers, so both simulate from the numbers the wire carries. Step by the fixed tick (`1f / CoreManager.NetworkLoopManager.TickRate`), never `Time.deltaTime`, so every pass of a tick computes the same value. No physics step runs between the early and late fixed update of a replayed tick: `CharacterController.Move` replays, a rigidbody does not (see the Physics category for `NetworkRigidbody`).
+The controller sends a hash of `Position` with each tick of client state, never the value itself. The server simulates the same tick and, when its own result differs, orders a reconcile. Inside a replayed tick the `Validate` members write that tick and the `Predict` members read the client state recorded for it, so the same lines rebuild history instead of moving the live object. A `Validate` member is quantized to its `accuracy` on every write, on both peers, so both simulate from the numbers the wire carries. Step by the fixed tick (`1f / CoreManager.NetworkLoopManager.TickRate`), never `Time.deltaTime`, so every pass of a tick computes the same value. Physics steps between the early and late fixed update of every replayed tick, as it does on a live tick, so `CharacterController.Move` and the forces on a `ValidatedRigidbody` both replay. Bodies the replay does not rewind are held still while it runs; see [Predicting a body with a validated behaviour](../physics/predicting-a-body-with-a-validated-behaviour.md).
 
 The `ValidatedJump` demo under `Demos/Prediction` is a complete example: its movement lives in `ValidatedJumpMovementComponent.OnEarlyFixedUpdate`, and its behaviour only feeds it the keys and draws.
 
@@ -145,7 +145,7 @@ protected override void OnReplayCompleted(ReplayReport replayReport)
 }
 ```
 
-To glide to a correction instead of jumping, construct the member with `correctionSmoothingTicks: 6` and render `InterpolatedValue`: it eases from the value that was on screen while `Value` is already correct.
+To glide to a correction instead of jumping, construct the member with `correctionSmoothingTicks: 6` and render `InterpolatedValue`: it eases from the value that was on screen while `Value` is already correct. For an object you place on each tick instead, draw it through a `GraphicalSmoother`; see [Smoothing a predicted object with GraphicalSmoother](./graphical-smoother.md).
 
 ## Hold a crowd, or predict other players
 
@@ -195,4 +195,4 @@ A server correction of your client state alone does not raise `ReconcileRequired
 ## See also
 
 - The restore, the report and every refusal are described in full in [Reconciliation and replay](../../core-api/control/reconciliation.md).
-- For a controlled rigidbody, physics correction has its own convergence path; see the Physics category for `PhysicsConvergence`.
+- To predict a rigidbody, see [Predicting a body with a validated behaviour](../physics/predicting-a-body-with-a-validated-behaviour.md). A body the server simulates while a client steers it converges instead; see [Driving a predicted body](../physics/driving-a-predicted-body.md).

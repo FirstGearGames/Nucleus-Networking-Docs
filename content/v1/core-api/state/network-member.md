@@ -49,10 +49,11 @@ public NetworkMember(
     TransmissionMode transmissionMode = TransmissionMode.Interval,
     bool isExtrapolationEnabled = true,
     byte correctionSmoothingTicks = 0,
-    bool isCarriedForward = true);
+    bool isCarriedForward = true,
+    float resultTolerance = 0f);
 ```
 
-All ten arguments are supplied by name at the field declaration, e.g. `NetworkMember<T> _x = new(role: MemberRole.Validate);`.
+All eleven arguments are supplied by name at the field declaration, e.g. `NetworkMember<T> _x = new(role: MemberRole.Validate);`.
 
 | Argument | Construction-time only? | Meaning |
 | --- | --- | --- |
@@ -66,6 +67,7 @@ All ten arguments are supplied by name at the field declaration, e.g. `NetworkMe
 | `isExtrapolationEnabled` | No, see `SetExtrapolationEnabled` | Whether receivers keep the value moving through the sender's silence, under either mode. `true` (the default) favors staying live when an update is lost; `false` holds still until told and favors staying accurate. Under `TransmissionMode.Interval`, `true` costs a tiny overhead on each update plus one extra update each time the value stops; `false` costs nothing extra. See [How Often a Member Is Sent](./send-pacing.md). |
 | `correctionSmoothingTicks` | Yes | How many ticks `InterpolatedValue` takes to glide from the value shown before a reconcile to the corrected one, on a client that predicts the member, while `Value` is already correct. `0` (the default) shows the correction at once. |
 | `isCarriedForward` | Yes | For a `MemberRole.Predict` member only: `false` keeps it at its default when `NetworkComponent.TryGetLastState(false)` carries the previous tick's client state across a tick whose client state did not arrive, for a value that must not repeat, such as a jump press. Ignored for every other role. |
+| `resultTolerance` | Yes | For a predicted member only: how far its predicted value may sit from the server's before it counts as a misprediction, for a value a replay cannot reproduce exactly, such as one physics moves. `0` (the default) compares at `accuracy`. The server applies it only while the controller sends its result values (`SystemManager.IsResultValueSendEnabled`, on by default); a result checked by its hash alone is compared exactly. |
 
 ## Interpolation
 

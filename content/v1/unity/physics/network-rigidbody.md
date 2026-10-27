@@ -49,6 +49,16 @@ Below threshold, a sub-threshold residual can still be bled off rather than held
 
 - **Visual Smoothing** (`_visualSmoothing`, seconds, default `0`) — low-passes `SmoothedVisual` toward the interpolated physics pose to hide tick-to-tick correction jitter. Requires a `SmoothedVisual`; without one it has nothing to act on. The physics body itself stays exact — captured state and collisions are untouched, so nothing can desync — only the render eases toward it. Larger smooths harder but lets the render trail the body more; zero, the default, is off.
 
+## Replay hold keeps the body still while a correction replays
+
+The **Replay Hold Enabled** field (`_replayHoldEnabled`, on by default) adds a `ReplayHeldBody` to the object as it wakes, when it has none.
+
+A client that receives a correction for an object it predicts replays every tick since, and each replayed tick steps the whole physics world. A `NetworkRigidbody` body is never rewound, because it is converged rather than predicted, so it must not be stepped again. While a replay runs, `ReplayHeldBody` makes the body kinematic, and afterwards it makes it dynamic again with its velocities, its sleep state and its collision detection mode as they were. A continuous collision mode, which a kinematic body cannot use, is speculative for the length of the replay.
+
+A held body keeps its colliders, so it stays a solid obstacle during the replay. It stands where it is now, not where it was on the replayed tick, so a predicted body that pushed it in the past meets something that does not give. Switching the body to kinematic and back also resets its contacts, so a body resting on another may settle slightly differently after a replay.
+
+Turn the field off only when you hold the body some other way. You can also add a `ReplayHeldBody` yourself to any other dynamic `Rigidbody` or `Rigidbody2D` a replay must not move; in play mode its inspector shows whether a replay is holding it. A body predicted through a `ValidatedRigidbody` needs none, because it holds itself for any replay that leaves it out; see [Predicting a body with a validated behaviour](./predicting-a-body-with-a-validated-behaviour.md).
+
 ## How the fields reach the follower
 
 At bring-up (`Awake`, and again on every inspector edit) most of these fields are written into a `PhysicsConvergenceSettings` and assigned to `Convergence.Settings`. Prediction Correction Rate is the exception: it is assigned straight to `Convergence.PredictionCorrectionRate` instead, since it lives on the follower itself rather than in `Settings`.

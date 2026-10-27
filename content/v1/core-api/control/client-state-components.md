@@ -115,7 +115,7 @@ A system a remote client drives is simulated on every server tick whether or not
 public bool TryGetLastState(bool isEveryMemberCarried)
 ```
 
-The Predict members then read their values as they stood at the end of the previous tick, for the rest of the step: the client's own when that tick's arrived, and whatever the server's step left in the members otherwise, so a value the server writes into a member is what the next tick carries. Pass `false` to keep the members constructed with `isCarriedForward: false` at their defaults, so a jump press never fires twice; or send a press count, which repeats nothing when carried, and pass `true`. It returns `false`, leaving the defaults, before any client state has arrived. Nothing is carried unless you call it, so a game that does not carry is reconciled back to what the server simulated.
+The Predict members then read their values as they stood at the end of the previous tick, for the rest of the step: the client's own when that tick's arrived, and whatever the server's step left in the members otherwise, so a value the server writes into a member is what the next tick carries. Pass `false` to keep the members constructed with `isCarriedForward: false` at their defaults, so a jump press never fires twice; a press lost with its packet is simply lost, and the server corrects the jump the client showed. It returns `false`, leaving the defaults, before any client state has arrived. Nothing is carried unless you call it, so a game that does not carry is reconciled back to what the server simulated.
 
 To know which tick you are carrying, use the overload that also reports the simulation context of that client state:
 

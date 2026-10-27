@@ -24,6 +24,10 @@
     "title": "Driving a predicted body"
   },
   {
+    "slug": "predicting-a-body-with-a-validated-behaviour",
+    "title": "Predicting a body with a validated behaviour"
+  },
+  {
     "slug": "network-nav-mesh-agent",
     "title": "NetworkNavMeshAgent"
   },

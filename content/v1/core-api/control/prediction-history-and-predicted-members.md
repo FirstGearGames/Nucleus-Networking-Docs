@@ -41,6 +41,8 @@ The controller never judges its own prediction. Every server value for a predict
 
 A hash compares exactly, so a `Validate` member is quantized to its `Accuracy` on every write, on both peers, and each tick starts from the numbers the wire carries. Choose an accuracy the simulation can tolerate rounding to. A `Validate` member may use any `SendInterval`, since the server compares against its own current values every tick and an ordered reconcile is a full.
 
+For a value a replay cannot reproduce exactly, such as one a physics engine moves, construct the member with `resultTolerance`. A predicted value within that distance of the server's does not count as a misprediction, so it orders no reconcile. The server can only measure the distance while the controller sends its result values (`SystemManager.IsResultValueSendEnabled`, on by default); with only the hash, the result is compared exactly. The Unity validated behaviours set it on their position, rotation and velocities.
+
 A predicted system needs `Predict` members: the result check rides each tick of client state, and the reconcile pairs with the server's echo of that tick. A system with `Validate` members and no client state sends nothing for the server to check, and the server's values simply overwrite the prediction.
 
 The result check runs after the client state is validated. A tick the server's `IMemberWriteValidator<T0>` corrected therefore produces a different result, and the controller is reconciled onto the server's outcome.
@@ -95,6 +97,6 @@ It carries the `SystemId` of the `NetworkSystem` whose predicted member the send
 
 ## Opting in
 
-Prediction is an explicit, per-member opt-in you add to your own `NetworkMember<T0>` field declarations; no base class turns it on for you. The Unity demo `Demos/Prediction/ValidatedJump` declares its walk direction and jump press count with `MemberRole.Predict`, every movement result of `ValidatedJumpMovementComponent` with `MemberRole.Validate`, and simulates them in its `OnEarlyFixedUpdate`.
+Prediction is an explicit, per-member opt-in you add to your own `NetworkMember<T0>` field declarations; no base class turns it on for you. The Unity demo `Demos/Prediction/ValidatedJump` declares its walk direction and jump press with `MemberRole.Predict`, every movement result of `ValidatedJumpMovementComponent` with `MemberRole.Validate`, and simulates them in its `OnEarlyFixedUpdate`.
 
 See [Reconciliation and replay](./reconciliation.md) for what happens once the server orders a correction: the restore, the replay the engine runs, and the report of what changed.

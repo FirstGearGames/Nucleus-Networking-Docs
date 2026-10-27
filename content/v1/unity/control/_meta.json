@@ -38,5 +38,9 @@
   {
     "slug": "reconcile-in-unity",
     "title": "Replaying a correction in Unity"
+  },
+  {
+    "slug": "graphical-smoother",
+    "title": "Smoothing a predicted object with GraphicalSmoother"
   }
 ]
