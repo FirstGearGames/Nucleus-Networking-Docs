@@ -7,7 +7,7 @@
   "defaultVersion": "v1",
   "github": { "repo": "https://github.com/FirstGearGames/nucleus-networking-docs", "branch": "main", "contentDir": "content" },
   "nav": [
-    { "label": "Download PDF", "href": "/static/downloads/latest.pdf" }
+    { "label": "Download PDF", "href": "/static/downloads/latest.pdf", "button": true }
   ],
   "announcement": {
     "text": "See something wrong or missing? File an issue on [GitHub](https://github.com/FirstGearGames/Nucleus-Networking-Docs/issues).",
