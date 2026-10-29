@@ -25,7 +25,7 @@ A few integration paths are gated behind package presence, and only compile in w
 
 Without these packages installed, the corresponding code simply isn't compiled in — no stub, no runtime check.
 
-The demos have requirements of their own: the Input System, uGUI 2.0 or newer (for TextMeshPro), AI Navigation and Multiplayer Play Mode packages, and the Vehicles and Terrain modules. Every demo assembly is gated on them, so a project without one of them still compiles. The demos are skipped, and the editor warns once per session naming the packages to install.
+The demos have requirements of their own: the Input System, uGUI 2.0 or newer (for TextMeshPro), AI Navigation and Multiplayer Play Mode packages, and the Vehicles and Terrain modules. Every demo assembly is gated on them, so a project without one of them still compiles. The demos are skipped, and the editor warns once per session naming the packages to install. The demo materials also use the Universal Render Pipeline (URP), so they draw pink in a project on any other pipeline, and the same warning says so.
 
 ## Toolchain for building from source
 
