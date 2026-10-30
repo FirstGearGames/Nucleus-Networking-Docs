@@ -10,7 +10,7 @@ A test or repro often needs a server and a client without launching a second pro
 
 `Yak` (`Nucleus.Transports.Yak`) is an offline transport with no socket underneath it at all. One `Yak` holds both the server half and the client half inside a single transport on a single `CoreManager`, so what it gives you is a host: a server and its own local client, not a second, separate peer. It cannot connect two `CoreManager` instances. `Synapse` (`Nucleus.Transports.Synapse`) is the real UDP transport; running two `CoreManager` instances over it on `127.0.0.1`, the client dialing the port the server listens on, gives you two separate peers over a genuine socket pair, still inside one process.
 
-Use `Yak` when a host on its own is enough: single-player or offline play, or game logic that doesn't need a remote peer. Use two loopback `Synapse` managers when you need a second, separate peer, and whenever the bug - or the thing you need to prove works - lives in framing, segmentation, batching, or anything else that only happens when bytes actually cross a socket.
+Use `Yak` when a host on its own is enough: single-player or offline play, or game logic that doesn't need a remote peer. Use two loopback `Synapse` managers when you need a second, separate peer, and whenever the bug, or the thing you need to prove works, lives in anything that only happens when bytes actually cross a socket.
 
 ## Yak: no sockets at all
 
@@ -38,7 +38,7 @@ Connecting both halves makes that one `CoreManager` a host. Both socket halves b
 
 ## Two CoreManagers over Synapse
 
-When you need the real shape - framing, segmentation, batching - build two `CoreManager` instances, each with its own `Synapse` transport, pointed at the same loopback port, and each with its own loop provider passed at construction:
+When you need real socket traffic, build two `CoreManager` instances, each with its own `Synapse` transport, pointed at the same loopback port, and each with its own loop provider passed at construction:
 
 ```csharp
 MainThreadStepProvider serverLoop = new();
@@ -65,9 +65,7 @@ clientLoop.Step(frameDeltaMilliseconds);
 
 ## Why the shortcut hides bugs
 
-A `Yak` pair never touches a socket, so anything the socket layer is responsible for never runs. A call body is length-prefixed into a per-channel accumulator that a real transport batches, segments across datagrams if it's too large, and rejoins on the other end. Hand that same buffer straight from one in-process socket to the other and none of that machinery executes - the body just arrives.
-
-That means a framing bug - an off-by-one in a length prefix, a segment that doesn't rejoin in the right order, an accumulator that doesn't flush at the right boundary - can pass every `Yak`-based test and still break the moment it crosses a real socket. If what you're testing is replication logic, spawning, or RPC routing, `Yak` is faster and sufficient. If what you're testing is the wire format itself, it has to run over `Synapse`.
+A `Yak` pair never touches a socket, so anything the socket layer is responsible for never runs. That means a bug that only appears once data crosses a real socket can pass every `Yak`-based test and still break the moment it does. If what you're testing is replication logic, spawning, or RPC routing, `Yak` is faster and sufficient. If what you're testing depends on real socket traffic, it has to run over `Synapse`.
 
 ## Keeping two managers apart
 

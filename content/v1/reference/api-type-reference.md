@@ -20,14 +20,14 @@ public readonly RpcManager RpcManager;
 public readonly ViolationManager ViolationManager;
 ```
 
-These eleven fields are `readonly` and set once, in the constructor, in this order. A Pro build adds two more, assigned through partial constructor hooks rather than the constructor body itself:
+These eleven fields are `readonly` and set once, in the constructor, in this order. A Pro build adds two more:
 
 ```csharp
 public BundleManager BundleManager;
 public WorldPersistenceManager WorldPersistenceManager;
 ```
 
-`BundleManager` and `WorldPersistenceManager` are not `readonly` because the language does not allow a partial hook to assign a readonly field outside the declaring partial's own constructor body. In a Free build the hooks that would construct them compile away to nothing, and the fields themselves do not exist on the type at all — code referencing them fails to compile against a Free build rather than failing at runtime.
+Unlike the other manager fields, `BundleManager` and `WorldPersistenceManager` are not `readonly`. In a Free build the fields do not exist on the type at all, so code referencing them fails to compile against a Free build rather than failing at runtime.
 
 `CoreManager.Instance` is a static convenience slot naming the oldest live `CoreManager` in the process, for the common case of a process running exactly one. It is not meant for a process running several managers at once (a host pair, a two-peer test) — pass the manager explicitly there instead. `CoreManager.EnsureSetInstance(CoreManager)` moves the slot to a manager of your choosing; it fails and logs if the manager passed is null or already deinitialized.
 
@@ -68,7 +68,7 @@ Three attributes tell you how a member is meant to be used before you call it. T
 
 None of these are compiler-enforced access restrictions — they are promises about intended use, not guardrails that stop a misuse from compiling.
 
-A type or member declared in a `*.Pro.cs` file is a build-time absence, not a runtime failure: `CoreManager.BundleManager` and `CoreManager.WorldPersistenceManager` simply do not exist on the compiled type in a Free build. Code that references them against a Free build fails to compile, it does not throw at runtime.
+A Pro-only type or member is a build-time absence in a Free build, not a runtime failure: `CoreManager.BundleManager` and `CoreManager.WorldPersistenceManager` simply do not exist on the compiled type in a Free build. Code that references them against a Free build fails to compile, it does not throw at runtime.
 
 ## What is not extensible from outside the assembly
 

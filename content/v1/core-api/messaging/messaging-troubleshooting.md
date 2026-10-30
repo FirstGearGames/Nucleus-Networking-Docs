@@ -23,11 +23,11 @@ The alternative would be delivering the second type's body to the first type's h
 
 ## A call that reaches nobody
 
-The receiver looks up the call's target system before any handler runs. If the receiver does not hold that system, the call is dropped with no log and no violation: an interest cull, a despawn, or a spawn whose priming full has not landed yet all look identical from here, and none of them are faults.
+The receiver looks up the call's target system before any handler runs. If the receiver does not hold that system, the call is dropped with no log and no violation: an interest cull, a despawn, or a spawn that has not landed yet all look identical from here, and none of them are faults.
 
-A routed call (`RpcRoute.TargetRelay`) has one more check once the system is found, still before any handler runs: the connection it names must be connected and must actually observe the addressed system. A target that has left or no longer observes it is refused the same way, silently.
+A call a client sends with `RpcTarget.To` has one more check once the system is found, still before any handler runs: the connection it names must be connected and must actually observe the addressed system. A target that has left or no longer observes it is refused the same way, silently.
 
-So when a call goes nowhere, check interest before framing: does the receiver still hold the system, and does the intended recipient still observe it. A wire-level bug would produce a decode error or a violation. Silence is interest.
+So when a call goes nowhere, check interest first: does the receiver still hold the system, and does the intended recipient still observe it. A wire-level bug would produce a decode error or a violation. Silence is interest.
 
 ## The sender never asked to see its own call
 
@@ -56,6 +56,6 @@ This falls out of what a host is: one peer running both the server and a client.
 
 ## A message type the receiver never registered
 
-A receiver with no handler registered for a type is not an error. The message packet carries its own byte count, so a peer with no parser registered for that hash skips the packet's bytes and moves to the next one. No error, no log.
+A receiver with no handler registered for a type is not an error. The receiver skips that message and moves on to the next one. No error, no log.
 
 This is why a missing handler looks exactly like silence: the send succeeds, the packet arrives, and the receiver quietly steps over it. If a message type seems to vanish in transit, check that the receiving peer registered a handler for it. The sender needs no registration of its own.

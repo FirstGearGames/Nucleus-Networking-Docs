@@ -39,7 +39,7 @@ An event rather than a direct override on the MonoBehaviour, because the compone
 
 ## Find which member moved
 
-The source generator emits a `[Flags] enum <ComponentName>Flags : ulong` for every `NetworkComponent`, one bit per member in declaration order. `CoinComponent` declares `Collector` then `PickupSequence`, so its generated enum carries `CoinComponentFlags.Collector` and `CoinComponentFlags.PickupSequence`. Cast the raw `memberFlags` to it and test the bits you care about:
+Every `NetworkComponent` comes with a `[Flags] enum <ComponentName>Flags : ulong`, one value per member in declaration order. `CoinComponent` declares `Collector` then `PickupSequence`, so its generated enum carries `CoinComponentFlags.Collector` and `CoinComponentFlags.PickupSequence`. Cast the raw `memberFlags` to it and test the bits you care about:
 
 ```csharp
 private void OnCoinMembersChanged(ulong memberFlags, MemberChangeDirection memberChangeDirection)
@@ -53,14 +53,14 @@ private void OnCoinMembersChanged(ulong memberFlags, MemberChangeDirection membe
 }
 ```
 
-Delta flags name the members the wire carried, not a guarantee the value differs — a predicted member's confirmed outcome still sets its bit.
+A set flag means the member was applied, not that its value differs: a predicted member's confirmed outcome still sets its flag.
 
 ## Almost always test for MemberChangeDirection.Read
 
 `MemberChangeDirection` has two values:
 
 - `Write` — this peer changed the members itself; the raise arrives before the tick's serialization runs.
-- `Read` — the members were applied from the wire; the raise arrives after every packet of the inbound pass has landed, before the Reconcile step.
+- `Read` — the members were applied from received state; the raise arrives once everything received for the tick has been applied, before the Reconcile step.
 
 A visuals script almost always wants `Read` only, because it's reacting to something that arrived, not something it just wrote. Anything that calls `NetworkMemberBase.TryGetWritingClient` needs `Read` specifically — that claim only resolves under a read.
 
@@ -75,7 +75,7 @@ A value that's a plain function of the replicated state — recomputed the same 
 
 ## Full applies report every member
 
-A spawn, a resync, a reconcile, or a whole-component recovery hands you `memberFlags` as `ulong.MaxValue` under `MemberChangeDirection.Read`: treat every member as changed. This is what a late-joining client's first raise looks like — it never saw a delta, so the full apply is the only place it learns the component's starting values. Don't assume a specific bit is set before checking `memberFlags == ulong.MaxValue` for this case; a member-granular recovery instead reports only the members it actually repaired.
+A spawn, a resync, a reconcile, or a whole-component recovery hands you `memberFlags` as `ulong.MaxValue` under `MemberChangeDirection.Read`: treat every member as changed. This is what a late-joining client's first raise looks like, since that apply is where it learns the component's starting values. Don't assume a specific bit is set before checking `memberFlags == ulong.MaxValue` for this case; a member-granular recovery instead reports only the members it actually repaired.
 
 ## Do the work on the right loop step
 

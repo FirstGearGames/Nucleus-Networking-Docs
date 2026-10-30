@@ -37,7 +37,7 @@ if (coreManager.TransportManager.TryGetServerConnection(out Connection serverCon
     serverConnection.SendMessage(Channel.Reliable, new ShotMessage { Shot = lagCompensatedShot });
 ```
 
-Do not copy the origin and direction into plain `Vector3` fields. A plain `Vector3` in a message is rounded to a thousandth per component, which can turn a unit direction by about 0.9 milliradians: roughly 4 cm at 50 m and 9 cm at 100 m, enough to lose a headshot at range with nothing to show why. A `LagCompensatedShot` is written through hand-written serializers, `LagCompensatedShotSerializers`, which the generator adopts for every field and argument of the type in every assembly, and which send each component of the origin and direction as its raw 32 bits. A whole shot costs 24 bytes for the ray plus a few for the view. An infinity or NaN in either vector arrives as zero, as every raw float the engine reads does, so no peer can put one into the server's queries.
+Do not copy the origin and direction into plain `Vector3` fields. A plain `Vector3` in a message is sent at a lower precision, which can turn a unit direction by about 0.9 milliradians: roughly 0.04 metres at 50 metres and 0.09 metres at 100 metres, enough to lose a headshot at range with nothing to show why. A `LagCompensatedShot` keeps its origin and direction at full precision wherever it is sent. An infinity or NaN in either vector arrives as zero, so no peer can put one into the server's queries.
 
 `LagCompensatedShot` is compared bit for bit, view included, so a member holding one sees a new shot as a change.
 
@@ -67,7 +67,7 @@ bool isHit = coreManager.LagCompensationManager.TryRaycast2D(messageContext.Send
 
 ## Capturing a view alone
 
-A shot that is not a ray, such as a melee swing whose volume the server builds itself, only needs the view. `CaptureView()` returns the `LagCompensationView` on screen right now, and the server passes it to an overlap query. A `LagCompensationView` is a `[NetworkType]`, so it can ride a message, a remote call or a client state member directly; inside client state it changes only on ticks that fire, so delta compression makes it nearly free on every other tick. Its fraction is quantized to a byte, a resolution of 1/255 of a tick.
+A shot that is not a ray, such as a melee swing whose volume the server builds itself, only needs the view. `CaptureView()` returns the `LagCompensationView` on screen right now, and the server passes it to an overlap query. A `LagCompensationView` is a `[NetworkType]`, so it can ride a message, a remote call or a client state member directly; inside client state it changes only on ticks that fire, so it costs almost nothing on every other tick.
 
 ## What a server or host captures
 

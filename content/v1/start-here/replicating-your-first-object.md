@@ -29,7 +29,7 @@ Add `NetworkTransform` to the same GameObject and the object's position, rotatio
 Two fields are worth knowing on day one:
 
 - **Transform Space** (`_transformSpace`, a `TransformSpace`) — `Local` by default, replicating the offset the object holds inside its parent, which is what lets a carried object (one riding a moving platform, say) cost nothing while it rides. Switch to `World` for an object that may hang from something unreplicated; a `World` object's pose is unaffected by reparenting.
-- **Send Interval** (`_sendInterval`, a `SendInterval`) — defaults to `Normal`. Only applies under the `Interval` transmission mode; the default transmission mode projects the path instead and isn't paced by this field.
+- **Send Interval** (`_sendInterval`, a `SendInterval`) — defaults to `Normal`. Only applies under the `Interval` transmission mode; the default transmission mode isn't paced by this field.
 
 The inspector also exposes **Interpolate Scale Enabled**, **Kinematic Management Enabled**, **Transmission Mode**, and **Extrapolation Enabled**. They exist and are worth knowing about later; the two above are the ones that matter for getting an object moving today.
 

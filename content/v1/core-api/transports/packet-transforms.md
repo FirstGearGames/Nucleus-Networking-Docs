@@ -6,7 +6,7 @@ title: "Packet transforms"
 
 A packet transform rewrites the bytes of every packet on its way to and from a Transport. Use it to layer encryption, compression, obfuscation, or a custom integrity check underneath the engine, without touching any send or receive call site.
 
-This is a Nucleus-only, Pro feature. The interface, the shipped example, and the `TransportManager` hooks that apply it all live in `.Pro.cs` files and are absent from a Free build.
+This is a Nucleus-only, Pro feature. The interface, the shipped example, and the `TransportManager` hooks that apply it are all absent from a Free build.
 
 ## Implementing IPacketTransform
 

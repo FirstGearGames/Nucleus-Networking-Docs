@@ -72,7 +72,7 @@ public partial class MoverComponent : NetworkComponent, IMemberWriteValidator<Ve
 
 Whoever controls the system writes its Predict members: the controlling client on its live tick (`SimulationType.Forward`), or the server for a system it controls. Write them inside the fixed update, from values the game gathered between ticks, so every pass of a tick reads the same numbers. A replay never writes them: it reads each past tick's value from the member's history.
 
-A pure client sends its systems' Predict members to the server every tick, stamped with its tick. Each entry names, with one changed bit per member, only the members that differ from the newest of its ticks the server reported having decoded, so a value held still costs a bit. Both sides keep recent ticks as baselines, so a lost entry never breaks the chain; with no usable baseline every value is sent.
+A pure client sends its systems' Predict members to the server every tick, stamped with its tick. A lost tick of client state never breaks the ticks that follow it.
 
 A host playing its own object writes the members in the same process, so nothing travels upstream. Each tick it still puts their values to the same validator a remote controller faces, and a declined value is reported to it as a correction.
 
@@ -160,4 +160,4 @@ The simulation reads the members every tick in its fixed update anyway; use the 
 
 ## Controller-only, regardless of write access
 
-Client state is controller-only no matter what a system's write access allows. Client state from any connection other than the controller is refused: its bits are still consumed off the wire so stream alignment is not broken, but an `UnauthorizedMemberChangeViolation` is raised instead of the client state being applied.
+Client state is controller-only no matter what a system's write access allows. Client state from any connection other than the controller is refused, and an `UnauthorizedMemberChangeViolation` is raised instead of the client state being applied.

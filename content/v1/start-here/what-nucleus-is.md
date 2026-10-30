@@ -6,9 +6,9 @@ Nucleus is a networking engine for server-authoritative multiplayer games. Its c
 
 ## The shape of the product
 
-The core lives in `Nucleus/` and targets `netstandard2.1`. Its assembly definition sets `noEngineReferences: true` — a guard, not a formality, that exists so the folder could be junctioned into a Unity project without ever quietly putting `UnityEngine` on the engine's reference path. The core compiles and runs on any .NET host that satisfies netstandard2.1, engine or none.
+The core targets `netstandard2.1` and references no game engine. It compiles and runs on any .NET host that satisfies netstandard2.1, engine or none.
 
-Everything engine-specific sits above that core as an optional layer: the Unity integration (`Nucleus.Integrations.Unity/`), Blitz Relay (`Nucleus.Integrations.BlitzRelay/`), and Newfarm (`Nucleus.Integrations.Newfarm/`). None of them are things the core links against or needs to function. They consume the core; it does not know they exist.
+Everything engine-specific sits above that core as an optional layer: the Unity integration, Blitz Relay, and Newfarm. None of them are things the core links against or needs to function. They consume the core; it does not know they exist.
 
 ## What that buys you
 
@@ -36,11 +36,4 @@ A `NetworkMember<T0>` is the unit of replication. Nothing above it — the `Netw
 
 ## State arrives over an unreliable channel by design
 
-There is no reliable channel underneath replication quietly retransmitting every member change until it lands. Acknowledgment rides the packet header of the traffic already flowing, and recovery is targeted at what a peer is actually missing rather than a blanket retransmit. If you're used to a reliable-by-default RPC layer, read the reliability and redundancy docs before assuming state "just arrives". Here, arriving is something the system has to actively account for, not a channel guarantee you get for free.
-
-## Where the pieces live
-
-- `Nucleus/` — the engine-agnostic core: systems, components, members, serializers, interest, transports.
-- `Nucleus.Integrations.Unity/` — the Unity layer: MonoBehaviours, inspector-facing components, and the demos.
-- `Nucleus.Integrations.BlitzRelay/` and `Nucleus.Integrations.Newfarm/` — the other integration layers.
-- `Nucleus.Tests/` — the body of runnable, core-only examples. Reading a component or a test here shows working core code with no engine attached.
+There is no reliable channel underneath replication quietly retransmitting every member change until it lands. Recovery is targeted at what a peer is actually missing rather than a blanket retransmit. If you're used to a reliable-by-default RPC layer, read the reliability and redundancy docs before assuming state "just arrives". Here, arriving is something the system has to actively account for, not a channel guarantee you get for free.

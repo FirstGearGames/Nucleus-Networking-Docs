@@ -31,7 +31,7 @@ public uint Tick { get; private set; } = FirstTick;
 
 Because it advances as the last thing a tick does, `LateVariableUpdate`, the frames between ticks and every message handler already read the tick their writes will ride.
 
-It starts at `FirstTick` (1), never at zero. `UnsetTick` is 0, and the framework relies on "a live tick is never the unset value" wherever a tick doubles as a presence flag, such as a `NetworkMember`'s self-clearing writer stamp.
+It starts at `FirstTick` (1), never at zero. `UnsetTick` is 0, and the framework relies on "a live tick is never the unset value" wherever a tick doubles as a presence flag.
 
 `Tick` is this peer's own local counter, not a shared wall clock. Two connected peers do not share a tick number: a client's `Tick` and the server's `Tick` are two independently incrementing counters that happen to run at the same rate. To estimate what tick a remote peer is on, read `Connection.TryGetServerTickEstimate` instead:
 
@@ -39,7 +39,7 @@ It starts at `FirstTick` (1), never at zero. `UnsetTick` is 0, and the framework
 public bool TryGetServerTickEstimate(uint localTick, out uint serverTickEstimate)
 ```
 
-It derives the estimate from the newest state packet received from that connection, and returns `false` until at least one has arrived.
+It derives the estimate from the newest state received from that connection, and returns `false` until at least one has arrived.
 
 ## Subtick percentage
 
@@ -86,8 +86,6 @@ public void OnNetworkLoopStep(NetworkLoopSteps networkLoopStep, StepDelta stepDe
     position += velocity * seconds;
 }
 ```
-
-In the belted asteroid and roaming character benchmarks, moving every frame by the raw frame delta cost between three and six times as much as moving once per tick. Moving every frame by `NormalizedDelta` brought it back to within a tenth of the once-per-tick cost.
 
 ## Running your own code on the loop
 

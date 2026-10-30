@@ -23,7 +23,7 @@ Declare one as a field on a `NetworkComponent`, the same way a `NetworkMember<T0
 public readonly NetworkSystemMember Target = new();
 ```
 
-`Initialize` wires the member to its owning component and gives it its member Id within that component; the generator calls it, the same as it does for every other member family.
+`Initialize` wires the member to its owning component and gives it its member Id within that component; it is called for you, the same as for every other member family.
 
 ## NetworkConnectionMember
 
@@ -42,15 +42,11 @@ public void Initialize(NetworkComponent networkComponent, byte id);
 
 Assigning `Value` does not do a one-shot lookup that is later forgotten. Both member types subscribe their target Id to a registry for as long as the reference exists, and that subscription is what makes the member keep working as interest changes: when the target leaves this peer's routing table, the member drops back to `Value == null`; when the target (or, for a connection, that same Id) enters the routing table again, the member resolves it again automatically, with no code re-checking or re-fetching anything.
 
-This is why a reference is written and read even while `Value` is `null` — `TargetId` is what rides the wire, and it is what lets the member pick the resolution back up later without anyone re-sending the assignment.
-
-## An unset reference costs one bit, a set one costs about a byte more
-
-An unset reference costs one bit on the wire. A set reference costs that bit plus the Id, and an Id in the low range costs about a byte. A game that holds no references between systems pays essentially nothing for the feature existing.
+This is why a reference keeps its `TargetId` even while `Value` is `null`: the Id is what lets the member pick the resolution back up later without anyone re-sending the assignment.
 
 ## Why not a value member
 
-`NetworkSystemMember` and `NetworkConnectionMember` do not derive from the same base a scalar member does, and they don't behave like one. An identity is exact or it's wrong — there's nothing to interpolate between two identities, no snap threshold for a value that either matches or doesn't, no accuracy tolerance to compare against, and no delta projection to run on something with no continuous path. All of that machinery exists for values that move smoothly through a numeric space; a reference just names a thing, so none of it applies.
+`NetworkSystemMember` and `NetworkConnectionMember` do not derive from the same base a scalar member does, and they don't behave like one. An identity is exact or it's wrong — there's nothing to interpolate between two identities, no snap threshold for a value that either matches or doesn't, and no accuracy tolerance to compare against. All of that machinery exists for values that move smoothly through a numeric space; a reference just names a thing, so none of it applies.
 
 ## Reacting to resolution
 

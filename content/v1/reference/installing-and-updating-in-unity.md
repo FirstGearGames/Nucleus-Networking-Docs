@@ -47,7 +47,7 @@ Every integration file is also gated behind:
 
 That gate is not the version floor. It only tells a Unity build apart from a plain .NET one, so the same sources can sit in a non-Unity project without pulling in `UnityEngine`.
 
-`Nucleus.Integrations.Unity.asmdef` is the main integration assembly. It sits beside two sibling assemblies for the same code: `Nucleus.Integrations.Unity.Editor.asmdef` under `Editor/`, and `Nucleus.Integrations.Unity.Tests.asmdef` under `Tests/`.
+`Nucleus.Integrations.Unity.asmdef` is the main integration assembly, and its editor code compiles into a sibling assembly, `Nucleus.Integrations.Unity.Editor.asmdef`.
 
 Three scripting defines control optional pieces:
 

@@ -61,6 +61,6 @@ The underlying type has no such limitation. `DistanceInterestCondition` (Unity's
 
 ## Every distance lever on this page is Pro-only
 
-Distance interest conditions, the spatial grid, level of detail, and spawn pacing are all Pro-only — their implementations live in files suffixed `.Pro.cs`: `InterestManager.Conditions.Pro.cs`, `DistanceInterestLadder.Pro.cs`, `DistanceInterestConditionBase.Pro.cs`, `SpatialInterestGrid.Pro.cs`, `InterestManager.LevelOfDetail.Pro.cs`, `InterestManager.SpawnPacing.Pro.cs`, and the Unity-side `AuthoredDistanceInterestCondition.Pro.cs` / `DistanceInterestCondition.Pro.cs`. On a free build these files are absent, so none of the above levers exist: no distance rule, no spatial grid, no level of detail, no spawn ceiling. The scene rule and the base interest system are not gated this way and ship in free.
+Distance interest conditions, the spatial grid, level of detail, and spawn pacing are all Pro-only, and so are the Unity-side `AuthoredDistanceInterestCondition` and `DistanceInterestCondition`. On a Free build none of the above levers exist: no distance rule, no spatial grid, no level of detail, no spawn ceiling. The scene rule and the base interest system are not gated this way and ship in Free.
 
 If a build behaves as though one of these settings simply doesn't apply, confirm it's a free build before debugging further.

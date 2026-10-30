@@ -20,7 +20,7 @@ These fire from state application, spawning, and RPC dispatch. All default to `I
 | `InvalidStateAckViolation` | `AckedTick` | Whether the two peers' tick counters have actually diverged (a restart, a save/load, a manual tick reset) rather than assuming a forged ack. |
 | `RetentionExceededViolation` | `AckedTick` | The peer's latency against `SystemManager.StateRetentionMilliseconds`; a single raise is ordinary heavy loss, not abuse. |
 | `RecoveryUnconfirmedViolation` | `UnconfirmedServeCount` | Whether the peer's connection is dropping the recovery serve itself (packet loss eating the recovery, not just the state it was fixing) before assuming it is stalling on purpose. |
-| `UnauthorizedSpawnViolation` | `SystemId`, `SystemBundleId`, `SystemLocalId` | Whether the server just despawned that system id and the client's own recovery pass re-served it as a full before learning of the despawn; that path raises nothing, so a raise here means the id was never one the server despawned. |
+| `UnauthorizedSpawnViolation` | `SystemId`, `SystemBundleId`, `SystemLocalId` | Whether the server just despawned that system id and the client's own recovery re-sent it before learning of the despawn; that path raises nothing, so a raise here means the id was never one the server despawned. |
 | `RpcSendPermissionViolation` | `SystemId` | Whether permission was revoked while calls already sent were still in flight; a well-behaved client reaches this on that race alone. |
 | `RpcFloodViolation` | `ReceivedRpcCount`, `AllowedRpcCount` | `RpcManager.MaximumInboundRpcsPerConnectionPerDrain` against what the client actually needs to send in one drain, before assuming a flood attempt. |
 
@@ -45,7 +45,7 @@ These fire when a client answers about a bundle or scene it was never asked abou
 
 ## Pro-only violations
 
-`PacketTransformRejectedViolation`, `UnauthorizedDespawnViolation` and `UnsolicitedLeaseAcknowledgementViolation` do not exist in a Free build; their events live on Pro partials of `ViolationManager`.
+`PacketTransformRejectedViolation`, `UnauthorizedDespawnViolation` and `UnsolicitedLeaseAcknowledgementViolation` do not exist in a Free build, and neither do their events on `ViolationManager`.
 
 | Type | Payload | Default | Check first |
 |---|---|---|---|

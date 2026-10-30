@@ -4,7 +4,7 @@ title: "The network scene manifest and scene references"
 
 ## Why scenes need a manifest
 
-The wire never carries a scene's path or name, only a `ushort` identifier. Something has to map that number back to an actual scene asset on each peer, and that something is `NetworkSceneManifest`, a `ScriptableObject` under `Nucleus.Integrations.Unity.Scenes`. It is also the identifier registry itself: a networked prefab carries its id stamped on the prefab asset, but a scene has nowhere comparable to hold one, so the manifest entry keyed by the scene's GUID *is* where the id lives.
+The server names a scene by a `ushort` identifier, never by its path or name. Something has to map that number back to an actual scene asset on each peer, and that something is `NetworkSceneManifest`, a `ScriptableObject` under `Nucleus.Integrations.Unity.Scenes`. It is also the identifier registry itself: a networked prefab carries its id stamped on the prefab asset, but a scene has nowhere comparable to hold one, so the manifest entry keyed by the scene's GUID *is* where the id lives.
 
 A project has exactly one manifest. It lives under a `Resources` folder and is resolved by convention, not by being dragged into an inspector.
 
@@ -15,7 +15,7 @@ A project has exactly one manifest. It lives under a `Resources` folder and is r
 - `Entries` — the `IReadOnlyList<SceneEntry>` of every networked scene this peer knows.
 - `UnsetSceneId` — the constant `0`, reserved so a lookup that failed can be told apart from "the first scene."
 - `ResourceName` — the constant `"NetworkSceneManifest"`, the file name the manifest must have under a `Resources` folder.
-- `TryGetScene(ushort sceneId, out SceneEntry sceneEntry)` — resolves an entry from the id the server named on the wire.
+- `TryGetScene(ushort sceneId, out SceneEntry sceneEntry)` — resolves an entry from the id the server named.
 - `TryGetSceneId(string scenePath, out ushort sceneId)` — resolves an id from a scene's asset path.
 - `TryGetSceneIdByGuid(string sceneGuid, out ushort sceneId)` — resolves an id from a scene's GUID; prefer this one, since it is what the id is actually keyed to.
 - `LoadProjectManifest()` — a static method that loads the project's manifest via `Resources.Load<NetworkSceneManifest>(ResourceName)`. Nothing is cached: a manifest held in a static would keep answering for an asset a later session replaced.
@@ -35,7 +35,7 @@ Each `SceneEntry` in `Entries` carries:
 
 | Field | Purpose |
 |---|---|
-| `SceneId` | The identifier the server names this scene by on the wire. Assigned once by the build and never renumbered. |
+| `SceneId` | The identifier the server names this scene by. Assigned once by the build and never renumbered. |
 | `SceneGuid` | The scene asset's GUID. The identifier is keyed to this, so a rename or move keeps it. |
 | `ScenePath` | The scene asset's path, which is what the loader hands to Unity. |
 | `RequiredBundleId` | The content bundle this scene ships in, or zero when it ships inside the player build. A scene in a bundle can't load until that bundle is held. |
@@ -69,6 +69,6 @@ The scan covers both ways a scene can be networked: scenes listed in Build Setti
 
 Once assigned, a scene's id is preserved across rebuilds; a rebuild only adds ids for newly-found scenes and drops entries for scenes no longer present.
 
-## Why only a ushort crosses the wire
+## Why the server names a scene only by id
 
-The server names a scene by `SceneId` alone. No path, no name, no build index, and how the scene is delivered (`DeliveryMode`, `RequiredBundleId`) is never replicated either — those are purely how the local peer resolves the id into something it can load. This is deliberate: paths and names change with renames and refactors, but the manifest that maps a stable id to a stable GUID does not need to, so a build can point at different content, or ship a renamed scene, without ever touching what's on the wire.
+The server names a scene by `SceneId` alone, never by path, name or build index. How the scene is delivered (`DeliveryMode`, `RequiredBundleId`) is decided by each peer's own manifest, not by the server. This is deliberate: paths and names change with renames and refactors, but the manifest that maps a stable id to a stable GUID does not need to, so a build can point at different content, or ship a renamed scene, without changing the id the server uses.

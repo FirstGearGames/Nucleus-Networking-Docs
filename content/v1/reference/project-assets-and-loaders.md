@@ -51,13 +51,13 @@ Assigning `null` restores `DefaultNetworkPrefabPool`. A project that never touch
 
 ### NetworkSceneManifest
 
-A `ScriptableObject` (`Nucleus/Network Scene Manifest` in the Create menu) mapping the scene identifiers the server names on the wire to the scene assets a peer loads them from, and the content bundle each scene ships in. It is also the identifier registry itself: a prefab is stamped on the prefab asset, but a scene has no comparable place to carry one, so the entry keyed by the scene's GUID is where the identifier lives.
+A `ScriptableObject` (`Nucleus/Network Scene Manifest` in the Create menu) mapping the scene identifiers the server names to the scene assets a peer loads them from, and the content bundle each scene ships in. It is also the identifier registry itself: a prefab is stamped on the prefab asset, but a scene has no comparable place to carry one, so the entry keyed by the scene's GUID is where the identifier lives.
 
 `_sceneEntries` holds the list, exposed as `Entries`; each entry is a `SceneEntry`:
 
 | Field | Purpose |
 |---|---|
-| `SceneId` | The identifier the server names this scene by on the wire. |
+| `SceneId` | The identifier the server names this scene by. |
 | `SceneGuid` | The scene asset's GUID — what the identifier is really keyed to. |
 | `ScenePath` | The scene asset's path, handed to Unity's loader. |
 | `RequiredBundleId` | The content bundle the scene ships in; the base build's identifier means it ships in the player. |
@@ -67,7 +67,7 @@ A project has one manifest, loaded by convention from `Resources/NetworkSceneMan
 
 ### NetworkSceneReference
 
-A struct field type that names a networked scene by dragging the scene asset in, instead of typing its wire number by hand. It stores only the scene's **GUID** (`_sceneGuid`) — never the scene identifier itself — so renaming or moving the scene asset never repoints the reference or silently starts naming a different scene. The identifier is resolved through the project's manifest at the moment it's used (`TryGetSceneId`), so a scene added after the reference was authored resolves as soon as the manifest is rebuilt.
+A struct field type that names a networked scene by dragging the scene asset in, instead of typing its scene id by hand. It stores only the scene's **GUID** (`_sceneGuid`) — never the scene identifier itself — so renaming or moving the scene asset never repoints the reference or silently starts naming a different scene. The identifier is resolved through the project's manifest at the moment it's used (`TryGetSceneId`), so a scene added after the reference was authored resolves as soon as the manifest is rebuilt.
 
 ### Handle-to-Scene lookups
 
@@ -95,11 +95,11 @@ A project doesn't have to place a `UnitySceneLoader` itself: `UnitySceneManager`
 
 ## Content bundles
 
-`NetworkBundleManifest` ships in every build. `NetworkBundleLoader` and `UnityAssetBundleLoader` are Pro-only files — absent entirely from a Free build — so a Free project can carry a bundle manifest but has nothing built in that loads against it.
+`NetworkBundleManifest` ships in every build. `NetworkBundleLoader` and `UnityAssetBundleLoader` are Pro-only and absent entirely from a Free build, so a Free project can carry a bundle manifest but has nothing built in that loads against it.
 
 ### NetworkBundleManifest
 
-A `ScriptableObject` (`Nucleus/Network Bundle Manifest` in the Create menu) mapping the bundle identifiers the server names on the wire to the asset bundle files a client loads them from.
+A `ScriptableObject` (`Nucleus/Network Bundle Manifest` in the Create menu) mapping the bundle identifiers the server names to the asset bundle files a client loads them from.
 
 - `_bundleEntries` — the mapped bundles, exposed as `Entries`; each `BundleEntry` pairs a `BundleId` with a `FileName`.
 - `_rootDirectory` — the directory file names resolve against; empty falls back to `Application.streamingAssetsPath`.

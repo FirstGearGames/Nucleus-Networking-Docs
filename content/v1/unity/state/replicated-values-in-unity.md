@@ -15,7 +15,7 @@ public partial class HillTimerComponent : NetworkComponent
 }
 ```
 
-`partial` matters: the source generator fills in the rest of this class from the `NetworkMember<T0>` fields it finds, so `Read`, `Write`, `WriteDelta` and the rest are written for you. Add fields, don't hand-write serialization.
+`partial` matters: the source generator writes the rest of this class from the `NetworkMember<T0>` fields it finds. Add fields; don't hand-write serialization.
 
 ## Attach it through NucleusBehaviour
 
@@ -61,7 +61,7 @@ protected override void OnEarlyFixedUpdate(StepDelta stepDelta, SimulationContex
 }
 ```
 
-Reading a replicated value has no such guard: every peer's `Component` holds whatever the wire last delivered, and reading it is always safe once a system is linked.
+Reading a replicated value has no such guard: every peer's `Component` holds the latest replicated value, and reading it is always safe once a system is linked.
 
 ## The GameObject side
 

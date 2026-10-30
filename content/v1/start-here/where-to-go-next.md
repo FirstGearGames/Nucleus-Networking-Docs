@@ -36,10 +36,6 @@ If you'd rather build one whole small game than read features in isolation, work
 
 Neither tutorial is a substitute for the reference pages above; each explains a feature only as far as that game needs it.
 
-## Runnable examples, no engine required
-
-`Nucleus.Tests` is the actual body of core-only examples. `Integrations/Bridge/BridgeSyncTests.cs` wires two real `CoreManager` instances together over an in-memory transport and drives them by hand — message round-trips in both directions, server-to-client system spawn, and delta convergence — with no Unity, no sockets, and no flaky timing. `Harness/LoopHarness.cs` is the setup code those tests share: building a hand-driven `CoreManager`, and ticking both ends forward until a condition holds. If you learn an API fastest from working code rather than prose, start there.
-
 ## When a page doesn't answer it
 
 If you've read the relevant reference page and the tutorial chapter that covers the same feature and you're still stuck, that's worth asking about directly rather than guessing from partial documentation — file the question against the Nucleus repository rather than assuming the gap is intentional.

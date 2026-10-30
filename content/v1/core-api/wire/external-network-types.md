@@ -36,9 +36,7 @@ Nucleus ships one of these as `ExternalNetworkTypes` in `Nucleus.Serializers`. I
 
 For third-party types outside that list, declare your own marker struct in your own assembly and add one field per type you need a serializer for. The `[NetworkType]` attribute is not optional decoration: it is the only thing the generator reads to find the struct at all.
 
-This was a real, recorded bug. `ExternalNetworkTypes` once carried a separate container attribute the generator never read, so every marker field in it was inert: the file read as the supported way to reach these types and did nothing at all. A type that also happened to be reached through a real networked member got its serializer anyway and hid the fault. That's what happened to `Vector3`: it got a working serializer only because `TransformComponent` already networks a `NetworkMember<Vector3>` for position and scale. `Vector2`, declared one line below `Vector3` in the same struct, had no other path in and silently had no serializer at all.
-
-The lesson carries over directly: a marker struct that isn't actually carrying `[NetworkType]` fails silently, not loudly, unless one of its fields happens to be reachable some other way.
+A marker struct that isn't actually carrying `[NetworkType]` fails silently, not loudly: a field whose type happens to be reachable some other way still gets a serializer and hides the fault, while every other field gets none.
 
 ## Finding out a type has no serializer
 

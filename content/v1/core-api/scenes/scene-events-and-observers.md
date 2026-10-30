@@ -14,7 +14,7 @@ title: "Scene events and observers"
 | `SceneUnloaded` | `SceneUnloadedHandler(uint sceneHandle, ushort sceneId)` | client | This client's registered `ISceneLoader` finishes a release the server asked for, after the report is sent. Not raised on the server when it closes its own copy; await `CloseSceneAsync` there instead. |
 | `SceneLoadFailed` | `SceneLoadFailedHandler(uint sceneHandle, ushort sceneId)` | local peer | This peer's own load fails, after the failure has been reported to the server. Also raised on the server when `OpenSceneAsync` could not load the server's own copy. |
 | `ClientSceneLoadFailed` | `ClientSceneLoadFailedHandler(Connection connection, uint sceneHandle)` | server | A client reports it could not load a scene, after the pending request has been cancelled. |
-| `SceneLoadProgressed` | `SceneLoadProgressedHandler(uint sceneHandle, ushort sceneId, float progress)` | local peer | This peer's own load advances, for a loading screen. Purely local; progress never reaches the wire. |
+| `SceneLoadProgressed` | `SceneLoadProgressedHandler(uint sceneHandle, ushort sceneId, float progress)` | local peer | This peer's own load advances, for a loading screen. Purely local; progress is never sent. |
 
 ```csharp
 sceneManager.SceneLoadRequested += (sceneHandle, sceneId, isLoadRequested) =>

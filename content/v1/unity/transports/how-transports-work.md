@@ -17,20 +17,17 @@ Every send picks a `Channel`:
 
 Nucleus is unreliable-first: state, RPCs, and messages default to `Channel.Unreliable` and only move to `Channel.Reliable` when something requires it.
 
-What happens past the transmission unit differs by what is being sent:
+A send larger than the transmission unit keeps its channel:
 
-- A reliable message or remote call that will not fit is handed to the transport whole, and the transport splits it.
-- An unreliable message or remote call that will not fit is split by the engine into pieces that each fit one datagram, so it stays unreliable on every transport, the relay included. It arrives whole or not at all.
-- A state write that will not fit is sent across several packets on whichever channel it was already using.
+- A reliable message or remote call that will not fit still arrives whole and in order.
+- An unreliable message or remote call that will not fit stays unreliable on every transport, the relay included. It arrives whole or not at all.
+- State that will not fit stays on whichever channel it was already using.
 
 ## Maximum Transmission Unit
 
-`Configuration.MaximumTransmissionUnit` is 1200 bytes by default — the ceiling on what the engine packs into one packet before it fragments or promotes.
+`Configuration.MaximumTransmissionUnit` is 1200 bytes by default. It is the largest datagram the engine builds before it splits a send.
 
-The engine never gets the full 1200 bytes of payload to work with. Each transport reports `DatagramOverheadBytes`, the header it prepends to every datagram, and the engine reserves that (plus its own packet header) out of the configured unit before writing anything. So the number you set is a limit on the datagram, not a guarantee of payload space, and how much space you actually lose depends on the transport:
-
-- Synapse reports its socket library's own header size as overhead.
-- Blitz Relay reports more: the relay's own framing on top of the same underlying socket header, because the relay is a hop the packet passes through, not the endpoint reading it. A relayed session always has less usable payload per packet than a direct Synapse connection at the same MTU.
+The number you set is a limit on the whole datagram, not a guarantee of payload space, because each transport keeps some of that room for itself. How much it keeps depends on the transport: a session through Blitz Relay always has less usable room per packet than a direct Synapse connection at the same transmission unit, because the relay is a hop the packet passes through and needs room of its own.
 
 ## The three shipped transports
 

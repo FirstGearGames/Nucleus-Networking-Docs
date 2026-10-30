@@ -18,10 +18,7 @@ The current choice reads back from `Technique` and `InterestAxes`.
 
 ## When the grid pays off
 
-The grid buys narrowing, and narrowing is only worth its own cost where the cutoff genuinely excludes most pairs. `InterestResolutionBenchmarkTests` resolves 1000 systems against 100 to 1000 players and measures both worlds:
-
-- A world 400 metres across against a 25 metre cutoff: the grid runs at 1.4x to 1.7x the speed of pairwise.
-- A world small enough that everything is in range of everything: the grid runs at 0.6x of pairwise, because the radius query buys no narrowing and the exact measurement still has to happen.
+The grid buys narrowing, and narrowing is only worth its own cost where the cutoff genuinely excludes most pairs. In a world much wider than its cutoff, the grid is faster than pairwise. In a world small enough that everything is in range of everything, it is slower, because the radius query buys no narrowing and the exact measurement still has to happen.
 
 Pick the technique from the world's geometry, not from player count.
 

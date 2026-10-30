@@ -51,7 +51,7 @@ if (transportManager.TryGetConnection(handle, out Connection resolved))
 }
 ```
 
-If the original connection has been recycled, or its Id reissued to a different peer, the generation no longer matches and resolution fails rather than silently naming whoever arrived next. `ConnectionHandle` is a plain value type: it allocates nothing, needs no pooling, and is local to the peer that took it (it never goes on the wire).
+If the original connection has been recycled, or its Id reissued to a different peer, the generation no longer matches and resolution fails rather than silently naming whoever arrived next. `ConnectionHandle` is a plain value type: it allocates nothing, needs no pooling, and is local to the peer that took it.
 
 ## RemoteAddress versus Identity
 
@@ -90,9 +90,9 @@ public enum LocalConnectionState : byte
 }
 ```
 
-`Disconnected` is the zero value, so an unwritten state reads as down. The values are never written to the wire.
+`Disconnected` is the zero value, so an unwritten state reads as down.
 
-`ConnectionStateExtensions` (in `LocalConnectionStateExtensions.cs`) adds two helpers, both on `LocalConnectionState`:
+`ConnectionStateExtensions` adds two helpers, both on `LocalConnectionState`:
 
 ```csharp
 public static bool IsConnectedOrDisconnected(this LocalConnectionState localConnectionState);

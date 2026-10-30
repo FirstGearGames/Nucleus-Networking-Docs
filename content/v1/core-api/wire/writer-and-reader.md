@@ -80,7 +80,7 @@ void WriteArrayWithCount<T0>(T0[] value, CompressionLevel compressionLevel = Com
 void WriteDictionary<T0, T1>(Dictionary<T0, T1> value, CompressionLevel compressionLevel = CompressionLevel.Loose);
 ```
 
-`WriteNullable<T0>` writes a presence flag then the value:
+`WriteNullable<T0>` writes a nullable value, null included:
 
 ```csharp
 void WriteNullable<T0>(T0? value, CompressionLevel compressionLevel = CompressionLevel.Loose) where T0 : struct;
@@ -180,4 +180,4 @@ bool HasBitsRemaining { get; }
 CompressionLevel DeltaCompressionLevel { get; set; }
 ```
 
-`Sender` is the connection the reader was initialized with (`ReaderPool.Rent(..., senderConnection)`). `BitsRemaining` and `HasBitsRemaining` tell you whether there's more to read; there is no `ReadSpan` property on `Reader` - `ReadSpan` is a separate internal type, and the reader instead exposes `HasReadSpan` (from `IReadOnlyReader`) to say whether at least one has been added. `DeltaCompressionLevel` must match the value the writer used for its `TryWriteDelta*` calls, or the delta reads will decode incorrectly and desync the rest of the stream.
+`Sender` is the connection the reader was initialized with (`ReaderPool.Rent(..., senderConnection)`). `BitsRemaining` and `HasBitsRemaining` tell you whether there's more to read, and `HasReadSpan` (from `IReadOnlyReader`) says whether at least one read span has been added. `DeltaCompressionLevel` must match the value the writer used for its `TryWriteDelta*` calls, or the delta reads will decode incorrectly and desync the rest of the stream.

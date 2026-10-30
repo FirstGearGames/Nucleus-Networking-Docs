@@ -67,4 +67,4 @@ On the server side, sending to one or many clients uses the server-side connecti
 
 ## The generator prerequisite
 
-A struct used as an `IMessage` payload needs the Nucleus source generator to see it, the same requirement as any call payload. In a Unity project this means `Nucleus.CodeAnalysis.SourceGenerators.dll` must be marked as a Roslyn analyzer (the `RoslynAnalyzer` label on its `.meta`) in every assembly that declares or sends the message type. Without it, the project still compiles, but the generated wire code for that type is never produced, and the message silently never sends.
+A struct used as an `IMessage` payload needs the Nucleus source generator to see it, the same requirement as any call payload. In a Unity project this means `Nucleus.CodeAnalysis.SourceGenerators.dll` must be marked as a Roslyn analyzer (the `RoslynAnalyzer` label on its `.meta`) in every assembly that declares or sends the message type. Without it, the project still compiles, but the message silently never sends.

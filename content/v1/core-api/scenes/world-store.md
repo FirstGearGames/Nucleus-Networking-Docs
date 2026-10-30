@@ -6,7 +6,7 @@ title: "Writing a world store"
 
 A saved world has no file, no format and no address defined by the engine, only a shape. `IWorldStore` is that seam: implement it to persist a world somewhere other than a file, a database row, a save-service blob, cloud storage, whatever the game already uses. `JsonWorldStore` ships as the default implementation, both as a working store and as the reference to read alongside your own.
 
-Almost every file behind this feature is Pro-only (`.Pro.cs`): `IWorldStore`, `IWorldDocument`, `WorldSystemIdentity`, `WorldLoadFailureAction`, `JsonWorldStore` and `WorldDocument`. The two exceptions are `IWorldStateWriter` and `IWorldStateReader`, which ship in both editions.
+Almost every type behind this feature is Pro-only: `IWorldStore`, `IWorldDocument`, `WorldSystemIdentity`, `WorldLoadFailureAction`, `JsonWorldStore` and `WorldDocument`. The two exceptions are `IWorldStateWriter` and `IWorldStateReader`, which ship in both editions.
 
 Register a store through `WorldPersistenceManager.SetWorldStore`. The engine consults exactly one store at a time.
 
@@ -79,7 +79,7 @@ public interface IWorldStateReader
 }
 ```
 
-Generated code calls these, not game code: each `NetworkComponent` emits a `WriteWorldState` that names its own type and then each member in declaration order. `Write` hands a member over whole rather than as a value, so an implementation asks the member to write itself and stores the resulting bytes under its name; it never grows a case per type.
+Nucleus calls these, not game code: each `NetworkComponent` names its own type and then writes each member in declaration order. `Write` hands over the member itself rather than its value, so an implementation asks the member to write itself and stores the result under its name; it never grows a case per type.
 
 On the read side, a member the save does not carry is never assigned and keeps its constructed default. A name the save carries that the component no longer has is never asked for and is skipped. There is no version number or schema check. What this does not cover is a member whose type changed under a name that stayed the same; that reads back silently wrong. Rename the member when its meaning changes.
 
@@ -89,7 +89,7 @@ A readonly struct recording everything a save needs beyond member values: what t
 
 | Field | Meaning |
 |---|---|
-| `SystemTypeName` | Full name of the `NetworkSystem` type to build, resolved through the type registry on load. Carried by name because the wire's numeric type identity shifts whenever a networked type is added, removed or renamed, and nothing detects that shift at runtime. |
+| `SystemTypeName` | Full name of the `NetworkSystem` type to build, resolved through the type registry on load. |
 | `PlatformId` | The prefab or scene-object identifier the object was started with. |
 | `PrefabBundleId` | The content bundle the prefab was registered from, or the base build for an object that ships inside it. |
 | `IsSceneObject` | Whether the object is a scene object; a load binds it to an object the scene already placed instead of constructing one. |
@@ -112,7 +112,7 @@ Returned from `OnSceneUnavailable` when a saved scene cannot be opened in this b
 
 ## JsonWorldStore as a reference
 
-`JsonWorldStore` is the shipped `IWorldStore`. It writes a real JSON structure (scenes, objects, components and member names all read as text), with each member's packed value carried as base64 under its name, so a saved world diffs object by object and member by member.
+`JsonWorldStore` is the shipped `IWorldStore`. It writes a real JSON structure (scenes, objects, components and member names all read as text), so a saved world diffs object by object and member by member.
 
 ```csharp
 public sealed class JsonWorldStore : IWorldStore

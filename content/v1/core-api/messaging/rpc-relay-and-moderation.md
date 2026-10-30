@@ -16,7 +16,7 @@ public enum RpcRelayAction : byte
 
 `Relay` is zero. A handler that returns nothing meaningful, or that has no opinion about relaying, defaults to `Relay` - a handler with no opinion cannot accidentally suppress a relay. `Cancel` keeps the call on the server instead of passing it on to the system's other observers.
 
-The verdict never travels. It is a decision the server makes locally, before anything is written, so a receiving peer has nothing to decode for it and no bit width is reserved for it on the wire.
+The verdict never travels. It is a decision the server makes locally, before the call is passed on, and a receiving peer is never told it.
 
 ## Veto folding
 

@@ -22,7 +22,7 @@ title: "The manager map"
 
 ## The two Pro-only managers
 
-`BundleManager` and `WorldPersistenceManager` are not part of the base `CoreManager`. They are added by Pro partial classes - `CoreManager.Bundles.Pro.cs` and `CoreManager.Persistence.Pro.cs` - each of which declares the field and fills in a partial hook (`AddBundleManager`, `AddWorldPersistenceManager`) that the base constructor calls unconditionally. In a Free build neither partial exists, the hooks compile away to nothing, and `CoreManager` simply has no `BundleManager` or `WorldPersistenceManager` field at all - not null, absent.
+`BundleManager` and `WorldPersistenceManager` are Pro only. In a Free build `CoreManager` simply has no `BundleManager` or `WorldPersistenceManager` field at all: not null, absent.
 
 `BundleManager` owns content delivered from outside the build (Addressables, a patcher, a CDN). `WorldPersistenceManager` owns writing a world to disk and building it back.
 

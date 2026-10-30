@@ -9,8 +9,8 @@ All five collection members derive from the same base and share this surface:
 - `Values` — the live collection.
 - `PreviousValues` — a snapshot from the most recent tick before the current head on which the collection actually changed.
 - `Count` — the number of items currently held.
-- `Changes` — an `IReadOnlyList<TChange>` of this tick's operations, appended to as mutations land or a received operation log is applied.
-- A constructor taking `int ringDepth = 2`, the number of distinct snapshots retained in the ring. Two is the minimum that exposes a previous-tick view.
+- `Changes` — an `IReadOnlyList<TChange>` of this tick's operations, appended to as mutations land or received changes are applied.
+- A constructor taking `int ringDepth = 2`, the number of distinct snapshots of the collection retained. Two is the minimum that exposes a previous-tick view.
 - Protected virtual hooks: `GetRingDepth()`, which returns the ring depth the member was constructed with, and `GetCurrentTick()`, which returns the tick from the network loop (or an unset value when none is running). Override either only to change how a subclass sources those values.
 
 ## NetworkListMember\<T0>
@@ -85,7 +85,7 @@ playerNames[1] = "Alicia";
 playerNames.TryGetValue(1, out string name);
 ```
 
-`Changes` is an `IReadOnlyList<NetworkDictionaryChange<T0, T1>>`. Each `NetworkDictionaryChange<T0, T1>` carries `Operation` (a `NetworkDictionaryOperation`), `Key`, and `Value`. `NetworkDictionaryOperation` is `Set`, `Remove`, or `Clear` — an add and an overwrite both encode as `Set` since the wire payload is identical. `Key` is the default of `T0` for `Clear`; `Value` is the default of `T1` for `Remove` and `Clear`.
+`Changes` is an `IReadOnlyList<NetworkDictionaryChange<T0, T1>>`. Each `NetworkDictionaryChange<T0, T1>` carries `Operation` (a `NetworkDictionaryOperation`), `Key`, and `Value`. `NetworkDictionaryOperation` is `Set`, `Remove`, or `Clear`; an add and an overwrite are both reported as `Set`. `Key` is the default of `T0` for `Clear`; `Value` is the default of `T1` for `Remove` and `Clear`.
 
 ## NetworkHashSetMember\<T0>
 

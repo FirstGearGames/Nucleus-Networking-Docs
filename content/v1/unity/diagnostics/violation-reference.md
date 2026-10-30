@@ -15,7 +15,7 @@ These fire from state application, state repair, spawning, and RPC dispatch. All
 | Type | Payload | Check first |
 |---|---|---|
 | `UnauthorizedMemberChangeViolation` | `SystemId` | Whether the sender actually holds control of that `NetworkSystem` right now; control handoffs racing a member change look identical to this from the receiving side. |
-| `PredictedMemberChangeViolation` | `SystemId` | Whether the member is really predicted; a controller never serializes a predicted member's value, so this usually means the member's transmission setup changed without the controller rebuilding. |
+| `PredictedMemberChangeViolation` | `SystemId` | Whether the member is really predicted; a controller never sends a predicted member's value, so this usually means the member's transmission setup changed without the controller rebuilding. |
 | `EmptyCollectionDeltaViolation` | `SystemId`, `MemberId` | A compliant sender cannot produce a collection delta with no operations, so first suspect a diverged serializer pair between the two builds, not the sender's intent. |
 | `InvalidStateAckViolation` | `AckedTick` | Whether the two peers' tick counters have actually diverged (a restart, a save/load, a manual tick reset) rather than assuming a forged ack. |
 | `RetentionExceededViolation` | `AckedTick` | The peer's latency against `SystemManager.StateRetentionMilliseconds`; a single raise is ordinary heavy loss, not abuse. |
@@ -23,7 +23,7 @@ These fire from state application, state repair, spawning, and RPC dispatch. All
 | `StateLossReportFloodViolation` | `AllowedLossRepairCount` | Whether the peer just recovered from a stall; an honest peer names at most one lost tick per tick it applies, and only after a stall does it ask for several at once. The repairs past the allowance are refused either way. |
 | `UnexpectedStateLossReportViolation` | `Tick` | Whether a handover just changed which peer serves the sender its state; a report already in flight across that change reaches this honestly. The report is discarded and a warning is logged. |
 | `RecoveryUnconfirmedViolation` | `UnconfirmedServeCount` | Whether the peer's connection is dropping the recovery serve itself (packet loss eating the recovery, not just the state it was fixing) before assuming it is stalling on purpose. |
-| `UnauthorizedSpawnViolation` | `SystemId`, `SystemBundleId`, `SystemLocalId` | Whether the server just despawned that system id and the client's own recovery pass re-served it as a full before learning of the despawn; that path raises nothing, so a raise here means the id was never one the server despawned. |
+| `UnauthorizedSpawnViolation` | `SystemId`, `SystemBundleId`, `SystemLocalId` | Whether the server just despawned that system id and the client's own recovery pass sent its state again before learning of the despawn; that path raises nothing, so a raise here means the id was never one the server despawned. |
 | `RpcSendPermissionViolation` | `SystemId` | Whether permission was revoked while calls already sent were still in flight; a well-behaved client reaches this on that race alone. |
 | `RpcFloodViolation` | `ReceivedRpcCount`, `AllowedRpcCount` | `RpcManager.MaximumInboundRpcsPerConnectionPerDrain` against what the client actually needs to send in one drain, before assuming a flood attempt. |
 
@@ -56,7 +56,7 @@ These fire when a client answers about a bundle or scene it was never asked abou
 
 ## Pro-only violations
 
-`PacketTransformRejectedViolation`, `UnauthorizedDespawnViolation` and `UnsolicitedLeaseAcknowledgementViolation` do not exist in a Free build; their events live on Pro partials of `ViolationManager`.
+`PacketTransformRejectedViolation`, `UnauthorizedDespawnViolation` and `UnsolicitedLeaseAcknowledgementViolation` do not exist in a Free build, and neither do their events on `ViolationManager`.
 
 | Type | Payload | Default | Check first |
 |---|---|---|---|

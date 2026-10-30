@@ -23,7 +23,7 @@ public interface IBundleLoader
 
 `LoadBundleAsync` must register the bundle's prefabs before the task completes, since a completion tells the server it may
 spawn into the content immediately. `UnloadBundleAsync` releases it. Both may complete asynchronously, on any thread; the
-outcome is queued and drained back onto the network loop, so nothing a loader does off-thread races the outbound writers.
+outcome is queued back onto the network loop, so a loader may safely complete off-thread.
 
 Register the loader with `BundleManager.SetBundleLoader`:
 
@@ -132,5 +132,4 @@ Both default to a kick.
 
 `BundleManager` is Pro. In a Free build, `CoreManager` has no `BundleManager` member at all. `IBundleLoader`,
 `IBundleObserver`, `BundleInterestCondition` and `Connection.IsBundleLoaded` are Pro as well. The two violation types,
-`Connection.BaseBuildBundleId`, and `NetworkSystem.RequiredBundleId` with `SetRequiredBundleId` live in plain files
-usable in either edition.
+`Connection.BaseBuildBundleId`, and `NetworkSystem.RequiredBundleId` with `SetRequiredBundleId` are usable in either edition.

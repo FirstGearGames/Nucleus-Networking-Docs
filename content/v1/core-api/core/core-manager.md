@@ -10,7 +10,7 @@ title: "Creating a CoreManager"
 private CoreManager _coreManager = new();
 ```
 
-That single line, taken from `TransportOperation`, is a complete bootstrap: by the time the constructor returns, every manager exists, the managers know about each other, and the network loop is ticking.
+That single line is a complete bootstrap: by the time the constructor returns, every manager exists, the managers know about each other, and the network loop is ticking.
 
 ## The constructor
 
@@ -27,30 +27,7 @@ Supply your own `INetworkLoopStepProvider` here, not after construction. Nothing
 
 ## What construction builds, and in what order
 
-The constructor builds each manager in sequence, passing itself (`this`) to each one, then tells every manager the whole graph exists, and only then starts the loop:
-
-```csharp
-_managers.Add(NetworkLoopManager = new(this, tickRate));
-_managers.Add(TransportManager = new(this));
-_managers.Add(ServerManager = new(this));
-_managers.Add(ClientManager = new(this));
-_managers.Add(SystemManager = new(this));
-_managers.Add(InterestManager = new(this));
-_managers.Add(PacketManager = new(this));
-_managers.Add(MessageManager = new(this));
-_managers.Add(RpcManager = new(this));
-_managers.Add(ViolationManager = new(this));
-AddBundleManager();          // Pro only
-_managers.Add(SceneManager = new(this));
-AddWorldPersistenceManager(); // Pro only
-
-foreach (ManagerBase manager in _managers)
-    manager.ManagersInstantiated();
-
-NetworkLoopManager.StartNetworkLoop(networkLoopStepProvider);
-```
-
-`NetworkLoopManager` is built first because it owns the clamped tick rate, and every manager built after it bakes rate-derived values from that. Every manager is then given a second pass, `ManagersInstantiated`, to resolve dependencies on the others now that the whole graph exists — a manager built earlier can still find one built later. `StartNetworkLoop` runs last of all, after every manager has registered its loop callbacks, so the loop never steps against a graph that is only half-built.
+The constructor builds every manager, gives each one a chance to find the others once the whole set exists, and only then starts the loop, so the loop never steps against a session that is only half built. `NetworkLoopManager` is built first because it owns the clamped tick rate, and every manager built after it bakes rate-derived values from that.
 
 Teardown unwinds this in reverse: each manager's `Deinitialize` runs from the last-constructed manager back to the first, because a manager built later typically registered handlers onto managers built earlier.
 
@@ -74,14 +51,14 @@ Every build exposes these eleven `readonly` fields:
 
 ### Pro-only fields
 
-A Pro build adds two more, contributed by partial class files (`CoreManager.Bundles.Pro.cs` and `CoreManager.Persistence.Pro.cs`) that hook into the constructor through the `AddBundleManager` and `AddWorldPersistenceManager` partial methods:
+A Pro build adds two more:
 
-| Field | Type | Added by |
-|---|---|---|
-| `BundleManager` | `BundleManager` | `CoreManager.Bundles.Pro.cs` |
-| `WorldPersistenceManager` | `WorldPersistenceManager` | `CoreManager.Persistence.Pro.cs` |
+| Field | Type |
+|---|---|
+| `BundleManager` | `BundleManager` |
+| `WorldPersistenceManager` | `WorldPersistenceManager` |
 
-In a Free build, neither partial method has an implementation, the calls compile away, and the fields do not exist on `CoreManager` at all — there is no null placeholder to check against. `BundleManager` is for content delivered from outside the build (Addressables, a patcher, a CDN); without it a build can only spawn what shipped inside it. `WorldPersistenceManager` is for putting a world on disk and building it back; without it a world lives exactly as long as the process holding it. Unlike the other manager fields, these two are not `readonly`, because they are assigned from a hook the constructor calls rather than from the constructor body directly.
+In a Free build, the fields do not exist on `CoreManager` at all, so there is no null placeholder to check against. `BundleManager` is for content delivered from outside the build (Addressables, a patcher, a CDN); without it a build can only spawn what shipped inside it. `WorldPersistenceManager` is for putting a world on disk and building it back; without it a world lives exactly as long as the process holding it. Unlike the other manager fields, these two are not `readonly`.
 
 ## Instance
 

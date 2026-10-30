@@ -12,7 +12,7 @@ A `NetworkSystem` carries two kinds of identity: the network Id every peer agree
 | `PlatformId` | `uint` | The Id of the object for the running platform this system belongs to: a scene object's identifier within its scene, or a dynamic prefab's local identifier within its shard. `UnsetPlatformId` (`0`) until assigned. |
 | `PrefabBundleId` | `ushort` | The content bundle owning this system's prefab, pairing with `PlatformId`. Meaningful only for a dynamically spawned prefab; zero is the base build's default shard. |
 | `RequiredBundleId` | `ushort` | The bundle a client must hold before this system may spawn for it. Falls back to `PrefabBundleId` when no override is set. |
-| `SetRequiredBundleId(ushort)` | method | Overrides `RequiredBundleId` without touching `PrefabBundleId`, so the wire identity of the prefab is unaffected. |
+| `SetRequiredBundleId(ushort)` | method | Overrides `RequiredBundleId` without touching `PrefabBundleId`, so the prefab's identity is unaffected. |
 | `UnsetRequiredBundleId` | `const ushort` | `ushort.MaxValue`, **not** `0` like the other Unset constants — zero is a valid requirement, naming the base build. |
 | `IsSceneObject` | `bool` | True when `PlatformId` identifies a scene object rather than a dynamically spawned prefab. |
 | `SceneHandle` | `uint` | The live scene instance this system belongs to. `UnsetSceneHandle` (`0`) when it belongs to no server-opened scene. |
@@ -72,7 +72,7 @@ if (system.IsServerStarted)
 | `TryGetComponent<T0>(out T0 component)` | Retrieves a contained `NetworkComponent` of type `T0`, such as a transform component. Returns false when none is attached. When the system carries the type more than once, this is the first. |
 | `TryGetComponent<T0>(byte componentId, out T0 component)` | Retrieves the component at a component Id when it is of type `T0`. The Id is the order the component was added in, the same on every peer, so this reaches every instance of a repeated type. |
 | `MaximumComponentCount` | The most components one system can hold: 31. |
-| `GroupMemberCount` | The number of members this system's group currently holds. Zero for an ungrouped system. On the server this is the live group count; on a receiver it is the count the full header carried. |
+| `GroupMemberCount` | The number of members this system's group currently holds. Zero for an ungrouped system. On the server this is the live group count; on a receiver it is the count received with the group's first member to arrive. |
 
 ```csharp
 if (system.TryGetComponent(out MyTransformComponent transform))

@@ -9,7 +9,7 @@ Interest can end replication for a connection two different ways, and they cost 
 
 `InterestMembership` is the resolved state of one `(NetworkSystem, Connection)` pair, as the stacked interest conditions settle it:
 
-- `Streamed` — an ordinary delta observer, receiving the system's shared delta stream every tick. This is the deliberate default: a connection with no interest entry is streamed, so a world with no condition registered behaves exactly as it did before interest existed.
+- `Streamed` — an ordinary observer, receiving the system's updates every tick. This is the deliberate default: a connection with no interest entry is streamed, so a world with no condition registered behaves exactly as it did before interest existed.
 - `Stopped` — stopped for the connection by an unmet `Stop` condition; the connection holds no system, but its engine object was retained for a later re-entry.
 - `Unspawned` — culled for the connection by an unmet `Spawn` condition; the connection holds neither the system nor its object.
 

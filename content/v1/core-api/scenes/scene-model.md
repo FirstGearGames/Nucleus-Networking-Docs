@@ -39,9 +39,9 @@ This is what makes scene stacking possible: opening one asset several times give
 
 Because scope is per instance rather than per asset, one scene asset can run as a shared `Global` lobby while a dozen other instances of a different (or the same) asset run as private `Connections` matches, all open at once.
 
-## The wire carries a number
+## Scenes are named by number
 
-A scene is never sent as a path or a name. Every message that names a scene carries the scene id or the scene handle — plain numbers — and the registered `ISceneLoader` is what turns an id into actual content on each peer.
+Nucleus never identifies a scene by a path or a name, only by its scene id or scene handle, and the registered `ISceneLoader` is what turns an id into actual content on each peer.
 
 ## Where to go next
 

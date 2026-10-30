@@ -60,8 +60,6 @@ protected override void OnVariableUpdate(StepDelta stepDelta)
 
 Frames never line up with ticks, so an object moved by `Time.deltaTime` covers a different distance in every tick, and that unevenness costs bandwidth to replicate. `NormalizedDelta` is the frame's delta adjusted so the frames between two ticks add up to exactly one tick interval. The object still moves every frame at the same speed, but every tick sees the same distance moved.
 
-The difference is large. In the Belted Asteroid benchmark, moving with `Time.deltaTime` cost 1.52 bytes per object per send, and moving with `NormalizedDelta` cost 0.44, against 0.41 for moving once per tick. In the roaming character benchmark the same three figures were 3.22, 0.52 and 0.48.
-
 `NormalizedDelta` is in milliseconds, like the other `StepDelta` fields. See [Ticks and time](../../core-api/core/ticks-and-time.md) for exactly how it is worked out.
 
 ## See also

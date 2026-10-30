@@ -49,8 +49,8 @@ The core replicates entirely in `System.Numerics`. Your adapter is the only plac
 
 ## A minimal worked adapter
 
-`Nucleus.Tests.Physics.FakePhysicsBody` is the adapter the test suite runs against — plain fields behind the interface, relying on the interface's default snapshot methods and no sweep provider at all. It's the floor: five settable properties, four read-only ones and one method satisfy `IPhysicsBody`.
+The smallest working adapter is plain fields behind the interface, relying on the interface's default snapshot methods and no sweep provider at all. That is the floor: five settable properties, four read-only ones and one method satisfy `IPhysicsBody`.
 
 ## Unity's adapters, as reference
 
-`UnityPhysicsBody` (`Nucleus.Integrations.Unity/Physics/UnityPhysicsBody.cs`) wraps a `Rigidbody` and shows both contracts applied for real: `Gravity` returns `Vector3.Zero` when `Rigidbody.useGravity` is off, `Drag` maps to `Rigidbody.linearDamping`, and velocity writes are skipped on a kinematic body. Unity's sweep adapter is `UnitySweepProvider.Shared`, a static singleton you can reference directly.
+`UnityPhysicsBody` wraps a `Rigidbody` and shows both contracts applied for real: `Gravity` returns `Vector3.Zero` when `Rigidbody.useGravity` is off, `Drag` maps to `Rigidbody.linearDamping`, and velocity writes are skipped on a kinematic body. Unity's sweep adapter is `UnitySweepProvider.Shared`, a static singleton you can reference directly.

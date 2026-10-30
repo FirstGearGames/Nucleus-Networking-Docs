@@ -12,7 +12,7 @@ Every diagnostic carries an id in the form `FAMILY###`, a severity (error or war
 
 | Id | Severity | Stage |
 |---|---|---|
-| `NETWORKTYPEFINDER00` | Warning | Type discovery (`NetworkTypeFinder` walking your networked types and members) |
+| `NETWORKTYPEFINDER00` | Warning | Type discovery (walking your networked types and members) |
 | `NETWORKTYPEFINDER01` | Error | Type discovery |
 | `GENERATION000` | Error | Generation - invalid type |
 | `GENERATION001` | Error | Generation - invalid Roslyn type |

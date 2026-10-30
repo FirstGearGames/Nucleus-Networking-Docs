@@ -23,10 +23,10 @@ public override void OnMembersChanged(ulong memberFlags, MemberChangeDirection m
 }
 ```
 
-`memberChangeDirection` is a `MemberChangeDirection`, and names which side of the wire the raise is reporting:
+`memberChangeDirection` is a `MemberChangeDirection`, and names where the change the raise is reporting came from:
 
-- `Write` - this peer changed the members itself; the callback fires before the tick's writing runs.
-- `Read` - the members were applied from the wire; the callback fires after every packet of the inbound pass has landed.
+- `Write` - this peer changed the members itself; the callback fires before anything is sent this tick.
+- `Read` - the members were received from another peer; the callback fires after everything received this tick has been applied.
 
 A host raises both directions in the same frame, write first, without waiting for its own packet to come back.
 
@@ -36,7 +36,7 @@ A host raises both directions in the same frame, write first, without waiting fo
 
 ## Read: after the inbound pass, before Reconcile
 
-`Read` fires once per tick, after every packet of the inbound pass has landed and before the Reconcile step. It is the only direction under which `NetworkMemberBase.TryGetWritingClient` can resolve a writer - that claim is scoped to the tick an inbound apply landed in. A handler that assumes a raise means a remote change arrived must check for `Read`; code calling `TryGetWritingClient` only makes sense there.
+`Read` fires once per tick, after everything received this tick has been applied and before the Reconcile step. It is the only direction under which `NetworkMemberBase.TryGetWritingClient` can resolve a writer - that claim is scoped to the tick an inbound apply landed in. A handler that assumes a raise means a remote change arrived must check for `Read`; code calling `TryGetWritingClient` only makes sense there.
 
 ## Reading the flags correctly
 
@@ -44,7 +44,7 @@ Three cases catch people:
 
 - **Full apply.** A spawn, resync, reconcile, or whole-component recovery reports `ulong.MaxValue`. Treat every member as changed rather than trying to diff the flags.
 - **Member-granular recovery.** A recovery serve reports only the members it actually repaired, not the full mask. Whether a component supports this is fixed per type (`IsMemberRecoverySupported`); a component that doesn't falls back to the full-apply case above.
-- **Delta flags name what the wire carried, not what differs.** A member's bit being set means the wire carried that member on this pass, not that its value changed from before. A predicted member whose prediction was confirmed still sets its bit.
+- **A set bit does not mean the value differs.** A member's bit can be set while its value matches what it held before. A predicted member whose prediction was confirmed still sets its bit.
 
 ## Inheritance aliases member flags across layers
 

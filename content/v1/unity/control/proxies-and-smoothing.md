@@ -28,32 +28,18 @@ protected override void OnEarlySerialize(StepDelta stepDelta)
 
 `NetworkTransform` is written from wherever the controller is and applied everywhere else. Two inspector fields govern what a proxy does with it, both on by default:
 
-- **Kinematic Management Enabled** (`_kinematicManagementEnabled`, default `true`) holds an attached `Rigidbody` kinematic on every non-controlling peer — including the server while a client controls the system — and returns it to simulation on the controller. The switch is a straight assignment, applied only when the role actually changes: `_rigidbody.isKinematic = !isController;`. Turn it off only when other code already owns that rigidbody's kinematic state.
+- **Kinematic Management Enabled** (`_kinematicManagementEnabled`, default `true`) holds an attached `Rigidbody` kinematic on every non-controlling peer — including the server while a client controls the system — and returns it to simulation on the controller, switching only when the role actually changes. Turn it off only when other code already owns that rigidbody's kinematic state.
 - **Interpolate Scale Enabled** (`_interpolateScaleEnabled`, default `true`) has a proxy interpolate the replicated scale alongside position and rotation. Disabled, the local scale keeps whatever value it already holds — it's excluded from the sweep, not zeroed.
 
-Both only matter on a peer that isn't the controller. On `VariableUpdate`, a non-controlling, started system calls `_transformComponent.Interpolate(_interpolateScaleEnabled)`; on `EarlySerialize`, a controller calls `_transformComponent.CaptureIntoMembers()`. A given peer runs exactly one side of that split per tick, decided by the same `IsController(ControllerType.AnyController)` check every other hook uses.
+Both only matter on a peer that isn't the controller. A non-controlling peer interpolates the replicated pose on `VariableUpdate`, and the controller captures its pose on `EarlySerialize`. A given peer runs exactly one side of that split per tick, decided by the same `IsController(ControllerType.AnyController)` check every other hook uses.
 
 ## Buffering: State Interpolation
 
-`UnitySystemManager` exposes `_stateInterpolation`, defaulting to `1` in the inspector, and applies it as `NucleusSystemManager.StateInterpolation`. It's how many ticks are allowed to pass before a `StatePacket` can be applied. A proxy isn't drawing the instant a value arrives — it's drawing from a small buffer of recently-received ticks, which is what lets `NetworkTransform` interpolate between two real values instead of snapping to each one the moment it lands. Raising it trades latency for smoothness against jitter and loss; the default of `1` is the smallest buffer the inspector allows.
+`UnitySystemManager` exposes `_stateInterpolation`, defaulting to `1` in the inspector, and applies it as `NucleusSystemManager.StateInterpolation`. It's how many ticks received state waits before it is applied. A proxy isn't drawing the instant a value arrives — it's drawing from a small buffer of recently-received ticks, which is what lets `NetworkTransform` interpolate between two real values instead of snapping to each one the moment it lands. Raising it trades latency for smoothness against jitter and loss; the default of `1` is the smallest buffer the inspector allows.
 
 ## The subtick fraction
 
-Interpolation doesn't jump from tick to tick — within a tick it sweeps, and the fraction it's swept by is the subtick percentage. It's owned by the engine-shared `NetworkLoopStepDriver`, not by the Unity loop provider:
-
-```csharp
-public float SubtickPercentage => _tickIntervalMilliseconds <= 0f ? 0f : _elapsedTickUpdateTime / _tickIntervalMilliseconds;
-```
-
-`AdvanceEarly` publishes it right before `VariableUpdate` runs:
-
-```csharp
-_networkLoopManager.SetSubtickPercentage(SubtickPercentage);
-
-_networkLoopManager.InvokeNetworkLoopStep(NetworkLoopSteps.VariableUpdate, BuildStepDelta(frameDeltaMilliseconds, hasFixedDelta: false));
-```
-
-Anything that reads it, `NetworkTransform`'s sweep included, reads it back through `NetworkLoopManager.SubtickPercentage`. `UnityNetworkLoopStepProvider` does **not** publish this itself; its own remarks are explicit that the subtick fraction for interpolation smoothing is not published from there, because publishing after its `Update` returned would leave `VariableUpdate` smoothing against the previous frame's fraction instead of the current one. What the Unity provider does own is the split around that shared driver: `Update`, at `[DefaultExecutionOrder(-10000)]`, runs the early steps; `LateUpdate` runs the serialize steps, `TickAdvance` and `LateVariableUpdate`.
+Interpolation doesn't jump from tick to tick: within a tick it sweeps, and the fraction it's swept by is the subtick percentage. It is updated every frame right before `VariableUpdate` runs, so anything that reads it, `NetworkTransform`'s sweep included, reads the current frame's fraction through `NetworkLoopManager.SubtickPercentage`.
 
 ## A pose follower, not a simulation
 

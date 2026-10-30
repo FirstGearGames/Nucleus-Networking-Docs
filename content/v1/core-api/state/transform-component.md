@@ -38,6 +38,6 @@ Apply the same value on every peer. A platform integration typically pushes a se
 
 ## `TransmissionModeDefaults.Motion`
 
-All three members are built with `TransmissionModeDefaults.Motion` rather than a literal `TransmissionMode`. `Motion` resolves to `TransmissionMode.Interval` by default and is only raised to a projecting mode when Pro's projector registration runs at assembly load; a free build never raises it, so `Motion` resolves to `Interval` there.
+All three members are built with `TransmissionModeDefaults.Motion` rather than a literal `TransmissionMode`. `Motion` resolves to divine projection in a Pro build and to `TransmissionMode.Interval` in a free build.
 
-Framework components use `TransmissionModeDefaults.Motion` instead of naming a mode directly so that one source reads correctly in both editions: divine projection where it's available, ordinary interval-paced deltas where it isn't. Naming `TransmissionMode.Divine` directly also compiles in a free build, where the member replicates with ordinary deltas as `Interval` does, so game code can name a `TransmissionMode` directly in either edition.
+Framework components use `TransmissionModeDefaults.Motion` instead of naming a mode directly so that one source reads correctly in both editions: divine projection where it's available, ordinary interval pacing where it isn't. Naming `TransmissionMode.Divine` directly also compiles in a free build, where the member replicates as `Interval` does, so game code can name a `TransmissionMode` directly in either edition.

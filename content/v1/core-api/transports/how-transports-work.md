@@ -27,7 +27,7 @@ What happens past the transmission unit differs by what is being sent:
 
 `Configuration.MaximumTransmissionUnit` is 1200 bytes by default — the ceiling on what the engine packs into one packet before it fragments or promotes.
 
-The engine never gets the full 1200 bytes of payload to work with. Each transport reports `DatagramOverheadBytes`, the header it prepends to every datagram, and the engine reserves that (plus its own packet header) out of the configured unit before writing anything. So the number you set is a limit on the datagram, not a guarantee of payload space, and how much space you actually lose depends on the transport:
+The engine never gets the full 1200 bytes of payload to work with. Each transport reports `DatagramOverheadBytes`, the header it prepends to every datagram, and the engine reserves that out of the configured unit before writing anything. So the number you set is a limit on the datagram, not a guarantee of payload space, and how much space you actually lose depends on the transport:
 
 - Synapse reports its socket library's own header size as overhead.
 - Blitz Relay reports more: the relay's own framing on top of the same underlying socket header, because the relay is a hop the packet passes through, not the endpoint reading it. A relayed session always has less usable payload per packet than a direct Synapse connection at the same MTU.

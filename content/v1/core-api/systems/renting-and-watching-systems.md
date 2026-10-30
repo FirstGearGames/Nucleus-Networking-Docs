@@ -45,7 +45,7 @@ for (byte componentId = 0; componentId < seatCount; componentId++)
 }
 ```
 
-The components take the Ids `0` to `seatCount - 1` in the order they were added, which is also the order a receiver rebuilds them in, so component Id 2 is the same seat on every peer. Nothing extra rides the wire for this: a spawn already carries each component's type. A count of zero, or more than `NetworkSystem.MaximumComponentCount` (31), is refused and logged.
+The components take the Ids `0` to `seatCount - 1` in the order they were added, and every peer builds them in that same order, so component Id 2 is the same seat on every peer. A count of zero, or more than `NetworkSystem.MaximumComponentCount` (31), is refused and logged.
 
 ### Returning one
 

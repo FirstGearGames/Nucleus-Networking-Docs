@@ -8,7 +8,7 @@ A predicted member can diverge from the server: the server simulates a tick of t
 
 ## One reconcile, in order
 
-1. **Detect, on `LateStateUpdate`.** While the inbound packets apply, a reconcile the server ordered is recorded against the echoed client state tick as `MismatchCause.ServerOrdered`, instead of rewinding on the spot. An observer predicting a system records its own [compare](./prediction-history-and-predicted-members.md#an-observer-that-predicts-compares-for-itself) the same way. At the end of the packet that recorded the earliest tick, every predicted member of every system captures the value the server last sent as the restore base, so remote calls and `LateStateUpdate` callbacks that run before the `Reconcile` step cannot move it.
+1. **Detect, on `LateStateUpdate`.** While the inbound packets apply, a reconcile the server ordered is recorded against the echoed client state tick as `MismatchCause.ServerOrdered`, instead of rewinding on the spot. An observer predicting a system records its own [compare](./prediction-history-and-predicted-members.md#an-observer-that-predicts-compares-for-itself) the same way. Once the earliest tick is recorded, every predicted member of every system captures the value the server last sent as the restore base, so remote calls and `LateStateUpdate` callbacks that run before the `Reconcile` step cannot move it.
 2. **Restore, at the head of the `Reconcile` step,** ahead of its callbacks. One start tick is chosen for the whole world: the earliest tick any member recorded. Every predicted member of every system this client predicts is set to its captured server value, its later history is cleared, and its value before the restore is kept as its pre-rewind value. A member the server has sent nothing for yet keeps its own history, rewound to the same tick. Systems this client does not control are held at their captured values. `ReplayReport` is filled with the members whose restored value differs from what this client held for the start tick.
 3. **`ReconcileRequired`** is raised with the start tick on each restored system, in system Id order.
 4. **Replay.** `ReplayStarting` is raised on every system the replay covers. Then, for each tick from the start tick plus one to the live tick minus one, every restored system runs its early fixed update and then its late one as `SimulationType.Replayed`, in system Id order.
@@ -113,7 +113,7 @@ The controller writes the client state for the live tick before the step reads i
 
 ## What a replayed tick sees
 
-- `Validate` members write the replayed tick's slot, and each replayed tick becomes the member's newest, so `Value` reads the last tick replayed and the next live write lands after it.
+- `Validate` members write the replayed tick's value, and each replayed tick becomes the member's newest, so `Value` reads the last tick replayed and the next live write lands after it.
 - `Predict` members read the client state recorded for the replayed tick.
 - `State` members keep their live value; writes to them land on the live value.
 - Systems this client does not control read the server values that arrived with the start tick, unless the [hold radius](#holding-only-the-systems-near-a-replay) leaves them out.
@@ -153,7 +153,7 @@ public ReplayReport ReplayReport { get; }
 | `Mismatches` | The cause: each `PredictionMismatch` (`Member`, `MemberName`, `Cause`) whose value at `StartTick` differed from this client's. Empty on a system restored only because another one diverged. |
 | `Corrections` | The effect: each `MemberCorrection` (`Member`, `MemberName`) whose present the replay moved. Filled before `ReplayCompleted`. |
 
-`MismatchCause` is `ValueDiffered` (the server's value differed), `HistoryMissing` (the history no longer reached the tick), `Resync` (a prime or loss-recovery full whose values differed) or `ServerOrdered` (a reconcile the server sent). A held system's report names the start tick and lists no mismatches.
+`MismatchCause` is `ValueDiffered` (the server's value differed), `HistoryMissing` (the history no longer reached the tick), `Resync` (the first values received, or a resend after loss, that differed) or `ServerOrdered` (a reconcile the server sent). A held system's report names the start tick and lists no mismatches.
 
 Inside a handler, `NetworkMember<T0>.TryGetMismatchValues(out predictedValue, out serverValue)` gives both values at the start tick and `TryGetPreRewindValue(out value)` gives the value that was on screen, both until the next tick advance. A correction reaches components through `OnMembersChanged`, so a replay that took back a jump can cancel its effects:
 
@@ -210,7 +210,7 @@ A client can predict a system another client controls instead of holding it, opt
 observedSystem.IsObserverPredictionEnabled = true;
 ```
 
-Its fixed updates then run as `SimulationType.Forward` on every live tick, from the client state the server forwards, which lands on the local tick its packet's echo names. On a live tick that client state has not arrived yet, so the step says `StepDelta.IsClientStateMissing` and the game carries the last client state forward with `TryGetLastState`, exactly as the server does. The observer compares the server's values for the `Validate` members with its prediction at its own echo, since the server checks only the controller's result, and a reconcile restores and replays the system with the ones the observer controls. Nothing new travels. The observer needs an echo of its own, so it must control a system that sends client state: one with `MemberRole.Predict` members. An observer controlling nothing of the kind gets no echo, and the server's values land on it directly.
+Its fixed updates then run as `SimulationType.Forward` on every live tick, from the client state the server forwards, which lands on the local tick the server's echo names. On a live tick that client state has not arrived yet, so the step says `StepDelta.IsClientStateMissing` and the game carries the last client state forward with `TryGetLastState`, exactly as the server does. The observer compares the server's values for the `Validate` members with its prediction at its own echo, since the server checks only the controller's result, and a reconcile restores and replays the system with the ones the observer controls. Nothing new travels. The observer needs an echo of its own, so it must control a system that sends client state: one with `MemberRole.Predict` members. An observer controlling nothing of the kind gets no echo, and the server's values land on it directly.
 
 ## Replaying from ReconcileRequired yourself
 
@@ -231,7 +231,7 @@ public void BeginReplayTick(uint tick);
 public void EndReplayTick();
 ```
 
-`BeginReplayTick(tick)` opens a replay of that tick: `Validate` members write its slot, `Predict` members read its client state, and `NetworkLoopManager.SimulationType` reads `Replayed`, so the refusals above apply. `EndReplayTick()` returns writes and reads to the live tick. A write to a predicted member outside the bracket lands on the live value and breaks the next result check. Re-simulate the ticks from `rewoundTick + 1` up to the tick before the current one this way, then apply the current tick's values normally. Systems held for the reconcile stay held until the `Reconcile` step's callbacks have run.
+`BeginReplayTick(tick)` opens a replay of that tick: `Validate` members write that tick's value, `Predict` members read its client state, and `NetworkLoopManager.SimulationType` reads `Replayed`, so the refusals above apply. `EndReplayTick()` returns writes and reads to the live tick. A write to a predicted member outside the bracket lands on the live value and breaks the next result check. Re-simulate the ticks from `rewoundTick + 1` up to the tick before the current one this way, then apply the current tick's values normally. Systems held for the reconcile stay held until the `Reconcile` step's callbacks have run.
 
 ## SendReconcile
 
@@ -243,7 +243,7 @@ public void SendReconcile(Connection connection);
 
 Only the server can call it; a client attempting to reconcile a system is refused with a logged error, and nothing is queued. A reconcile is the one kind of correction that must never travel upstream, since accepting one from a client would let it overwrite any system on the server outright.
 
-A server reaches for this when a gameplay event invalidates a controller's prediction in a way the result check would not catch: a teleport, a respawn, an out-of-band member change the client could not have predicted from its own client state. The engine also sends one itself for a `Validate` result that differs and when it re-anchors a client that stalled. The reconcile carries the `Predict` values the server applied for its start tick, after validation, and the controller writes them into its history at that tick, raising `OnMembersChanged` with `MemberChangeDirection.Correction` when they differ from its own. Asking again for the same system and connection before the flush queues nothing more. On arrival it is recorded as `MismatchCause.ServerOrdered` and restores and replays like any other reconcile.
+A server reaches for this when a gameplay event invalidates a controller's prediction in a way the result check would not catch: a teleport, a respawn, an out-of-band member change the client could not have predicted from its own client state. The engine also sends one itself for a `Validate` result that differs and when it re-anchors a client that stalled. The controller's `Predict` values for the start tick are replaced with the ones the server applied after validation, raising `OnMembersChanged` with `MemberChangeDirection.Correction` when they differ from its own. Asking again for the same system and connection before the flush queues nothing more. On arrival it is recorded as `MismatchCause.ServerOrdered` and restores and replays like any other reconcile.
 
 ## Validate results the server found different
 

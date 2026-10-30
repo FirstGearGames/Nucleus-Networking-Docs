@@ -28,7 +28,7 @@ Calling it a second time restarts the schedule rather than adding to it. `Cancel
 CancelSpawnCompensation();
 ```
 
-Each peer resolves its own budget from its own role and its own measured link, so the schedule itself never goes on the wire. The one figure that does is how much catch-up the server already spent, carried on the object's spawn so a remote client can add it to its own (see Bounds below). An object that never compensates sends no figure.
+Each peer resolves its own budget from its own role and its own measured link.
 
 ## Choosing a scope
 
@@ -41,7 +41,7 @@ Each peer resolves its own budget from its own role and its own measured link, s
 
 Whichever scope is declared, the peer that predicted the spawn never compensates: it has been simulating the object since the tick it spawned it, so it is already exactly as far ahead as the budget would carry it.
 
-The choice is really about who simulates the object. An object the server simulates and replicates the pose of wants `Authority` alone — a receiving client that fast-forwarded it would be dragged straight back by the next delta from the server, so the catch-up would only show as a stutter. An object every peer simulates for itself from the parameters it spawned with, the ordinary projectile, wants `All` — no correction is coming to fight it, and the receiving client's own downstream latency is real time the object owes.
+The choice is really about who simulates the object. An object the server simulates and replicates the pose of wants `Authority` alone — a receiving client that fast-forwarded it would be dragged straight back by the next update from the server, so the catch-up would only show as a stutter. An object every peer simulates for itself from the parameters it spawned with, the ordinary projectile, wants `All` — no correction is coming to fight it, and the receiving client's own downstream latency is real time the object owes.
 
 ## Two members report the catch-up while it runs
 
@@ -76,7 +76,7 @@ The setting lives beside lag compensation's because the two are halves of one pr
 
 The cap bounds the whole of one peer's catch-up, counted across every hop the object travelled. Under `SpawnCompensationScope.All`, a remote client adds what the server already spent to its own delay and holds the sum to the cap, so an object that crossed two links is displaced no further than one that crossed a single slow link. Because a schedule is never longer than its budget, the cap also bounds how long a catch-up runs.
 
-`NetworkSystem.MaximumTransmittedSpawnCompensationTicks` is 63 — the most ticks of already-spent server-side compensation the wire can carry when it tells a remote client how much of the object's age the server already accounted for. A budget larger than that is clamped to 63 ticks for transmission, independent of the millisecond cap.
+`NetworkSystem.MaximumTransmittedSpawnCompensationTicks` is 63: the most ticks of already-spent server-side compensation a remote client is told about. A larger amount is clamped to 63 ticks, independent of the millisecond cap.
 
 `aggression` shapes the curve rather than the budget: it never changes how much time is owed, only how quickly the schedule spends it.
 

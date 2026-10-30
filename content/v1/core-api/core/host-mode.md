@@ -16,7 +16,7 @@ Compare players by `Connection.Id` all the same:
 bool isSelf = someConnection.Id == localClientConnection.Id;
 ```
 
-A `Connection` is pooled and reused once its link ends, so a reference kept past that point names whoever rents the instance next, while the Id is what names a player on the wire.
+A `Connection` is pooled and reused once its link ends, so a reference kept past that point names whoever rents the instance next, while the Id is what names a player.
 
 Or resolve each side explicitly through the `TransportManager` rather than holding a reference across the two halves:
 
@@ -31,7 +31,7 @@ transportManager.TryGetServerConnection(out Connection localServer);
 
 Both halves of the pairing above are marked `Connection.IsHostLoopback`, and the client half is also the server's roster entry for its own client. The mark identifies a link whose two ends are the same process. It is neither `IsEmulated` (no socket at all) nor `IsPeerStandIn` (a peer this client cannot reach directly) — it names a real, live link where both ends happen to be this peer.
 
-State addressed across a loopback link is discarded on arrival rather than applied: whatever was sent was written by the process it would be delivered to, so there is nothing to learn from serializing it and reading it back. Neither half owes the other an acknowledgment either; the sending half settles its own outstanding ticks as it serializes them.
+State addressed across a loopback link is discarded on arrival rather than applied: whatever was sent was written by the process it would be delivered to, so there is nothing to learn from reading it back.
 
 A `Transport` answers the same question at the socket level, before a `Connection` can be marked at all, through the abstract `Transport.IsOwnClientConnection(Connection serverSideClientConnection)`. It exists because a `Connection` itself carries no endpoint or handshake to prove the two ends are the same process — only the transport underneath it knows what it's holding. A transport that cannot tell must answer false rather than guess: a false answer costs a host the in-process delivery of its own traffic, but a wrong true answer would hand a stranger connecting over loopback this peer's own server half.
 
@@ -44,7 +44,7 @@ A `Transport` answers the same question at the socket level, before a `Connectio
 transportManager.HostLoopbackDelivery = HostLoopbackDelivery.Deferred;
 ```
 
-`Immediate` (the default, and the only value a game may set) runs the receiving half's handlers at the send site, before the send call returns — the same shape every other callback in the engine already uses. `Deferred` would run those handlers a tick later, at the loop step a genuinely remote copy lands on; it exists only so the engine's own tests can measure that alternative, reached through an internal setter game code cannot call.
+`Immediate` (the default, and the only value a game may set) runs the receiving half's handlers at the send site, before the send call returns — the same shape every other callback in the engine already uses. `Deferred` would run those handlers a tick later, at the loop step a genuinely remote copy lands on; game code cannot select it.
 
 A message delivered this way is never serialized. Under `Immediate` its handler runs synchronously at the send site, with nothing queued. `Deferred` queues it instead, and the queue is run at `NetworkLoopSteps.EarlyVariableUpdate`, the same step a wire copy would be read on.
 

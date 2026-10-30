@@ -8,7 +8,7 @@ title: "NetworkAnimator"
 
 The layer state (each layer's current state hash and normalized time) rides on top as a correction, not as the primary replication path. It costs nothing between transitions, because a hash only changes when a layer transitions. It serves two purposes: a peer whose state machine branched differently from the controller is pulled back onto the server's state, and a peer that joins mid-session opens each layer on the reported state instead of at the controller's entry state.
 
-The phase a joiner opens on is the live one. A spawn, a late join, an interest serve and a resync each carry every layer's phase as the authority's animator holds it at that moment, so a joiner opens a looping idle where the authority is now, not where the authority entered the state.
+The phase a joiner opens on is the live one. Whether a peer starts watching the object through a spawn, a late join, an interest change or a resync, it opens every layer at the phase the authority's animator holds at that moment, so a joiner opens a looping idle where the authority is now, not where the authority entered the state.
 
 When parameters alone are not close enough, for example an animated part that lag-compensated hitboxes are judged against, turn on [Precise Playback](#precise-playback-enabled) and followers play the authority's exact pose instead.
 
@@ -23,7 +23,7 @@ private Animator _animator;
 
 The `Animator` to replicate. Left empty in the inspector, the component falls back to the `Animator` on its own GameObject at `Awake`.
 
-The values actually captured and applied live on `UnityAnimatorComponent`, the replicated component `NetworkAnimator` binds to through its `NetworkSystem`: `FloatParameters`, `IntParameters`, `BoolParameters` (packed one bit per parameter, up to 64), `TriggerPulses`, `LayerWeights`, `Speed`, `LayerStateHashes` and `LayerNormalizedTimes`, plus `LayerPlaybackPositions`, `LayerNextStateHashes`, `LayerNextPlaybackPositions` and `LayerTransitionProgress`, which stay empty and cost nothing unless Precise Playback is on. `NetworkAnimator` is the MonoBehaviour surface over that component; it doesn't hold the replicated data itself.
+The values actually captured and applied live on `UnityAnimatorComponent`, the replicated component `NetworkAnimator` binds to through its `NetworkSystem`: `FloatParameters`, `IntParameters`, `BoolParameters` (up to 64), `TriggerPulses`, `LayerWeights`, `Speed`, `LayerStateHashes` and `LayerNormalizedTimes`, plus `LayerPlaybackPositions`, `LayerNextStateHashes`, `LayerNextPlaybackPositions` and `LayerTransitionProgress`, which stay empty and cost nothing unless Precise Playback is on. `NetworkAnimator` is the MonoBehaviour surface over that component; it doesn't hold the replicated data itself.
 
 An animator with more than 64 bool parameters replicates the first 64 and drops the rest. `NetworkAnimator` logs an error naming the count when it binds, so split the extra bools into int parameters or a second animator if they need to reach other peers.
 
@@ -59,9 +59,9 @@ private bool _precisePlaybackEnabled;
 
 Off by default. With it on, the authority captures every layer's playback position each tick, and during a transition also the next state, its position and how far the blend has progressed. A follower stops running its own state machine: it holds its animator still and places each layer at the authority's position, interpolated between the two newest ticks it applied, cross-fading at the replicated progress. The pose is evaluated at once, so a raycast in the same frame sees it.
 
-Use it for an animated part whose pose has to match the authority's, such as a limb carrying hitboxes that a lag-compensated shot is judged against. Measured at 30 Hz, a precisely played part sits within about a millimetre of the server's recorded pose, where parameters alone sit a few centimetres off.
+Use it for an animated part whose pose has to match the authority's, such as a limb carrying hitboxes that a lag-compensated shot is judged against.
 
-It costs a value per layer every tick, and more during a transition, where parameters alone cost nothing between changes. A state that does not loop is held at its end, so a finished or static clip stops being sent. Animation events do not fire on a follower in this mode, because its clips are placed rather than played through; fire game logic from replicated state or a remote call instead.
+It costs bandwidth for every layer on every tick, and more during a transition, where parameters alone cost nothing between changes. A state that does not loop is held at its end, so a finished or static clip stops being sent. Animation events do not fire on a follower in this mode, because its clips are placed rather than played through; fire game logic from replicated state or a remote call instead.
 
 ## Root Motion Management Enabled
 

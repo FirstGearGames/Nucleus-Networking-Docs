@@ -32,7 +32,7 @@ title: "Component Index"
 | --- | --- |
 | `NetworkSceneLoader` | Base behaviour for loading networked scenes; registers itself as the peer's scene loader. |
 | `UnitySceneLoader` | Loads networked scenes additively through Unity's own scene loading. |
-| `NetworkSceneManifest` (asset) | Maps the scene identifiers named on the wire to the scenes this peer loads and the content bundle each ships in. |
+| `NetworkSceneManifest` (asset) | Maps scene identifiers to the scenes this peer loads and the content bundle each ships in. |
 
 ## Physics
 
@@ -63,7 +63,7 @@ title: "Component Index"
 | --- | --- |
 | `NetworkBundleLoader` | Base behaviour for loading content bundles; registers itself as the peer's bundle loader. |
 | `UnityAssetBundleLoader` | Loads content bundles as Unity asset bundles and registers the prefabs they ship. |
-| `NetworkBundleManifest` (asset) | Maps the bundle identifiers named on the wire to the asset bundle files this client loads them from. |
+| `NetworkBundleManifest` (asset) | Maps bundle identifiers to the asset bundle files this client loads them from. |
 
 ## Systems and spawning
 

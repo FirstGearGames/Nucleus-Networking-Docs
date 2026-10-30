@@ -27,7 +27,7 @@ When enabled, a `NetworkHostVisibility` component is put on each networked objec
 
 ## A free build draws only some of these fields
 
-In a free build the inspector draws only **World Rules**, **Evaluation Cadence Ticks**, and the two host switches. **Maximum Spawns Per Tick** and the entire **Distance Measurement** and **Level Of Detail** sections belong to Pro-only partial files (`UnityInterestManager.SpawnPacing.Pro.cs`, `UnityInterestManager.LevelOfDetail.Pro.cs`). Those fields do not exist in a free build, so the editor skips drawing them rather than disabling them.
+In a free build the inspector draws only **World Rules**, **Evaluation Cadence Ticks**, and the two host switches. **Maximum Spawns Per Tick** and the entire **Distance Measurement** and **Level Of Detail** sections are Pro-only. Those fields do not exist in a free build, so the editor skips drawing them rather than disabling them.
 
 ## Maximum Spawns Per Tick — Pro
 

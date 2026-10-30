@@ -15,7 +15,7 @@ The channel is not a Nucleus feature built on top of the transport - it is a req
 
 ## Calls and messages are not state
 
-A call or a message is deliberately not state. It carries no acknowledgment, no redundancy, and no delta baseline, and it is never resent to reach eventual consistency. It either arrives once, or it does not arrive at all - there is no third outcome where the engine notices a loss and tries again.
+A call or a message is deliberately not state. It is never acknowledged, never sent redundantly, and never resent to reach eventual consistency. It either arrives once, or it does not arrive at all - there is no third outcome where the engine notices a loss and tries again.
 
 That means the channel is the only reliability lever either mechanism has. If a call or a message must arrive, it has to ride `Channel.Reliable`; there is no other way to make that true. Conversely, sending something on `Channel.Unreliable` is an explicit statement that losing it occasionally is fine.
 
@@ -23,9 +23,9 @@ This holds identically for messages and calls. A message has no address beyond t
 
 ## Batching and framing
 
-Messages and calls are batched per `Connection` and sent once per frame, one outbound writer per channel. Each one is length-framed: a message's body is written as `PackedBytes` with a known bit count, and a call's envelope (`RpcPacket`) carries the same for its body.
+Messages and calls are batched per `Connection` and sent once per frame, per channel.
 
-That framing is what keeps one bad payload from taking down the rest of the batch. Decoding runs per message and per call, not around the whole drain, so a body that fails to decode leaves nothing misaligned behind it - the reader already knows where that body ends from its declared length, and every payload packed after it in the same batch still dispatches normally.
+One bad payload never takes down the rest of the batch. Each message and call is decoded on its own, so a body that fails to decode costs only itself, and every other payload in the same batch still dispatches normally.
 
 ## A large unreliable send stays unreliable
 

@@ -15,7 +15,7 @@ if (system.TryGetComponent<TransformComponent>(out TransformComponent transform)
 int attached = system.ComponentCount;
 ```
 
-Think of the system as the identity and lifecycle; the components are the fields that get serialized onto the wire.
+Think of the system as the identity and lifecycle; the components hold the data that replicates.
 
 Each component also has a component Id: the order it was added in, starting at zero. Every peer builds the system's components in the same order, so an Id names the same component everywhere. `TryGetComponent<T0>(out T0)` returns the first component of a type, which is all you need while each type appears once. A system can carry one type several times, though (a `NetworkTransform` replicating several parts does exactly that), and then you reach each instance by its Id:
 

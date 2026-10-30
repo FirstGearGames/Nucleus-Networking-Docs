@@ -83,4 +83,4 @@ if (_coreManager.SystemManager.TryGetSystemReference(violationContext.Violation.
 }
 ```
 
-`SystemManager.TryGetSystemReference` turns the wire id into a `NetworkSystem`; `NetworkSystemObject.TryGetLinked` (or the marker's own `System` property, once you already hold the marker) is what ties that `NetworkSystem` back to the GameObject it is linked to.
+`SystemManager.TryGetSystemReference` turns the id into a `NetworkSystem`; `NetworkSystemObject.TryGetLinked` (or the marker's own `System` property, once you already hold the marker) is what ties that `NetworkSystem` back to the GameObject it is linked to.

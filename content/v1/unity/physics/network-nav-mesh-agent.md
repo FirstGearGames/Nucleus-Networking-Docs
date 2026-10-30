@@ -21,7 +21,7 @@ An agent that holds its course costs nothing however far it travels: silence mea
 | Teleport Distance (`_teleportDistance`) | 6 | How far a follower may stand from a new leg's origin before it is placed there outright instead of walking the gap off. Above this the gap is a discontinuity — a warp, or a peer that has fallen too far behind to catch up in a reasonable time. |
 | Rotation Enabled (`_rotationEnabled`) | on | Turns a following peer toward its direction of travel at the replicated angular speed. Rotation is derived from the path, not sent — an agent's rotation changes on nearly every tick, so replicating it would erase most of what this component saves. |
 | Agent Management Enabled (`_agentManagementEnabled`) | on | Disables the attached `NavMeshAgent` on every non-controlling peer and enables it on the controller. A follower's own agent must not run: it would path-find toward a destination it was never told about and fight the replicated leg. |
-| Send Interval (`_sendInterval`) | `SendInterval.Normal` | How often the replicated members ride. Normal sends a leg on the tick it begins; a larger interval paces the whole agent, delaying a leg by up to that interval. |
+| Send Interval (`_sendInterval`) | `SendInterval.Normal` | How often the replicated members are sent. Normal sends a leg on the tick it begins; a larger interval paces the whole agent, delaying a leg by up to that interval. |
 
 ## Driving it from code
 

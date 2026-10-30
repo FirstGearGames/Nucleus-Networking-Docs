@@ -39,7 +39,7 @@ public struct AddScoreRpc : IRpc
 }
 ```
 
-`[NetworkType]` is what the Nucleus source generator uses to produce the struct's serialization; without the generator having run over it, the struct compiles but never replicates. In a Unity project that generator ships as `Nucleus.CodeAnalysis.SourceGenerators.dll` under `Assets/Nucleus`, and it must keep its `RoslynAnalyzer` asset label for Unity to run it at compile time. A struct declared with the label stripped, or with the DLL missing, still builds, still passes type-checking, and still sends nothing.
+`[NetworkType]` marks the struct for the Nucleus source generator; without the generator having run over it, the struct compiles but never sends. In a Unity project that generator ships as `Nucleus.CodeAnalysis.SourceGenerators.dll` under `Assets/Nucleus`, and it must keep its `RoslynAnalyzer` asset label for Unity to run it at compile time. A struct declared with the label stripped, or with the DLL missing, still builds, still passes type-checking, and still sends nothing.
 
 ## Sending the call
 

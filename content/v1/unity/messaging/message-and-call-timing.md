@@ -12,13 +12,13 @@ Inbound calls are dispatched on `NetworkLoopSteps.LateStateUpdate`, after the ti
 
 ## Send order holds across types
 
-A peer's messages reach their handlers in the order they were sent, regardless of how many different message types are mixed in. This isn't per-type ordering — `MessageManager` backs local delivery with one ordered list (`_pendingLocalMessages`) rather than one queue per type, so the drain walks sends in the order they happened, not grouped by type.
+A peer's messages reach their handlers in the order they were sent, regardless of how many different message types are mixed in. This isn't per-type ordering: sends are delivered in the order they happened, not grouped by type.
 
 ## Host loopback: Immediate, and only Immediate
 
 A host is one `CoreManager` holding both the server and client roles. When one half addresses a message or call to the other, `TransportManager.HostLoopbackDelivery` decides when that delivery runs. Only `HostLoopbackDelivery.Immediate` is settable from game code: the receiving half's handlers run at the send site, before the send call returns, on whatever loop step the sender happened to be on.
 
-`HostLoopbackDelivery.Deferred` exists in the enum but is refused with a logged reason when a game tries to set it. It's kept only so the engine's own tests can measure what the alternative would cost — handlers running one step later, at `EarlyVariableUpdate` on the following frame, the same step a real remote peer's copy would land on. Deferred delivery is message-only; a call is always dispatched at the send site because its delivery has to run the server's own admission (resolve the system, check the sender's permission, decide relay) inline.
+`HostLoopbackDelivery.Deferred` exists in the enum but is refused with a logged reason when a game tries to set it. Deferred delivery is message-only; a call is always dispatched at the send site because its delivery has to run the server's own admission (resolve the system, check the sender's permission, decide relay) inline.
 
 ## Re-entrancy
 

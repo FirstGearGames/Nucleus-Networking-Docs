@@ -28,7 +28,7 @@ public bool TrySetRpcAccess(RpcSendAccess rpcSendAccess)
 
 It's server-only; a client call is rejected, since letting a client widen its own send access would make the permission client-settable.
 
-The current setting is readable from `RpcAccess`. On the client side, the read that matters is `CanLocalClientSendRpc`: a one-bit capability hint the server most recently declared, telling the local client whether it personally may send. It exists so a well-behaved client never sends a call the server is going to refuse, and it's always `false` on the server.
+The current setting is readable from `RpcAccess`. On the client side, the read that matters is `CanLocalClientSendRpc`: a capability hint the server most recently declared, telling the local client whether it personally may send. It exists so a well-behaved client never sends a call the server is going to refuse, and it's always `false` on the server.
 
 ## Nothing travels as a grant
 

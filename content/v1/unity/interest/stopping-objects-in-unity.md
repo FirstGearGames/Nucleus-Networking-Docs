@@ -6,7 +6,7 @@ title: "Frozen or gone: what a stop does to the object"
 
 ## The two outcomes
 
-When a `NetworkSystem` stops for a connection, that stop resolves to one of two things. A stopped system keeps its object on the receiver: the object stays where it was, frozen, and is cheap to undo, because bringing it back is just resuming the delta stream rather than spawning anything. A reclaimed system is despawned instead, and released exactly as an ordinary despawn releases it.
+When a `NetworkSystem` stops for a connection, that stop resolves to one of two things. A stopped system keeps its object on the receiver: the object stays where it was, frozen, and is cheap to undo, because bringing it back only resumes its updates rather than spawning anything. A reclaimed system is despawned instead, and released exactly as an ordinary despawn releases it.
 
 Which one happens is set with `NetworkSystem.DespawnWhenStoppedEnabled`. It is independent of whatever stopped the system in the first place: conditions and `InterestStopResolving` decide *whether* a system stops, and this field decides what that stop then costs the receiver.
 

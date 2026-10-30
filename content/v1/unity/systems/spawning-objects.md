@@ -6,7 +6,7 @@ title: "Spawning and despawning objects"
 
 ## Declaring what an object needs
 
-`NetworkSystemObjectPool.RequireSystem<TSystem, TComponent0...>` is the form to reach for from a component sitting on a marker. It declares what the object needs once, and hands the system over the moment one exists: replayed immediately if the object already holds a matching system, rented on the spot if this peer creates it, or delivered through the marker's link event when the wire brings it instead.
+`NetworkSystemObjectPool.RequireSystem<TSystem, TComponent0...>` is the form to reach for from a component sitting on a marker. It declares what the object needs once, and hands the system over the moment one exists: replayed immediately if the object already holds a matching system, rented on the spot if this peer creates it, or delivered through the marker's link event when it arrives from the server instead.
 
 ```csharp
 NetworkSystemObjectPool.RequireSystem<NetworkSystem, ColorPulseComponent>(
@@ -41,7 +41,7 @@ if (!NetworkSystemObjectPool.TryRent<NetworkSystem, UnityLocalTransformComponent
 
 The call resolves its `CoreManager` from `NucleusUnity`, so nothing is passed in. Internally it branches on the calling peer's situation:
 
-- **A wire spawn is staging.** The integration is mid-`Instantiate` for an incoming spawn, and the rent hands back the system the wire already built rather than constructing a new one.
+- **A received spawn is staging.** The integration is mid-`Instantiate` for an incoming spawn, and the rent hands back the system already built from that spawn rather than constructing a new one.
 - **A client scene object.** The system is built locally, unstarted, and parked by scene identifier until the server's spawn binds it.
 - **The server.** The system is rented and started with the marker's platform identity, which is what replicates it to observers.
 
@@ -55,7 +55,7 @@ NetworkSystemObjectPool.TryRent<NetworkSystem, UnityLocalTransformComponent>(thi
 NetworkSystemObjectPool.TryRent<NetworkSystem, ColorPulseComponent>(this, out _);
 ```
 
-What is refused is a rent whose composition does not match a staged wire spawn: on a receiving client, a rent inside a freshly instantiated prefab's `Awake` must ask for the same `TSystem` and the same NetworkComponent types the wire actually sent for that member, or the call logs an error and returns `false`. Up to 31 NetworkComponent type arguments are generated for both `TryRent` and `RequireSystem` (`TComponent0` through `TComponent30`), and both also have a form that takes none, for a system that carries only a spawn payload.
+What is refused is a rent whose composition does not match the spawn being staged: on a receiving client, a rent inside a freshly instantiated prefab's `Awake` must ask for the same `TSystem` and the same NetworkComponent types the server actually spawned for that member, or the call logs an error and returns `false`. Up to 31 NetworkComponent type arguments are generated for both `TryRent` and `RequireSystem` (`TComponent0` through `TComponent30`), and both also have a form that takes none, for a system that carries only a spawn payload.
 
 When the number of components comes from data rather than from your code, both also take a count: `TryRent<TSystem, TComponent0>(this, componentCount, out networkSystem)` and `RequireSystem<TSystem, TComponent0>(this, componentCount, onAcquired)` give one system carrying `TComponent0` that many times. A system satisfies the request only when it holds exactly that many components, all of that type, and each one is reached by its component Id with `NetworkSystem.TryGetComponent(componentId, out component)`. This is how `NetworkTransform` puts every part it lists on one system.
 
@@ -71,7 +71,7 @@ A call with no linked system is a no-op. Only the server may despawn a replicate
 
 ## Where the object lands
 
-A spawn arrives as a full serialization that is deserialized before the prefab instantiates, so the framework reads the spawned system's pose before creating the GameObject rather than moving it into place afterward. If the system carries a `UnityTransformComponentBase`, its `ReplicatedPosition`, `ReplicatedRotation`, and `LocalScale` supply the instantiate pose. If the system carries no transform component, the prefab's own authored transform is used instead, unless the marker's **Auto Transform Payload** is on, in which case the object arrives at the server's parent and pose. Either way, the instance is produced already positioned — there is no frame where it sits at the origin waiting to be moved.
+A received spawn's pose is known before the prefab instantiates, so the framework creates the GameObject in place rather than moving it there afterward. If the system carries a `UnityTransformComponentBase`, its `ReplicatedPosition`, `ReplicatedRotation`, and `LocalScale` supply the instantiate pose. If the system carries no transform component, the prefab's own authored transform is used instead, unless the marker's **Auto Transform Payload** is on, in which case the object arrives at the server's parent and pose. Either way, the instance is produced already positioned — there is no frame where it sits at the origin waiting to be moved.
 
 A system whose position is driven by a controller — a `NetworkRigidbody` another peer simulates — is not placed by `Instantiate` at all. The controlling peer builds its own copy from the prefab and asserts the prefab's pose back within a tick, so a server-chosen spawn point set through `Instantiate` is overwritten almost immediately. Derive or publish the spawn point so the controlling peer can place itself.
 

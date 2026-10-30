@@ -30,8 +30,6 @@ An unmeasured peer is therefore silent by design, not broken. The wait is one ro
 
 ## The probe machinery
 
-`RoundTripTimePing` and `RoundTripTimePong` are the two messages that measure a link. Both carry timestamp-free incrementing sequences: `RoundTripTimePing.Sequence` identifies the probe, its `RoundTripTimePong` reply echoes that same sequence, and only the peer that sent the probe ever measures elapsed time - the two peers need no shared clock. A `RoundTripTimePing` also carries the sender's own last-measured `ReportedRoundTripTimeMilliseconds`, `ReportedRoundTripTimeDeviationMilliseconds`, and `ReportedPacketLossPercentage` for the peer to adopt.
-
 Both sides probe: a client probes its server link on a cadence, and a server sends exactly one probe to each client, at authentication, then trusts what that client reports thereafter. `TransportManager.RoundTripTimeIntervalMilliseconds` sets that cadence, in milliseconds, and defaults to 1000 (`TransportManager.DefaultRoundTripTimeIntervalMilliseconds`). Setting it to zero stops the recurring probe; it does not affect the mandatory first probe of a link, since state is withheld until that first probe resolves.
 
 ## RoundTripTimeDiscovered

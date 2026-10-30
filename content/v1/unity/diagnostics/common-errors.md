@@ -61,7 +61,7 @@ A violation writes one of these lines only when its settled action is `Log` or `
 - `RetentionExceededViolation` — an acked tick fell beyond the retention window, forcing a full-world recovery.
 - `RpcFloodViolation` — more remote calls arrived in one drain than the receiver admits.
 - `RpcSendPermissionViolation` — a remote call was sent without permission (often a well-behaved client racing a permission revocation).
-- `UnauthorizedSpawnViolation` — a client sent a full serialize for a system Id the server doesn't hold.
+- `UnauthorizedSpawnViolation` — a client sent state for a system Id the server doesn't hold.
 - `UnauthorizedMemberChangeViolation`: a Connection set members of a system it doesn't control.
 - `UnexpectedBundleRequestViolation` / `UnexpectedSceneRequestViolation` — a client sent a request only the server ever sends.
 - `UnsolicitedBundleReportViolation` / `UnsolicitedSceneReportViolation` — a client reported a load or unload it was never asked to make.
@@ -82,10 +82,10 @@ The sender believed the peer still held a system that the local world no longer 
 
 `"State subpacket [Type] from Connection [...] left the reader at [...] bits but its framed boundary was [...] (declared [X] body bits, off by [Y]). The stream is misaligned; discarding the rest of the tick."`
 
-Both mean a declared bit count didn't match what was actually read or what remained in the buffer. This is a serializer question, not a gameplay one — it points at a reader/writer pair that disagree about a type's shape, not at anything the game did wrong. The rest of the tick is discarded to avoid reading garbage as if it were the next subpacket.
+Both mean the receiver could not read a peer's state the way it was written. This is a serializer question, not a gameplay one: it points at a reader and writer that disagree about a type's shape, not at anything the game did wrong. The rest of the tick is discarded rather than read as garbage.
 
 ## Version skew
 
 `"Connection [...] sent unrecognised PacketType [X]; the packet is discarded."`
 
-The header was read, but nothing on this side knows how to interpret that `PacketType`. This is what version skew between peers looks like on the wire: an older or newer build sent a packet type the receiver has never heard of. The packet is silently discarded rather than treated as a violation — an unrecognised type on its own isn't proof of a hostile peer, only of a version mismatch, so it's not a kick.
+Nothing on this side knows how to interpret that `PacketType`. This is what version skew between peers looks like: an older or newer build sent a packet type the receiver has never heard of. The packet is silently discarded rather than treated as a violation — an unrecognised type on its own isn't proof of a hostile peer, only of a version mismatch, so it's not a kick.

@@ -26,9 +26,9 @@ public partial class WorldStateIgnoreComponentStateComponent : NetworkComponent
 }
 ```
 
-The exclusion is compile-time. The source generator does not emit the marked member's line into `WriteWorldState` or `ReadWorldState`, so there is no runtime check paying for it on every save. A save written by an earlier build that still contains the member is simply never asked for it. After a load, the member keeps the value its component was constructed with — not a stored value, not the value from before the save, the constructed default.
+The exclusion is decided at compile time, so it adds no runtime cost to a save. A save written by an earlier build that still contains the member is simply never asked for it. After a load, the member keeps the value its component was constructed with — not a stored value, not the value from before the save, the constructed default.
 
-Nothing about the wire changes. The member keeps its member Id, its flag bit, and its place in the component's serialized body. Marking a member costs no bandwidth and does not renumber anything around it.
+Replication does not change. The member replicates exactly as it did before, and marking it costs no bandwidth.
 
 ## WorldStateIgnore vs. ReplicationIgnore
 
@@ -53,8 +53,8 @@ A peer promoted to server by adoption never received `ReplicationIgnore`-marked 
 
 ## Free vs. Pro
 
-`WorldStateIgnoreAttribute` and its generator support are not Pro-gated. They compile and work in a Free build. The attribute simply has no observable effect until Pro's world persistence is actually saving and loading worlds — there is nothing to exclude a member from until then.
+`WorldStateIgnoreAttribute` is not Pro-gated. It compiles and works in a Free build. The attribute simply has no observable effect until Pro's world persistence is actually saving and loading worlds — there is nothing to exclude a member from until then.
 
 ## Not the same as NetworkIgnoreAttribute
 
-`Nucleus.Serializers.NetworkIgnoreAttribute` is unrelated to both of the above. It excludes a field from a serialized type — the shape the serializer generates for a struct or class passed over the wire — not a `NetworkComponent` member's participation in replication or saving.
+`Nucleus.Serializers.NetworkIgnoreAttribute` is unrelated to both of the above. It leaves one field out when a struct or class of yours is sent, not a `NetworkComponent` member's participation in replication or saving.

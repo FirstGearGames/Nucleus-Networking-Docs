@@ -16,7 +16,7 @@ The colliders stay on the targets. The client raycasts them to find its own hit 
 
 ## The message: the shot travels whole
 
-`HitscanShotMessage` carries the shot as a `LagCompensatedShot`, so its ray crosses the wire exactly, plus a few demo-only fields the comparison uses:
+`HitscanShotMessage` carries the shot as a `LagCompensatedShot`, so its ray arrives exactly as captured, plus a few demo-only fields the comparison uses:
 
 ```csharp
 [NetworkType]

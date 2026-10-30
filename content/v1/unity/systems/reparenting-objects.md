@@ -52,7 +52,7 @@ The same applies in reverse on detach: read the world pose before calling `Ensur
 - `IsParentResolved` — true only once `Parent` is non-null.
 - `ParentChanged` — an event of type `NetworkSystem.ParentChangedHandler(uint previousParentId, uint currentParentId)`, raised on the server as it makes the change and on each client as it applies the replicated one.
 
-`ParentId` can be set before `Parent` resolves: the identifier arrives with the spawn or the re-parent entry, but the live reference is only wired up once every read for that tick has landed. Code that reacts to a parent change should read `ParentId`/`HasParent` rather than assume `Parent` is already populated in the same callback:
+`ParentId` can be set before `Parent` resolves: the live reference is only wired up once everything received for that tick has been applied. Code that reacts to a parent change should read `ParentId`/`HasParent` rather than assume `Parent` is already populated in the same callback:
 
 ```csharp
 private void OnSystemLinked(NetworkSystem system)

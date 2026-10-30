@@ -18,7 +18,7 @@ public struct DamageRpc : IRpc
 }
 ```
 
-`IRpc` is a marker interface. The type the game declares is the type the wire carries; there is no generated stub between them. Every call requires an authenticated sender, with no per-type opt-out: a call is admitted against the addressed object's own permission, so there is no shape of call an unauthenticated peer can reach.
+`IRpc` is a marker interface. Every call requires an authenticated sender, with no per-type opt-out: a call is admitted against the addressed object's own permission, so there is no shape of call an unauthenticated peer can reach.
 
 ## Sending a call
 

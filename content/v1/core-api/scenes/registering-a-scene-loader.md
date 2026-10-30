@@ -39,7 +39,7 @@ The engine enforces this limit itself, before the loader is ever consulted. A re
 
 ## Mapping ids to content
 
-The wire never carries a path or an asset reference, only the `ushort sceneId`. The mapping from that id to actual content (a scene asset, an address, a bundle) is entirely the loader's own. Nothing in the core engine constrains how that table is built or where it lives.
+Nucleus never identifies a scene by a path or an asset reference, only by the `ushort sceneId`. The mapping from that id to actual content (a scene asset, an address, a bundle) is entirely the loader's own. Nothing in the core engine constrains how that table is built or where it lives.
 
 ## The Unity integration supplies its own scene loader
 

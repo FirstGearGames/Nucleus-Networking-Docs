@@ -32,7 +32,7 @@ An object replicates its pose through one system or the other, never both.
 
 `NetworkTransform` replicates position, rotation, and (optionally) scale as ordinary members. `NetworkRigidbody` replicates through `NetworkPhysicsComponent`, and additionally spends `PhysicsConvergence.Settings` steering: threshold, blend rate, teleport distance, and the rest, tuned per body rather than sent per tick.
 
-Both go through the same per-member choice of `TransmissionMode` — `Divine` or `Interval` — and, under `Interval`, `SendInterval`. `Divine` can go quiet for stretches where `Interval` would still be sending deltas, at Pro-only cost; Free packs every length exactly, Pro packs more tightly. See [How Often a Member Is Sent](../../core-api/state/send-pacing.md) for what each mode actually costs and how to choose between them — that decision doesn't differ between the two components.
+Both go through the same per-member choice of `TransmissionMode` — `Divine` or `Interval` — and, under `Interval`, `SendInterval`. `Divine` can go quiet for stretches where `Interval` would still be sending; that is a Pro feature, and a free build sends a `Divine` member as it would an `Interval` one. Pro also compresses values more tightly than Free. See [How Often a Member Is Sent](../../core-api/state/send-pacing.md) for what each mode actually costs and how to choose between them — that decision doesn't differ between the two components.
 
 ## Setup cost
 

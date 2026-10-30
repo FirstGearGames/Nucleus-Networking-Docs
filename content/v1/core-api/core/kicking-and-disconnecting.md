@@ -32,7 +32,7 @@ connection.Kick();
 |---|---|
 | `None` | Keep serving the client normally until the kick executes. |
 | `PurgeOutgoing` | Discard the state of every kind and the remote calls already queued to the client. Messages already queued are kept, which is how a reason sent before the kick still reaches the client. |
-| `BlockOutgoing` | Queue nothing further to the client: no deltas, no fulls, no despawns, no recovery, no remote calls and no messages. |
+| `BlockOutgoing` | Queue nothing further to the client: no state, no despawns, no recovery, no remote calls and no messages. |
 | `BlockIncoming` | Discard everything received from the client instead of processing it. The datagrams still arrive; the server just stops believing them. |
 | `Default` | `PurgeOutgoing | BlockOutgoing | BlockIncoming`: the policy `KickClient(Connection)` and `Connection.Kick()` both use. |
 

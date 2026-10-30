@@ -8,7 +8,7 @@ title: "Blitz Relay Transport component"
 
 The component and its custom editor compile only behind the `BLITZ_RELAY` scripting define. A project that has not added the define never loads anything relay-related.
 
-Blitz Relay needs Pro. The relay assembly references the Newfarm Migration assembly, whose host-migration coordinator calls `ServerManager.TryAdoptRetainedWorld`, and that method exists only in a Pro build. Against a free `Nucleus.dll` the relay integration does not compile, whether or not Host Migration is on.
+Blitz Relay needs Pro. Against a free `Nucleus.dll` the relay integration does not compile, whether or not Host Migration is on.
 
 ## What must already be running
 
@@ -30,7 +30,7 @@ This component does not start a relay. It dials one. Something else has to be ru
 | Maximum Clients | `16` (`RelayTransport.DefaultMaximumClients`) | How many clients a room created by this peer will hold. The relay refuses a room without a real number, so this cannot mean unlimited. |
 | Transmission Unit | `1200` | Largest datagram to build before it is split. |
 
-The relay reports a larger `DatagramOverheadBytes` than the Synapse transport does: on top of the usual per-packet overhead, every datagram also carries the relay's own framing so it can be routed to the right room. That overhead is deducted automatically when Nucleus reserves header space, so it does not require any adjustment here.
+The relay needs some room in every datagram to route it to the right room. Nucleus accounts for that automatically, so the Transmission Unit needs no adjustment for it.
 
 ## Surviving a lost host
 
@@ -40,7 +40,7 @@ The relay reports a larger `DatagramOverheadBytes` than the Synapse transport do
 | Directory Address | `127.0.0.1` | Address of the directory the session registers with. Shown only while Host Migration is on. |
 | Directory Port | `47778` | Port the directory listens on. Shown only while Host Migration is on. |
 
-Turning Host Migration on sets `ClientManager.DisconnectResetMode` to `RetainReceivedWorld`, so a client keeps its received world across the moment its link drops instead of being reset to an empty one. That wiring, and the creation of the migration coordinator, lives in a partial of its own (`BlitzRelayTransport.Migration.Pro.cs`).
+Turning Host Migration on sets `ClientManager.DisconnectResetMode` to `RetainReceivedWorld`, so a client keeps its received world across the moment its link drops instead of being reset to an empty one.
 
 This is the relay-and-directory handover this component ships: a client can keep its world across a host loss, and a peer can rejoin a moved session by session id instead of a room code. It is not a separate, broader engine-level host migration feature — nothing beyond what is described on this page and on [Hosting and joining a relay session](./relay-sessions.md) exists yet.
 

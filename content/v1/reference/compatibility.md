@@ -4,7 +4,7 @@ title: "Compatibility"
 
 ## Nucleus runs anywhere netstandard2.1 runs
 
-Nucleus's core targets `netstandard2.1`, with nullable reference types enabled and unsafe blocks allowed. Anything that implements netstandard2.1 runs it: .NET 5 and later, Mono, and Unity, plus .NET Core 3.x with two additions to the consuming project, a `PackageReference` to `System.Runtime.CompilerServices.Unsafe` 5.0.0 (which `CodeBoost.dll` depends on) and `<LangVersion>9.0</LangVersion>` (the generated code uses module initializers). The core has no engine dependency, so this is one axis independent of the Unity integration below.
+Nucleus's core targets `netstandard2.1`, with nullable reference types enabled and unsafe blocks allowed. Anything that implements netstandard2.1 runs it: .NET 5 and later, Mono, and Unity, plus .NET Core 3.x with two additions to the consuming project, a `PackageReference` to `System.Runtime.CompilerServices.Unsafe` 5.0.0 (which `CodeBoost.dll` depends on) and `<LangVersion>9.0</LangVersion>` (the generated code needs C# 9). The core has no engine dependency, so this is one axis independent of the Unity integration below.
 
 ## Unity integration
 
@@ -26,10 +26,6 @@ A few integration paths are gated behind package presence, and only compile in w
 Without these packages installed, the corresponding code simply isn't compiled in — no stub, no runtime check.
 
 The demos have requirements of their own: the Input System, uGUI 2.0 or newer (for TextMeshPro), AI Navigation and Multiplayer Play Mode packages, and the Vehicles and Terrain modules. Every demo assembly is gated on them, so a project without one of them still compiles. The demos are skipped, and the editor warns once per session naming the packages to install. The demo materials also use the Universal Render Pipeline (URP), so they draw pink in a project on any other pipeline, and the same warning says so.
-
-## Toolchain for building from source
-
-The source generators (`Nucleus.CodeAnalysis.SourceGenerators`) target `netstandard2.0` and are consumed as Roslyn analyzers, not as a runtime dependency. Any toolchain building Nucleus from source needs an SDK that can host netstandard2.0 analyzers alongside the netstandard2.1 core.
 
 ## These targets are closed, not pending
 
