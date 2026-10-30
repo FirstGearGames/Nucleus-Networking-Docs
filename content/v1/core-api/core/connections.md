@@ -55,7 +55,7 @@ If the original connection has been recycled, or its Id reissued to a different 
 
 ## RemoteAddress versus Identity
 
-`RemoteAddress` is where the connection connected from, as the Transport reports it (the peer's address for a socket transport; `null` when the transport has no such notion, such as emulated or in-memory connections). The port is deliberately excluded, so a reconnecting peer's value stays stable across the fresh port it arrives on. It is observed by the server rather than asserted by the client, so it cannot be forged — but several clients behind one NAT share an address. `RemoteAddress` identifies a location, not a player.
+`RemoteAddress` is where the connection connected from, as the Transport reports it (the peer's address for a socket transport; `null` when the transport has no such notion, such as emulated or in-memory connections). The port is not included, so a reconnecting peer's value stays the same across the fresh port it arrives on. It is observed by the server rather than asserted by the client, so it cannot be forged, but several clients behind one NAT share an address. `RemoteAddress` identifies a location, not a player.
 
 `Identity` is the value naming a client across reconnects, stamped by the client authenticator when the client is approved. It is `null` until then, and stays `null` if the authenticator supplies none. Anything that needs to recognize the same player across a reconnect should key on `Identity`, not `RemoteAddress`.
 

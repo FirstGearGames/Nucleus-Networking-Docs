@@ -56,16 +56,16 @@ Higher values snap the body back to the server harder and sooner. Lower values l
 
 A body a client controls outright (its `ControllerConnectionId` is set) is a different case: on every other peer it is a proxy driven by that remote controller's client state, not a predicted body. By default (`RemoteExtrapolationEnabled = true`) such a proxy extrapolates its motion forward from the last received state, riding nearer to present time at the cost of overshooting on abrupt client state changes: a stopping body slides on a little, then corrects once the slower state arrives.
 
-Set `RemoteExtrapolationEnabled` to `false` on a body driven by a remote controller and its proxy copy instead follows the received state on the interpolation buffer as a kinematic body - always a step behind, but smooth and free of overshoot. This only takes effect once the system also has a `ControllerConnectionId` set (unset, the body has no remote controller to speak of, and none of this applies).
+Set `RemoteExtrapolationEnabled` to `false` on a body driven by a remote controller and its proxy copy instead follows the received states as a kinematic body: always a step behind, but smooth and free of overshoot. This only takes effect once the system also has a `ControllerConnectionId` set (unset, the body has no remote controller to speak of, and none of this applies).
 
 Prefer extrapolation for a fast, client-state-driven body where responsiveness matters more than a rare overshoot. Prefer the kinematic, extrapolation-off path where overshoot would look worse than lag - dense contacts, tight geometry, or a body other players might stand near.
 
 ## The client state channel itself
 
-None of the above covers how the driving peer's client state reaches the network or gets reconciled against the server's confirmation - that is the client state and reconcile pipeline, not the body. See the client state and reconcile pages for that half.
+None of the above covers how the driving peer's client state reaches the server or gets reconciled against the server's confirmation. See the client state and reconcile pages for that half.
 
 ## What a correction looks like
 
 A healthy predicted body is quiet almost all the time: your own client state drives it, and a correct prediction that matches what the server later confirms reconciles to nothing visible. A correction only becomes visible on a genuine divergence - a hit, a collision the server resolved differently, a dropped tick of client state.
 
-There are two distinct phases to that correction. The impact is the moment the divergence is detected - the tick the position or rotation error crosses its threshold. The recovery is everything after: the velocity bias `PredictionCorrectionRate` applies each tick, closing the gap smoothly through the solver rather than snapping the pose. A body correcting well looks like a brief nudge off its expected path that eases back in over a few ticks, not a teleport. If corrections look like a snap, `PredictionCorrectionRate` is too high, the threshold is too tight, or the divergence causing them is worth chasing on its own.
+There are two distinct phases to that correction. The impact is the moment the divergence is detected - the tick the position or rotation error crosses its threshold. The recovery is everything after: `PredictionCorrectionRate` closes part of the gap each tick through the body's motion rather than snapping the pose. A body correcting well looks like a brief nudge off its expected path that eases back in over a few ticks, not a teleport. If corrections look like a snap, `PredictionCorrectionRate` is too high, the threshold is too tight, or the divergence causing them is worth chasing on its own.

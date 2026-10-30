@@ -35,8 +35,8 @@ interestManager.MaximumSpawnsPerTick = 200;
 
 ## Correctness rules
 
-- **A group is admitted whole.** A `NetworkSystemGroup` is queued and admitted together, even when the ceiling has budget free for only some of its members. Splitting a group across ticks would hand the receiver half an object — the one state the interest cull deliberately never produces. If a group's member count exceeds `MaximumSpawnsPerTick`, it is still admitted whole rather than starved forever, and the manager logs a warning naming the group.
-- **A peer's own controlled object never waits.** The system a connection controls skips the queue's arithmetic, including any group it belongs to — a client that cannot act on its own object for several ticks is worse than any tick pacing saves.
+- **A group is admitted whole.** A `NetworkSystemGroup` is queued and admitted together, even when the ceiling has budget free for only some of its members. If a group's member count exceeds `MaximumSpawnsPerTick`, it is still admitted whole rather than starved forever, and the manager logs a warning naming the group.
+- **A peer's own controlled object never waits.** The system a connection controls is never paced, and neither is any group it belongs to.
 - **A peer that already holds the object is never withheld.** Re-priming an existing observer is not a spawn, so the ceiling never defers it.
 - **A host's own client is never paced**, nor is an emulated peer, because a loopback connection has no network link to protect.
 - **A receiver is never told that a spawn waited.** A receiver cannot tell a paced spawn from one that arrived late for any other reason. Pacing is a sender-side policy only.

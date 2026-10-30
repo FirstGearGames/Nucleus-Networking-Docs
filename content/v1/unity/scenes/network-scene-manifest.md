@@ -69,6 +69,6 @@ The scan covers both ways a scene can be networked: scenes listed in Build Setti
 
 Once assigned, a scene's id is preserved across rebuilds. A rebuild only adds ids for newly found scenes, and it keeps the entry of a scene that has left the build, so that scene's id is never given to a different scene later.
 
-## Why the server names a scene only by id
+## The server names a scene only by id
 
-The server names a scene by `SceneId` alone, never by path, name or build index. How the scene is delivered (`DeliveryMode`, `RequiredBundleId`) is decided by each peer's own manifest, not by the server. This is deliberate: paths and names change with renames and refactors, but the manifest that maps a stable id to a stable GUID does not need to, so a build can point at different content, or ship a renamed scene, without changing the id the server uses.
+The server names a scene by `SceneId` alone, never by path, name or build index. How the scene is delivered (`DeliveryMode`, `RequiredBundleId`) is decided by each peer's own manifest, not by the server. A build can therefore point at different content, or ship a renamed scene, without changing the id the server uses.

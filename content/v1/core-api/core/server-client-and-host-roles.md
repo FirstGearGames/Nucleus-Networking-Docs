@@ -50,9 +50,9 @@ if (networkSystem.IsServerStarted)
 }
 ```
 
-## IsAuthority was removed because it conflated two questions
+## Being the server and controlling a system are separate questions
 
-`IsAuthority` was removed. It conflated two different questions, and the roles above answer them separately:
+Two different questions are easy to mix up, and the roles above answer them separately:
 
 - **"Is this peer the server?"** - `IsServerStarted`. The server is always the server.
 - **"Does this peer control this system?"** - `NetworkSystem.IsController(ControllerType controllerType)`. This is a method, not a bool property, because control is checked against a specific role:

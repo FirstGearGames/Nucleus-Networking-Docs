@@ -46,7 +46,7 @@ Each of these calls first checks that this peer has started a server. On a peer 
 
 ## The client direction
 
-There is no client-side fan-out API, by design: a client only ever has one peer to send to, the server it's connected to.
+There is no client-side fan-out API: a client only ever has one peer to send to, the server it's connected to.
 
 ```csharp
 if (CoreManager.TransportManager.TryGetServerConnection(out Connection serverConnection))

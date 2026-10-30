@@ -24,7 +24,7 @@ The id lives on the prefab asset itself, which is where the trap comes from: dup
 
 ## Adding NetworkTransform
 
-Add `NetworkTransform` to the same GameObject and the object's position, rotation, and scale replicate with no code: the controller writes the transform each frame, and every other peer applies it through an interpolation buffer. It belongs to the nearest `NetworkSystemObject` at or above it, so on this object it uses the root's marker.
+Add `NetworkTransform` to the same GameObject and the object's position, rotation, and scale replicate with no code: the controller writes the transform each frame, and every other peer applies it smoothly, a little behind. It belongs to the nearest `NetworkSystemObject` at or above it, so on this object it uses the root's marker.
 
 Two fields are worth knowing on day one:
 

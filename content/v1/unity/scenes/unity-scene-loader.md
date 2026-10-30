@@ -26,7 +26,7 @@ With Local Physics on, each scene loads with `LocalPhysicsMode.Physics3D` instea
 
 - `LoadSceneAsync(uint sceneHandle, ushort sceneId)` and `UnloadSceneAsync(uint sceneHandle)` — abstract, asynchronous, and may take as long as needed; the network loop never blocks on them.
 - `MaximumConcurrentScenes` — a `virtual uint` defaulting to `SceneManager.UnlimitedConcurrentScenes`, because Unity loads scenes additively and holds as many as memory allows. Override it only if a replacement loading pipeline genuinely can't hold every scene the server asks for concurrently.
-- `_automaticRegistrationEnabled` and `Initialize(CoreManager)` — registration is deliberately on `Awake`, not `Start`, so game code that loads scenes from its own `Start` always finds a loader already registered.
+- **Automatic Registration Enabled** and `Initialize(CoreManager)`: the loader registers itself in `Awake`, not `Start`, so game code that loads scenes from its own `Start` always finds a loader already registered. Turn the field off to call `Initialize` yourself.
 
 ## Extension points
 

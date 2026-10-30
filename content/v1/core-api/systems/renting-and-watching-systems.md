@@ -87,7 +87,7 @@ public void Stop()
 }
 ```
 
-`NetworkSystemAcquiredHandler` fires for every system that satisfies the watch, whether it started here or arrived off the wire. `NetworkSystemReleasedHandler` fires as an acquired system stops; drop whatever you took in `acquired` there; a wire-constructed system returns to its pool immediately after that call, so a reference kept past it can end up naming a different spawn entirely.
+`NetworkSystemAcquiredHandler` fires for every system that satisfies the watch, whether it started here or arrived off the wire. `NetworkSystemReleasedHandler` fires as an acquired system stops. Drop whatever you took in `acquired` there and keep no reference after the handler returns, since a reference kept past it can end up naming a different spawn entirely.
 
 Matching is by **composition, not type**. Nearly every rent asks for a plain `NetworkSystem` and differs only in the components attached, so naming the right components in the watch is what tells it apart from every other system in the world. Registering a watch also replays it against every system already started, so it works whether it is set up before or after the system exists.
 

@@ -16,8 +16,6 @@ public enum RpcSendAccess : byte
 
 `Controller` is the default: only the server, or the single controlling client, may send the system a call. `AnyClient` opens sending to the server and to any client that currently observes the system.
 
-Ordinal 1 is deliberately vacant. The value is serialized into authored Unity scenes, so renumbering `AnyClient` would silently reinterpret every scene that already carries a value of 1 as something else.
-
 ## Setting and reading access
 
 The server sets access with `TrySetRpcAccess`:
@@ -40,7 +38,7 @@ The server enforces every call from its own copy of `RpcAccess`. A client is tol
 
 ## Kept separate from write access
 
-`RpcSendAccess` and `MemberWriteAccess` are deliberately different knobs. "You may ask this object to do something" and "you may set this object's members" are different grants - folding them into one would mean a game that wants observers to fire a call at an object has to let them set its members as well.
+`RpcSendAccess` and `MemberWriteAccess` are separate settings. "You may ask this object to do something" and "you may set this object's members" are different grants, so a game can let observers fire a call at an object without letting them set its members.
 
 ## RpcSendPermissionViolation
 

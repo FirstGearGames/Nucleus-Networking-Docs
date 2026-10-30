@@ -10,7 +10,7 @@ A `UnityPhysicsManager` is always present, so a missing manager is never the cau
 
 **A scene was loaded with a local physics scene and no driver.** A `NetworkRigidbody` under `PhysicsSimulationDriver.ForScene` finds a driver by the scene it lives in first, then by the physics world that scene belongs to. A scene with its own local physics world and no `PhysicsSimulationDriver` component has nothing stepping that world at all, tick or otherwise; add a driver to the scene.
 
-**`PhysicsExecutionMode.UnityRun` is deliberately skipping the default world.** An execution mode of `UnityRun` leaves the process default physics world on Unity's own `FixedUpdate` and steps only the local-physics worlds that stacked-scene drivers report. A body sitting in the default world under `UnityRun` looks exactly like the "nothing steps" fault but is fine: it is still Unity's own cadence stepping it, not the network tick.
+**`PhysicsExecutionMode.UnityRun` leaves the default world to Unity.** An execution mode of `UnityRun` leaves the process default physics world on Unity's own `FixedUpdate` and steps only the local-physics worlds that stacked-scene drivers report. A body sitting in the default world under `UnityRun` looks exactly like the "nothing steps" fault but is fine: it is still Unity's own cadence stepping it, not the network tick.
 
 ## A body jitters or trails
 

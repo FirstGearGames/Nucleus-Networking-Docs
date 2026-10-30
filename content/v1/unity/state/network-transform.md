@@ -6,7 +6,7 @@ title: "NetworkTransform"
 
 `NetworkTransform` replicates a GameObject's position, rotation, and scale. Add it to a networked object, either on the GameObject that carries the `NetworkSystemObject` or on a child of it, and the controller's transform replicates to every other peer. A `NetworkTransform` belongs to the nearest `NetworkSystemObject` at or above it; with none there, it is never given a system (**Tools > Nucleus > Build > Validate Network Prefabs** reports that).
 
-The controller's pose is sampled just before serialization, on the `EarlySerialize` loop step, so it does not matter what order your own scripts run in relative to it. The capture always happens right before the tick's state goes out, not whenever some earlier `Update` left the transform. A non-controller never drives the transform: it is a pose follower, animated between the last two received values through the interpolation buffer. Velocity is not replicated.
+The controller's pose is sampled just before serialization, on the `EarlySerialize` loop step, so it does not matter what order your own scripts run in relative to it. The capture always happens right before the tick's state goes out, not whenever some earlier `Update` left the transform. A non-controller never drives the transform: it is a pose follower, animated between the last two received values. Velocity is not replicated.
 
 ## Inspector Fields
 

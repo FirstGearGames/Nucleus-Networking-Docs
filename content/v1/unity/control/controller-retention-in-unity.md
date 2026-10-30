@@ -20,10 +20,10 @@ These three map straight onto `SystemManager.DefaultControllerRetentionPolicy`, 
 
 `NetworkSystemObject` carries its own retention toggle, for a prefab that needs to disagree with the project default. It has two fields:
 
-- **Override On Disconnect** (`_controllerRetentionOverrideEnabled`): off by default. Unity cannot serialize the absence of an enum value, so this toggle is what lets "inherit the manager's default" be told apart from "I have an opinion."
-- **On Controller Disconnect** (`_controllerRetentionPolicy`): drawn and read only when the toggle is on, and it defaults to `ControllerRetentionPolicy.Retain` once enabled. That default is deliberate: a script that turns the toggle on is doing so to hold the object, not to restate the manager's `Release` default.
+- **Override On Disconnect**: off by default. Leave it off and the prefab follows the manager's default; turn it on to choose a policy for this prefab.
+- **On Controller Disconnect**: shown and used only while the toggle is on, and it defaults to `ControllerRetentionPolicy.Retain` once enabled.
 
-Turning the toggle on writes the policy to the object's system group (`ControllerRetentionPolicyOverride`) the first time the group is rented, so the override rides with every system the object's group carries, not with one system in isolation.
+Turning the toggle on applies the policy to the object's whole system group (`ControllerRetentionPolicyOverride`), so it covers every system the object carries, not one system in isolation.
 
 ## NetworkPlayerSpawner: Disconnect Mode
 

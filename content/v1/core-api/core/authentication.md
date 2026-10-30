@@ -49,7 +49,7 @@ public sealed class AddressClientAuthenticator : IClientAuthenticator
 
 It approves every client immediately and identifies it by `Connection.RemoteAddress` — the address the server observed it connecting from, which can't be forged, since a peer spoofing its source address never receives the return traffic and never completes a connection.
 
-**An address is a location, not a player identity.** Two clients behind one NAT — housemates, an office, a carrier-grade NAT — connect from the same address and resolve to the same identity, so code that restores a returning player's objects by identity hands the second client the first one's. The port is deliberately left out of the identity, so a client that drops and reconnects from a new port still matches; including it would break every reconnect on the same network.
+**An address is a location, not a player identity.** Two clients behind one NAT (housemates, an office, a carrier-grade NAT) connect from the same address and resolve to the same identity, so code that restores a returning player's objects by identity hands the second client the first one's. The port is not part of the identity, so a client that drops and reconnects from a new port still matches.
 
 This is fine for development, LAN, and single-address deployments. Anything else needs an authenticator of your own.
 

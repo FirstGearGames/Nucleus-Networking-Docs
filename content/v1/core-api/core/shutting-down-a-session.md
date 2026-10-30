@@ -63,7 +63,7 @@ CoreManager.ResetRegistry();
 
 ## Shutting transports down without a full teardown
 
-Tearing down transports does not require tearing down the whole `CoreManager`. `TransportManager` exposes the same shutdown path used internally, scoped to one transport:
+Tearing down transports does not require tearing down the whole `CoreManager`. `TransportManager` can shut down a single transport:
 
 ```csharp
 await coreManager.TransportManager.TryRemoveTransport(transport);

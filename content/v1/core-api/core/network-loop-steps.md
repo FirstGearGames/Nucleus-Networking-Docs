@@ -30,7 +30,7 @@ Several steps carry framework work woven in alongside your callbacks, and whethe
 
 The remaining steps (`EarlyStateUpdate`, `Reconcile`, `LateFixedUpdate`, `VariableUpdate`, `EarlySerialize` and `LateVariableUpdate`) carry no framework work of their own; your callback is the only thing that runs on them.
 
-Messages, RPCs and kicks are sent on every frame, not only on frames that tick. On a frame that does not tick, the engine still sends them at `LateSerialize`'s place in the order; that send is internal and raises no callback. A message, call or kick queued from a `TickAdvance` or `LateVariableUpdate` callback leaves on the next frame.
+Messages, RPCs and kicks are sent on every frame, not only on frames that tick. On a frame that does not tick, the engine still sends them at `LateSerialize`'s place in the order; that send raises no callback. A message, call or kick queued from a `TickAdvance` or `LateVariableUpdate` callback leaves on the next frame.
 
 ## Where a step sits decides what your code may safely do
 

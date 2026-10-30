@@ -14,9 +14,7 @@ public enum MemberWriteAccess : byte
 }
 ```
 
-`Controller` is the default and the behavior every system had before write access existed: the server, or the single controlling client. `AnyClient` opens writes to the server and to any client that currently observes the system.
-
-Ordinal 1 is deliberately vacant. `MemberWriteAccess` is serialized into authored scenes, so renumbering `AnyClient` would silently reinterpret every scene that already carries a value of 1 as something else.
+`Controller` is the default: the server, or the single controlling client. `AnyClient` opens writes to the server and to any client that currently observes the system.
 
 ## Setting and reading access
 
@@ -42,7 +40,7 @@ The consequence worth repeating: losing interest in a system silently removes wr
 
 ## Nothing travels as a grant
 
-The server enforces every write from its own copy of `WriteAccess`. A client is told only which access is in force and whether it personally may write (`CanLocalClientWriteMembers`); it is never handed anything resembling a permission token. A forged or replayed "I may write" claim from a client is inert, because the server never trusts the client's own read of its permission - it re-checks against `WriteAccess` on every incoming write.
+The server checks every incoming write against its own copy of `WriteAccess`. A client is told only which access is in force and whether it personally may write (`CanLocalClientWriteMembers`), and nothing a client sends can widen what it may write.
 
 ## The echo-withholding window
 

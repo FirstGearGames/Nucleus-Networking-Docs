@@ -60,7 +60,7 @@ public enum RpcDisposition : byte
 - **`Origin`** - this peer sent the call and is seeing its own copy, either as the server's local invoke or as an echo a client asked for.
 - **`Routing`** - the call is passing through this peer to someone else, and was never addressed here. This only happens on the server, and only while it carries a client's targeted call on to the client that call named.
 
-A handler that sees `Routing` still runs, and still gets a vote. That is deliberate: a call the server has not read is a call it cannot judge. A handler in this position judges the call and returns a verdict without applying whatever effect it would normally apply for a call addressed to it. `RpcContext.TargetConnection` names which connection the routed call is bound for - it is set only while `Disposition` is `Routing`, and is null otherwise.
+A handler that sees `Routing` still runs, and still gets a vote. A handler in this position judges the call and returns a verdict without applying whatever effect it would normally apply for a call addressed to it. `RpcContext.TargetConnection` names which connection the routed call is bound for - it is set only while `Disposition` is `Routing`, and is null otherwise.
 
 ## Cancel does not unwind what already happened
 

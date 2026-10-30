@@ -37,7 +37,7 @@ Systems already started keep the fold they took at spawn and drop it when they n
 
 ## Default conditions
 
-`InterestManager.DefaultConditions` lists the conditions the engine registered on its own behalf, in registration order: the scene spawn gate (`SceneManager.SpawnGate`), registered globally so a client only ever sees the contents of a scene it has loaded. The bundle gate (`BundleManager.SpawnGate`, Pro) is not one of these — it is deliberately left unregistered, for the game to attach globally or per-prefab wherever bundle gating should apply. `DefaultConditions` is empty for a peer whose engine registered none.
+`InterestManager.DefaultConditions` lists the conditions the engine registered on its own behalf, in registration order: the scene spawn gate (`SceneManager.SpawnGate`), registered globally so a client only ever sees the contents of a scene it has loaded. The bundle gate (`BundleManager.SpawnGate`, Pro) is not one of these: the engine leaves it unregistered, for the game to attach globally or per prefab wherever bundle gating should apply. `DefaultConditions` is empty for a peer whose engine registered none.
 
 `RemoveDefaultConditions()` unregisters every one of them, leaving the game's own registrations alone, and returns the number removed:
 

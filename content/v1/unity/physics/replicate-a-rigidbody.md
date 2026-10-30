@@ -26,19 +26,19 @@ Nothing else needs wiring. No manual `RequireSystem` call, no manual component l
 
 Exactly one peer simulates this body for real: the one where `NetworkSystem.IsController(ControllerType.AnyController)` is true. Every tick, that peer's `Rigidbody` steps normally, and the stepped result is captured into `PhysicsComponent` for replication.
 
-Every other peer's `Rigidbody` does not run free simulation. Instead it follows: it adopts the first state it receives outright (so a freshly spawned proxy doesn't glide in from the prefab pose), then either follows the interpolation buffer as a kinematic body (for a proxy driven by a remote controller's own client state) or runs the convergence follower against the freshest snapshot, projected forward toward present time. The Rigidbody on a non-controlling peer is still a real, simulated body doing collision response: it's being steered toward the server's target, not teleported onto it.
+Every other peer's `Rigidbody` does not run free simulation. Instead it follows: it snaps to the first state it receives (so a freshly spawned proxy doesn't glide in from the prefab pose), then either follows the received states as a kinematic body (for a proxy driven by a remote controller's own client state) or is steered toward the freshest snapshot, projected toward the present. The Rigidbody on a non-controlling peer is still a real, simulated body doing collision response: it's being steered toward the server's target, not teleported onto it.
 
 ## Smoothing the render without touching physics
 
-`Smoothed Visual` takes a child `Transform` of the body that holds its renderer, such as a child named `Visual`. It interpolates between the last two stepped poses in `LateUpdate`, hiding tick-rate stepping behind frame-rate rendering. Because only that child moves, the physics body's own pose is never touched by this smoothing, so nothing here can desync a collision or a captured state.
+`Smoothed Visual` takes a child `Transform` of the body that holds its renderer, such as a child named `Visual`. It smooths the child's motion between physics steps, so tick-rate stepping does not show at frame rate. Only that child moves, so the smoothing never changes the physics body's own pose and cannot desync a collision or a captured state.
 
-`Visual Smoothing` (seconds) additionally low-passes that visual toward the interpolated pose, easing out the jitter a correction leaves. Leave it at `0` on a body that should not trail — a fast-falling object that needs its visual pinned exactly to the physics pose.
+`Visual Smoothing` (seconds) additionally eases that visual toward the interpolated pose over that time, softening the jitter a correction leaves. Leave it at `0` on a body that should not trail, such as a fast-falling object that needs its visual pinned exactly to the physics pose.
 
 ## Don't also add NetworkTransform
 
 This object replicates its pose through `NetworkRigidbody`'s own `NetworkPhysicsComponent`. Adding `NetworkTransform` to the same object as well double-replicates the pose through two independent systems. See the transform-replication choosing page for which component fits which object.
 
-A `PhysicsSimulationDriver` present in this body's scene is what puts the body on the tick cadence: it calls the pre- and post-step halves around the world step so capture and follow line up with ticks. You don't have to add one yourself. A `UnityPhysicsManager` is added to the manager graph automatically, and under its default execution mode, `PhysicsExecutionMode.NucleusPerTick`, a `PhysicsSimulationDriver` for the default physics world is added with the managers too, so a body in an ordinary scene is on the tick from the start. A stacked local-physics scene gets its own driver when it loads. Under `PhysicsExecutionMode.UnityRun` the default world is left to Unity and projected physics is unavailable there; see [Physics execution modes](./physics-execution-modes.md).
+A `PhysicsSimulationDriver` present in this body's scene is what puts the body on the tick cadence. You don't have to add one yourself. A `UnityPhysicsManager` is added to the manager graph automatically, and under its default execution mode, `PhysicsExecutionMode.NucleusPerTick`, a `PhysicsSimulationDriver` for the default physics world is added with the managers too, so a body in an ordinary scene is on the tick from the start. A stacked local-physics scene gets its own driver when it loads. Under `PhysicsExecutionMode.UnityRun` the default world is left to Unity and projected physics is unavailable there; see [Physics execution modes](./physics-execution-modes.md).
 
 ## Check the result across two editors
 

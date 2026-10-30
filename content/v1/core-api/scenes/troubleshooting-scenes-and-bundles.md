@@ -31,7 +31,7 @@ If the load is stuck client-side with no timeout firing at all, check that the l
 
 `SceneLoadOutcome.Refused` means the client's `ISceneLoader.MaximumConcurrentScenes` was already at its limit — the loader was never consulted, because the request was rejected before it got there. `SceneLoadOutcome.Failed` means the loader was asked and the load itself did not work: the content would not fetch, the scene would not resolve, or the load threw.
 
-The two are deliberately distinct outcomes because the remedy differs. A `Failed` load can just be asked for again with `SceneManager.TryClearSceneLoadFailure`. A `Refused` load cannot — asking again hits the same limit — the client has to be moved with `SceneReplaceMode.AllScenes` instead, so it releases what it holds before taking on the new one.
+The remedy differs between the two. A `Failed` load can just be asked for again with `SceneManager.TryClearSceneLoadFailure`. A `Refused` load cannot, because asking again hits the same limit; the client has to be moved with `SceneReplaceMode.AllScenes` instead, so it releases what it holds before taking on the new one.
 
 ## A client is kicked during scene or bundle traffic
 

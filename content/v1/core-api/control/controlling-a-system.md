@@ -103,4 +103,4 @@ Never compare `Connection` references to decide whether a peer controls a system
 bool controls = networkSystem.ControllerConnectionId == someConnection.Id;
 ```
 
-`IsController` and `TryGetControlledSystems` already do this correctly internally; write the same comparison by hand whenever a raw Id or Connection comparison is unavoidable.
+`IsController` and `TryGetControlledSystems` already compare this way; write the same comparison by hand whenever a raw Id or Connection comparison is unavoidable.

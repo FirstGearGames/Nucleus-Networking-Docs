@@ -36,7 +36,7 @@ While playing, the inspector adds two readouts: **Flashes**, the number of corre
 
 Only a `NetworkMember<System.Numerics.Vector3>` is drawn as a line, because only a position has a place in the world to draw it. A position replicated in a parent's local space is drawn where it would sit unparented. A correction to any other member type (a rotation, a float, a custom struct) still counts toward **Flashes**, and with **Log Enabled** it is logged, but nothing is drawn for it.
 
-The threshold is measured by the engine's own `NetworkMemberBase.IsCorrectedBeyond`, with the same tolerance comparer the engine uses when it records corrections. That means the number you type is compared in the member type's units, the same way the engine compares it, so a threshold that matches your prediction tolerance shows exactly the corrections the engine treats as real.
+The number you type is compared in the member type's units, the same way the engine compares corrections, so a threshold that matches your prediction tolerance shows exactly the corrections the engine treats as real.
 
 ### Reading what you see
 

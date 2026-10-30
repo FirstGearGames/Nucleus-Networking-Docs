@@ -23,7 +23,7 @@ public bool IsRpcScopedTo(NetworkSystem networkSystem) => ReferenceEquals(this, 
 
 A handler registered through `NetworkSystem.RegisterRpcHandler` is invoked only for calls addressed to that instance, by reference identity. This matters beyond filtering: a handler that is never invoked for a call cannot return `RpcRelayAction.Cancel` for it. Scoping is what stops one object's handler from being able to refuse the relay of a call addressed to another.
 
-`IRpcScope` is a predicate rather than a property naming "the system this is for," deliberately. A scope is not required to own exactly one system - something that hosts several systems can answer the question for all of them, which a property could not do.
+`IRpcScope` is a predicate rather than a property naming the system it is for, so a scope is not required to own exactly one system: something that hosts several systems can answer the question for all of them.
 
 ## Registering directly with RpcManager
 

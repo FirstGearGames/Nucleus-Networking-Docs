@@ -80,7 +80,7 @@ public bool TryGetSceneHandle(Scene scene, out uint sceneHandle);
 
 `TryGetScene` turns the server's scene instance handle into the live Unity `Scene`; it answers false while the scene is still loading. `TryGetSceneHandle` is the inverse, for code holding a scene or object that needs to know which instance it belongs to — a true result with `NetworkSystem.UnsetSceneHandle` means the peer loaded that scene itself and no instance will ever claim it.
 
-The correlation between a handle and its `Scene` is tracked internally; these two methods are the supported way to read it.
+These two methods are the supported way to go between a handle and its `Scene`.
 
 ### NetworkSceneLoader and UnitySceneLoader
 

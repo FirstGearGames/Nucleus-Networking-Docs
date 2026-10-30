@@ -22,9 +22,9 @@ Both `Invoker.Server` and `Invoker.Client` are connected on the same `Yak` insta
 
 ## IsLocalTransport
 
-`IsLocalTransport()` is read by exactly one place in the engine: the internal check that decides whether a Connection is a local peer. A Connection counts as one when it is emulated (`Connection.IsEmulated`), or when its Transport reports itself local and that Transport's own client half is connected, which is always the case on Yak.
+`IsLocalTransport()` decides whether a Connection counts as a local peer. A Connection counts as one when it is emulated (`Connection.IsEmulated`), or when its Transport reports itself local and that Transport's own client half is connected, which is always the case on Yak.
 
-That check matters in both editions. In Pro, a peer running on Yak is never held back by spawn pacing as if it were a remote client waiting on bandwidth. In both editions, a local peer is exempted from the interest and scene-completion bookkeeping that only makes sense for a peer receiving state over a real link.
+That check matters in both editions. In Pro, a peer running on Yak is never held back by spawn pacing as if it were a remote client waiting on bandwidth. In both editions, a local peer is exempt from the interest and scene-completion checks a remote peer goes through.
 
 ## Swapping Yak for Synapse under a running CoreManager
 

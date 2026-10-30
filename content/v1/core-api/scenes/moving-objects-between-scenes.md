@@ -31,7 +31,7 @@ networkSystem.SceneChanged += (previousSceneHandle, currentSceneHandle) =>
 Carrying an object into another scene means walking that object's controlling client into the destination scene along with it. Two different things can go wrong on that client's end, and they are not the same failure:
 
 - **A carry failure.** The client's scene load for the destination scene fails outright. The object has lost the controller that was meant to follow it.
-- **A refusal.** The client's scene loader will not hold another scene at once, so the load is refused rather than failing - the fix is placing the client with `SceneReplaceMode.AllScenes` instead of loading additively. Nothing about the object or its content was wrong, and the object is still perfectly reachable once the client is placed correctly. A refusal deliberately does not trigger carry-failure resolution; despawning or surrendering control here would punish the object for a load the engine itself asked for additively.
+- **A refusal.** The client's scene loader will not hold another scene at once, so the load is refused rather than failing - the fix is placing the client with `SceneReplaceMode.AllScenes` instead of loading additively. Nothing about the object or its content was wrong, and the object is still perfectly reachable once the client is placed correctly. A refusal does not trigger carry-failure resolution, so the object is neither despawned nor released from control for it.
 
 ## Deciding what happens on a carry failure
 

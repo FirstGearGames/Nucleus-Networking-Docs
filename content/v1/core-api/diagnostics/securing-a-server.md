@@ -35,7 +35,7 @@ What the server does not do is encrypt traffic. If you need that, the place for 
 
 ## Most violations are silent until you act on them
 
-The faults above are always rejected, but most of them neither kick the client nor log anything. That is deliberate: many of them can be reached by an honest client through an ordinary race or ordinary packet loss, and kicking for those would punish players on bad connections. The defaults are:
+The faults above are always rejected, but most of them neither kick the client nor log anything. Many of them can also come from an honest client on a bad connection, so kicking for them would punish innocent players. The defaults are:
 
 | Default | Violations |
 |---|---|
@@ -79,7 +79,7 @@ To see what the socket refused, subscribe to `Synapse.ViolationObserved`. It rep
 | Field | Default | What it guards against |
 |---|---|---|
 | `Enabled` | `false` | Turns the engine limits on. While it is off, nothing is counted. |
-| `MaximumPacketBytes` | `0` (no limit) | A client sending oversized packets. It also bounds the engine's own split pieces before any memory is set aside to rebuild them. Set it at least one transmission unit above the largest packet an honest client sends, since the last piece of a split packet is usually shorter than the rest. |
+| `MaximumPacketBytes` | `0` (no limit) | A client sending oversized packets. It also applies to each piece of a large packet the engine splits. Set it at least one transmission unit above the largest packet an honest client sends, since the last piece of a split packet is usually shorter than the rest. |
 | `MaximumPacketsPerSecond` | `500` | A client sending too many packets in one second. |
 | `MaximumBytesPerSecond` | 2 MiB | A client sending too many bytes in one second. |
 

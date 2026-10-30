@@ -4,7 +4,7 @@ title: "Spawn compensation"
 
 ## A spawned object starts a round trip behind on an observer
 
-An object spawned by the server does not exist on an observer until its spawn packet crosses the network and clears that peer's interpolation buffer. By the time the observer starts simulating it, the object is already a round trip behind where it should be. A projectile spawned moving is the clearest case: it appears at its origin point instead of somewhere along the path it has already travelled, and it stays visibly behind until something closes the gap.
+An object spawned by the server does not exist on an observer until its spawn crosses the network and waits out that peer's state interpolation. By the time the observer starts simulating it, the object is already a round trip behind where it should be. A projectile spawned moving is the clearest case: it appears at its origin point instead of somewhere along the path it has already travelled, and it stays visibly behind until something closes the gap.
 
 Spawn compensation closes that gap by giving the object a burst of extra simulation time right after it starts, front-loaded so most of the catch-up happens in the opening ticks and the rest eases out smoothly. It is a Pro feature.
 

@@ -30,11 +30,11 @@ One trip across the network looks like this:
 
 A peer that starts observing a system later, by joining, loading a scene or bringing an object into range, receives every member's current value first, not only the changes that follow.
 
-## Interpolation: correct, a little old, on purpose
+## Interpolation: correct, a little old
 
-A receiving peer does not render the newest value the instant it applies. `NetworkMember<T0>.InterpolatedValue` sweeps from `PreviousValue` to `Value` across the member's send interval rather than jumping the moment a new value lands. If you read `InterpolatedValue` on a peer that does not control the object, you are looking at a value that is deliberately a little behind the true, just-applied one — buffered and played back smoothly instead of popping between sparse updates. `Value` itself is never delayed; only the interpolated read is.
+A receiving peer does not render the newest value the instant it applies. `NetworkMember<T0>.InterpolatedValue` sweeps from `PreviousValue` to `Value` across the member's send interval rather than jumping the moment a new value lands. If you read `InterpolatedValue` on a peer that does not control the object, you are looking at a value a little behind the just-applied one, played back smoothly instead of popping between sparse updates. `Value` itself is never delayed; only the interpolated read is.
 
-`SystemManager.StateInterpolation` sets how many ticks of buffer a peer holds before it starts applying received state at all, trading a little more latency for smoother arrivals when packets don't land on a perfectly even cadence.
+`SystemManager.StateInterpolation` sets how many ticks a peer waits before it starts applying received state at all, trading a little more latency for smoother arrivals when packets don't land on a perfectly even cadence.
 
 ## When a packet doesn't arrive
 

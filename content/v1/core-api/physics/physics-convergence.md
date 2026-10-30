@@ -4,7 +4,7 @@ title: "PhysicsConvergence"
 
 > **Using Unity?** See [NetworkRigidbody](../../unity/physics/network-rigidbody.md).
 
-`PhysicsConvergence` is the per-body follower behind Projected physics sync. It takes the latest server snapshot, projects it to now, rides its velocity, and blends or teleports a diverged pose back onto it. Call `Step` once per physics step for each proxy body, before the engine simulates.
+`PhysicsConvergence` is the per-body follower behind Projected physics sync. It follows the latest server snapshot, projected to the present, and blends or teleports a diverged pose back onto it. Call `Step` once per physics step for each proxy body, before the engine simulates.
 
 ## Step
 
@@ -22,11 +22,11 @@ Call `Step` before your own world step for that tick, so the follower's velocity
 
 | Field | Default | Meaning |
 |---|---|---|
-| `PositionThreshold` | `0.1` | Positional divergence in meters past which the body blends back toward the target. Below it, the counter-velocity alone holds the offset steady. |
+| `PositionThreshold` | `0.1` | Positional divergence in meters past which the body blends back toward the target. Below it, the position is left alone and only `ResidualCloseRate` closes the offset. |
 | `RotationThreshold` | `5` | Rotational divergence in degrees past which the body blends back toward the target. |
 | `BlendPerTick` | `0.1` | Fraction of the remaining gap closed per tick while over threshold, from 0 (never) to 1 (onto the target in one tick). |
-| `ResidualCloseRate` | `0.5` | Per-second rate at which a sub-threshold positional residual is bled off, as a velocity bias toward the target. Zero holds the offset steady instead. |
-| `ResidualCloseMaximumSpeed` | `0.5` | Body speed (m/s) above which the residual close is skipped in favor of the plain deadband, so a freshly bumped or still-moving body isn't fought. |
+| `ResidualCloseRate` | `0.5` | How quickly, per second, a small offset under `PositionThreshold` closes on a slow body, through its motion so its contacts are never disrupted. Zero leaves the small offset in place instead. |
+| `ResidualCloseMaximumSpeed` | `0.5` | Body speed in metres per second above which the small offset is left alone, so a freshly bumped or still-moving body is not pulled against its motion. |
 | `TeleportDistance` | `4` | Positional divergence in meters past which the body snaps its whole pose onto the target instead of blending. Zero disables the teleport. |
 | `MaximumProjectionSeconds` | `0.2` | Cap, in seconds, on how far a stale snapshot is extrapolated before the blend takes over. |
 | `GravityProjection` | `GravityProjection.Auto` | Whether gravity participates in the projection. |
@@ -34,17 +34,17 @@ Call `Step` before your own world step for that tick, so the follower's velocity
 
 ## ConvergenceBlendMode
 
-`Position` writes the pose directly toward the target each step (a per-step lerp/slerp). `Velocity` applies the same closing fraction as a velocity bias the engine's solver integrates instead.
+`Position` moves the body straight toward the target each step. `Velocity` closes the same fraction of the gap through the body's motion instead.
 
-The two converge identically in free space — same fraction of the gap closed per tick. They differ once the body touches something: `Position` bypasses the solver, so a blend into geometry penetrates and then depenetrates. `Velocity` is mediated by the solver, so the same blend against geometry resolves as a bounded contact press, and never yanks a body out of a stack or through what it's resting on.
+The two close the gap at the same rate in free space. They differ once the body touches something: `Position` can briefly push the body into geometry before it is pushed back out. `Velocity` never disrupts contacts, so the same blend against geometry only presses on it, and never yanks a body out of a stack or through what it is resting on.
 
 ## The three bands
 
 Each step, `Step` measures the divergence and picks one of three responses:
 
-- **Over `TeleportDistance`** — the whole pose (position and rotation) snaps onto the target instantly. `HasTeleportedThisStep` is set. This only applies to an ordinary proxy; a locally predicted body is exempt (see below).
-- **Over threshold, under teleport distance** — position and rotation each blend toward the target at `BlendPerTick`, per `BlendMode`.
-- **Under threshold** — the position is left untouched, but if the body's own speed is below `ResidualCloseMaximumSpeed`, a velocity bias of `ResidualCloseRate` is added toward the target so a slow, never-sleeping body's residual still closes through the solver. A body moving faster than `ResidualCloseMaximumSpeed` — freshly bumped or still settling — skips the residual close and falls back to the plain deadband: the counter-velocity holds it steady until the next real divergence, so the gentle close never fights a new contact.
+- **Over `TeleportDistance`**: the whole pose (position and rotation) snaps onto the target instantly. `HasTeleportedThisStep` is set. This only applies to an ordinary proxy; a locally predicted body is exempt (see below).
+- **Over threshold, under teleport distance**: position and rotation each blend toward the target at `BlendPerTick`, per `BlendMode`.
+- **Under threshold**: the position is left untouched. If the body's own speed is below `ResidualCloseMaximumSpeed`, the offset closes gently through its motion at `ResidualCloseRate`, so a slow body that never sleeps still settles onto the target. A body moving faster, freshly bumped or still settling, keeps its small offset until the next real divergence, so the gentle close never fights a new contact.
 
 ## Reads and reset
 
@@ -55,7 +55,7 @@ Each step, `Step` measures the divergence and picks one of three responses:
 
 ## TargetProvider
 
-By default `Step` projects the snapshot with a closed-form trajectory. Setting `TargetProvider` (an `IProjectionTargetProvider`) replaces that projection with whatever the provider computes instead — for example a target that sweeps against geometry rather than following a pure ballistic path. See [swept projection targets](./swept-projection-targets.md) for that provider.
+By default `Step` projects the snapshot along a plain ballistic path. Setting `TargetProvider` (an `IProjectionTargetProvider`) replaces that projection with whatever the provider computes instead, for example a target that sweeps against geometry rather than following a pure ballistic path. See [swept projection targets](./swept-projection-targets.md) for that provider.
 
 ## Locally predicted bodies
 

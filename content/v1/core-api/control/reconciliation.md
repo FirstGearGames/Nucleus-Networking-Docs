@@ -247,9 +247,9 @@ A server reaches for this when a gameplay event invalidates a controller's predi
 
 ## Validate results the server found different
 
-For `MemberRole.Validate` members the server compares a hash of the controller's result. When one differs it queues the correcting reconcile and raises `NetworkSystem.ResultMismatched` with a `ResultMismatchReport`: the controller's `Connection`, the server's `Tick` the difference was found on, the controller's `RemoteTick` it pairs with (for matching what the client logged, never for timing) and, when the controller sent its values beside the hash, the `Members` that differed. Each of those answers `TryGetResultMismatchValues(out controllerValue, out serverValue)` until the tick advances. The controller sends the values while its `SystemManager.IsResultValueSendEnabled` is set, the default; turn it off in a release build to keep the hash alone. No violation is raised, so what to do about the client is the game's call.
+For `MemberRole.Validate` members the server checks the controller's result against its own. When one differs it queues the correcting reconcile and raises `NetworkSystem.ResultMismatched` with a `ResultMismatchReport`: the controller's `Connection`, the server's `Tick` the difference was found on, the controller's `RemoteTick` it pairs with (for matching what the client logged, never for timing) and, when `AreValuesSent` is true, the `Members` that differed. Each of those answers `TryGetResultMismatchValues(out controllerValue, out serverValue)` until the tick advances. The values are available while the controller's `SystemManager.IsResultValueSendEnabled` is set, the default. Turning it off in a release build saves bandwidth, and the report then shows only that a mismatch happened. No violation is raised, so what to do about the client is the game's call.
 
-The report is one instance per system, reused by every result that differs, so read it inside the handler:
+Read the report inside the handler and keep no reference to it after the handler returns:
 
 ```csharp
 using System.Numerics;

@@ -45,7 +45,7 @@ if (matchSystem!.TryGetComponent(out MatchClockComponent clock))
 
 ## Finding it on the receiver
 
-A system rented purely from code carries `NetworkSystem.UnsetPlatformId` — there is no prefab and no scene object behind it, so there is nothing for a spawn handler to bind or instantiate. That id being unset is deliberate: this kind of spawn never reaches `INetworkSystemSpawnHandler`.
+A system rented purely from code carries `NetworkSystem.UnsetPlatformId`, since there is no prefab and no scene object behind it for a spawn handler to bind or instantiate, and this kind of spawn never reaches `INetworkSystemSpawnHandler`.
 
 Without an object to hang a reference off, and without an `Id` the receiver could have learned in advance, there is no handle to grab when the spawn arrives. `NetworkSystemPool.Watch` is the answer: a standing subscription that matches on system type and component composition, and hands the receiver its own instance the moment a matching system starts.
 
@@ -112,7 +112,7 @@ Or, to return it and clear your own reference in the same call:
 NetworkSystemPool.ReturnAndNullifyReference(ref matchSystem);
 ```
 
-A system handed to you by a watch is borrowed, not owned: the same instance stays valid from your acquired handler until your released handler, and a wire-constructed instance returns to its pool immediately after your released handler returns, so drop your reference there and keep none past it.
+A system handed to you by a watch is borrowed, not owned: the same instance stays valid from your acquired handler until your released handler. Drop your reference in your released handler and keep none after it returns.
 
 ## Using Unity
 

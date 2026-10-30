@@ -16,7 +16,7 @@ So "the gate only restricts spawning" is only true for a client that fully holds
 
 ## Local and emulated peers
 
-The condition abstains for a local peer, returning `InterestResult.None` immediately. A local peer is not a host's own player connection. It is an emulated `Connection`, or any peer sharing an in-memory Transport (test setups, most commonly), and it is deliberately distinct from `Connection.IsHostLoopback`, which is what actually names a host's own client half. A host's own client is evaluated by this gate like any other connection; it is placed by the same scene protocol and holds a real membership record.
+The condition abstains for a local peer, returning `InterestResult.None` immediately. A local peer is not a host's own player connection. It is an emulated `Connection`, or any peer sharing an in-memory Transport (test setups, most commonly), and it is distinct from `Connection.IsHostLoopback`, which is what actually names a host's own client half. A host's own client is evaluated by this gate like any other connection; it is placed by the same scene protocol and holds a real membership record.
 
 What differs for a host's client is how that record is used: the result is surfaced through `NetworkSystem.HostInterestMembership` rather than acted on, which is what lets a host hide an object its client half would not have been sent without actually withholding anything from itself as the server.
 

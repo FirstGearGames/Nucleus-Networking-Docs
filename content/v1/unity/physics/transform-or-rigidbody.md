@@ -6,7 +6,7 @@ title: "NetworkTransform or NetworkRigidbody"
 
 `NetworkTransform` and `NetworkRigidbody` both replicate a moving object, and they do it in incompatible ways.
 
-`NetworkTransform` makes every non-controlling peer a **pose follower**. The controller writes position, rotation, and scale each tick; every other peer applies the received values onto the transform through the interpolation buffer, animated one tick behind fact. Velocity is never synchronized — a proxy has no physical motion of its own, it is just redrawn along the received path.
+`NetworkTransform` makes every non-controlling peer a **pose follower**. The controller writes position, rotation, and scale each tick; every other peer applies the received values onto the transform, animated one tick behind fact. Velocity is never synchronized: a proxy has no physical motion of its own, it is just redrawn along the received path.
 
 `NetworkRigidbody` keeps every peer **simulating**. The controller's `Rigidbody` steps normally and the stepped result is captured for replication. Every other peer's `Rigidbody` also steps — real collision response, real physics — while the convergence follower (`PhysicsConvergence`) steers it toward the server's snapshot, blending a diverged position or rotation back once it passes a threshold instead of teleporting onto it.
 

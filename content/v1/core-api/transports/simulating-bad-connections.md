@@ -94,4 +94,4 @@ The engine has its own answers to a lossy link: redundancy, targeted recovery, a
 - `RoundTripTimeDeviationMilliseconds` is how far samples typically stray from that average, which is the measured jitter.
 - `PacketLossPercentage` is the connection's measured loss.
 
-These are measured by the engine's own probes rather than echoed from the conditions, so they are a good check that the conditions are having the effect you expect before you trust the rest of the test.
+These are measured on the live connection rather than echoed from the conditions, so they are a good check that the conditions are having the effect you expect before you trust the rest of the test.

@@ -44,7 +44,7 @@ if (system.RequiredBundleId != NetworkSystem.UnsetRequiredBundleId)
 What each identity read is worth during a transition:
 
 - **Starting**: `IsStarted` is false. If the start was deferred past the tick's state flush, `Id` is still `UnsetId` and the rest of the identity (`PlatformId`, `GroupId`, `SceneHandle`) is not yet assigned — all of it is stamped together when the system reaches `Started`.
-- **Stopping**: `IsStarted` is false, but `Id`, `PlatformId`, `GroupId`, `SceneHandle` and `ParentId` still hold their last live values. Nothing clears them until the despawn completes at end of tick and the system returns to its pool.
+- **Stopping**: `IsStarted` is false, but `Id`, `PlatformId`, `GroupId`, `SceneHandle` and `ParentId` still hold their last live values. Nothing clears them until the despawn completes at the end of the tick.
 
 ## Role reads
 

@@ -6,9 +6,9 @@ title: "When a Message or Call Reaches Its Handler"
 
 Messages and calls sent by your code do not go on the wire the instant you call the send method. They queue, and the engine sends the queue once per frame, on every frame, at `NetworkLoopSteps.LateSerialize`'s place in the order. On a frame that ticks, the send happens after the `LateSerialize` callbacks, so a message or call sent from a `LateSerialize` callback or any earlier step still leaves this frame. One sent from a `TickAdvance` or `LateVariableUpdate` callback leaves on the next frame. Messages and calls go out in the same send, so a message and a call sent in the same frame leave together.
 
-## Inbound calls: LateStateUpdate, deliberately after messages
+## Inbound calls: LateStateUpdate, after messages
 
-Inbound calls are dispatched on `NetworkLoopSteps.LateStateUpdate`, after the tick's state has applied. That is later than inbound messages, and on purpose: state, including a spawn that arrived this same tick, has already landed by `LateStateUpdate`. A call addressed to an object that spawned in the same frame resolves against a system that already exists, instead of being stepped over because the object wasn't there yet.
+Inbound calls are dispatched on `NetworkLoopSteps.LateStateUpdate`, after the tick's state has applied, which is later than inbound messages. State, including a spawn that arrived this same tick, has already landed by then, so a call addressed to an object that spawned in the same frame finds a system that already exists.
 
 ## Send order holds across types
 

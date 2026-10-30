@@ -39,11 +39,11 @@ if (!NetworkSystemObjectPool.TryRent<NetworkSystem, UnityLocalTransformComponent
     return;
 ```
 
-The call resolves its `CoreManager` from `NucleusUnity`, so nothing is passed in. Internally it branches on the calling peer's situation:
+The call finds its `CoreManager` through `NucleusUnity`, so nothing is passed in. What it returns depends on where it is called:
 
-- **A received spawn is staging.** The integration is mid-`Instantiate` for an incoming spawn, and the rent hands back the system already built from that spawn rather than constructing a new one.
-- **A client scene object.** The system is built locally, unstarted, and parked by scene identifier until the server's spawn binds it.
-- **The server.** The system is rented and started with the marker's platform identity, which is what replicates it to observers.
+- **A received spawn gets its own system.** While the integration instantiates an incoming spawn, the call returns the system already built from that spawn rather than a new one.
+- **A client scene object waits for the server.** On a client, a scene object gets a local, unstarted system that the server's spawn binds once it arrives.
+- **The server starts the system.** On the server, the call returns a started system, which replicates to observers.
 
 ## The marker, and renting more than once
 

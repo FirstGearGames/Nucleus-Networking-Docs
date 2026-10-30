@@ -141,7 +141,7 @@ protected override void OnEarlyFixedUpdate(StepDelta stepDelta, SimulationContex
 
 On a step that is not missing it is the context of the step running now. Before any client state has arrived, or on a component with no Predict member, it is the default, whose `RemoteTick` is unset. As with the step's own context, compare these ticks but never time anything on the server by them.
 
-A tick runs missing only once the State Interpolation says it should have arrived. Just after a stall drained the buffer, or with a client clock running slower than the server's, the next client tick runs when it arrives instead, so those are the server ticks that pass the object by.
+A tick runs missing only once the State Interpolation says it should have arrived. Just after the client's states stalled, or with a client clock running slower than the server's, the next client tick runs when it arrives instead, so those are the server ticks that pass the object by.
 
 ## Forwarded to every observer
 

@@ -36,13 +36,13 @@ Scans the scenes enabled in Build Settings (and, with the Addressables package i
 
 ### Build Content Bundles
 
-This step is in the Pro edition only. It runs the prefab collection rebuild and the scene manifest rebuild first, then builds every asset bundle a `NetworkPrefabCollection` is assigned to into `Assets/StreamingAssets`, and fills in `NetworkBundleManifest` with each built bundle's id and file name. Running the two rebuilds first matters: a scene or prefab records the bundle id it ships under by reading the collection assigned to that bundle, so building from stale identity is what bakes the wrong id into a shipped bundle.
+This step is in the Pro edition only. It runs the prefab collection rebuild and the scene manifest rebuild first, then builds every asset bundle a `NetworkPrefabCollection` is assigned to into `Assets/StreamingAssets`, and fills in `NetworkBundleManifest` with each built bundle's id and file name. You do not need to run them yourself first.
 
 ## The automatic steps
 
 Three more steps run without a button press, so an author never has to remember to invoke them.
 
-**A prefab check runs before every player build.** It makes the same identity check as Validate Network Prefabs, and fails the build when any networked prefab does not carry the identity a rebuild would give it: no base collection, two collections sharing a prefab bundle, a prefab missing from its collection, a prefab with no id or with an id another prefab holds, or a prefab stamped with a different bundle than its collection. The build error lists every problem and tells you to run **Tools > Nucleus > Build > Rebuild Network Prefab Collection**, then build again. It stops the build rather than repairing the prefabs itself, because a repair made in the middle of a build could number a server and a client that were built apart differently.
+**A prefab check runs before every player build.** It makes the same identity check as Validate Network Prefabs, and fails the build when any networked prefab does not carry the identity a rebuild would give it: no base collection, two collections sharing a prefab bundle, a prefab missing from its collection, a prefab with no id or with an id another prefab holds, or a prefab stamped with a different bundle than its collection. The build error lists every problem and tells you to run **Tools > Nucleus > Build > Rebuild Network Prefab Collection**, then build again. The check never repairs the prefabs itself, so build every player you ship, server and client alike, again after the rebuild.
 
 **Saving a scene assigns scene object ids.** Any `NetworkSystemObject` in the saved scene whose `SceneObjectId` is unset or collides with another object in the same scene gets a new id. The first object holding a value keeps it, and the rest get the next free id. Duplicating an object that already carries an id is exactly what creates a collision, since the copy carries the same id until the next save reassigns it.
 

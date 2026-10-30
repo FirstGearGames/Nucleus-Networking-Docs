@@ -46,8 +46,8 @@ float range = LagCompensationWalls.GetDistance(shooterScene.GetPhysicsScene(), s
 
 Passing it is always safe, because for a scene without a world of its own that is the default world. `GetDistance2D` always looks in the default 2D world, because Nucleus only gives a scene a local world for 3D physics.
 
-## How it walks past hitbox colliders
+## It allocates nothing and runs on the main thread
 
-Nothing is kept between calls and nothing is allocated. Rather than gathering every hit into a buffer, each method casts again from just past a collider it passes over, a thousandth of a unit past it or a millionth of the distance travelled, whichever is longer. Call it on the main thread, as with every Unity physics query; a message handler in a Unity session already runs there, because Unity drives the network loop from `Update` and `LateUpdate`.
+Nothing is kept between calls and nothing is allocated. Call it on the main thread, as with every Unity physics query; a message handler in a Unity session already runs there, because Unity drives the network loop from `Update` and `LateUpdate`.
 
 That step is a known limit: a wall whose near face lies within it, behind the surface of a hitbox object's collider being passed over, is not seen, because the next cast starts past that face and a raycast does not report a collider it starts inside.

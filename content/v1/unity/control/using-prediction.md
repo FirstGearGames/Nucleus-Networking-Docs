@@ -67,7 +67,7 @@ Three choices in this declaration matter more than they look:
 
 - **The walk direction is whole numbers.** It is a `CodeBoost.Types.Vector2Int`, not Unity's `Vector2Int`, whose axes are each -1, 0 or 1. A normalized float direction would be rounded on its way to the server, so the server would walk a hair differently from the client and report a mismatch on every tick. Send client state in a form that arrives exactly as it was written.
 - **The jump press is never carried forward.** `IsJumpPressed` is true only on the tick jump was pressed, and `isCarriedForward: false` keeps it false on a tick whose client state was lost, so the server never jumps twice for one press. A press lost with its packet is simply lost: the client showed a jump the server never made, and the server corrects it like any other desync.
-- **Each float result has an accuracy.** A `Validate` member is rounded to its `accuracy` on every write, on the client and on the server alike, so both peers carry on from the same numbers. Choose an accuracy your movement can tolerate being rounded to. 0.01 is a centimetre for a position.
+- **Each float result has an accuracy.** A `Validate` member is only as precise as its `accuracy`, on the client and on the server alike, so both peers carry on from the same numbers. Choose an accuracy your movement can tolerate. 0.01 is a centimetre for a position.
 
 ## Step 2: Write the movement code once, in OnEarlyFixedUpdate.
 
@@ -319,7 +319,7 @@ A few settings outside the code decide whether prediction works:
 - **Give the client control of its object.** Prediction runs only on the controller. `NetworkPlayerSpawner` hands each joining client its player; to do it yourself, see [Giving a client control of an object](./transferring-control-in-unity.md).
 - **Do not add a `NetworkTransform`.** The position is a `Validate` member that this code replicates itself. A `NetworkTransform` on the same object would fight it.
 - **Check Prediction History Ticks on the system manager.** The default keeps 64 ticks, about a second at 60 ticks per second, which covers most games. A game played at very high latency needs more; see [Prediction settings on the Unity manager](./prediction-settings-in-unity.md).
-- **Turn off Send Result Values for a release build.** While it is on, the client sends its result values beside the check every tick, so the server can name exactly what differed. That is useful while you develop and costs bandwidth in a shipped game.
+- **Turn off Send Result Values for a release build.** While it is on, the server can name exactly what differed. That is useful while you develop, but it costs bandwidth on every tick in a shipped game.
 
 ## A healthy predicted object is corrected rarely.
 

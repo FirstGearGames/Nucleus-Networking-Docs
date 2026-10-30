@@ -38,7 +38,7 @@ A relayed room belongs to whichever peer made it, and it dies with that peer. Ev
 | `AdapterTag` | Names the service, filed with the directory alongside every credential this publishes, so a peer receiving a credential knows whether it can use it. |
 | `HostedCredential` | What another peer needs to reach the session this peer is hosting, or empty when this peer isn't hosting one. |
 | `IsHostingLinkUp` | Whether this peer's own hosting side is up. |
-| `IsJoinedLinkUp` | Whether this peer's link to whoever is hosting the session is up. Independent of `IsHostingLinkUp` by design — a freshly promoted peer has one up and the other down. |
+| `IsJoinedLinkUp` | Whether this peer's link to whoever is hosting the session is up. Independent of `IsHostingLinkUp`: a freshly promoted peer has one up and the other down. |
 | `Poll()` | Drives whatever the service needs driving, once per `NewfarmHostMigration.Poll`. |
 | `StartHostingAsync(uint timeoutMilliseconds)` | Stands the session up on this peer, returning a `SessionHostResult`. |
 | `JoinAsync(string credential, uint timeoutMilliseconds)` | Joins the session at the given credential. |

@@ -36,7 +36,7 @@ bool started = coreManager.SystemManager.EnsureStartSystem(
 bool stopped = coreManager.SystemManager.EnsureStopSystem(networkSystem, isPoolReturnRequestedOnDespawn: true);
 ```
 
-An accepted stop transitions the system to `Stopping` immediately, sends a despawn to observers, then completes: the system transitions to `Stopped`, leaves routing, releases its Id, and the registered spawn handler is notified. A wire-constructed system always returns to its pool once that happens; a locally rented system stays owned by the code that rented it unless `isPoolReturnRequestedOnDespawn` asks the framework to recycle it too.
+An accepted stop moves the system to `Stopping` immediately and despawns it on observers, then completes: the system moves to `Stopped`, its Id is released, and the registered spawn handler is notified. Keep no reference to a system that arrived from the server after that. A locally rented system stays owned by the code that rented it unless `isPoolReturnRequestedOnDespawn` asks for it to be returned to the pool too.
 
 Only the server stops a replicated system. A pure client's stop request is refused. A peer with no started transport (offline usage) can stop its own systems freely.
 
@@ -76,8 +76,8 @@ coreManager.SystemManager.SystemStarted += networkSystem =>
 
 coreManager.SystemManager.SystemStopped += networkSystem =>
 {
-    // Raised as a started system stops, immediately before a wire-constructed
-    // system returns to its pool. Read what you need during the call.
+    // Raised as a started system stops. Read what you need during the call,
+    // and keep no reference to a system that arrived from the server.
 };
 
 int startedCount = coreManager.SystemManager.StartedSystemCount;

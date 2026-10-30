@@ -36,7 +36,7 @@ Projects a rotation forward along a constant angular velocity, given as an axis 
 public static PhysicsSnapshot ProjectSnapshot(in PhysicsSnapshot physicsSnapshot, float tickDelta, float ticksAhead, Vector3 gravity, float drag, GravityProjection gravityProjection)
 ```
 
-The one-call form: projects a full `PhysicsSnapshot` (position, rotation, linear velocity, angular velocity) forward by `ticksAhead` ticks, resolving gravity participation through `gravityProjection` before calling `ProjectPosition`, `ProjectVelocity`, and `ProjectRotation` internally. This is what the convergence follower calls each tick.
+The one-call form: projects a full `PhysicsSnapshot` (position, rotation, linear velocity, angular velocity) forward by `ticksAhead` ticks, the same as calling `ProjectPosition`, `ProjectVelocity` and `ProjectRotation` with gravity resolved through `gravityProjection`.
 
 A sleeping snapshot (`physicsSnapshot.IsSleeping`) is returned untouched — no projection math runs on it.
 

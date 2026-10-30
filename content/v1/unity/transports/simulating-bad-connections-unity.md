@@ -81,7 +81,7 @@ While playing, read the measured effect off `Connection`:
 - `Connection.RoundTripTimeDeviationMilliseconds` is the jitter, meaning how far samples stray from the smoothed average.
 - `Connection.PacketLossPercentage` is the share of recent probes that went unanswered.
 
-These are measured by the engine's own round trip probes, so they are the right numbers to check that the conditions are actually taking effect, not just an echo of the values you set.
+These are measured on the live connection, so they are the right numbers to check that the conditions are actually taking effect, not just an echo of the values you set.
 
 ## Test at more than one setting
 

@@ -2,11 +2,6 @@
 title: "Technical limitations"
 ---
 
-## Some names exist in the code but nothing is wired to them
-
-Some names exist in the engine but nothing wires them up yet. Treat them as documentation of intent, not as working settings.
-
-
 ## These behaviors are not supported
 
 Do not design a game that depends on either of these.

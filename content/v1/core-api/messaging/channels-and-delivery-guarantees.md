@@ -11,11 +11,11 @@ connection.SendMessage(Channel.Reliable, myMessage);
 mySystem.TrySendRpc(RpcTarget.Observers, Channel.Unreliable, myRpc);
 ```
 
-The channel is not a Nucleus feature built on top of the transport - it is a request passed straight through to it. The transport is what makes `Reliable` actually reliable: nothing in `RpcManager`, `MessageManager`, or `Connection` retries a send, buffers it for redelivery, or checks that it arrived. Pick `Reliable` and the transport guarantees order and delivery. Pick `Unreliable` and it guarantees neither.
+The channel is passed straight through to the transport, and the transport alone makes `Reliable` reliable: Nucleus adds no retries or delivery checks of its own. Pick `Reliable` and the transport guarantees order and delivery. Pick `Unreliable` and it guarantees neither.
 
 ## Calls and messages are not state
 
-A call or a message is deliberately not state. It is never acknowledged, never sent redundantly, and never resent to reach eventual consistency. It either arrives once, or it does not arrive at all - there is no third outcome where the engine notices a loss and tries again.
+A call or a message is not state. It is never acknowledged, never sent redundantly, and never resent to reach eventual consistency. It either arrives once, or it does not arrive at all - there is no third outcome where the engine notices a loss and tries again.
 
 That means the channel is the only reliability lever either mechanism has. If a call or a message must arrive, it has to ride `Channel.Reliable`; there is no other way to make that true. Conversely, sending something on `Channel.Unreliable` is an explicit statement that losing it occasionally is fine.
 

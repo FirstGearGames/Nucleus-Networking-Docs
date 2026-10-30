@@ -27,7 +27,7 @@ Automatic pooling v1 targets flat value objects. A nested class-typed field insi
 
 ## Member type support is scoped, not gapped
 
-Not every type works as a member value, and the ones that do not are never replicated silently wrong: several types (`Matrix4x4`, plain arrays, `NetworkSystemGroup`, `Channel`, `NetworkSystem`) throw `NotImplementedException` when a member holding one sends a change. That is a deliberate boundary, not an oversight to work around. Register a serializer for a type that has none rather than routing it through `NetworkMember<T0>` as-is; see the Serialization section.
+Not every type works as a member value, and the ones that do not are never replicated silently wrong: several types (`Matrix4x4`, plain arrays, `NetworkSystemGroup`, `Channel`, `NetworkSystem`) throw `NotImplementedException` when a member holding one sends a change. Register a serializer for a type that has none rather than routing it through `NetworkMember<T0>` as-is; see the Serialization section.
 
 ## `[ReplicationIgnoreAttribute]`
 

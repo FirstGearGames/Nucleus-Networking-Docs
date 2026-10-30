@@ -27,7 +27,7 @@ The step provider is not on this list. `NetworkLoopManager.UseNetworkLoopStepPro
 | `PredictionHistoryTicks` | `UnsetPredictionHistoryTicks` (0) | How many ticks of history `Predict` and `Validate` members keep. Unset, every client keeps `DefaultPredictionHistoryTicks` (64) and the server keeps two. |
 | `MaximumReplayTicks` | `UnsetMaximumReplayTicks` (0) | Most ticks a reconcile replays; a longer one lands the server's values at its start tick without replaying. 0 sets no limit. |
 | `ReplayHoldRadius` | `UnsetReplayHoldRadius` (0) | Client: only systems it does not control within this distance of a restored system are held during a replay. 0 holds every one. |
-| `IsResultValueSendEnabled` | true | Read on the controller: sends `Validate` result values beside the hash so `NetworkSystem.ResultMismatched` can name what differed. Off keeps the hash alone. |
+| `IsResultValueSendEnabled` | true | Read on the controller. On, a server that finds a `Validate` result different can report which members differed and both values through `NetworkSystem.ResultMismatched`, and each member's `resultTolerance` applies. Off saves bandwidth on every tick; the report then shows only that a mismatch happened, and results are compared exactly. |
 | `DefaultControllerRetentionPolicy` | `ControllerRetentionPolicy.Release` | Resolved most specific first: a system's own override, then its group's, then this. |
 | `ControllerRetentionSeconds` | 120 (`DefaultControllerRetentionSeconds`) | `UnlimitedControllerRetentionSeconds` (0) removes the limit. |
 | `MaximumRetainedControllerRecords` | 64 (`DefaultMaximumRetainedControllerRecords`) | |

@@ -4,17 +4,17 @@ title: "Locally predicted bodies"
 
 > **Using Unity?** See [Driving a predicted body](../../unity/physics/driving-a-predicted-body.md).
 
-A body this peer is driving does not have to ride the server's velocity like a proxy does. Setting `IsLocallyPredicted` on that body's `PhysicsConvergence` switches it from following to reconciling: it keeps responding to local client state instantly, and only trims the small gap that opens up against the server's snapshot.
+A body this peer is driving does not have to trail the server like a proxy does. Setting `IsLocallyPredicted` on that body's `PhysicsConvergence` switches it from following to reconciling: it keeps responding to local client state instantly, and only trims the small gap that opens up against the server's snapshot.
 
 ## What IsLocallyPredicted changes
 
-It is easy to assume a predicted body keeps the velocity the local simulation produced. It does not. `PhysicsConvergence.Step` assigns `physicsBody.LinearVelocity` from the projected snapshot unconditionally, the same as for a proxy. This is deliberate: if the body kept its own velocity and only added a position bias on top, the two would drift apart with nothing to bleed the difference off, and a reversal in the server's motion would detonate that standing offset into a lurch.
+It is easy to assume a predicted body keeps the velocity the local simulation produced. It does not. `PhysicsConvergence.Step` sets `physicsBody.LinearVelocity` from the projected snapshot every step, the same as for a proxy, so a velocity your own code set before `Step` does not survive it.
 
-So the counter-velocity assignment is shared between proxy and predicted paths. Three things are actually different for a predicted body:
+Three things are different for a predicted body:
 
-- **Projection cap.** A proxy's snapshot is projected forward by at most `Settings.MaximumProjectionSeconds`. A predicted body uses `PredictionMaximumProjectionSeconds` instead, deliberately larger, because it is re-integrating its own client state across a full round trip rather than extrapolating a stranger's motion a short distance ahead.
-- **No distance teleport.** A proxy that diverges past `Settings.TeleportDistance` snaps its whole pose onto the target at once. A predicted body is exempt. A driver's own client state is never expected to jump; any gap closes smoothly through the reconcile below instead.
-- **Reconcile mechanism.** Past `Settings.PositionThreshold`, a proxy blends its pose toward the target (or applies a `BlendPerTick` velocity bias, depending on `ConvergenceBlendMode`). A predicted body instead applies a `PredictionCorrectionRate` velocity bias once it is past `Settings.PositionThreshold` or `Settings.RotationThreshold` — never before.
+- **Projection cap.** A proxy's snapshot is projected forward by at most `Settings.MaximumProjectionSeconds`. A predicted body uses `PredictionMaximumProjectionSeconds` instead, which is larger by default and must cover a full round trip.
+- **No distance teleport.** A proxy that diverges past `Settings.TeleportDistance` snaps its whole pose onto the target at once. A predicted body is exempt, and any gap closes smoothly through the correction below instead.
+- **Correction.** Past `Settings.PositionThreshold`, a proxy blends toward the target at `BlendPerTick`, moving the body or correcting through its motion depending on `ConvergenceBlendMode`. A predicted body instead closes the gap through its motion at `PredictionCorrectionRate`, and only once it is past `Settings.PositionThreshold` or `Settings.RotationThreshold`, never before.
 
 ## PredictionCorrectionRate
 
@@ -26,11 +26,11 @@ Higher values snap the body back to the server harder and sooner; lower values l
 
 ## PredictionMaximumProjectionSeconds
 
-`PredictionMaximumProjectionSeconds` (default `1f`) is the predicted counterpart to `Settings.MaximumProjectionSeconds`. A proxy's short cap keeps an extrapolation from running too far ahead of the last received fact. A predicted body instead re-integrates its own client state across the whole round trip it has driven ahead of the server, so its window has to be allowed to span that round trip: capping it at the proxy's short bound would truncate the replay, land the target short of the actual prediction, and drag the body backward through the very reconcile it exists to avoid.
+`PredictionMaximumProjectionSeconds` (default `1f`) is the predicted counterpart to `Settings.MaximumProjectionSeconds`. Set it to at least the longest round trip you expect. If it is shorter, the target lands short of where the body has been predicted to, and the correction drags the body backward.
 
 ## Choosing ticksToProject
 
-`Step` takes `ticksToProject` as a parameter, not a constant. For a predicted body, base it on the measured round trip rather than a fixed tick count: `Connection.RoundTripTimeMilliseconds` gives that peer's current estimate. The instant-response feel a predicted body has comes from projecting the snapshot a full round trip forward on every step, not from retaining the body's own local velocity — the velocity assignment happens either way.
+`Step` takes `ticksToProject` as a parameter, not a constant. For a predicted body, base it on the measured round trip rather than a fixed tick count: `Connection.RoundTripTimeMilliseconds` gives that peer's current estimate. Project less than a full round trip and the body responds less instantly to its own client state.
 
 ```csharp
 public uint RoundTripTimeMilliseconds { get; private set; }
@@ -38,7 +38,7 @@ public uint RoundTripTimeMilliseconds { get; private set; }
 
 ## Clearing IsLocallyPredicted
 
-Flip `IsLocallyPredicted` back to `false` the moment control leaves the body: a body no longer driven locally has no client state to re-integrate, and left predicted it would keep skipping the teleport and the proxy reconcile it needs once it goes back to following the server.
+Flip `IsLocallyPredicted` back to `false` the moment control leaves the body. Left set, the body keeps skipping the teleport and the proxy blend it needs once it goes back to following the server.
 
 `Reset()` clears `TargetError`, `HasTeleportedThisStep`, and `IsLocallyPredicted` together, for pool reuse or respawn.
 

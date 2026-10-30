@@ -6,7 +6,7 @@ title: "Player objects"
 
 `NetworkPlayerSpawner` is a `MonoBehaviour` that gives every authenticated client one object of its own. On the server it spawns one prefab per client, hands that client control of the spawned object, and keeps a connection-to-object relationship so the rest of the game can ask which object belongs to whom.
 
-The engine itself has no player concept, and this component does not add one. A player object is an ordinary networked object that happens to be controlled by one client, so everything the engine already does for a controlled object applies unchanged: replication, interest, client state routing, write permission, controller retention. What this component adds is the one decision the engine deliberately leaves out: whether an object needs creating for a given client at all.
+The engine itself has no player concept, and this component does not add one. A player object is an ordinary networked object that happens to be controlled by one client, so everything the engine already does for a controlled object applies unchanged: replication, interest, client state routing, write permission, controller retention. What this component adds is the one decision the engine leaves to the game: whether an object needs creating for a given client at all.
 
 Only the server spawns. The component observes its role from the transport (`IsServerStarted`) rather than assuming it, because a server start can fail.
 

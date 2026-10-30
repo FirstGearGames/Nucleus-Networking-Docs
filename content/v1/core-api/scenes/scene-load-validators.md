@@ -38,7 +38,7 @@ This means validator order can matter if two validators disagree about edge case
 
 A refusal happens before the request is sent. Nothing is sent at all: no rejection message, no scene reference, no acknowledgment that a scene existed at all. From the client's point of view a refused scene is indistinguishable from one that was never offered.
 
-This is deliberate, not an oversight to work around. It's what makes `ISceneLoadValidator` the right place for entitlement rules — a party requirement, a ticket, a subscription, a ban — where the answer has to come from the server and can't be inferred or forged by a client that was told "no" and why.
+This makes `ISceneLoadValidator` the right place for entitlement rules, such as a party requirement, a ticket, a subscription or a ban, where the answer has to come from the server and can't be inferred or forged by a client that was told "no" and why.
 
 ## Where a validator is the wrong tool
 

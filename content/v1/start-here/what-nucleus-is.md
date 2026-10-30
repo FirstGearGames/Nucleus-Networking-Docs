@@ -34,6 +34,6 @@ A `NetworkMember<T0>` is the unit of replication. Nothing above it — the `Netw
 
 **Interest decides what a peer can see.** Visibility isn't global. What a given connection is allowed to see of a given object is resolved per object, per connection, through the interest system (`InterestManager`, `IInterestCondition` and their implementations). A NetworkSystem existing doesn't mean every peer receives it.
 
-## State arrives over an unreliable channel by design
+## State does not arrive over a reliable channel
 
-There is no reliable channel underneath replication quietly retransmitting every member change until it lands. Recovery is targeted at what a peer is actually missing rather than a blanket retransmit. If you're used to a reliable-by-default RPC layer, read the reliability and redundancy docs before assuming state "just arrives". Here, arriving is something the system has to actively account for, not a channel guarantee you get for free.
+Replication does not resend every member change until it lands, the way a reliable channel would, and the engine recovers what a peer misses on its own. If you're used to a reliable-by-default RPC layer, read the reliability and redundancy docs before assuming state "just arrives". Here, arriving is something the system has to actively account for, not a channel guarantee you get for free.

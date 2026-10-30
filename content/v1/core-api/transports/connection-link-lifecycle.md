@@ -99,7 +99,7 @@ public abstract Task<ConnectionStateChangeResult> DisconnectRemoteClientAsync(Co
 
 ## PeerConnectionDiscovered and PeerConnectionDropped
 
-`TransportManager` also raises two peer-naming events, deliberately separate from the state-change events:
+`TransportManager` also raises two peer-naming events, separate from the state-change events:
 
 ```csharp
 public event PeerConnectionChangedHandler? PeerConnectionDiscovered;
@@ -108,7 +108,7 @@ public event PeerConnectionChangedHandler? PeerConnectionDropped;
 public delegate void PeerConnectionChangedHandler(Connection connection);
 ```
 
-`ConnectionRemoteStateChanged` is subscribed by the observer and interest managers with no server gate, so raising it for every peer arrival would have a client walk its whole system set removing an observer and an interest entry that were never there. `PeerConnectionDiscovered`/`PeerConnectionDropped` exist for game code that wants to know about peers specifically, including on a host: a client is told about a peer by the server reporting it, and the `Connection` handed over is a stand-in - an identity with no link behind it (`Connection.IsPeerStandIn`). A host is told through the same events rather than through its own roster copy, so code watching this seam hears about peers the same way whichever kind of peer it runs on. `PeerConnectionDropped` fires while the entry is still held, so a handler gets one last chance to clear anything referencing it before the `Connection` returns to its pool.
+`PeerConnectionDiscovered` and `PeerConnectionDropped` are for game code that wants to know about peers specifically, including on a host. On a client, the `Connection` handed over is a stand-in: an identity with no link behind it (`Connection.IsPeerStandIn`). A host hears about peers through the same events, so code watching them works the same way on any kind of peer. `PeerConnectionDropped` fires while the `Connection` is still valid, so a handler can clear anything referencing it; keep no reference to it after the handler returns.
 
 ## Reading a link without holding it
 

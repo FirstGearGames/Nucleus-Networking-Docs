@@ -42,9 +42,9 @@ The step-callback registry belongs to each `NetworkLoopManager` instance; it is 
 
 `ISceneLoader.LoadSceneAsync` and `UnloadSceneAsync` return `Task<bool>` and may await freely - a download, a disk read, an engine operation - without minding which thread the continuation resumes on. Nothing in the loop blocks waiting for them.
 
-The engine brings an awaited outcome back onto the loop thread itself. Once your loader's task completes, the engine's follow-up is queued for the loop rather than run inline, so it always resumes on the loop regardless of which thread the awaited operation completed on. Queued follow-ups run during `NetworkLoopSteps.EarlyVariableUpdate`, after that tick's messages have dispatched. A scene operation that finishes on a background thread therefore has its loop-owned follow-up (registering objects, tearing down on release) land at that same controlled point in the tick every time, not whenever the background work happens to finish.
+You never have to return to the loop thread yourself. Whichever thread your loader's task completes on, the engine handles the outcome on the loop thread.
 
-`IBundleLoader` (Pro-only) is the equivalent seam for bundle loads: `LoadBundleAsync` and `UnloadBundleAsync` are likewise `Task<bool>`-returning and the engine does not care which thread they complete on, for the same reason.
+`IBundleLoader` (Pro-only) is the equivalent seam for bundle loads: `LoadBundleAsync` and `UnloadBundleAsync` likewise return `Task<bool>` and may complete on any thread.
 
 ## The Unity integration drives the loop from the main thread instead
 
