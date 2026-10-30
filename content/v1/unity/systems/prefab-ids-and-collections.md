@@ -16,7 +16,7 @@ Each collection is one content shard:
 
 ## Rebuilding the collection
 
-Prefab identity is not something you assign by hand. Run **Nucleus > Rebuild Network Prefab Collection** and the editor does it for you.
+Prefab identity is not something you assign by hand. Run **Tools > Nucleus > Build > Rebuild Network Prefab Collection** and the editor does it for you.
 
 The build step scans every prefab in the project for a `NetworkSystemObject`, groups the networked ones by the asset bundle Unity has them assigned to, and writes one shard's `NetworkPrefabCollection` per group. The collection with no asset bundle assignment (the one under `Resources`) owns the base build's shard; a collection assigned to asset bundle `x` owns the prefabs assigned to `x`. Nothing new has to be authored to express that membership — asset bundle assignment already decides it.
 
@@ -46,9 +46,9 @@ A prefab's identity is stamped onto the prefab asset itself, in the `NetworkSyst
 
 Two prefabs sharing one identity means a spawn of one can build the other. At runtime `NetworkPrefabRegistry.Register` keeps the first live prefab registered under an identity and logs an error naming both prefabs when a different one claims it, so every peer that registers the same collection at least resolves the identity to the same prefab, and the clash shows in the Console instead of being settled silently.
 
-You are told well before that, though. A player build fails while any networked prefab carries an identity a rebuild would change: a missing base collection, two collections resolving to the same prefab bundle, a prefab missing from its collection, a prefab with no id or with an id another prefab holds, or a prefab stamped with a different bundle than its collection. The build error lists each problem. To find the same problems without building, run **Nucleus > Validate Network Prefabs** (see [Developer tools in the editor](../diagnostics/developer-tools-in-unity.md#validating-your-networked-prefabs)).
+You are told well before that, though. A player build fails while any networked prefab carries an identity a rebuild would change: a missing base collection, two collections resolving to the same prefab bundle, a prefab missing from its collection, a prefab with no id or with an id another prefab holds, or a prefab stamped with a different bundle than its collection. The build error lists each problem. To find the same problems without building, run **Tools > Nucleus > Build > Validate Network Prefabs** (see [Developer tools in the editor](../diagnostics/developer-tools-in-unity.md#validating-your-networked-prefabs)).
 
-Running **Nucleus > Rebuild Network Prefab Collection** fixes it: the rebuild keeps an id that is set and unique and gives a duplicate the next free local id for its shard, logging a warning that names the renumbered prefab, the prefab that already held the id, and the new id. When two prefabs share an id, the one the collection already lists keeps it, so an original keeps its id over a new copy, which matters once a build or content bundle has shipped with it. Among prefabs the collection does not list yet, a base keeps the id over its own variant, and asset GUID order settles the rest. Then rebuild both the server and the client builds so every peer agrees.
+Running **Tools > Nucleus > Build > Rebuild Network Prefab Collection** fixes it: the rebuild keeps an id that is set and unique and gives a duplicate the next free local id for its shard, logging a warning that names the renumbered prefab, the prefab that already held the id, and the new id. When two prefabs share an id, the one the collection already lists keeps it, so an original keeps its id over a new copy, which matters once a build or content bundle has shipped with it. Among prefabs the collection does not list yet, a base keeps the id over its own variant, and asset GUID order settles the rest. Then rebuild both the server and the client builds so every peer agrees.
 
 ## Wire identity
 

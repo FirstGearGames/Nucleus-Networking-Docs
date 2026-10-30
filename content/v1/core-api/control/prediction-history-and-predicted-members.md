@@ -18,15 +18,15 @@ public readonly NetworkMember<ushort> Health = new();
 | --- | --- | --- | --- |
 | `Replicate` | An ordinary member. Inbound values apply as they arrive. | The server, or a client its write access allows. | The value, when it changes and write access allows it |
 | `Predict` | Client state: a per-tick value the simulation reads. | Whoever controls the system, on its live tick. | The value, every tick (see [Client state](./client-state-components.md)) |
-| `Validate` | A predicted result, computed from the client state. | Every peer that simulates the system. | Never the value: a hash of the tick's results, with its client state |
+| `Validate` | A predicted result, computed from the client state. | Every peer that simulates the system. | A hash of the tick's results, with its client state, and the result values beside it while `SystemManager.IsResultValueSendEnabled` is on (the default), for the server to check, never to apply |
 
-Roles are per member. Members of every role can share a component, and the usual predicted object has all three: `Predict` members for what the player asked, `Validate` members for what the step computes from them, and `State` members for what only the server decides.
+Roles are per member. Members of every role can share a component, and the usual predicted object has all three: `Predict` members for what the player asked, `Validate` members for what the step computes from them, and `Replicate` members for what only the server decides.
 
 What a predicted role does depends on the peer:
 
-- **The pure-client controller** predicts the system: it writes its `Predict` members on its live tick, runs the step at once to compute its `Validate` members, and never sends those upstream. The server checks the result and orders a correction when it differs.
+- **The pure-client controller** predicts the system: it writes its `Predict` members on its live tick, runs the step at once to compute its `Validate` members, and sends those upstream only for the server to check, never to apply. The server checks the result and orders a correction when it differs.
 - **The server** takes the controller's `Predict` members, simulates the same tick, and checks the controller's `Validate` result against its own.
-- **Any other client** applies the server's values as they arrive, but a member with a role other than `State` takes part in a reconcile: it is held at the server's start-tick values while the controlled systems replay. A client that sets `NetworkSystem.IsObserverPredictionEnabled` predicts the system as its controller does (see [Predicting another client's object](./reconciliation.md#predicting-another-clients-object)).
+- **Any other client** applies the server's values as they arrive, but a member with a role other than `Replicate` takes part in a reconcile: it is held at the server's start-tick values while the controlled systems replay. A client that sets `NetworkSystem.IsObserverPredictionEnabled` predicts the system as its controller does (see [Predicting another client's object](./reconciliation.md#predicting-another-clients-object)).
 - **A host** applies values as they arrive. It is the server, so nothing it predicts is ever corrected.
 
 ## The server checks the result

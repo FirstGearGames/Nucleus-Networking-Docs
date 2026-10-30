@@ -70,9 +70,9 @@ None of these are compiler-enforced access restrictions — they are promises ab
 
 A Pro-only type or member is a build-time absence in a Free build, not a runtime failure: `CoreManager.BundleManager` and `CoreManager.WorldPersistenceManager` simply do not exist on the compiled type in a Free build. Code that references them against a Free build fails to compile, it does not throw at runtime.
 
-## What is not extensible from outside the assembly
+## Custom transports can live in your own assembly
 
-A `Transport` is built on `CommonSocket`, whose connect, send, and receive members are `internal`. `InternalsVisibleTo` is granted to exactly one assembly, `Nucleus.Integrations.BlitzRelay`, and to nothing else. Writing a custom transport from outside the engine assembly is not currently possible — today that's an in-tree exercise, done as a fork or a PR against `Nucleus.Transports`, not as an external package.
+You can write a custom transport in your own assembly, as part of your game or as a separate package. The transport base types are public, and every member a transport implements is public or protected. [The Transport contract](../core-api/transports/transport-contract.md) lists what to implement.
 
 ## Full type listing
 

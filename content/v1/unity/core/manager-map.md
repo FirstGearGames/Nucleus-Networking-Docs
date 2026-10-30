@@ -46,7 +46,7 @@ title: "The manager map"
 
 Two exceptions have no Unity-side component of their own: `RpcManager` and `ViolationManager`. Reach either one through `UnityCoreManager.CoreManager` (the component that owns the session's `CoreManager`) or through `NucleusUnity.BoundCoreManager`, then take the field as in C#.
 
-The tenth Unity component `EnsureManagers` adds, `UnityPhysicsManager`, is the odd one out in the other direction: it fronts no core manager at all. It's an inspector-side seat for physics execution settings that a physics coordinator reads directly, not a wrapper around one of the eleven fields above.
+The tenth Unity component that `UnityCoreManager` adds when it is missing, `UnityPhysicsManager`, is the odd one out in the other direction: it fronts no core manager at all. It's an inspector-side seat for physics execution settings that a physics coordinator reads directly, not a wrapper around one of the eleven fields above.
 
 ## No engine-wide settings object
 

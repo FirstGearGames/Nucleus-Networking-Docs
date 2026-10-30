@@ -42,7 +42,6 @@ Don't design a world around any of these — none of them exist:
 
 - **No per-connection byte-budget scheduler.** There's no cap on how many bytes a peer's connection may spend per tick, and no priority or staleness scheduling deciding what gets sent first when a peer is behind. The spatial grid and per-connection spawn pacing exist; a bandwidth cap does not.
 - **No per-object send priority.** Nothing lets you mark one object as more urgent than another when a peer is bandwidth-constrained. Every eligible object is served the same way.
-- **No interest enter/exit callbacks.** Game code isn't notified when a peer gains or loses interest in an object. If you need to react to that transition, you have to infer it yourself.
 - **No broadphase seam for interest.** There's no hook letting an integration hand the interest pass a pre-narrowed candidate set; evaluation is the O(systems × connections) pass described above for every world. The spatial grid narrowing that exists today is internal to distance/grid conditions, not an integration seam.
 
 ## Edition effects on the budget

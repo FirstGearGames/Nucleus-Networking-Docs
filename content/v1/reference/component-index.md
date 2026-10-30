@@ -40,6 +40,21 @@ title: "Component Index"
 | --- | --- |
 | `PhysicsSimulationDriver` | Aligns one scene's physics world with the network tick instead of Unity's own FixedUpdate. |
 | `NetworkRigidbody` | Declares a rigidbody's replicated physics component and drives its sync, adopting, interpolating, or converging as needed. |
+| `ReplayHeldBody` | Holds a `Rigidbody` or `Rigidbody2D` kinematic while a reconcile replays, for a body the replay does not rewind. |
+
+## Prediction
+
+| Component | Description |
+| --- | --- |
+| `ValidatedTransform` | Keeps a transform's pose, scale, active state and layer in predicted members the server checks. |
+| `ValidatedRigidbody`, `ValidatedRigidbody2D` | Keeps a body's pose, velocities and sleep state in predicted members, so its controlling client predicts it and a correction replays physics. |
+| `ValidatedRigidbodyAdvanced`, `ValidatedRigidbody2DAdvanced` | Adds the body's kinematic flag, collision detection, constraints and center of mass. |
+| `ValidatedCharacterController` | Keeps a `CharacterController`'s pose and enabled state in predicted members. |
+| `ValidatedCharacterControllerAdvanced` | Adds the controller's height, center and radius. |
+| `ValidatedConstantForce`, `ValidatedConstantForce2D` | Keeps a `ConstantForce`'s forces and torques in predicted members. |
+| `PredictedAnimator` | Puts an `Animator`'s parameters back before a replay, on this peer only. |
+| `ValidatedAnimatorRootMotion` | Keeps the base layer's playback in predicted members, for root motion that decides where a character goes. |
+| `GraphicalSmoother` | Glides a child graphic across each tick and each correction while the object stays at its true pose. |
 
 ## Lag compensation
 

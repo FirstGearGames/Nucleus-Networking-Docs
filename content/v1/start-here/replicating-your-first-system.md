@@ -59,7 +59,7 @@ NetworkSystemWatch? watch = NetworkSystemPool.Watch<NetworkSystem, MatchClockCom
 });
 ```
 
-Composition, not type alone, is what a watch matches on: a watch for `NetworkSystem, MatchClockComponent` is never offered a plain `NetworkSystem` that carries a different component. `Watch` also takes an optional released handler for when the matching system stops, and is generated in the same up-to-64-component overloads as `TryRent`.
+Composition, not type alone, is what a watch matches on: a watch for `NetworkSystem, MatchClockComponent` is never offered a plain `NetworkSystem` that carries a different component. `Watch` also takes an optional released handler for when the matching system stops, and is generated in the same overloads as `TryRent`, taking up to 31 component type arguments.
 
 Registering a watch is safe at any time. If a matching system already exists when you watch, it is replayed against the new watch immediately, so a subscriber that starts late still gets it.
 

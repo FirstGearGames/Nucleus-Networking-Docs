@@ -36,7 +36,7 @@ This model does not include:
 
 - Replay-correct collision callbacks
 
-This is planned, not hidden. An earlier approach that restored every body in the physics world to a past tick and stepped them all again was tried and archived; the model here (capture, project, converge) is what shipped in its place. A replay today steps the world again but rewinds only the bodies a validated behaviour predicts, as described above.
+This is planned, not hidden. A replay today steps the world again but rewinds only the bodies a validated behaviour predicts, as described above.
 
 Judging a shot against where targets were is a separate feature that does not touch physics bodies at all: [lag compensation](../lag-compensation/how-lag-compensation-works.md) (Pro) keeps its own hitbox history and its own geometry. Catching a freshly spawned projectile up through the latency it lost is [spawn compensation](../../core-api/systems/spawn-compensation.md) (Pro).
 

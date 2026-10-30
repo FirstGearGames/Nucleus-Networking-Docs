@@ -12,7 +12,7 @@ Some names exist in the engine but nothing wires them up yet. Treat them as docu
 These were built, shipped for a time, and then deliberately torn out. If you find a doc, comment or stale reference describing one, it is not a bug you rediscovered — it is history.
 
 - **Distance-driven send-interval bands** — a middle interest tier that paced a distant object's sends instead of stopping it outright was removed from the shipped interest types. Per-member send interval and transmission mode still exist, but neither is driven by distance.
-- **Full-world rollback physics** — client-side resimulation that restored the whole physics world to a snapshot tick and re-stepped it replaying client state was removed once projected sync proved it could stay pop-free without that cost. A reconcile's replay does step physics again today, but it rewinds only the bodies a validated behaviour predicts and holds the rest still; see [Predicting a body with a validated behaviour](../../unity/physics/predicting-a-body-with-a-validated-behaviour.md).
+- **Full-world rollback physics** — client-side resimulation that restored the whole physics world to a snapshot tick and re-stepped it replaying client state was removed. A reconcile's replay does step physics again today, but it rewinds only the bodies a validated behaviour predicts and holds the rest still; see [Predicting a body with a validated behaviour](../../unity/physics/predicting-a-body-with-a-validated-behaviour.md).
 
 ## These features are planned but not built yet
 

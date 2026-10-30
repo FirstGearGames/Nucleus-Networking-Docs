@@ -25,10 +25,10 @@ Each separately built assembly that ships its own content declares its own bundl
 
 ## Build the shards
 
-Two menu items, run in order:
+Two steps on the Build tab of **Tools > Nucleus**, run in order:
 
-1. **Nucleus > Rebuild Network Prefab Collection** scans the project for prefabs carrying a `NetworkSystemObject`, groups them by the asset bundle they're assigned to, and stamps each prefab's local `PrefabId` plus the shard's `PrefabBundleId`. Identifiers are preserved across rescans, never renumbered from position, so a bundle built before a change keeps resolving correctly against a client that rebuilt after it.
-2. **Nucleus > Build Content Bundles** rebuilds the collections (so identity is never stale), builds every authored asset bundle into `Assets/StreamingAssets`, and then fills in the `NetworkBundleManifest` from what was actually produced.
+1. **Tools > Nucleus > Build > Rebuild Network Prefab Collection** scans the project for prefabs carrying a `NetworkSystemObject`, groups them by the asset bundle they're assigned to, and stamps each prefab's local `PrefabId` plus the shard's `PrefabBundleId`. Identifiers are preserved across rescans, never renumbered from position, so a bundle built before a change keeps resolving correctly against a client that rebuilt after it.
+2. **Tools > Nucleus > Build > Build Content Bundles** rebuilds the collections (so identity is never stale), builds every authored asset bundle into `Assets/StreamingAssets`, and then fills in the `NetworkBundleManifest` from what was actually produced.
 
 If your project has no `NetworkBundleManifest` yet, the build creates one and reports where. If it finds more than one, it leaves them all alone and warns, because it can't tell which owns the content it just built — keep a single manifest so this step stays automatic.
 

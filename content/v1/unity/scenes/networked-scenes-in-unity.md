@@ -6,7 +6,7 @@ title: "Networked scenes in Unity"
 
 ## Add the manager and loader
 
-`UnityCoreManager` adds a `UnitySceneManager` with default settings to its own GameObject if that GameObject has none. To change its settings, add one yourself on that same GameObject, not on a child object: `UnityCoreManager` only looks on its own GameObject before adding one, so a copy on a child leaves you with two. It drives the core `SceneManager` for you: on `ManagersInstantiated` it copies its `Join Placement`, `Automatic Request On Blocked Spawn Enabled` and `Scene Load Timeout Seconds` fields onto the core manager, then makes sure some scene loader exists.
+`UnityCoreManager` adds a `UnitySceneManager` with default settings to its own GameObject when neither that GameObject nor any of its children has one. To change its settings, add one yourself, on the `UnityCoreManager`'s GameObject or on a child of it. `UnityCoreManager` looks through its children, inactive ones included, before adding its own, so it never adds a second. A `UnitySceneManager` on an inactive child is never set up, though, so keep that child active. It drives the core `SceneManager` for you: on `ManagersInstantiated` it copies its `Join Placement`, `Automatic Request On Blocked Spawn Enabled` and `Scene Load Timeout Seconds` fields onto the core manager, then makes sure some scene loader exists.
 
 That last step only runs when `Scene Loader Enabled` is on and no `NetworkSceneLoader` is found anywhere in the loaded scenes (inactive objects count). If it finds none, it adds a `UnitySceneLoader` component to its own GameObject and sets its `LocalPhysicsEnabled` from `Automatic Stacked Scene Simulation Enabled`. If a loader already exists, `UnitySceneManager` leaves it alone.
 
@@ -16,7 +16,7 @@ For a first pass, leave both defaults on: add `UnitySceneManager`, let it add a 
 
 ## Give the scene a wire id
 
-Add your second scene to Build Settings. Then run **Nucleus > Rebuild Network Scene Manifest** from the menu - this is what stamps every scene in Build Settings with an id in the project's `NetworkSceneManifest` and is what `UnitySceneLoader` resolves ids against. In practice you rarely have to run it by hand: `NetworkSceneManifestAutoRebuild` hooks Unity's build scene list and rebuilds the manifest whenever it changes, so the menu command is a fallback for when that hasn't happened yet.
+Add your second scene to Build Settings. Then run **Tools > Nucleus > Build > Rebuild Network Scene Manifest**. This is what stamps every scene in Build Settings with an id in the project's `NetworkSceneManifest` and is what `UnitySceneLoader` resolves ids against. In practice you rarely have to run it by hand. The manifest is rebuilt automatically whenever the Build Settings scene list changes, a scene asset is imported, moved or deleted (saving a scene re-imports it), the project's Addressables entries change, or a player build starts, so the button is a fallback for when that hasn't happened yet.
 
 `UnitySceneLoader` has a `Scene Manifest` field, but its tooltip says it plainly: leave it empty. An empty field resolves to the project's own manifest automatically, and assigning one only makes sense if your project deliberately keeps more than one manifest. For a single-manifest project, don't touch this field at all.
 

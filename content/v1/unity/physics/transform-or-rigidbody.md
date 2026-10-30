@@ -16,7 +16,7 @@ Pick by what a proxy needs to do: look right, or behave right. A pose follower i
 
 Adding both to the same GameObject is not redundant, it's broken. `NetworkTransform`'s Kinematic Management (on by default) holds an attached `Rigidbody` kinematic on every peer that isn't the controller — including the server while a client controls the system — so the interpolated pose writes don't fight local physics. That's exactly the body `NetworkRigidbody` needs to step.
 
-`PhysicsConvergence.Step` checks `physicsBody.IsKinematic` first and returns immediately if it's true. So on a non-controlling peer with both components: `NetworkTransform` sets the rigidbody kinematic, and `NetworkRigidbody`'s follower short-circuits on every call and never runs. The body goes inert on every proxy — it sits wherever `NetworkTransform` last interpolated it to, never converging, never colliding correctly.
+A kinematic body is never converged. So on a non-controlling peer with both components, `NetworkTransform` sets the rigidbody kinematic and `NetworkRigidbody` never moves it. The body goes inert on every proxy — it sits wherever `NetworkTransform` last interpolated it to, never converging, never colliding correctly.
 
 An object replicates its pose through one system or the other, never both.
 
@@ -26,7 +26,7 @@ An object replicates its pose through one system or the other, never both.
 - **Thrown and bumped bodies** — `NetworkRigidbody`. These need to collide correctly on every peer — a thrown grenade or a kicked prop has to bounce off geometry the same way for everyone watching, not just the controller.
 - **A body its controlling client predicts needs neither.** Use a `ValidatedRigidbody`, which the client simulates from its own client state and the server checks. See [Predicting a body with a validated behaviour](./predicting-a-body-with-a-validated-behaviour.md).
 - **Debris nobody steers** — `NetworkRigidbody`, or nothing at all if it never needs to agree across peers. If it's not gameplay-relevant, it may not need replication at all.
-- **Agents that walk a path** — neither. See [NetworkNavMeshAgent](../network-nav-mesh-agent.md) — a path-following agent replicates the leg it's walking, not a per-tick pose or a physics body.
+- **Agents that walk a path** — neither. See [NetworkNavMeshAgent](./network-nav-mesh-agent.md) — a path-following agent replicates the leg it's walking, not a per-tick pose or a physics body.
 
 ## Cost, in outline
 
@@ -38,4 +38,4 @@ Both go through the same per-member choice of `TransmissionMode` — `Divine` or
 
 A `NetworkTransform` object needs no driver and no `UnityPhysicsManager` decision. It's self-contained: add the component to an object carrying a `NetworkSystemObject`, and it works.
 
-A `NetworkRigidbody` object needs both a `Rigidbody` and a scene physics story. A `UnityPhysicsManager` is added to the manager graph automatically, and under its default `PhysicsExecutionMode.NucleusPerTick` so is a `PhysicsSimulationDriver` for the default physics world, so capture and follow already run on the tick cadence without adding a driver by hand. See [PhysicsSimulationDriver](../physics-simulation-driver.md) and [Replicate a rigidbody](./replicate-a-rigidbody.md).
+A `NetworkRigidbody` object needs both a `Rigidbody` and a scene physics story. A `UnityPhysicsManager` is added to the manager graph automatically, and under its default `PhysicsExecutionMode.NucleusPerTick` so is a `PhysicsSimulationDriver` for the default physics world, so capture and follow already run on the tick cadence without adding a driver by hand. See [PhysicsSimulationDriver](./physics-simulation-driver.md) and [Replicate a rigidbody](./replicate-a-rigidbody.md).

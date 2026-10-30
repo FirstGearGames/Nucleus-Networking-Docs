@@ -21,37 +21,37 @@ title: "NetworkRigidbody"
 
 These gate both the predicted and the proxy correction paths.
 
-- **Position Threshold** (`_positionThreshold`, meters) — the positional divergence past which the body blends back toward the projected target. Below it, counter-velocity alone holds the offset steady.
-- **Rotation Threshold** (`_rotationThreshold`, degrees) — the rotational divergence past which the body blends back toward the target.
+- **Position Threshold** (meters) — the positional divergence past which the body blends back toward the projected target. Below it, counter-velocity alone holds the offset steady.
+- **Rotation Threshold** (degrees) — the rotational divergence past which the body blends back toward the target.
 
 ## Closing fields
 
 How a body over its threshold corrects splits by role:
 
-- **Blend Per Tick** (`_blendPerTick`) — the fraction of the remaining gap a *proxy* closes per tick while over threshold. A predicted body ignores this.
-- **Prediction Correction Rate** (`_predictionCorrectionRate`, default `0.1`): how aggressively a *predicted* body (one whose `Convergence.IsLocallyPredicted` is set) corrects toward the server: the fraction of the gap taken off per tick, once past Position Threshold. Higher snaps back harder and sooner; lower lets the prediction ride looser. `NetworkRigidbody` runs its follower only on a peer that is not the body's controller, so this field only acts where such a peer steers the body with its own client state and sets `IsLocallyPredicted`.
-- **Blend Mode** (`_blendMode`, `ConvergenceBlendMode.Position` or `.Velocity`) — how the closing fraction is applied. `Position` writes the pose directly toward the target each step, identical to `Velocity` in free space, but bypasses the solver, so a blend into geometry penetrates and depenetrates rather than resolving as a contact. `Velocity` applies the same closing fraction as a solver-integrated velocity bias, so contacts, stacks, and other bodies are never disrupted — a blend against geometry becomes a bounded press instead of a penetration.
+- **Blend Per Tick** — the fraction of the remaining gap a *proxy* closes per tick while over threshold. A predicted body ignores this.
+- **Prediction Correction Rate** (default `0.1`): how aggressively a *predicted* body (one whose `Convergence.IsLocallyPredicted` is set) corrects toward the server: the fraction of the gap taken off per tick, once past Position Threshold. Higher snaps back harder and sooner; lower lets the prediction ride looser. `NetworkRigidbody` runs its follower only on a peer that is not the body's controller, so this field only acts where such a peer steers the body with its own client state and sets `IsLocallyPredicted`.
+- **Blend Mode** (`ConvergenceBlendMode.Position` or `.Velocity`) — how the closing fraction is applied. `Position` writes the pose directly toward the target each step, identical to `Velocity` in free space, but bypasses the solver, so a blend into geometry penetrates and depenetrates rather than resolving as a contact. `Velocity` applies the same closing fraction as a solver-integrated velocity bias, so contacts, stacks, and other bodies are never disrupted — a blend against geometry becomes a bounded press instead of a penetration.
 
 ## Residual fields
 
 Below threshold, a sub-threshold residual can still be bled off rather than held frozen:
 
-- **Residual Close Rate** (`_residualCloseRate`) — the per-second rate a sub-threshold positional residual is bled off by a velocity bias toward the target. Higher closes a slow body's drift faster, lower is gentler at first contact, zero holds the offset frozen.
-- **Residual Close Maximum Speed** (`_residualCloseMaximumSpeed`) — the maximum body speed at which the residual close runs. A freshly bumped or still-moving body reads above it and falls back to the plain deadband, so the gentle close never fights a fresh contact.
+- **Residual Close Rate** — the per-second rate a sub-threshold positional residual is bled off by a velocity bias toward the target. Higher closes a slow body's drift faster, lower is gentler at first contact, zero holds the offset frozen.
+- **Residual Close Maximum Speed** — the maximum body speed at which the residual close runs. A freshly bumped or still-moving body reads above it and falls back to the plain deadband, so the gentle close never fights a fresh contact.
 
 ## Escape hatches
 
-- **Teleport Distance** (`_teleportDistance`, meters, proxy-only) — the divergence past which a proxy snaps its whole pose onto the target instead of gliding; the smoothed visual jumps too. Zero disables it, so the body always blends however far off it is. A predicted body is exempt and never teleports.
-- **Maximum Projection Time** (`_maximumProjectionSeconds`, seconds, proxy-only) — the maximum time a proxy's projection may lead the last received state. A predicted body spans its whole round trip and ignores this field entirely.
-- **Gravity Enabled** (`_gravityEnabled`, default on) — whether gravity participates in the projection. On, a falling body is carried down under gravity while resting or supported bodies are left alone, so they are never projected into the ground. Off, the projection ignores gravity entirely.
+- **Teleport Distance** (meters, proxy-only) — the divergence past which a proxy snaps its whole pose onto the target instead of gliding; the smoothed visual jumps too. Zero disables it, so the body always blends however far off it is. A predicted body is exempt and never teleports.
+- **Maximum Projection Time** (seconds, proxy-only) — the maximum time a proxy's projection may lead the last received state. A predicted body spans its whole round trip and ignores this field entirely.
+- **Gravity Enabled** (default on) — whether gravity participates in the projection. On, a falling body is carried down under gravity while resting or supported bodies are left alone, so they are never projected into the ground. Off, the projection ignores gravity entirely.
 
 ## Visual smoothing changes the render, never the body
 
-- **Visual Smoothing** (`_visualSmoothing`, seconds, default `0`) — low-passes `SmoothedVisual` toward the interpolated physics pose to hide tick-to-tick correction jitter. Requires a `SmoothedVisual`; without one it has nothing to act on. The physics body itself stays exact — captured state and collisions are untouched, so nothing can desync — only the render eases toward it. Larger smooths harder but lets the render trail the body more; zero, the default, is off.
+- **Visual Smoothing** (seconds, default `0`) — low-passes `SmoothedVisual` toward the interpolated physics pose to hide tick-to-tick correction jitter. Requires a `SmoothedVisual`; without one it has nothing to act on. The physics body itself stays exact — captured state and collisions are untouched, so nothing can desync — only the render eases toward it. Larger smooths harder but lets the render trail the body more; zero, the default, is off.
 
 ## Replay hold keeps the body still while a correction replays
 
-The **Replay Hold Enabled** field (`_replayHoldEnabled`, on by default) adds a `ReplayHeldBody` to the object as it wakes, when it has none.
+The **Replay Hold Enabled** field (on by default) adds a `ReplayHeldBody` to the object as it wakes, when it has none.
 
 A client that receives a correction for an object it predicts replays every tick since, and each replayed tick steps the whole physics world. A `NetworkRigidbody` body is never rewound, because it is converged rather than predicted, so it must not be stepped again. While a replay runs, `ReplayHeldBody` makes the body kinematic, and afterwards it makes it dynamic again with its velocities, its sleep state and its collision detection mode as they were. A continuous collision mode, which a kinematic body cannot use, is speculative for the length of the replay.
 

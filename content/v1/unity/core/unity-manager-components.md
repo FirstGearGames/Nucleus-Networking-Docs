@@ -28,7 +28,7 @@ Each of these exposes the `Nucleus*` core manager it drives as a public property
 
 ## UnityPhysicsManager
 
-`UnityPhysicsManager` does not front a core manager the way the components above do — there is no core `PhysicsManager` and no `Nucleus*` property on it. It is the inspector seat for process-global physics settings, and feeds `PhysicsSimulationCoordinator` directly: `ExecutionMode` (a `PhysicsExecutionMode`) and a toggle that matches Unity's fixed delta time to the network tick rate. See the physics pages for what `ExecutionMode` controls and how the fixed-delta-time match works.
+`UnityPhysicsManager` does not front a core manager the way the components above do — there is no core `PhysicsManager` and no `Nucleus*` property on it. It is the inspector seat for process-global physics settings, which the integration's physics stepping reads directly: `ExecutionMode` (a `PhysicsExecutionMode`) and a toggle that matches Unity's fixed delta time to the network tick rate. See the physics pages for what `ExecutionMode` controls and how the fixed-delta-time match works.
 
 ## Components with no inspector fields
 

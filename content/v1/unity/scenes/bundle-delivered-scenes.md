@@ -4,7 +4,7 @@ title: "Addressables-delivered scenes"
 
 ## What delivery mode means
 
-Every scene the server can send a peer to is one row in the project's `NetworkSceneManifest`, built by `Nucleus/Rebuild Network Scene Manifest`. Each `NetworkSceneManifest.SceneEntry` carries a `SceneDeliveryMode`, derived from the project rather than chosen by hand:
+Every scene the server can send a peer to is one row in the project's `NetworkSceneManifest`, built by **Tools > Nucleus > Build > Rebuild Network Scene Manifest**. Each `NetworkSceneManifest.SceneEntry` carries a `SceneDeliveryMode`, derived from the project rather than chosen by hand:
 
 - `SceneDeliveryMode.BuildSettings` — the scene ships inside the player and is opened by path. This is the default for any scene not marked Addressable, and it is what every scene mapped before delivery modes existed still reads as.
 - `SceneDeliveryMode.Addressables` — the scene is an Addressables entry, opened through Addressables, which resolves and fetches whatever carries it.
@@ -22,7 +22,7 @@ Net effect: for scene content, `RequiredBundleId` is never anything but the base
 ## Turning it on
 
 1. Mark the scene Addressable in the project (its own group, address, whatever the project's Addressables setup calls for).
-2. Rebuild the manifest with `Nucleus/Rebuild Network Scene Manifest`. The builder finds the scene among the project's Addressable GUIDs and records `DeliveryMode = SceneDeliveryMode.Addressables` for it.
+2. Rebuild the manifest with **Tools > Nucleus > Build > Rebuild Network Scene Manifest**. The builder finds the scene among the project's Addressable GUIDs and records `DeliveryMode = SceneDeliveryMode.Addressables` for it.
 3. Make sure `com.unity.addressables` 1.19 or newer is installed. The integration's assembly definition then sets the `NUCLEUS_ADDRESSABLES` define for you through a `versionDefines` entry, so there is no scripting define symbol to add by hand. The Addressables code path in `UnitySceneLoader` is compiled out without it.
 
 Loading a scene through Addressables is not gated by edition. Only fetching content out of an asset bundle needs Pro.

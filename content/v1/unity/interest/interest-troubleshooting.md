@@ -51,7 +51,7 @@ Fix: raise `MaximumSpawnsPerTick`, or spawn less at once. A `NetworkSystemGroup`
 
 ## Setting the technique or axes logs an error and does nothing
 
-`InterestManager.SetInterestTechnique` is refused, with a logged error, once any distance condition has already registered in that world — tracked internally the moment a position condition is added, globally or per-system. One technique and one plane govern a world for its whole lifetime because the shared spatial index applies its axis mask when a point is filed and again when it is queried; changing either mid-session would have one pass measuring in two of them.
+`InterestManager.SetInterestTechnique` is refused, with a logged error, once any distance condition has already registered in that world, globally or per system. One technique and one plane govern a world for its whole lifetime, so choose them before the first distance condition registers.
 
 Fix: call `SetInterestTechnique` during setup, before any system carrying a distance rule can spawn — never after.
 

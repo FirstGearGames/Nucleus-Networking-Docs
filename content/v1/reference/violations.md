@@ -6,11 +6,11 @@ title: "Violation reference"
 
 A violation is a struct implementing `IViolation`, raised through `ViolationManager` when a peer sends something the protocol does not permit. The offending operation is always rejected regardless of what happens next; the violation only decides the `ViolationAction` taken against the `Connection` that sent it: `Ignore` or `Kick`. Logging is separate from the action, carried on `ViolationContext<T0>.Log`, a `LogEntry` the raise site may seed and the deciding handler may change or clear. Register a `ViolationHandler<T0>` to override the default action per type, or subscribe a `ViolationDetectedHandler<T0>` (or `IViolationObserver`) to be told about one without changing the outcome.
 
-There are fifteen shipped violation types. Two exist only in Pro.
+There are twenty-two shipped violation types. Three exist only in Pro.
 
 ## Peer-behavior violations
 
-These fire from state application, spawning, and RPC dispatch. All default to `Ignore`.
+These fire from state application and recovery, spawning, RPC dispatch, and lag compensation queries. All default to `Ignore`.
 
 | Type | Payload | Check first |
 |---|---|---|
@@ -18,11 +18,15 @@ These fire from state application, spawning, and RPC dispatch. All default to `I
 | `PredictedMemberChangeViolation` | `SystemId` | Whether the member is really predicted; a controller never serializes a predicted member's value, so this usually means the member's transmission setup changed without the controller rebuilding. |
 | `EmptyCollectionDeltaViolation` | `SystemId`, `MemberId` | A compliant sender cannot produce a collection delta with no operations, so first suspect a diverged serializer pair between the two builds, not the sender's intent. |
 | `InvalidStateAckViolation` | `AckedTick` | Whether the two peers' tick counters have actually diverged (a restart, a save/load, a manual tick reset) rather than assuming a forged ack. |
-| `RetentionExceededViolation` | `AckedTick` | The peer's latency against `SystemManager.StateRetentionMilliseconds`; a single raise is ordinary heavy loss, not abuse. |
+| `RetentionExceededViolation` | `AckedTick`, `ConsecutiveCount` | The peer's latency against `SystemManager.StateRetentionMilliseconds`; a single raise is ordinary heavy loss, not abuse. |
 | `RecoveryUnconfirmedViolation` | `UnconfirmedServeCount` | Whether the peer's connection is dropping the recovery serve itself (packet loss eating the recovery, not just the state it was fixing) before assuming it is stalling on purpose. |
+| `RecoveryBudgetExhaustedViolation` | `ConsecutiveSeconds`, `SecondsInLastMinute` | The peer's packet loss. An honest peer through a burst of loss draws on its banked repair budget (`SystemManager.RecoveryBudgetFullWorlds`) and is not throttled, so a long run of seconds means constant heavy loss, or a peer dropping packets or reporting losses on purpose. It is raised at most once a second per Connection. |
+| `StateLossReportFloodViolation` | `AllowedLossRepairCount` | Whether the peer has just come out of a stall, which lets an honest peer ask for several ticks of repair at once. The repairs past the allowance are refused either way. |
+| `UnexpectedStateLossReportViolation` | `Tick` | Whether a handover changed which peer serves the sender state while the report was in flight. The report is discarded, and this type logs a warning by default. |
 | `UnauthorizedSpawnViolation` | `SystemId`, `SystemBundleId`, `SystemLocalId` | Whether the server just despawned that system id and the client's own recovery re-sent it before learning of the despawn; that path raises nothing, so a raise here means the id was never one the server despawned. |
 | `RpcSendPermissionViolation` | `SystemId` | Whether permission was revoked while calls already sent were still in flight; a well-behaved client reaches this on that race alone. |
 | `RpcFloodViolation` | `ReceivedRpcCount`, `AllowedRpcCount` | `RpcManager.MaximumInboundRpcsPerConnectionPerDrain` against what the client actually needs to send in one drain, before assuming a flood attempt. |
+| `LagCompensationViewClampedViolation` | `ReportedTick`, `ClampedTick` | The shooter's latency against `LagCompensationManager.MaximumRewindMilliseconds`. The shot is still judged at the clamped tick, so only a steady stream from a client on a fast link suggests it is asking to be judged against the oldest world it can. The type exists in both editions, but only Pro's lag compensation queries raise it. |
 
 ## Malformed-data violation
 
@@ -31,6 +35,14 @@ These fire from state application, spawning, and RPC dispatch. All default to `I
 | Type | Payload | Check first |
 |---|---|---|
 | `MalformedDataViolation` | `Kind` (`State`, `FullBody`, `Recovery`, `ClientState`, `Message`, `Rpc`), `SystemId` (zero when not for a system) | Whether both builds share the same serializers and member layout for that `Kind`; a version mismatch between client and server builds reads exactly like a forged packet. Run a debug build to see the exception. |
+
+## Client-limit violation
+
+`ClientLimitViolation` fires on the server when a client goes past one of the limits on `ServerManager.ClientLimits`, which are disabled by default, and the packet that crossed the limit is discarded unread. It defaults to `Kick` and logs a warning, since the server chose the limits and an honest client is built to stay under them. A size limit raises it once per refused packet. A rate limit raises it once per one-second window and discards the rest of that client's packets in the window. A host's own client is exempt.
+
+| Type | Payload | Check first |
+|---|---|---|
+| `ClientLimitViolation` | `Kind` (`PacketBytes`, `SplitPacketBytes`, `PacketsPerSecond`, `BytesPerSecond`), `MeasuredValue`, `MaximumValue`, `Channel` | Whether the limit leaves room for what an honest client sends at its busiest. Set `ClientLimits.MaximumPacketBytes` at least one transmission unit above the largest packet a client honestly sends, since a split packet can be refused up to one piece short of the limit. |
 
 ## Protocol-direction violations
 

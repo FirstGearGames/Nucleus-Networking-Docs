@@ -53,14 +53,15 @@ It rents both sockets in `InitializeAsync`, calls `Initialize` on each, then cal
 - `RentInitializedConnection(CommonSocket commonSocket)` - rents and initializes a `Connection` for a socket that needs one.
 - `ChangeLocalConnectionState(Invoker invoker, LocalConnectionState nextLocalConnectionState, Connection? connection)` - changes a connection's local state and invokes callbacks, or confirms it is already there.
 - `SetRemoteConnectionStateAsConnected(uint idBySocket, Connection connection)` - server-only; marks a connection's remote state as connected and invokes callbacks.
-- `SetRemoteConnectionStateAsDisconnected(Connection connection)` - server-only; marks a connection's remote state as disconnected and invokes callbacks.
+
+A departure is reported through `Transport` itself. Its protected `SetRemoteConnectionStateAsDisconnected(Connection connection)` is server-only; it marks a connection's remote state as disconnected and invokes callbacks. A socket that sees a client leave asks its transport to make that call. Game code that wants to drop a client calls `Connection.Kick()` instead.
 
 ## The payload-ownership rule
 
 A received payload is copied into a pooled buffer exactly once, and that buffer is returned by exactly one owner. `CopyIntoOwnedPayload` and `TryCopyIntoIncomingPacket` are the two places that copying happens; whichever code queues the resulting `IncomingPacket` becomes the array's owner from that point on, and whatever path does not queue it must return the array to the pool itself. Two owners, or none, both corrupt the pool.
 
-## You cannot write a transport outside the Nucleus assembly today
+## You can write a transport in your own assembly
 
-You cannot write a `Transport` outside the Nucleus assembly today. `CommonSocket`'s `ConnectAsync`, `SendPacket`, and `ReceivePackets` are declared `internal`, and on `SocketPairTransport<TServerSocket, TClientSocket>` the `ServerSocket` and `ClientSocket` properties themselves are `internal` too - there is no public surface left to build a socket pair from outside the engine. The engine grants exactly one exception, to the `Nucleus.Integrations.BlitzRelay` assembly, so that relay and rendezvous code can stay out of the engine rather than being folded into it to reach this machinery.
+A custom transport does not have to live in the Nucleus assembly. `Transport`, `SocketPairTransport<TServerSocket, TClientSocket>` and `CommonSocket` are public abstract classes that any assembly can derive from, and every member a transport has to implement is public or protected. `CommonSocket`'s connect, disconnect, send and receive members are declared `protected internal`, so a socket in your assembly overrides them as `protected`. A `SocketPairTransport` subclass reaches its `ServerSocket` and `ClientSocket` the same way.
 
-If you want to understand the shape of a real transport, read the source: `Yak` for the minimal offline case, `Synapse` for a full socket-backed one.
+For the shape of a real transport, see [Yak](./yak-offline-transport.md) for the minimal offline case and [Synapse](./synapse-transport.md) for a full socket-backed one.

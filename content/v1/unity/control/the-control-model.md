@@ -46,9 +46,9 @@ Three things ride on who the controller is, and all three are controller-only re
 
 - **Who may send client state.** Only the controller's client state is accepted for the system.
 - **Who predicts.** The controlling client predicts the system from its own client state, and the server checks its result and corrects it when they differ. Any other client receives the server's state instead, and during a reconcile holds the system at the server's values while its own systems replay, unless it opts into predicting it as well with `NetworkSystem.IsObserverPredictionEnabled`.
-- **Who may set members by default.** `MemberWriteAccess.Controller`, "the server, or the single controlling client", is the default access, and it is also the behavior every system had before write access existed as a setting at all. The controller can always set members; widening that to other observers is a separate, additive Pro setting (`MemberWriteAccess.AnyClient`), covered on [Letting clients set members](../../core-api/state/state-write-access.md).
+- **Who may set members by default.** `MemberWriteAccess.Controller` is the default access: the server, or the single controlling client, may set members. The controller can always set members; widening that to other observers is a separate, additive Pro setting (`MemberWriteAccess.AnyClient`), covered on [Letting clients set members](../../core-api/state/state-write-access.md).
 
-The same shape holds for RPCs: `RpcSendAccess.Controller` is the default there too, and its own doc comment puts it plainly - "only whoever drives the object may ask it to do anything."
+The same shape holds for RPCs: `RpcSendAccess.Controller` is the default there too, so only whoever drives the object may ask it to do anything.
 
 ## Observation is required under every check
 

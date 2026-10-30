@@ -39,16 +39,9 @@ The sender sees the call once it has actually been delivered, and not at all if 
 
 The server is itself the delivery point. Asking for `OnDelivery` on a server's own send is treated the same as `Immediate`, resolved at the point of send rather than at the call site. That collapse is what lets one `TrySendRpc` call read the same on both peers instead of branching on role, the same way `RpcTarget.To` does for the destination.
 
-`OnDelivery` is meaningless with `RpcTarget.Server`, and the engine refuses the send outright rather than silently downgrading it: a call addressed to the server is not passed on anywhere, so there is nothing for it to come back from.
+`OnDelivery` is meaningless with `RpcTarget.Server`, so the send is refused outright rather than silently downgraded: a call addressed to the server is not passed on anywhere, so there is nothing for it to come back from. `TrySendRpc` returns `false` and logs an error that ends with this text:
 
-```csharp
-if (isOnDelivery && isAddressedToAuthority)
-{
-    Logger<NetworkSystem>.LogError($"[{typeof(T0).Name}] was not sent to NetworkSystem [{AsStringInternal()}]: {nameof(RpcSelfDelivery)}.{nameof(RpcSelfDelivery.OnDelivery)} waits for a call to be passed on, and one addressed to the authority stops there.");
-
-    return false;
-}
-```
+> RpcSelfDelivery.OnDelivery waits for a call to be passed on, and one addressed to the authority stops there.
 
 ## The host traps
 
@@ -56,31 +49,19 @@ A host runs both a server and a client in the same process, sharing one handler 
 
 ### Immediate with RpcTarget.Server is refused
 
-On a host, a call addressed to `RpcTarget.Server` is already invoked locally as part of the send: the host's client half asks its own server half, and that ask runs the handlers right there. Asking for `Immediate` on top of that would run the handlers a second time, so the engine refuses the send and logs why:
+On a host, a call addressed to `RpcTarget.Server` already runs the handlers locally as part of the send. Asking for `Immediate` on top of that would run them a second time, so the send is refused: `TrySendRpc` returns `false` and logs an error that ends with this text:
 
-```csharp
-if (isServerStarted && isAddressedToAuthority && rpcSelfDelivery is RpcSelfDelivery.Immediate)
-{
-    Logger<NetworkSystem>.LogError($"[{typeof(T0).Name}] was not sent to NetworkSystem [{AsStringInternal()}]: a host's call to its own authority is invoked locally already, so {nameof(RpcSelfDelivery)}.{nameof(RpcSelfDelivery.Immediate)} on top of it would run the handlers twice.");
-
-    return false;
-}
-```
+> a host's call to its own authority is invoked locally already, so RpcSelfDelivery.Immediate on top of it would run the handlers twice.
 
 ### Immediate with RpcTarget.Observers cannot double-fire
 
-Sending to `RpcTarget.Observers` with `Immediate` does not double-fire on a host either, but for a different reason: the fan-out walk skips the host's own client connection when the send has already been locally invoked, so it is served exactly once, either by the local invoke or by the fan-out, never both.
+Sending to `RpcTarget.Observers` with `Immediate` does not double-fire on a host either. The host's own client is served exactly once.
 
 ### Immediate with RpcTarget.To: the real pitfall
 
-The trap that actually costs you something is not about double-firing. On a host, the client half and the server half register handlers on the same system, so `Immediate` runs the send site's handlers against the host's client half regardless of who the call is addressed to. Sending with `RpcTarget.To` and `Immediate` makes the host's client half run a copy of every addressed send, including calls addressed to other players, not just calls addressed to the host itself.
+The trap that actually costs you something is not about double-firing. On a host, the client half and the server half register handlers on the same system, so `Immediate` runs the send site's handlers locally regardless of who the call is addressed to. Sending with `RpcTarget.To` and `Immediate` makes the host run a copy of every addressed send, including calls addressed to other players, not just calls addressed to the host itself.
 
-In other words: the host sees answers meant for somebody else. `TryQueueToConnection` still honors the address and skips queuing a redundant packet to the host's own loopback connection, but it does not stop the local invoke that already ran:
-
-```csharp
-if (isLocallyInvoked && connection is { IsHostLoopback: true, IsClient: true })
-    return true;
-```
+In other words, the host sees answers meant for somebody else. The call still reaches only the connection it was addressed to, but the local run has already happened.
 
 A handler on a system a host client listens to needs to check who a call was actually for before treating `Immediate` delivery as its own.
 

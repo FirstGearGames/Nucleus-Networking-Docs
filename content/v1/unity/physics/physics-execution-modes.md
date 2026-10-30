@@ -6,18 +6,18 @@ title: "Physics execution modes"
 
 ## The component
 
-`UnityPhysicsManager` exposes one read-only property, `ExecutionMode`, backed by a serialized field:
+`UnityPhysicsManager` exposes the chosen mode as the read-only `ExecutionMode` property. Two inspector fields configure it:
 
-- `_executionMode` (`PhysicsExecutionMode`) — which mode is active. Defaults to `PhysicsExecutionMode.NucleusPerTick`.
-- `_matchFixedDeltaTimeToTickRateEnabled` (`bool`) — whether Unity's fixed step is aligned to the tick rate. Defaults to `false`, and only applies under `PhysicsExecutionMode.UnityRun`.
+- **Execution Mode** (`PhysicsExecutionMode`): which mode is active. Defaults to `PhysicsExecutionMode.NucleusPerTick`.
+- **Match Fixed Delta Time To Tick Rate** (`bool`): whether Unity's fixed step is aligned to the tick rate. Defaults to off, and only applies under `PhysicsExecutionMode.UnityRun`.
 
-The manager pushes `_executionMode` into `PhysicsSimulationCoordinator` from `ManagersInstantiated`, before any `PhysicsSimulationDriver` registers, so the very first driver already sees the chosen mode.
+The mode is applied before any `PhysicsSimulationDriver` registers, so the very first driver already sees the chosen mode.
 
 Both fields are read once at session start and are disabled in the inspector while playing; stop play mode to change them.
 
 ## PhysicsExecutionMode.NucleusPerTick
 
-The default. `PhysicsSimulationCoordinator` takes `UnityEngine.Physics.simulationMode` to `SimulationMode.Script` and steps every physics world itself, once per network tick, removing the sampling phase error `FixedUpdate` would otherwise introduce between the tick and the physics step. Nucleus projected physics on the default world requires this mode. Because the network loop runs on unscaled time, physics in this mode keeps stepping at the tick rate while `Time.timeScale` is zero or slowed.
+The default. Nucleus sets `UnityEngine.Physics.simulationMode` to `SimulationMode.Script` and steps every physics world itself, once per network tick, removing the sampling phase error `FixedUpdate` would otherwise introduce between the tick and the physics step. Nucleus projected physics on the default world requires this mode. Because the network loop runs on unscaled time, physics in this mode keeps stepping at the tick rate while `Time.timeScale` is zero or slowed.
 
 ## PhysicsExecutionMode.UnityRun
 
@@ -25,9 +25,9 @@ Not a cheaper version of the same thing — a hard limit. The default world is l
 
 ## Matching the fixed step to the tick
 
-`_matchFixedDeltaTimeToTickRateEnabled` applies only under `PhysicsExecutionMode.UnityRun`; it is ignored under `NucleusPerTick`, where the tick already is the step. When enabled, the manager sets `Time.fixedDeltaTime` to one over the network loop's tick rate, so Unity's own fixed step lands on the same cadence as the tick.
+**Match Fixed Delta Time To Tick Rate** applies only under `PhysicsExecutionMode.UnityRun`; it is ignored under `NucleusPerTick`, where the tick already is the step. When enabled, the manager sets `Time.fixedDeltaTime` to one over the network loop's tick rate, so Unity's own fixed step lands on the same cadence as the tick.
 
-The manager captures the previous value in `_previousFixedDeltaTime` and restores it on teardown (`OnDestroy`), tracked by `_hasFixedDeltaTimeOwnership`, so a play session doesn't leave the project's fixed step changed behind it.
+The previous value is restored when the manager is destroyed, so a play session doesn't leave the project's fixed step changed behind it.
 
 ## Mode versus driver
 

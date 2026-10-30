@@ -4,7 +4,7 @@ title: "Round-trip time, jitter and packet loss"
 
 ## The measured figures
 
-`Connection.RoundTripTimeMilliseconds` is a smoothed estimate of the link's round trip time, in milliseconds. It follows the same estimator RFC 6298 §2.2/§2.3 define for TCP's retransmission timer: the first sample seeds the average outright, and each later sample moves it by an eighth, so one slow reply nudges the figure rather than redefining it. `Connection.RoundTripTimeDeviationMilliseconds` carries the spread the smoothing hides - the link's jitter - and is meant to be read alongside it.
+`Connection.RoundTripTimeMilliseconds` is a smoothed estimate of the link's round trip time, in milliseconds. The first sample sets it outright, and each later sample moves it only part of the way, so one slow reply nudges the figure rather than redefining it. `Connection.RoundTripTimeDeviationMilliseconds` carries the spread the smoothing hides - the link's jitter - and is meant to be read alongside it.
 
 Both are `UnsetRoundTripTimeMilliseconds` / `UnsetRoundTripTimeDeviationMilliseconds` (`uint.MaxValue`) until the link has a first sample. `Connection.IsRoundTripTimeUnset` is `true` exactly while `RoundTripTimeMilliseconds` equals `UnsetRoundTripTimeMilliseconds`. `uint.MaxValue` is used instead of zero because zero is a valid measurement - a loopback link genuinely rounds to it - so it can't also mean "unmeasured" without the two being indistinguishable.
 
@@ -12,9 +12,9 @@ Each peer measures its own view of the link: a client measures its link to the s
 
 ## Packet loss
 
-`Connection.PacketLossPercentage` is the share of recent probes that went unanswered, read the way a ping tool measures it: from gaps in the echoed probe sequence. Every probe's reply carries the probe's sequence number, so a sequence that never comes back is a probe that did not round trip. This is round-trip loss, not one-way.
+`Connection.PacketLossPercentage` is the share of recent probes that went unanswered, read the way a ping tool measures it. This is round-trip loss, not one-way.
 
-Because it counts sequence gaps rather than timing replies, a reply does not have to land inside the probe interval to count. A late or reordered reply still closes its gap and is not counted as lost, even if a newer probe has already gone out by the time it arrives. The figure is measured over the last 16 probes, so it tracks the link's current condition rather than its whole history and clears within about that many probe intervals once loss stops. It reads 0% on a loopback link, which has no wire to lose on.
+A reply does not have to land inside the probe interval to count. A late or reordered reply is not counted as lost, even if a newer probe has already gone out by the time it arrives. The figure is measured over the last 16 probes, so it tracks the link's current condition rather than its whole history and clears within about that many probe intervals once loss stops. It reads 0% on a loopback link, which has no wire to lose on.
 
 ## The trust-the-client model
 

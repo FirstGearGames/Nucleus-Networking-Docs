@@ -6,7 +6,7 @@ title: "Synapse Transport component"
 
 `SynapseTransport` is the Inspector-configurable `NetworkTransport` for the built-in UDP transport, Synapse. Place it on the `UnityCoreManager`'s GameObject and edit its fields there; `UnityTransportManager` reads every `NetworkTransport` component on that GameObject and its children and adds each to the `CoreManager`. When it finds none, it adds a `SynapseTransport` itself, so a project with no transport component configured still gets Synapse with its defaults.
 
-A custom editor (`SynapseTransportEditor`) groups the fields into three labeled sections in the Inspector: Connection, Timeouts, and Hosting.
+The Inspector groups the fields into three labeled sections: Connection, Timeouts, and Hosting.
 
 ## Inspector fields
 

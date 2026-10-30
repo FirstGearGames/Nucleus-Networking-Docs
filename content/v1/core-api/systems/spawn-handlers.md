@@ -64,7 +64,3 @@ Two things the handler is responsible for getting right that the framework canno
 
 - **A spawn for an unregistered bundle.** `OnDynamicSystemSpawned` can be called with a `prefabBundleId`/`prefabLocalId` pair your content registry has not loaded yet. Content must be loaded before spawns for it can arrive; treat an unresolved pair as an error rather than silently dropping the system.
 - **Placing the instance in the named scene.** The handler must put the freshly built or moved object in the scene `sceneHandle` names, not in whatever scene the engine would place a new object into by default. A world holding several open scenes otherwise collapses every dynamic spawn into one scene.
-
-## Reference implementation
-
-`Nucleus.Integrations.Unity.Managers.Systems.UnitySystemSpawnHandler` is the shipped Unity implementation of this interface and is the best worked example to read end to end. It keeps a dictionary of pending scene-object systems keyed by `SceneObjectKey`, a dictionary of live instances keyed by group id, and a dictionary of retained instances keyed by system id; its `PlaceInScene` method is the concrete answer to the scene-placement failure mode above, and its unregistered-bundle check in `OnDynamicSystemSpawned` is the concrete answer to the other one. A non-Unity engine integration implements the same five methods against its own object model the same way.

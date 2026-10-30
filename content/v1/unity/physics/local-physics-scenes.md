@@ -6,13 +6,13 @@ title: "Local physics scenes"
 
 Give each loaded scene its own local physics world so a body only collides with other bodies loaded into that same scene. Two switches control it, both on the Unity scene-loading components.
 
-`UnitySceneLoader.LocalPhysicsEnabled` (backing field `_localPhysicsEnabled`) loads each networked scene with `LocalPhysicsMode.Physics3D` instead of the default shared world, and attaches a `PhysicsSimulationDriver` to it.
+`UnitySceneLoader.LocalPhysicsEnabled` (the **Local Physics** field in the inspector) loads each networked scene with `LocalPhysicsMode.Physics3D` instead of the default shared world, and attaches a `PhysicsSimulationDriver` to it.
 
-`UnitySceneManager`'s "Auto Simulate Stacked Scenes" inspector field (`_automaticStackedSceneSimulationEnabled`) pushes that same setting onto the `UnitySceneLoader` the manager creates, so every stacked instance gets a local physics world without touching the loader directly.
+`UnitySceneManager`'s "Auto Simulate Stacked Scenes" inspector field pushes that same setting onto the `UnitySceneLoader` the manager creates, so every stacked instance gets a local physics world without touching the loader directly.
 
 ## Why the driver is needed
 
-Unity never auto-simulates a local physics scene. A scene loaded with `LocalPhysicsMode.Physics3D` sits inert until something steps it. `NetworkSceneBinder.AttachPhysicsSimulationDriver` adds a `PhysicsSimulationDriver` to the scene the moment it loads, and that driver is what the network loop steps on tick. Without local physics enabled, bodies share the one default world instead, which under the default `PhysicsExecutionMode.NucleusPerTick` is stepped on tick by the driver Nucleus adds for it automatically.
+Unity never auto-simulates a local physics scene. A scene loaded with `LocalPhysicsMode.Physics3D` sits inert until something steps it. Nucleus adds a `PhysicsSimulationDriver` to the scene the moment it loads, and that driver is what the network loop steps on tick. Without local physics enabled, bodies share the one default world instead, which under the default `PhysicsExecutionMode.NucleusPerTick` is stepped on tick by the driver Nucleus adds for it automatically.
 
 ## What changes for a body
 
@@ -20,13 +20,13 @@ A body only collides within its own scene's physics world. Moving a `NetworkRigi
 
 ## Moving a body across scenes
 
-`NetworkRigidbody.NotifySceneChanged` re-resolves which driver a body steps under. A scene move made with `MoveGameObjectToScene` fires no `OnEnable` or `OnDisable` on the component, and the driver is cached at `OnEnable`, so without this call the body keeps stepping the world it left. `NotifySceneChanged` leaves the old driver and asks the new scene for its driver; a local-physics destination already has its driver attached from load, so the ask resolves immediately and the body steps the right world from the next tick.
+`NetworkRigidbody.NotifySceneChanged` re-resolves which driver a body steps under. A scene move made with `MoveGameObjectToScene` fires no `OnEnable` or `OnDisable` on the component, and the driver is chosen at `OnEnable`, so without this call the body keeps stepping the world it left. `NotifySceneChanged` leaves the old driver and asks the new scene for its driver; a local-physics destination already has its driver attached from load, so the ask resolves immediately and the body steps the right world from the next tick.
 
 You don't need to call this yourself for a spawn move: the spawn handler calls it on every `NetworkRigidbody` under a moved system right after the move.
 
 ## Honest limits
 
-This is step routing onto Unity's own per-scene physics world, not a fully separated per-scene physics feature. The engine's feature list tracks "Per-scene local physics" (#302) as step routing shipped, world separation not shipped.
+This is step routing onto Unity's own per-scene physics world, not a fully separated per-scene physics feature.
 
 Bodies in a local physics scene still need manual interpolation; local physics does not give you that for free.
 

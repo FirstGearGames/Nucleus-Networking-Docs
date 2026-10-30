@@ -40,7 +40,7 @@ public void Initialize(NetworkComponent networkComponent, byte id);
 
 ## Resolution is a subscription, not a one-time lookup
 
-Assigning `Value` does not do a one-shot lookup that is later forgotten. Both member types subscribe their target Id to a registry for as long as the reference exists, and that subscription is what makes the member keep working as interest changes: when the target leaves this peer's routing table, the member drops back to `Value == null`; when the target (or, for a connection, that same Id) enters the routing table again, the member resolves it again automatically, with no code re-checking or re-fetching anything.
+Assigning `Value` does not do a one-shot lookup that is later forgotten. Both member types keep following their target Id for as long as the reference exists, so the member keeps working as interest changes: when the target is no longer present on this peer, the member drops back to `Value == null`; when the target (or, for a connection, that same Id) is present again, the member resolves it again automatically, with no code re-checking or re-fetching anything.
 
 This is why a reference keeps its `TargetId` even while `Value` is `null`: the Id is what lets the member pick the resolution back up later without anyone re-sending the assignment.
 

@@ -6,7 +6,7 @@ title: "Typed Messages in Unity"
 
 ## The manager
 
-`UnityCoreManager.EnsureManagers` adds a `UnityMessageManager` to the CoreManager's GameObject alongside the rest of the Unity managers, so it is already present whenever a `UnityCoreManager` bootstraps a session. It exposes one thing, `NucleusMessageManager`, which is the core `MessageManager` this component drives. `UnityMessageManager` carries no inspector settings — its own summary says as much — so there is nothing to configure on it.
+`UnityCoreManager` adds a `UnityMessageManager` to its own GameObject, alongside the rest of the Unity managers, when there is not one already, so one is present whenever a `UnityCoreManager` bootstraps a session. It exposes one thing, `NucleusMessageManager`, which is the core `MessageManager` this component drives. `UnityMessageManager` has no inspector settings, so there is nothing to configure on it.
 
 ## Resolving the manager
 

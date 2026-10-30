@@ -13,7 +13,7 @@ Add `UnityCoreManager` to a single GameObject. Its `Awake` constructs the sessio
 
 ## What Awake builds
 
-`EnsureManagers()` adds any manager component missing from the GameObject, so the inspector always shows the full set:
+Its `Awake` builds the session's `CoreManager` and adds any of these manager components that are missing, so the inspector always shows the full set:
 
 - `UnityNetworkLoopManager`
 - `UnityTransportManager`
@@ -26,24 +26,17 @@ Add `UnityCoreManager` to a single GameObject. Its `Awake` constructs the sessio
 - `UnitySceneManager`
 - `UnityPhysicsManager`
 
-`EnsureManagers` only adds to the `UnityCoreManager`'s own GameObject, but the notify pass afterward uses `GetComponentsInChildren<UnityManager>()`, so a manager authored on a child GameObject is still found and bound. `EnsureManagers` checks the children too, inactive ones included, before adding a default, so a manager you placed on a child is used as it is and never gains a default twin on the root. Each one is notified through `ManagersInstantiated`.
+A manager component you placed yourself, on this GameObject or on a child, is used as it is, and no default copy is added beside it. Once every manager exists, each `UnityManager` receives `ManagersInstantiated`, as described in [Unity manager components](./unity-manager-components.md).
 
 ## Execution order
 
 `UnityCoreManager` carries `[DefaultExecutionOrder(-10000)]` and `[DisallowMultipleComponent]`. The execution order runs it before every other script in the scene, so a context-aware rent made from another script's `Awake` always finds a ready `CoreManager` instead of racing its construction. `DisallowMultipleComponent` keeps a GameObject from ending up with two, which would mean two `CoreManager` instances competing for the same manager components.
 
-## Order inside Awake
+## When the managers are ready
 
-Before constructing anything, `Awake` reads `UnityNetworkLoopManager.TickRate` from a `UnityNetworkLoopManager` found with `GetComponentInChildren`. This has to happen first because `CoreManager` bakes every rate-derived value into itself at construction and exposes no setter afterward; the tick rate can only be supplied at the point of construction. If no `UnityNetworkLoopManager` exists yet in the scene, the tick rate falls back to `NetworkLoopManager.DefaultTickRate`.
+Every manager exists once the `UnityCoreManager`'s `Awake` has run. Configure them from `Start`, or from a `ManagersInstantiated` override on your own `UnityManager`.
 
-`Awake` also adds a `UnityNetworkLoopStepProvider` component before constructing the `CoreManager`, and hands it in as the step provider. This is deliberate: the core installs its own background-timer provider when given none, and that provider would start driving the loop from the thread pool immediately, racing every loop callback the rest of `Awake` still has to register. Supplying the Unity step provider up front means the loop only ever advances from Unity's own update, and stays inert until `CoreManager` starts it.
-
-With the tick rate and step provider in hand, `Awake`:
-
-1. Constructs `CoreManager = new(tickRate, unityNetworkLoopStepProvider)`.
-2. Calls `NucleusUnity.Initialize(CoreManager)`.
-3. Calls `EnsureManagers()`.
-4. Calls `ManagersInstantiated` on every `UnityManager` found via `GetComponentsInChildren<UnityManager>()`.
+The tick rate is read from the `UnityNetworkLoopManager` once, when the session is built, so set it in the inspector before entering play mode. A scene without a `UnityNetworkLoopManager` uses `NetworkLoopManager.DefaultTickRate`. The network loop runs from Unity's own update and stays idle until the session starts.
 
 ## Reaching the session from elsewhere
 

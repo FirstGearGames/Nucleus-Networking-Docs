@@ -20,7 +20,7 @@ There are four ways to spend less on replication, and they save different amount
 
 **Per-client egress.** How many bytes one peer's connection pushes per second. This is what `TotalBytesSent` and the per-object/state-only bandwidth stat providers measure. The fix is fewer or smaller sends to that peer: spawn/stop culling first, interval and compression second.
 
-**Per-tick burst size.** How much of that egress lands in a single tick rather than spread across several. A join, a scene load, a bundle release, or a peer walking back into range can put the starting state of every system it reaches into one tick. A large tick is costly to lose, and redundancy (`EffectiveGlobalRedundancy`) sends it again on top of that. `InterestManager.MaximumSpawnsPerTick` (default 500, 0 for unlimited) is the lever here — it spreads a burst of admissions across consecutive ticks instead of fixing the total bytes sent. It does nothing for steady-state egress; a world under the ceiling never touches it.
+**Per-tick burst size.** How much of that egress lands in a single tick rather than spread across several. A join, a scene load, a bundle release, or a peer walking back into range can put the starting state of every system it reaches into one tick. A large tick is costly to lose, and redundancy (`GlobalRedundancy`) sends it again on top of that. `InterestManager.MaximumSpawnsPerTick` (default 500, 0 for unlimited) is the lever here — it spreads a burst of admissions across consecutive ticks instead of fixing the total bytes sent. It does nothing for steady-state egress; a world under the ceiling never touches it.
 
 **The O(systems × connections) resolution pass.** How much work the server itself does deciding who sees what, independent of what gets sent. Every registered `IInterestCondition` is evaluated per (system, Connection) pair on `InterestManager.EvaluationCadenceTicks`, and that cost scales with systems times connections regardless of how few of those pairs end up replicating. A world with no condition registered skips evaluation entirely and replicates broadcast-to-everyone. A world with conditions pays the evaluation cost even for pairs that resolve to "don't spawn." This is a CPU-time bottleneck, not a bandwidth one, and cadence/staggering is the only lever the engine currently has for it.
 
@@ -34,7 +34,7 @@ The bandwidth counters (`TotalBytesSent`, `TotalBytesReceived`, `TotalStatePacke
 
 A spike on a join and a steady per-tick overspend are different failures with different fixes. A join spike is bounded and temporary: it costs frames and, if unpaced, risks losing a large tick — the fix is `MaximumSpawnsPerTick`, and it doesn't touch what the world costs once everyone has finished joining. A steady overspend is what egress and resolution-pass measurements are for, and its fix is spawn/stop culling or interval/compression tuning, not pacing.
 
-Redundancy is why a burst is worse than it looks. Redundancy sends recent state again `EffectiveGlobalRedundancy` times on the ticks that follow, so a burst is paid for again on top of that window's ordinary traffic. This is the concrete reason pacing a burst is worth doing even though it doesn't move the steady-state number: a wide, unpaced tick multiplies its own cost, a paced one doesn't.
+Redundancy is why a burst is worse than it looks. Redundancy sends recent state again, up to `GlobalRedundancy` times, on the ticks that follow, so a burst is paid for again on top of that window's ordinary traffic. This is the concrete reason pacing a burst is worth doing even though it doesn't move the steady-state number: a wide, unpaced tick multiplies its own cost, a paced one doesn't.
 
 ## What the engine does not have
 
@@ -42,7 +42,6 @@ Don't design a world around any of these — none of them exist:
 
 - **No per-connection byte-budget scheduler.** There's no cap on how many bytes a peer's connection may spend per tick, and no priority or staleness scheduling deciding what gets sent first when a peer is behind. The spatial grid and per-connection spawn pacing exist; a bandwidth cap does not.
 - **No per-object send priority.** Nothing lets you mark one object as more urgent than another when a peer is bandwidth-constrained. Every eligible object is served the same way.
-- **No interest enter/exit callbacks.** Game code isn't notified when a peer gains or loses interest in an object. If you need to react to that transition, you have to infer it yourself.
 - **No broadphase seam for interest.** There's no hook letting an integration hand the interest pass a pre-narrowed candidate set; evaluation is the O(systems × connections) pass described above for every world. The spatial grid narrowing that exists today is internal to distance/grid conditions, not an integration seam.
 
 ## Edition effects on the budget

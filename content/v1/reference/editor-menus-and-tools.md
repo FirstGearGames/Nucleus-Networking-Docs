@@ -2,46 +2,58 @@
 title: "Editor menus and authoring tools"
 ---
 
-## The menu commands
+## The Nucleus window
 
-Nucleus adds four items under the `Nucleus` menu. Three are build steps over the project's assets, and the fourth checks those assets without changing them; none is a runtime action. A fifth item, **Window > Nucleus > Network Inspector**, opens a play-mode readout of the running session (see [Developer tools in the editor](../unity/diagnostics/developer-tools-in-unity.md)).
+Nucleus adds a single menu entry, **Tools > Nucleus**. It opens the Nucleus window, or focuses it when it is already open, on whichever tab it showed last. The banner at the top names the edition (Pro or Free) and shows the role of the running peer: Host, Server, Client or Stopped while playing, and Edit mode outside play mode. Below the banner are four tabs.
 
-### Nucleus/Rebuild Network Prefab Collection
+**Traffic** is the live readout of the running session. It shows the tick rate, bandwidth sent and received with a one-minute graph, connection and spawn counts, the latency and packet loss of each connection, and simulated network conditions, with buttons that start and stop the server and the client. [Developer tools in the editor](../unity/diagnostics/developer-tools-in-unity.md#the-traffic-tab) describes each readout.
+
+**Setup** checks the open scene and offers a one-click fix for each item that fails. It checks that a `UnityCoreManager` is in the scene (**Create** adds a GameObject carrying one, with its loop and transport managers and a Synapse transport), that a transport is under that manager (**Add Synapse**), that the network prefab collection and the network scene manifest are built (**Rebuild**), and that the open scene is in the build (**Add**). A **Validate Network Prefabs** button sits under the checklist. Once the scene has a `UnityCoreManager`, the tab also shows its **Tick Rate**, which cannot change during play, and **Start On Play**, which decides how the session starts by itself when play begins.
+
+**Build** holds the steps that rebuild or check the project's network assets, one row each with a button that runs it: Rebuild Network Prefab Collection, Rebuild Network Scene Manifest and Validate Network Prefabs, plus Build Content Bundles in the Pro edition. Each step is described below.
+
+**External Resources** opens the Nucleus website, this documentation, the demos guide and the public tracker for bug reports and feature requests in your browser. The demos guide opens only once the demos are imported into the project.
+
+## The build steps
+
+Three of the steps on the Build tab rebuild the project's network assets, and Validate Network Prefabs checks them without changing anything. None is a runtime action, and each runs only when you press its button. The log messages and dialogs Nucleus shows name each step by its full path, such as **Tools > Nucleus > Build > Rebuild Network Prefab Collection**.
+
+### Rebuild Network Prefab Collection
 
 Scans the project for every prefab whose root carries a `NetworkSystemObject`, groups them by the asset bundle they're assigned to, and writes each group's `NetworkPrefabCollection` asset. The collection with no asset bundle assignment is the base build's shard, stored under `Assets/Resources/NetworkPrefabCollection.asset` so it loads by name at runtime.
 
-Each prefab is stamped with a local prefab id and a bundle id. Ids are assigned once and then preserved: a prefab that already carries a valid, unique id keeps it on every rescan. Only an unset or duplicated id gets the next free number for its shard. Ids restart at one per shard, because the runtime registry resolves a prefab by the `(bundle, local)` pair, not by the local id alone.
+Each prefab is stamped with a local prefab id and a bundle id. Ids are assigned once and then preserved: a prefab that already carries a valid, unique id keeps it on every rescan. Only an unset or duplicated id gets the next free number for its shard. Ids restart at one per shard, because a prefab is identified by its bundle id and local id together, not by the local id alone.
 
 A rebuild that renumbers a duplicated id says so: it logs a warning naming the prefab that carried the id, the prefab that already holds it, and the new id. It logs an error when two collections resolve to the same prefab bundle, because the second of them to load is refused at runtime; give each content bundle assembly its own `[NetworkBundle(n)]`.
 
-### Nucleus/Validate Network Prefabs
+### Validate Network Prefabs
 
 Checks every prefab in the project and logs each problem against the prefab it names, without changing anything: the prefab identity problems a player build refuses (below), a `NetworkSystemObject` on a prefab's child, a networked component with no `NetworkSystemObject` at or above it, and a `NetworkHitboxRoot` that would record nothing. It runs only on request, because it loads every prefab. [Developer tools in the editor](../unity/diagnostics/developer-tools-in-unity.md#validating-your-networked-prefabs) lists each check.
 
-### Nucleus/Rebuild Network Scene Manifest
+### Rebuild Network Scene Manifest
 
 Scans the scenes enabled in Build Settings (and, with the Addressables package installed, scenes marked Addressable) and records each one's scene id, path and content bundle in the project's `NetworkSceneManifest`, at `Assets/Resources/NetworkSceneManifest.asset`. A scene keeps its id across the rescan; only a scene the manifest has never seen gets a new one, assigned from the highest id already recorded. Removing a scene from the build leaves its manifest entry in place rather than deleting it, so its id is never handed to a different scene later.
 
-### Nucleus/Build Content Bundles
+### Build Content Bundles
 
-Runs the prefab collection rebuild and the scene manifest rebuild first, then builds every asset bundle a `NetworkPrefabCollection` is assigned to into `Assets/StreamingAssets`, and fills in `NetworkBundleManifest` with each built bundle's id and file name. Running the two rebuilds first matters: a scene or prefab records the bundle id it ships under by reading the collection assigned to that bundle, so building from stale identity is what bakes the wrong id into a shipped bundle.
+This step is in the Pro edition only. It runs the prefab collection rebuild and the scene manifest rebuild first, then builds every asset bundle a `NetworkPrefabCollection` is assigned to into `Assets/StreamingAssets`, and fills in `NetworkBundleManifest` with each built bundle's id and file name. Running the two rebuilds first matters: a scene or prefab records the bundle id it ships under by reading the collection assigned to that bundle, so building from stale identity is what bakes the wrong id into a shipped bundle.
 
 ## The automatic steps
 
-Three more steps run without a menu command, so an author never has to remember to invoke them.
+Three more steps run without a button press, so an author never has to remember to invoke them.
 
-**`NetworkPrefabBuildCheck`** runs before every player build. It makes the same identity check as Validate Network Prefabs, and fails the build when any networked prefab does not carry the identity a rebuild would give it: no base collection, two collections sharing a prefab bundle, a prefab missing from its collection, a prefab with no id or with an id another prefab holds, or a prefab stamped with a different bundle than its collection. The build error lists every problem and tells you to run **Nucleus > Rebuild Network Prefab Collection**, then build again. It stops the build rather than repairing the prefabs itself, because a repair made in the middle of a build could number a server and a client that were built apart differently.
+**A prefab check runs before every player build.** It makes the same identity check as Validate Network Prefabs, and fails the build when any networked prefab does not carry the identity a rebuild would give it: no base collection, two collections sharing a prefab bundle, a prefab missing from its collection, a prefab with no id or with an id another prefab holds, or a prefab stamped with a different bundle than its collection. The build error lists every problem and tells you to run **Tools > Nucleus > Build > Rebuild Network Prefab Collection**, then build again. It stops the build rather than repairing the prefabs itself, because a repair made in the middle of a build could number a server and a client that were built apart differently.
 
-**`SceneNetworkObjectStamper`** runs on scene save. It assigns a `SceneObjectId` to any `NetworkSystemObject` in the saved scene whose id is unset or collides with another object in the same scene, keeping the first occurrence of any value it finds and handing the next free incremental id to the rest. Duplicating an object that already carries a stamped id is exactly what creates a collision, since the copy carries the same serialized id until the next save reassigns it.
+**Saving a scene assigns scene object ids.** Any `NetworkSystemObject` in the saved scene whose `SceneObjectId` is unset or collides with another object in the same scene gets a new id. The first object holding a value keeps it, and the rest get the next free id. Duplicating an object that already carries an id is exactly what creates a collision, since the copy carries the same id until the next save reassigns it.
 
-**`NetworkSceneManifestAutoRebuild`** mints a scene id the moment a scene enters the build: when the Build Settings scene list changes, when a scene asset is imported, moved or deleted, when the project's Addressables entries change, and as a backstop right before a player build. It calls the same reconciliation the manual scene manifest rebuild uses, quietly.
+**A scene gets its id the moment it enters the build.** The scene manifest is updated when the Build Settings scene list changes, when a scene asset is imported, moved or deleted, when the project's Addressables entries change, and once more right before a player build. It does the same work as **Tools > Nucleus > Build > Rebuild Network Scene Manifest**, but logs only when the scan changed something.
 
-## When to re-run each command
+## When to re-run each step
 
-| Change | Command to run |
+| Change | Step to run |
 |---|---|
 | Added, renamed, moved or duplicated a networked prefab | Rebuild Network Prefab Collection |
-| Added or removed a scene from the build | Nothing to run manually — the auto-rebuild mints the scene id on its own; run the manual command only if you want the log line confirming what mapped |
+| Added or removed a scene from the build | Nothing. The scene manifest updates on its own; run Rebuild Network Scene Manifest by hand only if you want its log line confirming what mapped |
 | Changed an asset bundle assignment (prefab or scene) | Rebuild Network Prefab Collection, then Build Content Bundles |
 | Ready to ship the built asset bundles | Build Content Bundles (this also re-runs the prefab and scene rebuilds first) |
 
@@ -49,42 +61,17 @@ Three more steps run without a menu command, so an author never has to remember 
 
 **A copied prefab carries the original's stamped id.** Duplicating a prefab asset in the Project window duplicates its `NetworkSystemObject` component, id and all. Until the next `Rebuild Network Prefab Collection`, the copy has the same prefab id as the original. At runtime the registry keeps whichever of the two registered first and logs an error for the other, so a spawn of one can build the other, and a player build fails until you rebuild. Rebuild after every prefab duplication, not just after adding a new prefab. The rebuild keeps the id on the prefab the collection already lists, which is the original, and on a base over its own variant, gives the copy the next free id, and logs a warning for each prefab it renumbers.
 
-**A scene object id only has to be unique within its own scene.** `SceneNetworkObjectStamper` reassigns collisions inside one scene, but the same id in two different scenes is fine and expected — the scene half of the correlation comes from the scene's own id, not from the object's. Don't assume a scene object id has to be globally unique across the project; it doesn't.
+**A scene object id only has to be unique within its own scene.** Saving a scene reassigns collisions inside that scene, but the same id in two different scenes is fine and expected, because each scene's own id tells them apart. Don't assume a scene object id has to be globally unique across the project; it doesn't.
 
-## Why every Nucleus inspector still shows the script row
+## Scene reference fields
 
-A custom `[CustomEditor]` replaces Unity's whole default inspector, including the greyed-out script row that lets you ping or open the component's source. `NucleusInspectorGUI.DrawScriptField` redraws that row explicitly, and every Nucleus custom editor calls it before drawing anything else, so that row survives even though the rest of the inspector is custom-drawn. `NucleusInspectorGUI` also provides `DrawPropertiesWithoutScript` (the rest of the default inspector, minus the script row already drawn), plus two field-clamping helpers (`DrawClampedIntSlider`, `DrawNonNegativeLongField`) used by inspectors that need to correct an out-of-range serialized value without flattening a multi-object selection.
+A `NetworkSceneReference` field is drawn as a scene-asset picker, with the scene id it currently resolves to shown read-only beside it. The id is looked up in the project's scene manifest each time, so the readout always shows the current id.
 
-`NetworkSceneReferenceDrawer` is a property drawer, not a component inspector: it draws a `NetworkSceneReference` field as a scene-asset picker, with the scene id it currently resolves to (from the project's scene manifest) shown read-only beside it. Nothing about the id is stored on the reference itself — only the scene's GUID is — so the readout always reflects the current manifest rather than a baked-in number.
+## What the Nucleus inspectors add
 
-## The custom editors
+Several Nucleus components have inspectors that check their settings while you author and show extra readouts while playing:
 
-Twenty-seven components have a `[CustomEditor]`, which is where to look for authoring-time validation and inspector-only readouts:
-
-- `NucleusBehaviourBaseEditor` — covers every `NucleusBehaviourBase` subclass (`editorForChildClasses: true`); adds a runtime readout (linked system, started state, id, state, control) while playing.
-- `UnitySceneLoaderEditor` — covers every `UnitySceneLoader` subclass; validates the assigned scene manifest and warns when none is set.
-- `UnityAssetBundleLoaderEditor` — covers every `UnityAssetBundleLoader` subclass; validates the assigned bundle manifest and warns when none is set.
-- `NetworkSystemObjectEditor`
-- `NetworkTransformEditor`
-- `NetworkAnimatorEditor`
-- `NetworkNavMeshAgentEditor`
-- `NetworkHostVisibilityEditor`
-- `NetworkInterestObjectEditor`
-- `NetworkPlayerSpawnerEditor`
-- `NetworkCorrectionVisualizerEditor`: while playing, adds the flash count and the size of the last correction.
-- `NetworkInterestOverlayEditor`: shows the overlay's options only while it is switched on, with a key to its colors.
-- `NetworkHitboxEditor`
-- `NetworkHitboxRootEditor`
-- `UnityClientManagerEditor`
-- `UnityServerManagerEditor`
-- `UnityTransportManagerEditor`
-- `UnityInterestManagerEditor`
-- `UnityLagCompensationManagerEditor`
-- `UnityNetworkLoopManagerEditor`
-- `UnityPhysicsManagerEditor`
-- `UnitySceneManagerEditor`
-- `UnitySystemManagerEditor`
-- `PhysicsSimulationDriverEditor`
-- `NetworkRigidbodyEditor`
-- `BlitzRelayTransportEditor`
-- `SynapseTransportEditor`
+- Every `NucleusBehaviour` shows its linked system, started state, id, state and control while playing.
+- A `UnitySceneLoader` warns when no scene manifest is assigned, and a `UnityAssetBundleLoader` warns when no bundle manifest is assigned.
+- A `NetworkCorrectionVisualizer` shows its flash count and the size of the last correction while playing.
+- A `NetworkInterestOverlay` shows its options only while it is switched on, with a key to its colors.

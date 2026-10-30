@@ -10,7 +10,7 @@ That agreement runs on identity. `NetworkSystemObject.SceneObjectId` names the o
 
 ## Stamping the id
 
-`SceneObjectId` is not something you type in. `SceneNetworkObjectStamper`, an editor-only hook on `EditorSceneManager.sceneSaving`, assigns it automatically: every `NetworkSystemObject` in the scene being saved is scanned, ids already in use are kept, and any marker with an unset or duplicated id is stamped with the next free value. This is why the field is serialized but hidden in the inspector — it is scene-save state, not something to author by hand.
+`SceneObjectId` is not something you type in. Saving a scene assigns it automatically: every `NetworkSystemObject` in the scene being saved is checked, ids already in use are kept, and any object with an unset or duplicated id gets the next free value. This is why the field is hidden in the inspector; it is assigned on save, not authored by hand.
 
 Duplicates are the normal case that makes this necessary. Copying an already-stamped object copies its serialized id along with it, so the copy and the original briefly share one `SceneObjectId`. On the next scene save, the stamper keeps the id on whichever object it saw first and reassigns the other to a fresh, unused value.
 
@@ -28,4 +28,4 @@ A dynamically spawned prefab's `NetworkSystem.PlatformId` names a prefab to inst
 
 If you duplicate a stamped `NetworkSystemObject` and the scene is not saved afterward, both copies still carry the same `SceneObjectId` in memory. A receiver resolving a spawn against that id can bind to the wrong instance, since nothing on disk yet distinguishes the two.
 
-The fix is to save the scene. Saving runs `SceneNetworkObjectStamper`, which reassigns the duplicate's id to a free value and writes it into the scene asset. Because the field is hidden in the inspector, there is no manual value to correct — re-saving is the only way to resolve it.
+The fix is to save the scene. Saving reassigns the duplicate's id to a free value and writes it into the scene asset. Because the field is hidden in the inspector, there is no manual value to correct — re-saving is the only way to resolve it.

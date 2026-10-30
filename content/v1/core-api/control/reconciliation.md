@@ -115,7 +115,7 @@ The controller writes the client state for the live tick before the step reads i
 
 - `Validate` members write the replayed tick's value, and each replayed tick becomes the member's newest, so `Value` reads the last tick replayed and the next live write lands after it.
 - `Predict` members read the client state recorded for the replayed tick.
-- `State` members keep their live value; writes to them land on the live value.
+- `Replicate` members keep their live value; writes to them land on the live value.
 - Systems this client does not control read the server values that arrived with the start tick, unless the [hold radius](#holding-only-the-systems-near-a-replay) leaves them out.
 - The core steps no physics itself. `SystemManager.ReplayEarlyFixedUpdated` is raised between the early and late fixed update of each replayed tick, so an integration can step its physics world there; the Unity integration does, so a body predicted through its `ValidatedRigidbody` replays.
 

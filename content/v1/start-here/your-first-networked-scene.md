@@ -8,15 +8,15 @@ Every Unity scene that uses Nucleus needs exactly one `UnityCoreManager`. Everyt
 
 ## Add the core manager
 
-Create an empty GameObject at the root of your scene and add `UnityCoreManager` to it. That is the only component you have to add: when the scene starts, it adds whichever of the other Unity manager components are missing. You can also add any of them to the same GameObject yourself, and that is how you set their Inspector fields, such as the tick rate and start mode below, before pressing Play. Keep them on that one GameObject, because `UnityCoreManager` only looks there before adding its own.
+Create an empty GameObject at the root of your scene and add `UnityCoreManager` to it. That is the only component you have to add: when the scene starts, it adds whichever of the other Unity manager components are missing. You can also add any of them to the same GameObject yourself, and that is how you set their Inspector fields, such as the tick rate and start mode below, before pressing Play. Keep them on that GameObject or on a child of it: `UnityCoreManager` looks at both, inactive children included, before adding its own. A manager on an inactive child is never set up, though it still stops `UnityCoreManager` adding one, so keep any child that holds a manager active.
 
 `UnityCoreManager` is marked `[DisallowMultipleComponent]`, so a scene can only ever have one on a given GameObject, and `[DefaultExecutionOrder(-10000)]`, so its `Awake` runs before every other script's. That ordering matters: other components resolve a ready `CoreManager` from their own `Awake`, and that only works if `UnityCoreManager` has already built one.
 
 In its `Awake`, `UnityCoreManager`:
 
-1. Adds a `UnityNetworkLoopStepProvider`, so the network loop is driven from Unity's own update loop instead of the engine's default background-timer provider.
-2. Constructs the `CoreManager` from the tick rate and that step provider.
-3. Calls `EnsureManagers`, which adds any of the following components that isn't already present on the GameObject:
+1. Sets the network loop to run from Unity's own update loop, instead of the engine's default background timer.
+2. Constructs the `CoreManager` from the tick rate, driven by that update loop.
+3. Adds any of the following components that is not already on the GameObject or one of its children:
    - `UnityNetworkLoopManager`
    - `UnityTransportManager`
    - `UnityServerManager`
@@ -28,7 +28,7 @@ In its `Awake`, `UnityCoreManager`:
    - `UnitySceneManager`
    - `UnityPhysicsManager`
 
-You author one component and end up with ten, each mirroring a manager on the core `CoreManager`. You never pick a network loop step provider yourself — `UnityCoreManager` already added one before the `CoreManager` existed to need it.
+You author one component and end up with ten, each mirroring a manager on the core `CoreManager`. You never choose how the network loop is driven; `UnityCoreManager` sets that up before it constructs the `CoreManager`.
 
 ## Set the tick rate
 

@@ -4,11 +4,11 @@ title: "Prediction settings on the Unity manager"
 
 > **Driving the core API directly?** See [Predicted members and prediction history](../../core-api/control/prediction-history-and-predicted-members.md).
 
-The Unity system manager groups its prediction fields under **Prediction**. Each one is assigned onto the core `SystemManager` in `UnitySystemManager.ManagersInstantiated`, before any user script's `Awake` or `Start` can observe `SystemManager`, so script execution order cannot get ahead of them. Set them in the inspector before play.
+The Unity system manager groups its prediction fields under **Prediction**. Each one is applied to the core `SystemManager` when the session is built, before any user script's `Awake` or `Start` can observe `SystemManager`, so script execution order cannot get ahead of them. Set them in the inspector before play.
 
 ## Prediction History Ticks
 
-The **Prediction History Ticks** field (backed by `_predictionHistoryTicks`) sets `SystemManager.PredictionHistoryTicks`: how many ticks of history `MemberRole.Predict` and `MemberRole.Validate` members keep, so a reconcile can restore any object to a past tick and a replay can read each past tick's client state.
+The **Prediction History Ticks** field sets `SystemManager.PredictionHistoryTicks`: how many ticks of history `MemberRole.Predict` and `MemberRole.Validate` members keep, so a reconcile can restore any object to a past tick and a replay can read each past tick's client state.
 
 ```csharp
 NucleusSystemManager.PredictionHistoryTicks = _predictionHistoryTicks;
@@ -28,11 +28,11 @@ A member takes the history when it initializes, so changing the field after obje
 
 ## Replay Hold Radius
 
-The **Replay Hold Radius** field (backed by `_replayHoldRadius`) sets `SystemManager.ReplayHoldRadius` as the managers come up. When a reconcile restores the objects this client controls, every object it does not control is held at the reconcile's start tick while they replay; with a radius set, only the ones within it of a restored object are held. Distances are read through the interest position reader, so an object whose position cannot be read is always held, and only Pro reads positions. Zero, the default, holds every object. The inspector corrects a negative value to zero.
+The **Replay Hold Radius** field sets `SystemManager.ReplayHoldRadius` as the managers come up. When a reconcile restores the objects this client controls, every object it does not control is held at the reconcile's start tick while they replay; with a radius set, only the ones within it of a restored object are held. Distances are read through the interest position reader, so an object whose position cannot be read is always held, and only Pro reads positions. Zero, the default, holds every object. The inspector corrects a negative value to zero.
 
 ## Send Result Values
 
-The **Send Result Values** field (backed by `_resultValueSendEnabled`, on by default) sets `SystemManager.IsResultValueSendEnabled`. It is read on the controller: while it is on, the controller sends its `MemberRole.Validate` result values beside the hash every tick, so a server that finds a result different can name the members and both values through `NetworkSystem.ResultMismatched`. The values cost bandwidth on every tick, so turn it off for a release build to keep the hash alone.
+The **Send Result Values** field (on by default) sets `SystemManager.IsResultValueSendEnabled`. It is read on the controller: while it is on, the controller sends its `MemberRole.Validate` result values beside the hash every tick, so a server that finds a result different can name the members and both values through `NetworkSystem.ResultMismatched`. The values cost bandwidth on every tick, so turn it off for a release build to keep the hash alone.
 
 ## Predicted By Observers
 

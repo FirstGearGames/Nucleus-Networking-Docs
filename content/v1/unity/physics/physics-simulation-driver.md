@@ -4,11 +4,11 @@ title: "PhysicsSimulationDriver"
 
 ## PhysicsSimulationDriver ties one scene's physics to the network tick
 
-`PhysicsSimulationDriver` is a `MonoBehaviour` that ties one scene's physics to the network tick. A scene with a driver steps its bodies on `NetworkLoopSteps.EarlyFixedUpdate` and steps its physics world on `NetworkLoopSteps.LateFixedUpdate`, instead of on Unity's own `FixedUpdate` cadence. Received state deserializes earlier in the same frame and the tick's captures serialize later in it, so captures and transmissions share one clock instead of drifting against Unity's own physics timing.
+`PhysicsSimulationDriver` is a `MonoBehaviour` that ties one scene's physics to the network tick. A scene with a driver steps its bodies on `NetworkLoopSteps.EarlyFixedUpdate` and steps its physics world on `NetworkLoopSteps.LateFixedUpdate`, instead of on Unity's own `FixedUpdate` cadence. This keeps physics on the network tick's clock instead of drifting against Unity's own physics timing.
 
-A driver is per scene. It registers itself with `PhysicsSimulationCoordinator`, the process-wide object that owns the one network-loop registration, the simulation mode, and the peer's tick anchor. A scene is stepped by exactly one driver.
+A driver is per scene, and a scene is stepped by exactly one driver.
 
-Scenes that share a physics world (every scene not loaded with a local physics world of its own) are stepped once between them. A driver per scene is not the same thing as a physics world per scene: multiple drivers can point at the same world, and the coordinator steps that world once per tick regardless of how many drivers resolve to it.
+Scenes that share a physics world (every scene not loaded with a local physics world of its own) are stepped once between them. A driver per scene is not the same thing as a physics world per scene: multiple drivers can point at the same world, and that world is still stepped once per tick regardless of how many drivers resolve to it.
 
 ## Events this component raises
 
@@ -32,11 +32,11 @@ driver.WorldStepStarted += (tick, stepDelta) =>
 - `CurrentTick` (`uint`) - the network loop tick currently being simulated.
 - `SubtickFraction` (`float`) - how far the render frame has progressed through the current tick, for phasing smoothed visuals between the last two stepped poses.
 - `Bodies` (`IReadOnlyList<NetworkRigidbody>`) - the bodies this driver steps, in registration order. A diagnostic reads this instead of walking the scene.
-- `TryGetSnapshotLocalTick(uint captureTick, out uint snapshotLocalTick)` - maps a received capture tick into local ticks, through the session's shared drift-adaptive anchor. Returns `false` when the capture tick carried no attribution or nothing mapped.
+- `TryGetSnapshotLocalTick(uint captureTick, out uint snapshotLocalTick)` - maps a received capture tick into local ticks. Returns `false` when the capture tick carried no attribution or nothing mapped.
 
 ## Finding the driver for a scene
 
-`ForScene(Scene scene)` resolves the driver stepping a given scene's physics, or `null` when nothing steps it (the object then runs Unity's own physics cadence). Resolve once and hold the result: this is a scene read plus a dictionary probe, not a field read, and it is also what lets a later deregistration reach the same driver.
+`ForScene(Scene scene)` resolves the driver stepping a given scene's physics, or `null` when nothing steps it (the object then runs Unity's own physics cadence). Resolve it once and hold the result rather than calling it every frame. Holding it also lets a later deregistration reach the same driver.
 
 ```csharp
 PhysicsSimulationDriver driver = PhysicsSimulationDriver.ForScene(gameObject.scene);

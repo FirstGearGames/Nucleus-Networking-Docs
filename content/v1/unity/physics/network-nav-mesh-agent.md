@@ -16,12 +16,12 @@ An agent that holds its course costs nothing however far it travels: silence mea
 
 | Field | Default | Purpose |
 |---|---|---|
-| Point Change Tolerance (`_pointChangeTolerance`) | 0.05 | How far the agent's steering target must move, in metres, before it counts as a new leg. A path recalculation nudges the target by small amounts without the agent having actually turned; too small a value sends a leg for that nudge. |
-| Resync Distance (`_resyncDistance`) | 0.5 | How far a follower may stand from a new leg's origin before it starts closing the gap. Below this it just retargets, so an ordinary correction is invisible. |
-| Teleport Distance (`_teleportDistance`) | 6 | How far a follower may stand from a new leg's origin before it is placed there outright instead of walking the gap off. Above this the gap is a discontinuity — a warp, or a peer that has fallen too far behind to catch up in a reasonable time. |
-| Rotation Enabled (`_rotationEnabled`) | on | Turns a following peer toward its direction of travel at the replicated angular speed. Rotation is derived from the path, not sent — an agent's rotation changes on nearly every tick, so replicating it would erase most of what this component saves. |
-| Agent Management Enabled (`_agentManagementEnabled`) | on | Disables the attached `NavMeshAgent` on every non-controlling peer and enables it on the controller. A follower's own agent must not run: it would path-find toward a destination it was never told about and fight the replicated leg. |
-| Send Interval (`_sendInterval`) | `SendInterval.Normal` | How often the replicated members are sent. Normal sends a leg on the tick it begins; a larger interval paces the whole agent, delaying a leg by up to that interval. |
+| Point Change Tolerance | 0.05 | How far the agent's steering target must move, in metres, before it counts as a new leg. A path recalculation nudges the target by small amounts without the agent having actually turned; too small a value sends a leg for that nudge. |
+| Resync Distance | 0.5 | How far a follower may stand from a new leg's origin before it starts closing the gap. Below this it just retargets, so an ordinary correction is invisible. |
+| Teleport Distance | 6 | How far a follower may stand from a new leg's origin before it is placed there outright instead of walking the gap off. Above this the gap is a discontinuity — a warp, or a peer that has fallen too far behind to catch up in a reasonable time. |
+| Rotation Enabled | on | Turns a following peer toward its direction of travel at the replicated angular speed. Rotation is derived from the path, not sent — an agent's rotation changes on nearly every tick, so replicating it would erase most of what this component saves. |
+| Agent Management Enabled | on | Disables the attached `NavMeshAgent` on every non-controlling peer and enables it on the controller. A follower's own agent must not run: it would path-find toward a destination it was never told about and fight the replicated leg. |
+| Send Interval | `SendInterval.Normal` | How often the replicated members are sent. Normal sends a leg on the tick it begins; a larger interval paces the whole agent, delaying a leg by up to that interval. |
 
 ## Driving it from code
 
@@ -45,16 +45,6 @@ public float FollowerSpeed { get; }
 ```
 
 `NextPoint` and `PreviousPoint` are the current leg's endpoints in world space, as the replication currently has them. `FollowerSpeed` is the speed a following peer is walking at right now — it ramps toward the replicated speed rather than starting there, and drops away again through a turn, so it reads as zero on the controller (which walks its real agent instead).
-
-## The replicated component
-
-Behind the `MonoBehaviour` sits `UnityNavMeshAgentComponent`, the replicated `NetworkComponent` that actually carries the leg:
-
-- `NextPoint` and `PreviousPoint` — the leg's endpoints.
-- `Speed`, `AngularSpeed`, `Acceleration` — the agent settings a follower needs to reproduce the walk.
-- `IsStopped` — whether the agent is halted.
-
-`NetworkNavMeshAgent` binds this component on link, applies the inspector settings to it, and captures a leg whenever this peer controls the object; on every other peer it seats the object where the sender stood when it spawns and advances it toward `NextPoint` each frame.
 
 ## Corrections
 

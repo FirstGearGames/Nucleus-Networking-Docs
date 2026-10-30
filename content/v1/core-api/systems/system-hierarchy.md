@@ -34,8 +34,6 @@ A proposed parent is also rejected when:
 - it is in a different scene than the child, or
 - attaching it would make the hierarchy circular or nest deeper than `SystemManager.MaximumParentDepth` (8).
 
-The depth and cycle check walks up from the proposed parent toward the root, bounded by `MaximumParentDepth`, so it terminates even against a hierarchy an earlier bug already made circular.
-
 ## How the link travels
 
 An object that already has a parent when a new observer receives it arrives with that parent, so the observer learns the relationship as part of the spawn itself. A later change made with `EnsureSetSystemParent` reaches every peer that already holds the object, and that peer re-seats it in place rather than treating the change as a new spawn.

@@ -10,7 +10,7 @@ This is the first thing a plain .NET host gets wrong. Every loop step callback (
 
 ## One loop drives one manager
 
-`NetworkLoopManager.InvokeNetworkLoopStep` claims the step with an `Interlocked.CompareExchange` before doing any work. If a second thread calls in while a step is already executing on a different thread, that call is refused outright: the step's callbacks do not run, and the refusal is logged as an error (throttled to at most once every sixty seconds so a stuck second driver does not flood the log). The step is not queued or retried; it simply costs that tick's work for whatever registered on it.
+Only one thread can run `NetworkLoopManager.InvokeNetworkLoopStep` at a time. If a second thread calls in while a step is already executing on a different thread, that call is refused outright: the step's callbacks do not run, and the refusal is logged as an error (throttled to at most once every sixty seconds so a stuck second driver does not flood the log). The step is not queued or retried; it simply costs that tick's work for whatever registered on it.
 
 A re-entrant call from *inside* a step, on the thread that already holds it, is not a second driver and runs normally.
 

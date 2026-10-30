@@ -59,15 +59,15 @@ if (_lobbyScene.TryGetSceneId(out ushort sceneId))
 
 Because only the GUID is stored, renaming or moving the scene asset never repoints the field to a different scene and never breaks it.
 
-In the inspector, `NetworkSceneReferenceDrawer` draws a `NetworkSceneReference` field as an ordinary scene-asset picker (an `ObjectField` for `SceneAsset`), with the resolved scene id shown alongside it as a small label. You drag a scene in exactly as you would for a plain `SceneAsset` field; the GUID is captured for you.
+In the inspector, a `NetworkSceneReference` field is drawn as an ordinary scene-asset picker, with the scene id it currently resolves to shown beside it as a small label. You drag a scene in exactly as you would for a plain `SceneAsset` field; the GUID is captured for you.
 
 ## Minting a scene id
 
-Scene ids are not assigned by hand. **Nucleus > Rebuild Network Scene Manifest** rescans the project and writes `Entries`, and `NetworkSceneManifestAutoRebuild` runs that rebuild automatically. It listens for four triggers: the Build Settings scene list changing, a scene asset being imported, the project's Addressables entries changing, and a player build starting (the last is the backstop, catching anything the other three missed before it ships).
+Scene ids are not assigned by hand. **Tools > Nucleus > Build > Rebuild Network Scene Manifest** rescans the project and writes `Entries`, and the editor also runs that rebuild automatically. It runs when the Build Settings scene list changes, when a scene asset is imported, moved or deleted (saving a scene re-imports it), when the project's Addressables entries change, and when a player build starts. The last is the backstop, catching anything the others missed before it ships.
 
 The scan covers both ways a scene can be networked: scenes listed in Build Settings, and scenes the project has made Addressable. The Addressables pass matters because marking a scene Addressable *removes it from Build Settings* — without a dedicated pass, the very act of making a scene streamable would drop it out of the manifest. Whichever way a scene is found, its `DeliveryMode` is derived from the project (Addressable scenes record `SceneDeliveryMode.Addressables`, everything else records `BuildSettings`), so making a scene Addressable is the whole of the change needed to switch it.
 
-Once assigned, a scene's id is preserved across rebuilds; a rebuild only adds ids for newly-found scenes and drops entries for scenes no longer present.
+Once assigned, a scene's id is preserved across rebuilds. A rebuild only adds ids for newly found scenes, and it keeps the entry of a scene that has left the build, so that scene's id is never given to a different scene later.
 
 ## Why the server names a scene only by id
 

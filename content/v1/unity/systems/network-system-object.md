@@ -22,11 +22,11 @@ An object normally links to one system. Several systems link to the same marker 
 
 ### Predicted Spawn Policy
 
-`_predictedSpawnPolicy`, a `PredictedSpawnPolicy`, defaulting to `None`. It is authored on the prefab rather than set in code so every peer reads the same answer. It is applied to each system as it links to this marker (`NetworkSystem.PredictedSpawnPolicy`).
+**Predicted Spawn Policy**, a `PredictedSpawnPolicy` defaulting to `None`, decides what a client may do to this object before the server agrees: create it, remove it, both, or neither. The server still decides whether it happens. It is authored on the prefab rather than set in code so every peer reads the same answer. It is applied to each system as it links to this marker (`NetworkSystem.PredictedSpawnPolicy`).
 
 ## Stamped identity fields
 
-Three fields are stamped by editor tooling and shown read-only in the inspector: a scene object's `Scene Object Id`, or a prefab's `Prefab Id` and `Prefab Bundle Id` pair. The one hand edit is clearing a duplicated prefab's `_prefabId` to `0` in its `.prefab` file; see [Prefab identity and the prefab collection](./prefab-ids-and-collections.md). The inspector shows one or the other depending on `IsSceneObject`, never all three at once.
+Three fields are stamped by editor tooling and shown read-only in the inspector: a scene object's `Scene Object Id`, or a prefab's `Prefab Id` and `Prefab Bundle Id` pair. None of them needs a hand edit. A duplicated prefab carries the same `Prefab Id` as its source, and rebuilding the prefab collection repairs that: the prefab the collection already lists keeps the id, the other is given the next free one, and a warning names both; see [Prefab identity and the prefab collection](./prefab-ids-and-collections.md). The inspector shows one or the other depending on `IsSceneObject`, never all three at once.
 
 ## Runtime read surface
 

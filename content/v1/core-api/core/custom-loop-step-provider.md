@@ -8,7 +8,7 @@ FishNet has no equivalent of this page, because every FishNet entry point starts
 
 ## The default is enough for most hosts
 
-If you construct a `CoreManager` and pass nothing for the loop step provider, it gets a `SystemNetworkLoopStepProvider`. This is a `System.Timers.Timer` running at a 1 ms interval paired with a `Stopwatch`, raising loop steps from a thread pool thread on every elapsed callback. It throttles its variable-update cadence to an 8 ms simulated frame interval, and lowers that interval to match the tick interval once the configured tick rate rises above roughly 125 Hz (`NetworkLoopManager.MaximumTickRate` is 128), so the achieved rate does not fall short of what was asked for.
+If you construct a `CoreManager` and pass nothing for the loop step provider, it gets a `SystemNetworkLoopStepProvider`, a timer that raises loop steps from a thread pool thread. It keeps pace with any configured tick rate up to `NetworkLoopManager.MaximumTickRate`, which is 128.
 
 Nothing needs writing to use it. Write your own provider only when you have a clock the default cannot see: a dedicated server's own fixed-step loop, or a test that must step deterministically rather than on a timer.
 
@@ -39,7 +39,7 @@ public interface INetworkLoopStepProvider
 
 ## Building a provider on NetworkLoopStepDriver
 
-Both shipped providers, `SystemNetworkLoopStepProvider` and the Unity integration's, drive a `NetworkLoopStepDriver` rather than calling `NetworkLoopManager.InvokeNetworkLoopStep` themselves. The driver is the shared cadence engine: it owns the tick accumulator, the two-tick catch-up clamp, and the one canonical order the eleven `NetworkLoopSteps` are emitted in, so a provider only has to feed it a frame delta and let it decide when a tick actually runs.
+Both shipped providers, `SystemNetworkLoopStepProvider` and the Unity integration's, drive a `NetworkLoopStepDriver` rather than calling `NetworkLoopManager.InvokeNetworkLoopStep` themselves. The driver keeps the tick cadence, catches up at most two ticks in one frame, and invokes the eleven `NetworkLoopSteps` in their canonical order, so a provider only has to feed it a frame delta and let it decide when a tick actually runs.
 
 ```csharp
 public sealed class HostClockStepProvider : INetworkLoopStepProvider
@@ -75,7 +75,7 @@ public sealed class HostClockStepProvider : INetworkLoopStepProvider
 }
 ```
 
-`AdvanceEarly` accumulates the frame, decides whether a tick fires, and invokes everything from `EarlyVariableUpdate` through the mid-cycle `VariableUpdate`. `AdvanceLate` finishes the same frame: on a frame that ticks it runs `EarlySerialize`, `LateSerialize` and `TickAdvance`, on every frame it sends that frame's messages, and it ends with `LateVariableUpdate`. The split exists so a host that runs distinct early/late phases (Unity's `Update`/`LateUpdate`) can call them separately; a host with one frame callback, like the one above, calls both back to back, the same way `SystemNetworkLoopStepProvider` does in its timer handler.
+`AdvanceEarly` accumulates the frame, decides whether a tick fires, and invokes everything from `EarlyVariableUpdate` through the mid-cycle `VariableUpdate`. `AdvanceLate` finishes the same frame: on a frame that ticks it runs `EarlySerialize`, `LateSerialize` and `TickAdvance`, on every frame it sends that frame's messages, and it ends with `LateVariableUpdate`. The split exists so a host that runs distinct early/late phases (Unity's `Update`/`LateUpdate`) can call them separately; a host with one frame callback, like the one above, calls both back to back.
 
 ## Naming your provider in the constructor
 

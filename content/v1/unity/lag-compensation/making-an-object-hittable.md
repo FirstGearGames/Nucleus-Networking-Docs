@@ -61,7 +61,7 @@ In edit mode the `NetworkHitboxRoot` inspector does three things.
 
 **The hitbox table** lists every hitbox the root will find, in the order it gathers them, with its GameObject, shape, layer, whether it is 2D or 3D, and whether it is usable. The **#** column is the `HitboxIndex` a hit reports. A hitbox with no usable shape takes no index, so every hitbox after it reports an index one lower than its place in the list, as the column shows. Click a name to find it, and double-click to select it.
 
-**Warnings** flag a root that would record nothing: no `NetworkSystemObject` on its GameObject, no `NetworkHitbox` found, no hitbox with a usable shape, or more than 64 usable hitboxes, the most one root can hold. It also lists any unusable hitboxes, and notes a root that mixes 2D and 3D hitboxes. **Nucleus > Validate Network Prefabs** logs the same errors for every prefab, using the same rules.
+**Warnings** flag a root that would record nothing: no `NetworkSystemObject` on its GameObject, no `NetworkHitbox` found, no hitbox with a usable shape, or more than 64 usable hitboxes, the most one root can hold. It also lists any unusable hitboxes, and notes a root that mixes 2D and 3D hitboxes. **Tools > Nucleus > Build > Validate Network Prefabs** logs the same errors for every prefab, using the same rules.
 
 While playing, the inspector shows how many hitboxes were gathered and whether the server is recording the root (`IsRecording`).
 

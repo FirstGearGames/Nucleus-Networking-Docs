@@ -21,7 +21,7 @@ Paste the text of a log line into this page's index to find what produced it and
 
 `"[Caller<MessageType>] ran on thread [X] while a network loop step is executing on thread [Y]. This work must not run concurrently with the loop; it races the outbound WriterPool and can corrupt sent packets."`
 
-**Cause.** Something serialized or accumulated a message from a thread other than the one currently running a network loop step. The outbound `WriterPool` is rented from the loop during serialization, so a concurrent caller can be handed a `Writer` that is already in use.
+**Cause.** Something serialized or accumulated a message from a thread other than the one currently running a network loop step. Messages must be written on the loop thread; writing one from another thread at the same time can corrupt sent packets.
 
 **Fix.** Move the work onto the loop. If it's resuming after an `await`, route it through the loop rather than sending inline from wherever the continuation happened to land.
 
@@ -31,7 +31,7 @@ This guard is compiled only in `DEBUG`. A Release build has no such check and fa
 
 `"[Caller] touched the loop-owned collection [Name] on thread [X] while a network loop step is executing on thread [Y]. This work must run on the network loop thread; touching the collection off the loop races the loop and can silently corrupt it."`
 
-**Cause.** An async continuation resumed off the loop thread and then touched a collection the loop owns without locking — chiefly the system routing table or the server's open-scene table. The loop mutates and enumerates these with no lock of its own, so a foreign thread touching them races the loop's reads and writes and can tear the collection or drop an entry.
+**Cause.** An async continuation resumed off the loop thread and then touched state the loop owns. Touching it from another thread while a step runs can corrupt it or drop an entry.
 
 **Fix.** Switch back onto the loop before touching loop-owned state, rather than acting from wherever the continuation resumed.
 

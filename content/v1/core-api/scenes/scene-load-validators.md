@@ -48,4 +48,4 @@ This is deliberate, not an oversight to work around. It's what makes `ISceneLoad
 
 ## A validator runs once per gated placement, for every client
 
-`IsSceneLoadAllowed` runs the registered list once per gated placement — one call per validator until a refusal or the list ends. With no validators registered it's a single empty-list check, effectively free. A validator that does real work (a database lookup, a network call to an entitlement service) pays that cost on every scene placement it's asked about, for every client, so keep it to an in-memory check wherever possible, or cache the result behind whatever state already tracks the entitlement.
+The scene manager runs the registered list once per gated placement — one call per validator until a refusal or the list ends. With no validators registered it's a single empty-list check, effectively free. A validator that does real work (a database lookup, a network call to an entitlement service) pays that cost on every scene placement it's asked about, for every client, so keep it to an in-memory check wherever possible, or cache the result behind whatever state already tracks the entitlement.

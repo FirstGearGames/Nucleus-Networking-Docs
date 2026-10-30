@@ -2,14 +2,14 @@
 title: "Developer tools in the editor"
 ---
 
-Four tools help you see what a session is doing without writing a readout of your own. Two are components you add to an object while you chase a problem, one is an editor window, and one is a menu command that checks your prefabs before you build.
+Four tools help you see what a session is doing without writing a readout of your own. Two are components you add to an object while you chase a problem, one is a tab of the Nucleus editor window, and one is a build step that checks your prefabs before you build.
 
 | Tool | Where it lives | What it answers |
 |---|---|---|
 | `NetworkCorrectionVisualizer` | Component, added under a networked object | Where and how far did prediction correct this object? |
 | `NetworkInterestOverlay` | Component, added under a networked object | What is this object's controller being sent? |
-| Network Inspector | **Window > Nucleus > Network Inspector** | What role, tick, connections and objects does this session have right now? |
-| Validate Network Prefabs | **Nucleus > Validate Network Prefabs** | Will my networked prefabs spawn correctly? |
+| Traffic tab | **Tools > Nucleus**, then the **Traffic** tab | What is this session sending and receiving, and how healthy are its connections right now? |
+| Validate Network Prefabs | **Tools > Nucleus > Build > Validate Network Prefabs** | Will my networked prefabs spawn correctly? |
 
 None of them change the session they look at, so they are safe to leave in a scene while you test. Take the two components off, or switch them off, before you ship: they exist to answer a question, not to run in a player's build.
 
@@ -64,25 +64,27 @@ Interest is resolved only on the authority, so the overlay draws only on a serve
 
 To make the same check from code on the server, call `NetworkSystem.GetInterestMembership(connection)`, which returns the `InterestMembership` that system currently resolves toward a connection. Game code that needs to react when that changes should subscribe to the system's `InterestChanged` event instead of polling. [Interest troubleshooting](../interest/interest-troubleshooting.md) walks through what to do once you can see the problem.
 
-## The Network Inspector window
+## The Traffic tab
 
-Open **Window > Nucleus > Network Inspector**. Outside play mode it only tells you to enter play mode with a `UnityCoreManager` in the scene; while playing, it shows the `CoreManager` the integration bound (`NucleusUnity.BoundCoreManager`) in three sections:
+Open **Tools > Nucleus** and choose the **Traffic** tab. Outside play mode it says the readouts fill in once a session is running, offers an **Enter Play Mode** button, and still lets you set up simulated network conditions. While a session runs, the window's banner shows this peer's role (Host, Server, Client or Stopped), and the tab shows five sections, refreshed twice a second:
 
-- **Session**: the role (Host, Server, Client or Stopped) and the current tick.
-- **Connections**: one row per active connection, with its id, whether it is the server side or a client, its state, round trip time (a dash until the first measurement), packet loss, and how many reconciles the server has sent to it.
-- **Objects**: every `NetworkSystemObject` in the open scenes, sorted by name. Each row lists the object's systems with their id, controller (the server or a client id), whether the system has started, and how many reconciles it has received. Click an object's name to select and ping it in the hierarchy; type in **Filter** to narrow the list by name.
+- **Controls**: **Start Server** or **Stop Server** and **Start Client** or **Stop Client**, each following whether that side is running, and **Start Host** while neither is. A client stopped here counts as a deliberate stop, so it does not reconnect on its own.
+- **Session**: the average frame time, the tick rate in ticks per second and milliseconds per tick, the reconciles this peer has sent or received, and the tick drift, which is how far the measured tick rate strays from the configured one. Frame time turns amber when a frame lasts longer than a tick, and tick drift turns amber when it strays more than five percent of the tick rate. A server under its rate is falling behind; a client away from it is having its clock sped up or slowed down to keep its input arriving on time.
+- **Bandwidth**: bytes sent and received per second, total bytes sent and received, a graph of both rates over the last minute, and how much of each direction is replicated state.
+- **World**: the number of connections, started systems, networked objects in the open scenes, and spawns that interest management admitted and deferred, with a line under them showing the session's redundancy, state interpolation, state retention and partial apply settings.
+- **Network conditions**: on a server or host, one row per connected client with the round trip latency, jitter and packet loss that client reported for its link; on a client, the same figures for its link to the server. A dash means the link has not been measured yet. Under them, **Simulated conditions** has a **Simulate** toggle that delays, drops and reorders packets on every transport, presets from **Perfect** through **LAN**, **Broadband**, **Wi-Fi** and **Mobile** to **Awful**, and the **Latency (ms)**, **Jitter (ms)**, **Packet Loss** and **Out Of Order** values themselves. The values are settings of the scene's `UnityTransportManager`, so they save with the scene, and a change made in play mode reaches the running transports straight away.
 
-The window reads only public state and changes nothing. It repaints about ten times a second, and gathers the object list from the scene once a second rather than on every repaint, so an object you spawn appears within a second.
+The readouts change nothing. Only the control buttons and the simulated conditions affect the session.
 
-The reconcile counts are each counted on one side only. A connection's reconciles-sent count is kept on the server, so it reads zero in a client's window. A system's reconcile count is kept on the client that receives the corrections, so it reads zero on the server. Run the window in both editors (see [Testing with two editors](../../start-here/testing-with-two-editors.md)) to see both halves.
+The reconcile count is kept on one side only. A server or host counts the corrections it sent its clients, so the tile reads **reconciles sent**. A client counts the corrections its systems received, so the tile reads **reconciles received**, and it covers only the objects still in the scene. Open the window in both editors (see [Testing with two editors](../../start-here/testing-with-two-editors.md)) to see both halves.
 
 ## Validating your networked prefabs
 
-Run **Nucleus > Validate Network Prefabs** before a build, or whenever a spawn goes wrong in a way you cannot explain. It loads every prefab in the project, logs each problem it finds to the Console as an error against the prefab it names (click the entry to ping the prefab), and ends with a dialog counting the problems. A clean project gets a dialog saying every networked prefab is set up correctly.
+Run **Tools > Nucleus > Build > Validate Network Prefabs** before a build, or whenever a spawn goes wrong in a way you cannot explain. It loads every prefab in the project, logs each problem it finds to the Console as an error against the prefab it names (click the entry to ping the prefab), and ends with a dialog counting the problems. A clean project gets a dialog saying every networked prefab is set up correctly.
 
 It checks two kinds of problem.
 
-**Identity problems** are the ones a player build refuses (see [Prefab identity and the prefab collection](../systems/prefab-ids-and-collections.md)): no base `NetworkPrefabCollection`, two collections resolving to the same prefab bundle, a networked prefab missing from its collection, a prefab with no prefab id, two prefabs sharing one id, or a prefab stamped with a different bundle than its collection. This is the same check the build runs, so the validator and the build never disagree. Every identity problem is fixed by **Nucleus > Rebuild Network Prefab Collection**, and the dialog says so when it finds one.
+**Identity problems** are the ones a player build refuses (see [Prefab identity and the prefab collection](../systems/prefab-ids-and-collections.md)): no base `NetworkPrefabCollection`, two collections resolving to the same prefab bundle, a networked prefab missing from its collection, a prefab with no prefab id, two prefabs sharing one id, or a prefab stamped with a different bundle than its collection. This is the same check the build runs, so the validator and the build never disagree. Every identity problem is fixed by **Tools > Nucleus > Build > Rebuild Network Prefab Collection**, and the dialog says so when it finds one.
 
 **Structure problems** are hierarchies a spawn would mishandle:
 
