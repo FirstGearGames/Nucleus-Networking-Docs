@@ -97,7 +97,7 @@ Call it from the frame the click happens, never from code that builds the next t
 
 ## Send the shot whole
 
-Put the `LagCompensatedShot` itself in the message, as above, or in a remote call argument or a client state member. Never copy its origin and direction into plain `Vector3` fields: a message rounds each component to a thousandth, which can turn a long shot by about 9 cm at 100 m and lose a headshot with no error. A `LagCompensatedShot` sends each component as its raw 32 bits; an infinity or NaN arrives as zero.
+Put the `LagCompensatedShot` itself in the message, as above, or in a remote call argument or a client state member. Never copy its origin and direction into plain `Vector3` fields: a message sends a `Vector3` with less precision, which can turn a long shot enough to lose a headshot with no error. A `LagCompensatedShot` arrives exactly as it was captured; an infinity or NaN arrives as zero.
 
 A shot that is not a ray, such as a melee swing whose volume the server builds itself, sends just a view: `CaptureView()` returns the `LagCompensationView` on screen, and the server passes it to an overlap query.
 

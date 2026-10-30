@@ -38,11 +38,11 @@ The depth and cycle check walks up from the proposed parent toward the root, bou
 
 ## How the link travels
 
-An object spawned already carrying a parent has that parent's Id in its spawn header, so a new observer learns the relationship as part of the spawn itself. A later change made with `EnsureSetSystemParent` travels separately: it serializes as a reparent entry to every peer that already holds the object, carrying the system's Id and its new `ParentId`. A peer that already has the object re-seats it in place rather than treating the change as a new spawn.
+An object that already has a parent when a new observer receives it arrives with that parent, so the observer learns the relationship as part of the spawn itself. A later change made with `EnsureSetSystemParent` reaches every peer that already holds the object, and that peer re-seats it in place rather than treating the change as a new spawn.
 
 ## The receiving side
 
-On a receiving peer, `ParentId` can name a system that has not arrived yet, or that was written to the same tick after its child. Two members exist for that gap:
+On a receiving peer, `ParentId` can name a system that has not arrived yet. Two members exist for that gap:
 
 ```csharp
 public uint ParentId { get; }

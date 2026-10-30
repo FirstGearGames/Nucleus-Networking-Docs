@@ -22,7 +22,7 @@ It is raised **before** the `AuthenticationResponse` is sent to the client and *
 
 It is also not necessarily true yet that interest has registered the new connection as an observer of anything. `InterestManager` subscribes its own handler to `ClientAuthenticated` in `ManagersInstantiated`, so it runs whenever the framework happens to invoke subscribers, and it only registers the connection immediately when `Connection.CanReceiveState` is already true. A fresh remote client whose round trip has not been measured yet is instead queued into `InterestManager`'s internal wait set and registered a round trip later, once the transport's round-trip-time discovery fires. A host's own client is typically resolved immediately.
 
-Either way, per-player setup done inside this handler is still tick-aligned with the roster: the roster add this connection is owed, and the roster add announcing it to everyone else, both ride the same tick's state stream regardless of when interest finishes registering it as an observer.
+Either way, per-player setup done inside this handler is still tick-aligned with the roster: the roster add this connection is owed, and the roster add announcing it to everyone else, both go out on the same tick regardless of when interest finishes registering it as an observer.
 
 ## ServerManager.ClientDisconnecting
 
@@ -79,6 +79,6 @@ Disconnection follows the mirror shape: `ClientDisconnecting` is raised from the
 |---|---|---|
 | `ClientAuthenticated` | Read `Connection.Identity`; do per-connection setup — it is still tick-aligned with the roster add queued right after. | Anything that assumes the connection is already a registered observer; that may not be true until a round trip later. |
 | `ClientDisconnecting` | Look up what this connection controlled or owned; nothing has released yet. | Anything that depends on the connection's controlled systems already being gone — release runs immediately after this returns. |
-| `LocalClientAuthenticated` | Read this peer's own `Connection.Id` for the first time; anything scoped to "who am I". | Assuming the roster of other peers has already arrived; it rides the state stream separately. |
+| `LocalClientAuthenticated` | Read this peer's own `Connection.Id` for the first time; anything scoped to "who am I". | Assuming the roster of other peers has already arrived; it arrives separately. |
 | `PeerConnectionDiscovered` | Store a reference to the peer's `Connection` for later use. | — |
 | `PeerConnectionDropped` | Drop every stored reference to this peer's `Connection`. | Holding onto it past this handler — the instance is pooled and reused right after. |

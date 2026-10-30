@@ -34,7 +34,7 @@ If your project has no `NetworkBundleManifest` yet, the build creates one and re
 
 ## The manifest
 
-`NetworkBundleManifest` maps the bundle identifiers the server names on the wire to the files a client loads them from:
+`NetworkBundleManifest` maps the bundle identifiers the server names to the files a client loads them from:
 
 - `Entries`: a list of `BundleEntry { BundleId, FileName }`.
 - `RootDirectory`: the directory file names resolve against; falls back to `Application.streamingAssetsPath` when left unset, which is `Assets/StreamingAssets` in the editor and the shipped copy in a build.
@@ -65,4 +65,4 @@ Normally a prefab's required content is read straight from the shard it shipped 
 
 ## Content bundles ship only in Pro
 
-Content bundles are a Pro feature. `CoreManager.BundleManager` lives in a Pro-only partial file; a Free build has no such field at all, and the runtime loaders (`NetworkBundleLoader`, `UnityAssetBundleLoader`) exist only to register against it. A Free project builds and ships without content bundles.
+Content bundles are a Pro feature. A Free build has no `CoreManager.BundleManager` at all, and the runtime loaders (`NetworkBundleLoader`, `UnityAssetBundleLoader`) exist only to register against it. A Free project builds and ships without content bundles.

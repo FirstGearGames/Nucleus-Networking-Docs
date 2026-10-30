@@ -12,7 +12,7 @@ title: "Starting and stopping systems"
 bool started = coreManager.SystemManager.EnsureStartSystem(networkSystem);
 ```
 
-The system must already be initialized. It carries `NetworkSystem.UnsetPlatformId`, so its header pays nothing for prefab, scene or parent fields it has no use for, and a receiver rebuilds it from its wire type identity alone. Find it on the receiving side through `SystemManager.SystemStarted` or a `NetworkSystemWatch` — there's no engine object for a script to have a reference to.
+The system must already be initialized. It carries `NetworkSystem.UnsetPlatformId`, so a receiver builds it with no engine object behind it. Find it on the receiving side through `SystemManager.SystemStarted` or a `NetworkSystemWatch` — there's no engine object for a script to have a reference to.
 
 The fuller overload is for a system an integration is binding to an object it already owns:
 
@@ -36,7 +36,7 @@ bool started = coreManager.SystemManager.EnsureStartSystem(
 bool stopped = coreManager.SystemManager.EnsureStopSystem(networkSystem, isPoolReturnRequestedOnDespawn: true);
 ```
 
-An accepted stop transitions the system to `Stopping` immediately, serializes a despawn to observers, then completes: the system transitions to `Stopped`, leaves routing, releases its Id, and the registered spawn handler is notified. A wire-constructed system always returns to its pool once that happens; a locally rented system stays owned by the code that rented it unless `isPoolReturnRequestedOnDespawn` asks the framework to recycle it too.
+An accepted stop transitions the system to `Stopping` immediately, sends a despawn to observers, then completes: the system transitions to `Stopped`, leaves routing, releases its Id, and the registered spawn handler is notified. A wire-constructed system always returns to its pool once that happens; a locally rented system stays owned by the code that rented it unless `isPoolReturnRequestedOnDespawn` asks the framework to recycle it too.
 
 Only the server stops a replicated system. A pure client's stop request is refused. A peer with no started transport (offline usage) can stop its own systems freely.
 
@@ -53,23 +53,17 @@ Both return false and log instead of throwing if the system is null or its `Core
 
 ## Deferred start and stop
 
-A start or stop that lands mid-tick doesn't always ride that tick's stream.
+A start or stop that lands mid-tick doesn't always take effect on that tick.
 
-A start called too late for the tick's state flush is deferred: the system stays fully usable to the caller (rented, initialized, components in place), but its Id stays unset and it goes live only after the next tick increments, when its spawn can ride that tick's serialization.
+A start called too late for the tick's state flush is deferred: the system stays fully usable to the caller (rented, initialized, components in place), but its Id stays unset and it goes live only after the next tick increments.
 
-A stop called after the tick's state flush is held the same way: it can't ride the current tick's stream, so it's held to lead the *next* tick's packets, ahead of anything else in that tick, so receivers remove the system before applying anything new.
+A stop called after the tick's state flush is held the same way and takes effect on the *next* tick, where receivers remove the system before applying anything new.
 
-If a system is started again while a stop is still pending on it, the restart cancels the pending stop instead of both traveling — the system stays `Started` with its identity intact, and the queued despawn is withdrawn. If the despawn hadn't serialized yet, the cancel is wire-invisible; if it had already gone out this tick, every observing client is demoted to a full serialize, so the next tick's full re-spawns the system on the receivers that just removed it. This is what lets a spawn-then-despawn-then-spawn sequence in the same tick resolve to the latest intent rather than sending both a despawn and a respawn.
+If a system is started again while a stop is still pending on it, the restart cancels the pending stop: the system stays `Started` with its identity intact, and the queued despawn is withdrawn. If the despawn had already been sent this tick, the receivers that just removed the system are given it again on the next tick. This is what lets a spawn-then-despawn-then-spawn sequence in the same tick resolve to the latest intent.
 
 ## Reliable despawn
 
-A despawn rides the unreliable state stream along with everything else. A peer that loses that one packet acknowledges straight past it and is left holding a ghost.
-
-The server keeps a ledger of completed despawns (tick and system Id). When a peer's acknowledged tick reaches or passes a ledgered despawn it was never sent, the server re-delivers that despawn as a reliable `DespawnCleanup` message carrying the system's Id. The peer applies it immediately — cleanup isn't state-aligned, the despawn's tick has long passed, so the stop completes on receipt rather than waiting for interpolation. An Id the peer doesn't currently route is skipped silently, since the state-path despawn may have arrived after all.
-
-The send is deliberately gated on the peer's acknowledgment reaching the despawn, never ahead of it: a cleanup sent before the acknowledgment catches up can overtake state for that system still in flight, and a peer that still held entries for a system a cleanup had already removed would read a divergence it didn't have. A joining peer is the one exception — it's swept through the whole ledger, since everything in it was despawned before that peer's stream began.
-
-A stop that's deliberately silent (every peer performs it for itself, such as a scene release) is ledgered the same way but owes no `DespawnCleanup` — nothing is said on the wire for it.
+A despawn is reliable: a peer that loses the packet carrying it still removes the system, so a lost packet never leaves a peer holding a ghost.
 
 ## Observing the roster from your own code
 
@@ -96,9 +90,8 @@ if (coreManager.SystemManager.TryGetSystemReference(id, out NetworkSystem networ
 
 coreManager.SystemManager.UnknownSystemDeltaReceived += (connection, systemId) =>
 {
-    // A received delta referenced a system this peer doesn't have, so the rest
-    // of that delta subpacket was abandoned. Means a missed spawn (the
-    // unreliable channel can drop it) or a more serious desync.
+    // Received state named a system this peer doesn't have. That means a
+    // missed spawn or a more serious desync.
 };
 ```
 
@@ -110,7 +103,7 @@ coreManager.SystemManager.UnknownSystemDeltaReceived += (connection, systemId) =
 coreManager.SystemManager.EnsureMoveSystemToScene(networkSystem, destinationSceneHandle);
 ```
 
-This is the one path that moves a spawned object between scenes — nothing in interest, physics, or scene loading calls it on its own. It's server-only, and only for a started, dynamically spawned system (not a scene object) that carries a platform identity. The move restamps the system's scene handle in place, preserving its Id, controller, access and group, then re-evaluates interest so a peer no longer in the destination scene is despawned and a peer newly in it is served a full. See the scenes category for how scene instances and handles work.
+This is the one path that moves a spawned object between scenes — nothing in interest, physics, or scene loading calls it on its own. It's server-only, and only for a started, dynamically spawned system (not a scene object) that carries a platform identity. The move restamps the system's scene handle in place, preserving its Id, controller, access and group, then re-evaluates interest so a peer no longer in the destination scene is despawned and a peer newly in it receives the system as a spawn. See the scenes category for how scene instances and handles work.
 
 ## A spawn can carry one-time data
 
@@ -130,10 +123,10 @@ if (NetworkSystemPool.TryRent<NetworkSystem, CrateComponent>(coreManager, out Ne
     networkSystem.SetSpawnPayload(new CrateSpawnPayload { LootTableIndex = 3 });
 ```
 
-- The payload travels with every complete snapshot of the object, so a late joiner and a peer that regains interest receive it too, and it is never sent in the updates in between. Declare it in the same call stack as the rent, exactly as you write a component's opening values.
+- The payload arrives with the object's spawn, including the spawn a late joiner or a peer that regains interest receives, and it is never sent in the updates in between. Declare it in the same call stack as the rent, exactly as you write a component's opening values.
 - A receiver reads it into an instance of its own, available as `networkSystem.SpawnPayload`. It is read after the object's member values, so `ReadSpawnPayload` can already see them and use them to decide what else to read. `ReadSpawnPayload` must read exactly what `WriteSpawnPayload` wrote, and it can run more than once for one object, so whatever it applies has to be harmless to repeat.
 - Declare it on the peer that creates the object. That is the server, or, for a predicted spawn, the client predicting it: that client can create the object, set its payload and spawn it, and the server passes the payload on to everyone else. A client cannot change a payload once the object exists.
-- The source generator registers every concrete payload type for you. A concrete payload type without a public parameterless constructor is a build error, because a receiver has to construct it.
+- Every concrete payload type is registered for you. A concrete payload type without a public parameterless constructor is a build error, because a receiver has to construct it.
 - A system can carry a payload and nothing else. Rent one with no components through `NetworkSystemPool.TryRent<NetworkSystem>(coreManager, out NetworkSystem networkSystem)` and declare the payload on it.
 
 ## A system can reach a peer a tick or two after it starts

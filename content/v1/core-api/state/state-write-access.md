@@ -54,13 +54,13 @@ public uint MemberWriteConvergenceDeadlineTicks = UnsetConvergenceDeadlineTicks;
 public const uint UnsetConvergenceDeadlineTicks = uint.MaxValue;
 ```
 
-Left at `UnsetConvergenceDeadlineTicks`, the deadline is derived from the connection's measured round-trip time rather than fixed. Set it explicitly per system when the default feel is wrong - a shared UI value and a contested physics object don't want the same answer. `MemberWriteConvergenceDeadlineTicks` itself is declared alongside the widening logic, so this window exists only in a Pro build; a free build has no echo-withholding at all.
+Left at `UnsetConvergenceDeadlineTicks`, the deadline is derived from the connection's measured round-trip time rather than fixed. Set it explicitly per system when the default feel is wrong - a shared UI value and a contested physics object don't want the same answer. This window exists only in a Pro build; a free build has no echo-withholding at all.
 
 ## Write access beyond the controller ships only in Pro
 
-Write access beyond `Controller`, and the echo-withholding window that goes with it, are Pro. The gate is structural: both live in `NetworkSystem.WriteAccess.Pro.cs`, split from the free-side `NetworkSystem.WriteAccess.cs`. `MemberWriteAccess` itself, `NetworkSystem.WriteAccess` and `NetworkSystem.TrySetWriteAccess` are Pro-only too, so a free build has none of them and code naming them does not compile. A free build's eligibility check admits the controller alone.
+Write access beyond `Controller`, and the echo-withholding window that goes with it, are Pro. `MemberWriteAccess` itself, `NetworkSystem.WriteAccess` and `NetworkSystem.TrySetWriteAccess` are Pro-only too, so a free build has none of them and code naming them does not compile. A free build's eligibility check admits the controller alone.
 
 Two limits apply even with Pro:
 
-- A system holding a collection member cannot be widened past `Controller`. `TrySetWriteAccess` rejects the call, because a client write to a collection arrives as an absolute with no operation log to relay to other observers.
-- A client permitted to write on a system with more than one possible writer sends its members upstream as absolutes, not deltas. A member holds a single decode baseline, so two writers' deltas can't both reconstruct against it safely - only one sender per baseline can use the cheaper delta stream, and a multi-writer system gives that up.
+- A system holding a collection member cannot be widened past `Controller`. `TrySetWriteAccess` rejects the call.
+- A client write on a system with more than one possible writer costs more bandwidth than a write from a single controller.

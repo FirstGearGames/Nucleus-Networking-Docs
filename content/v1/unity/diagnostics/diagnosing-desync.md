@@ -7,7 +7,7 @@ title: "Diagnosing desync"
 "It looks wrong on the other peer" is four different bugs wearing one symptom. Check them in this order, because each rung rules out the ones below it:
 
 1. **Is the object there at all?** If the receiver never spawned it, or the object vanished when it shouldn't have, this is interest: an `IInterestCondition` culled the pair (`InterestEffect.Spawn`, resolving to `InterestMembership.Unspawned`), or a despawn genuinely happened.
-2. **Is it there but frozen?** The object exists on the receiver but stopped updating a while ago. This is `InterestEffect.Stop`: the pair resolved to `InterestMembership.Stopped`, which retains the receiver's object and drops it from the delta stream rather than despawning it. It looks identical to a dead connection from the outside; it isn't.
+2. **Is it there but frozen?** The object exists on the receiver but stopped updating a while ago. This is `InterestEffect.Stop`: the pair resolved to `InterestMembership.Stopped`, which retains the receiver's object and stops sending it updates rather than despawning it. It looks identical to a dead connection from the outside; it isn't.
 3. **Is it there and moving, but wrong?** Position, rotation, or some other member holds a value that doesn't match the sender. This is a member value question: either the value never changed on the receiver, or it changed to something incorrect.
 4. **Is it there, correct, but late?** The value is right eventually, just visibly behind. This is interpolation and the retention window, not a data bug.
 
@@ -18,7 +18,7 @@ Don't skip ahead. A value that "looks wrong" because the object was actually cul
 Once you're at rung 3, split it again before touching a serializer:
 
 - **A value that never changes on the receiver** is an observation or access question. Is the Connection actually registered as an observer of that `NetworkSystem`? Did an interest condition stop it (rung 2, revisit it)? Does the sender even own or control the member it's trying to change? A member that never updates usually means the write never left the sender, or never reached this receiver, not that the receiver decoded it wrong.
-- **A value that changes, but to the wrong thing**, is a serializer or prediction question. The receiver is getting deltas and applying them, so the pipeline is working; the value it lands on is what's wrong. That points at how the member is being written or projected (`TransmissionMode.Divine` vs `TransmissionMode.Interval`), or, for a controlled member, at prediction/reconciliation on the controlling side.
+- **A value that changes, but to the wrong thing**, is a serializer or prediction question. The receiver is getting updates and applying them, so the pipeline is working; the value it lands on is what's wrong. That points at how the member is being written or projected (`TransmissionMode.Divine` vs `TransmissionMode.Interval`), or, for a controlled member, at prediction/reconciliation on the controlling side.
 
 These two failure modes live in different subsystems. Don't debug a serializer because a value never showed up, and don't debug interest because a value arrived and was simply incorrect.
 
@@ -34,7 +34,7 @@ The types worth knowing when chasing desync:
 - `InvalidStateAckViolation` - a peer acknowledged a tick above anything ever sent to it.
 - `RetentionExceededViolation` - a peer's acknowledged tick fell beyond the retention window and had to be re-served the whole world. A single raise is ordinary heavy loss; chronic raises mean the peer's latency exceeds `SystemManager.StateRetentionMilliseconds`, or it's deliberately withholding acknowledgments.
 - `RecoveryUnconfirmedViolation` - consecutive recoveries were served to a Connection without it ever confirming one.
-- `UnauthorizedSpawnViolation` - a client's full serialize named a system identifier the server doesn't hold, which would have spawned an object on the server.
+- `UnauthorizedSpawnViolation` - a client sent state naming a system identifier the server doesn't hold, which would have spawned an object on the server.
 
 If a symptom in rungs 1-3 has a matching raise, that's your subsystem, directly. **If nothing is raised at all**, the fault sits in something the violation pipeline doesn't police: a legitimate interest decision, ordinary loss inside the retention window, an interpolation lag, or a prediction mismatch that's still a well-formed packet. Absence of a violation is evidence, not a dead end.
 

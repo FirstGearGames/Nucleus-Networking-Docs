@@ -92,7 +92,7 @@ Pass no provider and `new CoreManager()` starts a default one that steps the loo
 
 ## Referencing the engine
 
-There is no NuGet package for Nucleus. Reference the three runtime DLLs, `Nucleus.dll`, `CodeBoost.dll`, and `SynapseSocket.dll`, as a set from one release, not independent picks. Any project that declares networked types also needs `Nucleus.CodeAnalysis.SourceGenerators.dll` from the same release as an `Analyzer` item, so the generated serializers your types need actually get produced. [Adding Nucleus to a .NET project](../../start-here/adding-nucleus-to-a-dotnet-project.md) shows the project file.
+There is no NuGet package for Nucleus. Reference the three runtime DLLs, `Nucleus.dll`, `CodeBoost.dll`, and `SynapseSocket.dll`, as a set from one release, not independent picks. Any project that declares networked types also needs `Nucleus.CodeAnalysis.SourceGenerators.dll` from the same release as an `Analyzer` item, or those types cannot be sent. [Adding Nucleus to a .NET project](../../start-here/adding-nucleus-to-a-dotnet-project.md) shows the project file.
 
 `Nucleus.dll` targets `netstandard2.1`. That is the engine's own floor, not a suggestion for your host: target a modern framework such as `net8.0` or `net9.0` for your own executable rather than copying `netstandard2.1` onto it.
 

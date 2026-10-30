@@ -12,7 +12,7 @@ Interest resolves to one of a few verdicts per connection, and "stopped" is not 
 
 ### Why is nothing replicating at all
 
-Check that the Nucleus source generator is wired into the project as an analyzer, not just referenced as an ordinary assembly. Without it no serializers are produced for your networked types, so there is nothing for the wire to send or read. See the source generator setup page.
+Check that the Nucleus source generator is wired into the project as an analyzer, not just referenced as an ordinary assembly. Without it your networked types cannot be sent or read, so nothing replicates. See the source generator setup page.
 
 ## Questions about control
 
@@ -42,4 +42,4 @@ The transport's byte and bit counters are running totals, accumulated since the 
 
 ### Why does this type not exist in my build
 
-Free and Pro are not a runtime switch. A Pro-only source file is excluded from the compilation entirely when building Free, so a Pro-only type is a compile error in a Free project, not something that fails or falls back at runtime. If your code references a type that isn't there, you're either building Free against Pro-only API, or your project is pulling in the wrong edition's files.
+Free and Pro are not a runtime switch. Pro-only code is left out of a Free build entirely, so a Pro-only type is a compile error in a Free project, not something that fails or falls back at runtime. If your code references a type that isn't there, you're either building Free against Pro-only API, or your project is pulling in the wrong edition's files.

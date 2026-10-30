@@ -23,17 +23,12 @@ public partial class DemoScoreComponent : NetworkComponent
 
 One trip across the network looks like this:
 
-1. **Written on the server.** The peer that owns the object and decides its truth (the server, usually the server) sets `Score.Value` during `EarlySerialize`. `NetworkMember<T0>.Value` is the current value; setting it also rotates the value ring so the value it replaces becomes readable as `PreviousValue`.
+1. **Written on the server.** The peer that owns the object and decides its truth (the server, usually the server) sets `Score.Value` during `EarlySerialize`. `NetworkMember<T0>.Value` is the current value; the value it replaces becomes readable as `PreviousValue`.
 2. **Change detection notices it.** A member does not serialize just because it exists. Setting `Value` flags the member as changed for this tick, and only changed members are considered for sending.
-3. **Serialized during the tick's serialize steps.** During `LateSerialize`, the framework walks every system with changed members and serializes them.
-4. **Travels as part of one combined packet.** Nucleus does not send one packet per member or per component. A tick's outgoing state for a connection is written into a single combined stream and handed to the transport during `LateSerialize`.
-5. **Applied on the receiver before that peer's own tick work runs.** The receiving peer reads and deserializes incoming packets early (`EarlyVariableUpdate`), then applies the contained state during `LateStateUpdate`. Both steps come ahead of `EarlyFixedUpdate`, `VariableUpdate`, and that peer's own `EarlySerialize`. Game code on the receiver reading `Score.Value` during its own tick sees the value the server wrote, not something stale from before the packet arrived.
+3. **Sent during the tick's serialize steps.** During `LateSerialize`, the framework sends every system with changed members.
+4. **Applied on the receiver before that peer's own tick work runs.** The receiving peer reads and deserializes incoming packets early (`EarlyVariableUpdate`), then applies the contained state during `LateStateUpdate`. Both steps come ahead of `EarlyFixedUpdate`, `VariableUpdate`, and that peer's own `EarlySerialize`. Game code on the receiver reading `Score.Value` during its own tick sees the value the server wrote, not something stale from before the packet arrived.
 
-## Snapshot, then delta
-
-A peer that has never seen a system before cannot make sense of a partial update, so the first thing it receives is a full snapshot of every member's value. Every tick after that carries only what changed: a delta.
-
-This is why `NetworkMember<T0>` exposes both `Value` and `PreviousValue`. A delta encodes against the previous value already held on both ends rather than restating the whole thing, which is cheaper the more ticks a value has been streaming. The moment a peer starts observing a system — joining, a scene load, an object first coming into range — it gets a full again, because there is no previous value on that peer's side yet to delta against.
+A peer that starts observing a system later, by joining, loading a scene or bringing an object into range, receives every member's current value first, not only the changes that follow.
 
 ## Interpolation: correct, a little old, on purpose
 
@@ -45,9 +40,8 @@ A receiving peer does not render the newest value the instant it applies. `Netwo
 
 Loss recovery here is not a reliable channel retransmitting a dropped packet. There is no such channel underneath state replication. Instead:
 
-- Every outbound packet carries an acknowledgment in its header: the highest tick the receiver has fully applied. Acks only move forward.
 - `SystemManager.GlobalRedundancy` lets an unreliable state tick resend itself on the following ticks, so a single lost packet is often covered by a later one that repeats the same change.
-- When the gap between the last acknowledged tick and the current one grows too wide, the sender re-serves specifically the components that never landed, rather than resending everything or waiting on a generic retransmit.
+- When state goes missing, the sender re-serves specifically the components that never landed, rather than resending everything or waiting on a generic retransmit.
 
 The effect is that a lost packet is repaired by the next relevant state, not by a transport-level resend of the exact bytes that went missing.
 
@@ -66,7 +60,7 @@ All three are evaluated per connection, so the same system can be visible and wr
 This page is the map, not the manual for any one stop on it:
 
 - The full ordering and per-step framework work: the tick pipeline reference.
-- Delta and full encoding, compression, and accuracy: the serialization reference.
+- Compression and accuracy: the serialization reference.
 - Interpolation windows, snap thresholds, and send intervals: the `NetworkMember` reference.
 - Redundancy, interpolation depth, and retention tuning: the `SystemManager` reference.
 - Acknowledgment, redundancy, and targeted recovery in full: the reliability and loss recovery reference.

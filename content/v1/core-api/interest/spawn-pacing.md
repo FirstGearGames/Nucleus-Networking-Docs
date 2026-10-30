@@ -4,7 +4,7 @@ title: "Spawn pacing"
 
 ## An unpaced world sends its biggest tick to the peer least able to take it
 
-A tick's outbound to a connection is one MTU-segmented combined stream. A receiver can only read it once every segment has arrived, so losing one segment costs the whole tick. Redundancy multiplies that loss rather than avoiding it. An unpaced world spawns every system it can as soon as interest admits it, which means the biggest ticks — a client joining a large world, a scene binding, a bundle releasing a world's worth of withheld spawns — land exactly on the peer least able to absorb them: one still building its connection, with nothing yet to fall back on.
+A tick's update to a connection arrives whole or not at all, so the bigger the tick, the more likely it is to be lost. An unpaced world spawns every system it can as soon as interest admits it, which means the biggest ticks — a client joining a large world, a scene binding, a bundle releasing a world's worth of withheld spawns — land exactly on the peer least able to absorb them: one still building its connection, with nothing yet to fall back on.
 
 Spawn pacing turns that one enormous tick into several ordinary ones. Each is complete and recoverable on its own, and the receiver's instantiation cost spreads over several frames instead of landing in one.
 
@@ -17,7 +17,7 @@ This is a Pro feature.
 - `DefaultMaximumSpawnsPerTick` is `500`.
 - `UnlimitedSpawnsPerTick` is `0` — set the ceiling to this and nothing is paced; every spawn is admitted on the tick it resolves, exactly as Free behaves.
 
-The ceiling is per connection, because what it bounds is one peer's tick. It is measured per state flush, not per tick: everything admitted between two flushes rides the same combined stream regardless of how many loop steps it arrived over.
+The ceiling is per connection, because what it bounds is one peer's tick.
 
 ```csharp
 interestManager.MaximumSpawnsPerTick = 200;
@@ -38,8 +38,8 @@ interestManager.MaximumSpawnsPerTick = 200;
 - **A group is admitted whole.** A `NetworkSystemGroup` is queued and admitted together, even when the ceiling has budget free for only some of its members. Splitting a group across ticks would hand the receiver half an object — the one state the interest cull deliberately never produces. If a group's member count exceeds `MaximumSpawnsPerTick`, it is still admitted whole rather than starved forever, and the manager logs a warning naming the group.
 - **A peer's own controlled object never waits.** The system a connection controls skips the queue's arithmetic, including any group it belongs to — a client that cannot act on its own object for several ticks is worse than any tick pacing saves.
 - **A peer that already holds the object is never withheld.** Re-priming an existing observer is not a spawn, so the ceiling never defers it.
-- **A host's own client is never paced**, nor is an emulated peer — there is no wire and no segmented stream to protect for a loopback connection.
-- **Nothing on the wire says a spawn waited.** A paced batch is an ordinary state tick; a receiver cannot tell a paced spawn from one that arrived late for any other reason. Pacing is a sender-side policy only.
+- **A host's own client is never paced**, nor is an emulated peer, because a loopback connection has no network link to protect.
+- **A receiver is never told that a spawn waited.** A receiver cannot tell a paced spawn from one that arrived late for any other reason. Pacing is a sender-side policy only.
 
 ## Choosing a ceiling
 

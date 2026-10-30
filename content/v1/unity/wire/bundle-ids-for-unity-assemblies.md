@@ -30,15 +30,15 @@ The assembly that carries the attribute has to be the asmdef whose types you're 
 ## Ids already taken
 
 - `NetworkTypeRegistry.FrameworkBundleId` — the framework's own bundle, `ushort.MaxValue`.
-- `Nucleus.Integrations.Unity`'s `AssemblyInfo.cs` — `FrameworkBundleId - 1`, one below the framework so it can't collide with either the framework or a default user assembly.
-- The integration's test assembly — `FrameworkBundleId - 2`, one below that, for the same reason: the tests and the demos both load in the editor, and without a distinct id the first of them to register takes bundle zero and the other's components are refused.
+- The `Nucleus.Integrations.Unity` assembly takes `FrameworkBundleId - 1`, one below the framework so it can't collide with either the framework or a default user assembly.
+- `FrameworkBundleId - 2` is reserved by Nucleus as well.
 - A Unity assembly that declares no `[assembly: NetworkBundle(...)]` at all defaults to bundle zero.
 
 Pick an id outside this set for every shard you add.
 
 ## A different bundle number on the same component
 
-`NetworkPrefabCollection` carries its own `PrefabBundleId` and `BundleAssemblyName` serialized fields. These drive `NetworkPrefabRegistry`, the separate registry that resolves which prefab a spawn packet names — not `NetworkTypeRegistry`, the registry the `[assembly: NetworkBundle(...)]` attribute feeds. The two numbers look alike and both call themselves a bundle id, but they govern different registries and are populated independently: `NetworkPrefabCollection`'s fields are filled in by the editor scan of the collection's own assembly, not by anything you set directly.
+`NetworkPrefabCollection` carries its own `PrefabBundleId` and `BundleAssemblyName` serialized fields. These drive `NetworkPrefabRegistry`, the separate registry that resolves which prefab a spawn names — not `NetworkTypeRegistry`, the registry the `[assembly: NetworkBundle(...)]` attribute feeds. The two numbers look alike and both call themselves a bundle id, but they govern different registries and are populated independently: `NetworkPrefabCollection`'s fields are filled in by the editor scan of the collection's own assembly, not by anything you set directly.
 
 ## What a collision looks like
 
@@ -46,6 +46,6 @@ If two types land on the same `(bundleId, localId)` pair, `NetworkTypeRegistry` 
 
 ## Assigning ids
 
-Assign shard ids from the low end and keep going: 1, 2, 3. This isn't just convention — it's cheaper on the wire. `BundleIdWireFormat`, the internal format the registry ids are packed with, is tuned so both ends of the id space cost the fewest bits, with the cost rising the further an id sits from either end. A low id picked from the start of the range costs a few bits; an id picked from the middle of the range costs about twenty. There's no reason to burn wire budget by picking an arbitrary or high id when the low end is open.
+Assign shard ids from the low end and keep going: 1, 2, 3. This isn't just convention: a low id costs less to send than one picked from the middle of the range, so there's no reason to pick an arbitrary or high id when the low end is open.
 
 See the core API page for `NetworkTypeRegistry` itself, and for declaring the same attribute in a csproj-built (non-Unity) assembly.

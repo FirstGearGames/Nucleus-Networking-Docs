@@ -8,7 +8,7 @@ title: "System groups"
 
 A networked object is often more than one `NetworkSystem`: a body, an inventory, a health pool. Each is spawned, replicated, and despawned independently unless something ties them together. A group does that tying: it marks several systems as belonging to the same object so a receiver waits for the whole set before treating the object as arrived, and the group's `Despawn()` stops every member together.
 
-Membership is carried on the wire as a shared `GroupId`, read from `NetworkSystem.GroupId`. A system with no group carries `NetworkSystem.UnsetGroupId`. Nothing about a group is visible on an ungrouped system beyond that unset id.
+Membership is a shared `GroupId`, read from `NetworkSystem.GroupId`. A system with no group carries `NetworkSystem.UnsetGroupId`. Nothing about a group is visible on an ungrouped system beyond that unset id.
 
 ## NetworkSystemGroup
 
@@ -63,7 +63,7 @@ group.Despawn();
 
 ## Reading membership
 
-`NetworkSystem.GroupMemberCount` reports how many systems the group holds. On the server it reads the group's live member count, so it grows as members are added. On a receiver, which builds no `NetworkSystemGroup` of its own, it reports the count carried on the full header the first member arrived with.
+`NetworkSystem.GroupMemberCount` reports how many systems the group holds. On the server it reads the group's live member count, so it grows as members are added. On a receiver, which builds no `NetworkSystemGroup` of its own, it reports the count received with the first member to arrive.
 
 That received count is what lets a receiver wait for the whole set instead of acting the moment the first member shows up: it knows how many systems to expect for a given `GroupId` before it treats the object as fully arrived.
 

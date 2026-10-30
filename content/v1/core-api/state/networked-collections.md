@@ -12,7 +12,7 @@ Nucleus replicates five collection shapes, each a `NetworkComponent` member type
 - `NetworkHashSetMember<T0>` — an unordered set of unique elements
 - `NetworkQueueMember<T0>` — a FIFO queue
 
-All five derive from `NetworkCollectionMemberBase<TChange>`, which owns the change-log and snapshot-ring bookkeeping shared across the family; each family only supplies its own storage, mutation surface, and wire shape. As with scalar members, keep the element type (and, for the dictionary, the key type) to a value type or `string`. Codegen does not enforce this, but an element held by reference can be changed without going through the public mutation API, and the collection never sees that change.
+All five derive from `NetworkCollectionMemberBase<TChange>`, which supplies the change tracking shared across the family. As with scalar members, keep the element type (and, for the dictionary, the key type) to a value type or `string`. Codegen does not enforce this, but an element held by reference can be changed without going through the public mutation API, and the collection never sees that change.
 
 ```csharp
 public class NetworkListMember<T0> : NetworkCollectionMemberBase<NetworkListChange<T0>>
@@ -24,75 +24,17 @@ public class NetworkQueueMember<T0> : NetworkCollectionMemberBase<NetworkQueueCh
 
 ## Mutating a collection
 
-Each member exposes ordinary collection APIs on the surface — `Add`, `Insert`, `RemoveAt`, `Clear`, the indexer for a list, array or dictionary, `Enqueue`/`Dequeue` for a queue, `Add`/`Remove` for a hash set. Underneath, every mutation appends a coalesced entry to a per-tick change log rather than marking the whole member dirty:
+Each member exposes ordinary collection APIs on the surface — `Add`, `Insert`, `RemoveAt`, `Clear`, the indexer for a list, array or dictionary, `Enqueue`/`Dequeue` for a queue, `Add`/`Remove` for a hash set. Every mutation is recorded as an operation in that tick's `Changes`.
 
-```csharp
-public void Add(T0 item)
-{
-    EnsureHeadForCurrentTick();
+A repeated `Set` or indexer write to the same slot within a tick replaces the pending operation instead of adding a second one. On a list, a `Set` at the index of the tick's most recent `Set`, `Add` or `Insert` folds into that operation rather than logging both.
 
-    List<T0> values = _ringValues[HeadIndex];
-    int index = values.Count;
-    values.Add(item);
+## Unchanged contents are not sent
 
-    AppendChange(NetworkListOperation.Add, index, item);
-    NotifyChanged();
-}
-```
-
-A repeated `Set`/indexer write to the same slot within a tick overwrites the pending log entry in place instead of appending a second one — a list's `AppendSetOperation` folds a `Set`, `Add` or `Insert` at the same index together rather than logging both.
-
-## What travels on the wire
-
-The log is what the delta carries. `WriteDelta` writes the tick's coalesced operations, not a snapshot of the collection:
-
-```csharp
-public override void WriteDelta(Writer writer, DeltaCheckMode deltaCheckMode)
-{
-    if (writer.IsEveryDeltaMemberAbsolute)
-    {
-        Write(writer);
-
-        return;
-    }
-
-    WriteOperations(writer);
-}
-```
-
-On the receiving side, `ReadDelta` applies those operations in order, appending each one to the same `Changes` log the local mutator would have populated. An operation the local contents can no longer take — an index a lost delta would have made room for — is skipped rather than thrown on, but its bits are still consumed so the rest of the tick stays aligned; recovery repairs the divergence with a full, absolute serve.
-
-A full `Write`/`Read` always carries the whole collection, states what it *is* rather than what moved, and leaves the change log empty.
-
-## The change gate, not the encoding
-
-The wire format is the operation log, but whether anything is sent at all is decided separately, by a gate that runs before `WriteDelta` is ever reached. `TryFlagAsChanged` only flags a member once its log is non-empty *and* its contents differ observably from the previous ring snapshot:
-
-```csharp
-internal override bool TryFlagAsChanged(uint tick)
-{
-    if (ChangeLog.Count == 0)
-        return false;
-
-    if (!HasObservableChange())
-    {
-        ChangeLog.Clear();
-
-        return false;
-    }
-
-    NetworkMemberBase networkMember = this;
-    NetworkComponent.OnMemberChanged(networkMember);
-
-    return true;
-}
-```
-
-This is why a mutator that ran and then refilled a collection back to its previous contents costs nothing on the wire: the log is non-empty, but `HasObservableChange` compares the live contents against the previous ring snapshot and finds no difference, so the log is cleared and nothing is flagged. A non-empty log says a mutator ran, not that the collection now holds anything different — polling external state into a collection every tick would otherwise spend framing on every tick whether or not the value actually moved. This mirrors the scalar `NetworkMember<T0>` comparison, including tolerance: elements compare through `NetworkTypeToleranceComparer<T0>`, so a floating element resting within the member's own accuracy compares equal exactly as a scalar does.
+A collection is only sent when its contents actually differ from the previous tick. A mutator that runs and then refills a collection back to its previous contents costs nothing, so polling external state into a collection every tick only sends when the value actually moved. Elements compare the same way a scalar `NetworkMember<T0>` does, including tolerance: they compare through `NetworkTypeToleranceComparer<T0>`, so a floating element resting within the member's own accuracy compares equal.
 
 ## The upstream-write exception
 
-Operations are an encoding against what the receiver already holds, so they only work where the sender knows what that receiver's previous value was. A client's upstream write breaks that assumption (nothing downstream serves recovery for an upstream delta), so a client writing a collection member, and the server relaying that write for the tick, both carry the whole collection as an absolute rather than as operations. The encoding rides as the delta's subpacket kind rather than a bit in the body, so the receiver always knows which shape to expect before decoding.
+When a client writes a collection member, the server and the other observers receive the whole collection rather than the individual operations, so on those peers `Changes` is empty for that write; read `Values` instead.
 
 ## Reading the previous values
 
@@ -122,19 +64,8 @@ public virtual void OnMembersChanged(ulong memberFlags, MemberChangeDirection me
 public IReadOnlyList<TChange> Changes => ChangeLog;
 ```
 
-`Changes` holds the current tick's operations on both sides — the ones this peer applied locally, or the ones a delta just landed — and is cleared at the end of the tick. Because of that, code that needs to inspect it must do so synchronously inside `OnMembersChanged`: the write-direction raise runs before the tick serializes anything, and the read-direction raise runs after the inbound apply has landed. A full `Read` leaves `Changes` empty, since it states what the collection is rather than what moved.
+`Changes` holds the current tick's operations on both sides (the ones this peer applied locally, or the ones just received) and is cleared at the end of the tick. Because of that, code that needs to inspect it must do so synchronously inside `OnMembersChanged`: the write-direction raise runs before the tick sends anything, and the read-direction raise runs after everything received this tick has been applied. When the whole collection is received at once, such as on a spawn, a recovery, or a client's write, `Changes` is empty, since the collection is stated as a whole rather than as what moved; read `Values` instead.
 
 ## Collections cannot be multi-writer
 
-A collection member closes off `MemberWriteAccess.AnyClient` by construction, not just by convention. `NetworkSystem.TrySetWriteAccess` refuses to widen a system's access beyond `MemberWriteAccess.Controller` when that system holds any collection member:
-
-```csharp
-if (stateWriteAccess is not MemberWriteAccess.Controller && HasCollectionMember())
-{
-    Logger<NetworkSystem>.LogError($"NetworkSystem [{AsStringInternal()}] holds a collection NetworkMember, so its write access cannot be widened beyond [{nameof(MemberWriteAccess.Controller)}].");
-
-    return false;
-}
-```
-
-The collection families take wire-supplied counts and read through their own paths, which never reach the scalar guard stack that keeps `AnyClient` safe for a plain `NetworkMember<T0>`. Rather than guard every one of those read paths individually, member write access is refused for the whole system up front.
+A collection member closes off `MemberWriteAccess.AnyClient` by construction, not just by convention. `NetworkSystem.TrySetWriteAccess` refuses to widen a system's access beyond `MemberWriteAccess.Controller` when that system holds any collection member. It returns `false` and logs an error saying the system holds a collection NetworkMember, so its write access cannot be widened beyond `Controller`.

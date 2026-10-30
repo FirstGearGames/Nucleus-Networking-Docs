@@ -35,7 +35,7 @@ if (systemManager.CanUseRedundancy())
 
 A tick carrying more state than one packet holds is sent as several packets. On a lossy link one of them is sometimes still missing when the tick's buffering window runs out.
 
-With `SystemManager.PartialStateApplyEnabled` on, which is the default, the receiver applies the packets that did arrive and tells the server which ones never did. The server remembers what each packet it sent held, so it re-serves only what the missing ones carried, on its very next tick. A tick that is lost entirely is reported the same way, and the server re-serves everything that changed since the last tick the client applied. In both cases the repair starts as soon as the client notices the loss, rather than once the server has waited long enough to suspect it. The notice the receiver sends takes the same unreliable channel the state did, because a peer already losing packets is the last one that should be made to wait on a retransmit, and it is repeated for a few ticks in case a copy is lost. If every copy is lost, the server's own recovery still catches the gap, a little later than a repair would have. With it off, the whole tick is discarded and recovered. That costs more under steady loss, because a repair spanning many packets has to arrive complete before any of it applies, and a large world can fall further behind with every attempt.
+With `SystemManager.PartialStateApplyEnabled` on, which is the default, the receiver applies the packets that did arrive and tells the server which ones never did, and the server re-serves only what was missing, on its very next tick. A tick that is lost entirely is reported the same way, and the server re-serves everything that changed since the last tick the client applied. In both cases the repair starts as soon as the client notices the loss, rather than once the server has waited long enough to suspect it. If that report is lost too, the server's own recovery still catches the gap, a little later than a repair would have. With it off, the whole tick is discarded and recovered. That costs more under steady loss, because a repair spanning many packets has to arrive complete before any of it applies, and a large world can fall further behind with every attempt.
 
 A tick is still discarded whole when a missing packet carried a change the rest of the tick relies on, such as a despawn, a controller change or a reparent. Applying around such a change could put state on the wrong object.
 
@@ -49,7 +49,7 @@ A member the server has written since the client's lost write is skipped: the cl
 
 None of this costs anything on a link that loses nothing. `ClientRedundancy` keeps the repair rare on one that does.
 
-The setting is the receiver's alone. The sender writes the same packets either way, so the two peers do not need to match.
+The setting is the receiver's alone, so the two peers do not need to match.
 
 ```csharp
 // Discard and recover any tick that loses a packet, as every tick was handled before this option existed.
@@ -62,7 +62,7 @@ coreManager.SystemManager.PartialStateApplyEnabled = false;
 
 - `SystemManager.DefaultStateRetentionMilliseconds` is `1000`.
 - `SystemManager.MaximumStateRetentionMilliseconds` is `2000` — higher values are silently capped.
-- The history ring is allocated at the maximum up front, so changing `StateRetentionMilliseconds` at runtime never triggers a reallocation.
+- Changing `StateRetentionMilliseconds` at runtime never triggers a reallocation.
 
 A peer whose acknowledged tick has aged past the full retention window can no longer be recovered per-system, and is instead re-served the world it observes.
 
@@ -70,7 +70,7 @@ A peer whose acknowledged tick has aged past the full retention window can no lo
 
 Set `StateInterpolation`, `GlobalRedundancy`, `ClientRedundancy` and `StateRetentionMilliseconds` the same on both peers. Interpolation determines how large a buffer the receiver actually has, so a mismatch means one side is budgeting for recovery capacity the other side isn't providing.
 
-A deeper `StateInterpolation` (and the `GlobalRedundancy` it permits) buys more loss tolerance — more room for a redundant resend to land, more ticks a late packet can still be applied within. It costs latency directly: every buffered tick is a tick of delay before state is applied. A longer `StateRetentionMilliseconds` buys a wider recovery window on struggling connections, at the cost of a larger history ring (fixed at the maximum) and a longer tail before a slow-but-healthy peer would be mistaken for a lossy one.
+A deeper `StateInterpolation` (and the `GlobalRedundancy` it permits) buys more loss tolerance — more room for a redundant resend to land, more ticks a late packet can still be applied within. It costs latency directly: every buffered tick is a tick of delay before state is applied. A longer `StateRetentionMilliseconds` buys a wider recovery window on struggling connections, at the cost of a longer tail before a slow-but-healthy peer would be mistaken for a lossy one.
 
 ## Member-granular repair
 
@@ -81,7 +81,7 @@ public virtual void WriteRecovery(Writer writer, ulong memberMask) { }
 public virtual void ReadRecovery(Reader reader) { }
 ```
 
-`WriteRecovery` serializes only the flagged members named by `memberMask`; `ReadRecovery` reads that mask back and applies just those members. Whether a component type supports member recovery is the component type's own choice, and it must be identical on both peers — `IsMemberRecoverySupported` isn't negotiated over the wire.
+`WriteRecovery` serializes only the flagged members named by `memberMask`; `ReadRecovery` reads that mask back and applies just those members. Whether a component type supports member recovery is the component type's own choice, and it must be identical on both peers — `IsMemberRecoverySupported` isn't negotiated between peers.
 
 A component that does not support member recovery (the base `IsMemberRecoverySupported` is `false`) is re-served whole through its ordinary `Write` instead of a targeted recovery.
 

@@ -4,19 +4,11 @@ title: "State, a Message, or a Call?"
 
 ## The three shapes
 
-A **replicated member** carries a current value. The server writes it, the wire keeps every observer's copy converging on it, and a late observer is brought up to date the moment it starts observing.
+A **replicated member** carries a current value. The server writes it, Nucleus keeps every observer's copy converging on it, and a late observer is brought up to date the moment it starts observing.
 
 A **message** is addressed to a peer and forgotten. It has no address beyond the connection it travels to, no acknowledgment, and no record that it happened once the handler returns.
 
 A **call** is addressed to a `NetworkSystem`. The receiver resolves that system before any handler runs, so a call for a system the receiver does not have is stepped over rather than delivered to the wrong place.
-
-## What each costs to send
-
-A message's envelope carries a hash of the message type (`ushort`), so the receiver knows which handler decodes the body. There is no address and no framing beyond that.
-
-A call's envelope (`RpcPacket`) carries the addressed system's id (`SystemId`), a route (`RpcRoute`, telling the server whether it is a fan-out to observers or bound for one target), and the call's own type hash. The body itself is length-framed (`PackedBytes`) so an unresolvable call can be skipped without decoding it, and the packet after it still reads correctly.
-
-A replicated member sends a delta against a baseline rather than a fresh value every time, so its ongoing cost is the size of what changed, not the size of the whole value.
 
 ## The late-joiner rule
 

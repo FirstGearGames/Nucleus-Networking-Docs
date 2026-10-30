@@ -36,17 +36,8 @@ A client that names `ObserversExcept` — or otherwise sends from the wrong peer
 
 Either way the recipient is named by reference: every client holds a `Connection` for every peer the server has reported, so `To` never needs to look a peer up by id.
 
-## RpcRoute on the wire
+## A client cannot forge a server-only call
 
-`RpcRoute` is what actually travels with the call, so the receiver can tell a legitimate call from one the sender was never entitled to make:
+A call arriving from a client that is addressed the way only the server addresses a call, to a single observing connection, is discarded and logged rather than raised, because no engine path produces it. Reaching it would mean forgery.
 
-| Value | Meaning |
-|---|---|
-| `Server` | A client's call to the server itself, which stops there. |
-| `Observers` | A call to every connection observing the system — sent by the server, or requested by a client. The one value legal in both directions, told apart by `Connection.IsServer` on the connection the call arrived on. |
-| `Target` | The server's call to a single observing connection. |
-| `TargetRelay` | A client's call to a single connection it named, which the server passes on once it admits it. |
-
-`RpcRoute.Target` is server-only. One arriving from a client is discarded and logged rather than raised, because no engine path produces it — reaching it would mean forgery.
-
-When the server passes a `TargetRelay` call on, it rewrites the route to `Target`. The recipient therefore cannot tell a call the server routed for a client from one the server addressed to it directly.
+When the server passes on a client's `RpcTarget.To` call, the recipient cannot tell it apart from a call the server addressed to it directly.

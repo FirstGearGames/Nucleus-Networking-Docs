@@ -22,7 +22,7 @@ An object normally links to one system. Several systems link to the same marker 
 
 ### Predicted Spawn Policy
 
-`_predictedSpawnPolicy`, a `PredictedSpawnPolicy`, defaulting to `None`. It is authored on the prefab rather than set in code so every peer reads the same answer with nothing going on the wire for it. It is applied to each system as it links to this marker (`NetworkSystem.PredictedSpawnPolicy`).
+`_predictedSpawnPolicy`, a `PredictedSpawnPolicy`, defaulting to `None`. It is authored on the prefab rather than set in code so every peer reads the same answer. It is applied to each system as it links to this marker (`NetworkSystem.PredictedSpawnPolicy`).
 
 ## Stamped identity fields
 

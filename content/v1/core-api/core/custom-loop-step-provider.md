@@ -4,7 +4,7 @@ title: "Driving the loop yourself"
 
 ## Why this page exists
 
-FishNet has no equivalent of this page, because every FishNet entry point starts inside a Unity scene and Unity already owns the frame loop. Nucleus is a plain .NET engine first, so a host that is not Unity, a dedicated server process, a simulation harness, a game with its own engine loop, has to supply the clock that steps the network loop itself. `Nucleus/Managers/NetworkLoop` is where that clock plugs in.
+FishNet has no equivalent of this page, because every FishNet entry point starts inside a Unity scene and Unity already owns the frame loop. Nucleus is a plain .NET engine first, so a host that is not Unity, a dedicated server process, a simulation harness, a game with its own engine loop, has to supply the clock that steps the network loop itself. The `Nucleus.Managers.NetworkLoop` namespace is where that clock plugs in.
 
 ## The default is enough for most hosts
 
@@ -14,7 +14,7 @@ Nothing needs writing to use it. Write your own provider only when you have a cl
 
 ## The provider contract
 
-A provider implements `INetworkLoopStepProvider`, in `Nucleus/Managers/NetworkLoop/INetworkLoopStepProvider.cs`:
+A provider implements `INetworkLoopStepProvider`:
 
 ```csharp
 public interface INetworkLoopStepProvider
@@ -133,7 +133,7 @@ networkLoopManager.InvokeNetworkLoopStep(NetworkLoopSteps.TickAdvance, delta);
 networkLoopManager.InvokeNetworkLoopStep(NetworkLoopSteps.LateVariableUpdate, delta);
 ```
 
-This is exactly the order Nucleus's own test harness drives a full tick in. Do not reorder or skip steps: framework work is woven into specific steps (packet receive and message dispatch on `EarlyVariableUpdate`, state apply and RPC dispatch on `LateStateUpdate`, state serialization and the send of messages, RPCs and kicks on `LateSerialize`, the tick advance at the end of `TickAdvance`, among others), and tests that assert on replicated state depend on that order holding. Only `TickAdvance` advances `Tick`. Left false, `IsTickFrame` makes `EarlySerialize` and `LateSerialize` write no state and raise no callbacks, though the pass still sends its messages.
+Do not reorder or skip steps: framework work is woven into specific steps (packet receive and message dispatch on `EarlyVariableUpdate`, state apply and RPC dispatch on `LateStateUpdate`, state serialization and the send of messages, RPCs and kicks on `LateSerialize`, the tick advance at the end of `TickAdvance`, among others), and replicated state depends on that order holding. Only `TickAdvance` advances `Tick`. Left false, `IsTickFrame` makes `EarlySerialize` and `LateSerialize` write no state and raise no callbacks, though the pass still sends its messages.
 
 ## One loop, one manager
 

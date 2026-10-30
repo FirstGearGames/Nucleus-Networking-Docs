@@ -83,7 +83,7 @@ On the client, `ClientManager` raises:
 
 - `LocalClientAuthenticated(Connection localClientConnection)` — once this client's connection is authenticated and carries its assigned Id.
 
-Approval sends the client an `AuthenticationResponse`, a reliable message carrying the `ClientId` the server assigned it — the Id the client learns itself by. It's sent before anything else, so the client knows its own identifier before any other state that might reference it.
+Approval tells the client the Id the server assigned it before anything else, so the client knows its own identifier before any other state that might reference it.
 
 ## A worked example: token authentication
 

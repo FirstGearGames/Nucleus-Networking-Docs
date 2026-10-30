@@ -15,7 +15,7 @@ public partial class SimpleStateComponent : NetworkComponent
 }
 ```
 
-The `partial` keyword is not optional. A source generator scans the class for its `NetworkMember<T0>` fields and emits the other half of the type: `Write`, `WriteDelta`, `Read`, `ReadDelta`, and a per-component flags enum with one bit per member, in member-Id order. Without `partial` there is nowhere for that generated code to attach, and the component never serializes anything.
+The `partial` keyword is not optional. Nucleus completes the type from its `NetworkMember<T0>` fields, including a per-component flags enum with one bit per member, in member-Id order. Without `partial` there is nowhere for that generated code to attach, and the component never replicates anything.
 
 Add more fields for more values; each gets its own bit in the generated flags enum and its own Id within the component.
 
@@ -65,10 +65,10 @@ if (system.TryGetComponent(out SimpleStateComponent component))
 }
 ```
 
-Setting `Value` marks the member changed for the current tick and queues it for the next delta. Reading `Value` returns whatever the ring's live head currently holds, which on a non-writing peer is the last value applied from the wire.
+Setting `Value` marks the member changed for the current tick and queues it to be sent. Reading `Value` returns the current value, which on a non-writing peer is the last value received.
 
 ## The overrides you don't call
 
-`NetworkComponent` declares `Write`, `WriteDelta`, `Read`, `ReadDelta`, `Initialize`, `Deinitialize`, and `OnReturn` as `public virtual`. The source generator overrides `Write`/`WriteDelta`/`Read`/`ReadDelta` for you from your `NetworkMember<T0>` fields, and the framework calls `Initialize`/`Deinitialize`/`OnReturn` at the points in a component's lifecycle where they apply - rent and system-start, system-stop, and pool-return, respectively.
+`NetworkComponent` declares `Write`, `WriteDelta`, `Read`, `ReadDelta`, `Initialize`, `Deinitialize`, and `OnReturn` as `public virtual`. Nucleus implements `Write`/`WriteDelta`/`Read`/`ReadDelta` for you from your `NetworkMember<T0>` fields, and calls `Initialize`/`Deinitialize`/`OnReturn` at the points in a component's lifecycle where they apply - rent and system-start, system-stop, and pool-return, respectively.
 
-None of these are yours to call. They exist for the generator to fill in and for the framework to invoke on its own schedule. If you need to react to a value changing, override `OnMembersChanged` instead - it's called once per tick per direction whenever any member of the component changed, and it's the supported hook for reacting without polling.
+None of these are yours to call. They exist for Nucleus to implement and invoke on its own schedule. If you need to react to a value changing, override `OnMembersChanged` instead - it's called once per tick per direction whenever any member of the component changed, and it's the supported hook for reacting without polling.

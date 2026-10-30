@@ -12,7 +12,7 @@ Every diagnostic carries an id in the form `FAMILY###`, a severity (error or war
 
 | Id | Severity | Stage |
 |---|---|---|
-| `NETWORKTYPEFINDER00` | Warning | Type discovery (`NetworkTypeFinder` walking your networked types and members) |
+| `NETWORKTYPEFINDER00` | Warning | Type discovery (walking your networked types and members) |
 | `NETWORKTYPEFINDER01` | Error | Type discovery |
 | `GENERATION000` | Error | Generation - invalid type |
 | `GENERATION001` | Error | Generation - invalid Roslyn type |
@@ -35,7 +35,7 @@ This means the generator could not find a serializer for that member's type. It 
 - **Marker struct** - if the type lives in an assembly you don't control (a `System.Numerics` type, a third-party math type), add it as a field on a marker struct carrying `[NetworkType]` so the generator can reach it. See [Reaching Types You Cannot Annotate](./external-network-types.md).
 - **Hand-written serializer** - if the type's shape genuinely needs custom read/write logic rather than just visibility. See [Writing a Custom Serializer](./custom-serializers.md).
 
-A `UnityEngine` type (`Vector3`, `Quaternion`, and so on) does not raise this warning: the generator reaches the type's public fields and writes a plain serializer for it. Declare the `System.Numerics` equivalent anyway. See [Unity Types and System.Numerics](../../unity/state/unity-types-and-system-numerics.md).
+A `UnityEngine` type (`Vector3`, `Quaternion`, and so on) does not raise this warning: the generator reaches the type's public fields and writes a plain serializer for it. Declare the `System.Numerics` equivalent anyway. See [Unity Types and System.Numerics](../../unity/wire/unity-and-system-numerics-types.md).
 
 `SERIALIZERS000` is the error-level sibling of the same stage: a required serializer is missing or malformed in a way the generator cannot route around at all, for example `A [Write/Read] serializer could not be found for [Type].` or a type exceeding the maximum networked member count. Treat it the same way as `SERIALIZERS001`, just with a build-breaking severity.
 

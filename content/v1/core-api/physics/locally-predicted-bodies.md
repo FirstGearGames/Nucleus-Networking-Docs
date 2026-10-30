@@ -8,7 +8,7 @@ A body this peer is driving does not have to ride the server's velocity like a p
 
 ## What IsLocallyPredicted changes
 
-It is easy to assume a predicted body keeps the velocity the local simulation produced. It does not. `PhysicsConvergence.Step` assigns `physicsBody.LinearVelocity` from the projected snapshot unconditionally, the same as for a proxy. The source rejects the alternative deliberately: if the body kept its own velocity and only added a position bias on top, the two would drift apart with nothing to bleed the difference off, and a reversal in the server's motion would detonate that standing offset into a lurch.
+It is easy to assume a predicted body keeps the velocity the local simulation produced. It does not. `PhysicsConvergence.Step` assigns `physicsBody.LinearVelocity` from the projected snapshot unconditionally, the same as for a proxy. This is deliberate: if the body kept its own velocity and only added a position bias on top, the two would drift apart with nothing to bleed the difference off, and a reversal in the server's motion would detonate that standing offset into a lurch.
 
 So the counter-velocity assignment is shared between proxy and predicted paths. Three things are actually different for a predicted body:
 

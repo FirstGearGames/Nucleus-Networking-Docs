@@ -40,7 +40,7 @@ A client that spawns halfway through a cast now has both halves: the spell from 
 
 ## When the pair runs
 
-It rides every serialization that carries whole values, and no ordinary delta:
+The pair runs on each of these, and never on an ordinary update:
 
 - The spawn that builds the object on a peer.
 - A resync, and an interest serve when an object comes back into view.
@@ -48,11 +48,11 @@ It rides every serialization that carries whole values, and no ordinary delta:
 - A client's own write of a whole object upstream.
 - The recovery serve that repairs a tick a peer lost.
 
-An ordinary delta writes members and never the component, so a member that moves every tick costs no payload however long it moves for. A component that overrides neither method costs nothing at all, not one bit.
+An ordinary update never runs the pair, so a member that moves every tick costs no payload however long it moves for. A component that overrides neither method costs nothing at all.
 
 ## It runs after the members, not before
 
-This is the part to build on. What a payload says usually depends on what the members now hold, and a peer cannot know how to read one until it has read them. So the pair is a trailer: by the time `ReadPayload` runs, every member of that component has already landed and can be read straight off it. The example above relies on exactly that, reading `SpellIndex.Value` while it parses the elapsed time that belongs beside it.
+This is the part to build on. What a payload says usually depends on what the members now hold, and a peer cannot know how to read one until it has read them. So the pair runs after them: by the time `ReadPayload` runs, every member of that component has already been applied and can be read straight off it. The example above relies on exactly that, reading `SpellIndex.Value` while it parses the elapsed time that belongs beside it.
 
 ## The two arguments
 
@@ -70,13 +70,11 @@ It is `NetworkComponent.EverySerializedMember` whenever the whole component is b
 
 `author` is an `Invoker` saying which side wrote the body: on the write side that is this peer, on the read side it is the sender. Direction is kept apart from the reason because the two are independent: every reason means the same act whichever side wrote it, so a `Serve` from a client is a predicted spawn and a `Serve` from the authority is a spawn or a resync.
 
-Nothing on the wire carries either of them. The writer knows what it is doing, and the reader derives the same answers from the subpacket kind the frame already named, from whether the Connection the body arrived on is the server's, and from a discriminator every upstream full already leads with. So the two ends agree by construction and it costs no bits.
-
 `Reconcile` is the one worth naming when deciding what to write: a controlled object reconciles to its controller constantly, so a payload written there is paid for on every tick of prediction, where the same payload on a `Serve` is paid for once. Return early for the reasons you have nothing to say for.
 
 ## The one rule
 
-Nothing frames the payload, so **every bit written must be read back**. Write four bytes and read two, and everything behind the payload decodes against the wrong offset. That surfaces as values arriving wrong or a whole tick being discarded, usually somewhere far away from the component that caused it.
+**Every bit written must be read back.** Write four bytes and read two, and everything read after the payload comes out wrong. That surfaces as values arriving wrong or a whole tick being discarded, usually somewhere far away from the component that caused it.
 
 Both ends are handed the same flags and the same reason precisely so the decision to write and the decision to read are made from the same facts rather than each end guessing. Gate on those two arguments and on the member values. Never gate on local state the other end cannot see, such as a field only the server sets or something read off your own scene.
 
@@ -84,17 +82,17 @@ A read also happens on a body the engine is about to throw away, so applying a p
 
 ## When a payload throws
 
-An exception thrown inside either half is caught and logged, and the body it was part of is dropped whole rather than sent half written, because nothing frames the payload and a half-written one cannot be read past.
+An exception thrown inside either half is caught and logged, and the body it was part of is dropped whole rather than sent half written.
 
 - A throw while writing means that body is not sent. The peers it was for are served again on a later pass, so a payload that keeps throwing keeps its object from ever reaching them.
 - A throw while reading is handled like a body that could not be read. A later repair replaces what the send still owed, and a predicted spawn whose payload throws is refused.
 
 ## Prefer a member where the data is a value
 
-The pair has no change detection of its own and is not meant to. It rides the serves your members have already earned, so a component whose members never change is never served and never writes a payload.
+The pair has no change detection of its own and is not meant to. It runs only alongside the serves your members have already earned, so a component whose members never change is never served and never writes a payload.
 
 Where the thing genuinely is a value, a member is still the better answer, and it is cheaper than it looks. A cast's *start tick* as a member changes once per cast and costs nothing on the ticks between, and every peer can subtract it from the current tick itself. Reach for a payload when the thing is not a value: a snapshot you compute rather than store, a variable-length list, or anything whose meaning is "here is where this object stands right now" rather than "here is what just changed".
 
 ## The other payload
 
-A [spawn payload](../systems/spawning-systems.md) is the other half of this. That one is declared per object rather than per component, rides the spawn alone and never a repair, and is always read after the member values. Use it for what is true about an object at the moment it spawns. Use the pair here for what a component's own state needs to carry alongside it.
+A [spawn payload](../systems/spawning-systems.md) is the other half of this. That one is declared per object rather than per component, is sent with the spawn alone and never with a repair, and is always read after the member values. Use it for what is true about an object at the moment it spawns. Use the pair here for what a component's own state needs to carry alongside it.

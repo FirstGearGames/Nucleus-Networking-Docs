@@ -47,9 +47,9 @@ A component that doesn't implement `IMemberWriteValidator<T0>` for a given type 
 
 ## What Decline does on the wire
 
-Declining doesn't unwind anything. The bits for the value were already consumed off the stream before the validator ran, so the stream stays aligned regardless of the outcome. Nothing about a declined value is relayed onward — the other observers are never told about a value the server didn't take.
+Declining doesn't unwind anything else the client sent. Nothing about a declined value is relayed onward: the other observers are never told about a value the server didn't take.
 
-On the client whose write was declined, the member keeps showing that client's own value for the duration of the convergence window, then reverts to the server's value once the window closes. That reversion costs no traffic: the server's value never moved, so there's nothing new to send. It's picked up from the read baseline the decode already advanced.
+On the client whose write was declined, the member keeps showing that client's own value for the duration of the convergence window, then reverts to the server's value once the window closes. That reversion costs no traffic: the server's value never moved, so there's nothing new to send.
 
 ## A declined write is not a violation
 

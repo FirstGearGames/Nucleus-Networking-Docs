@@ -35,7 +35,7 @@ Combine flags to test either case at once, as `AnyController` does.
 
 `ControllerConnectionId` is the value to compare against a known Id. It is not itself a peer: an Id names a connection, but a `Connection` instance is a live reference that can be missing, reassigned by the pool, or simply not yet resolved on a client (see below). Prefer `IsController` or `ControllingClient` when the question is "does the local peer control this", and reach for `ControllerConnectionId` only when comparing against an externally-known Id.
 
-`ControllingClient` can briefly be `null` on a client even while `ControllerConnectionId` names someone: control replicates on the unreliable state stream while the peer roster arrives reliably, so the two can invert for a moment. The reference fills in once the peer is reported.
+`ControllingClient` can briefly be `null` on a client even while `ControllerConnectionId` names someone, because a controller change can arrive before the client has been told about the peer it names. The reference fills in once the peer is reported.
 
 ## Reacting to control changes
 

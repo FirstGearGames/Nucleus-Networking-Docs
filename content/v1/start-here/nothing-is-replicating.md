@@ -6,7 +6,7 @@ Scene compiles, both peers connect, and the second peer sees nothing: no spawned
 
 ## 1. Prefab not registered
 
-A dynamically spawned object is instantiated on a client from `NetworkPrefabRegistry`, keyed by the prefab's `(bundleId, localId)` wire identity. If the prefab was never registered under that identity, the spawn arrives and has nothing to instantiate:
+A dynamically spawned object is instantiated on a client from `NetworkPrefabRegistry`, keyed by the prefab's `(bundleId, localId)` identity. If the prefab was never registered under that identity, the spawn arrives and has nothing to instantiate:
 
 ```
 No networked prefab is registered for identity [{bundleId}, {localId}]; spawned NetworkSystem Id [{id}] cannot be instantiated. Content shards must load and register before spawns arrive.
@@ -42,4 +42,4 @@ await unityTransportManager.StartHostAsync();
 
 ## A host's own client is not proof of anything
 
-If you're testing with a host and a second client, don't diagnose from what the host's own client half receives. A host's loopback packets — what the server side sent to itself — are discarded without ever being applied: in a Release build the discard happens before a single bit is read, so the header itself is never parsed; a Debug build reads the header first and discards after, for diagnostics, except for `PacketType.Raw`, which is exempt in Debug and compiled out of the enum entirely in Release. Either way, what the host's client half needs was already handed to it in-process at the point the server sent it, so this discard is expected and costs nothing. Seeing no traffic parsed on a host's own loopback is not evidence that serialization was skipped; check the second, genuinely remote peer instead.
+If you're testing with a host and a second client, don't diagnose from what the host's own client half receives. A host's loopback packets, what the server side sent to itself, are discarded without ever being applied. What the host's client half needs was already handed to it in-process at the point the server sent it, so this discard is expected and costs nothing. Seeing no traffic parsed on a host's own loopback is not evidence that serialization was skipped; check the second, genuinely remote peer instead.

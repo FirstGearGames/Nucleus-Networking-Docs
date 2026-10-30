@@ -80,7 +80,7 @@ The step provider is not on this list. `NetworkLoopManager.UseNetworkLoopStepPro
 | Setting | Default | Notes |
 |---|---|---|
 | `DefaultChannel` | `Channel.Unreliable` | |
-| `HostLoopbackDelivery` | `HostLoopbackDelivery.Immediate` | Settable only to `Immediate`; any other value is refused and logged. The alternative exists only for the engine's own tests. |
+| `HostLoopbackDelivery` | `HostLoopbackDelivery.Immediate` | Settable only to `Immediate`; any other value is refused and logged. |
 | `RoundTripTimeIntervalMilliseconds` | 1000 (`DefaultRoundTripTimeIntervalMilliseconds`) | 0 disables round-trip time measurement. |
 
 ## BundleManager

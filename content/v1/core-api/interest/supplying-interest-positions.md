@@ -41,7 +41,7 @@ Because of this, your reader owes no memoization of its own. Write the raw read 
 
 ## A worked reader
 
-The test harness backs its reader with a plain dictionary, which is a reasonable shape for anything that doesn't have a live scene graph to query:
+A reader backed by a plain dictionary is a reasonable shape for anything that doesn't have a live scene graph to query:
 
 ```csharp
 public sealed class DictionaryInterestPositionReader : IInterestPositionReader

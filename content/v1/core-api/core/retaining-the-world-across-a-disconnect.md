@@ -17,7 +17,7 @@ coreManager.ClientManager.DisconnectResetMode = DisconnectResetMode.RetainReceiv
 
 `RetainReceivedWorld` only makes sense for a peer that means to keep the world rather than discard it — one that disconnects from a host and intends to start its own server to carry on hosting what it was just shown. A retained world is still stamped with the departed server's identifiers, so it's only usable once this peer adopts it as its own (see below). Any other client that reconnects elsewhere drops everything it's holding and rebuilds from whatever the new server sends, regardless of this setting — retention only ever survives until the next link comes up.
 
-The field itself is present and settable in every edition. In a Free build it simply does nothing: the branches that honor `RetainReceivedWorld` live in the Pro partials (`ClientManager.Adoption.Pro.cs`, `ServerManager.Adoption.Pro.cs`, `SceneManager.Adoption.Pro.cs`), and a Free client always clears its world on disconnect regardless of how the field is set.
+The field itself is present and settable in every edition. In a Free build it simply does nothing: honoring `RetainReceivedWorld` is Pro-only, and a Free client always clears its world on disconnect regardless of how the field is set.
 
 ## Adopting a retained world
 
@@ -45,7 +45,7 @@ Adoption keeps every identifier the world already has and raises the allocators 
 
 ## Skipping the reconcile on reconnect
 
-A retained world normally reconciles against the new server as an ordinary deserialize: identifiers this peer already holds apply in place, and the objects never blink. Setting `SystemManager.RespawnWorldOnReconnectEnabled` skips that reconcile entirely — the world is dropped and rebuilt from the server's own account of it instead, at the cost of a spawn per object, but without carrying over anything from a reign the server never heard of. When this is set, `RetainReceivedWorld` no longer changes how reconnecting behaves.
+A retained world normally reconciles against the new server: identifiers this peer already holds apply in place, and the objects never blink. Setting `SystemManager.RespawnWorldOnReconnectEnabled` skips that reconcile entirely — the world is dropped and rebuilt from the server's own account of it instead, at the cost of a spawn per object, but without carrying over anything from a reign the server never heard of. When this is set, `RetainReceivedWorld` no longer changes how reconnecting behaves.
 
 ## Telling survivors where to regroup
 

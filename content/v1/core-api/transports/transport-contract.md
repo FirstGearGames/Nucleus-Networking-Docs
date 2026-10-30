@@ -61,6 +61,6 @@ A received payload is copied into a pooled buffer exactly once, and that buffer 
 
 ## You cannot write a transport outside the Nucleus assembly today
 
-You cannot write a `Transport` outside the Nucleus assembly today. `CommonSocket`'s `ConnectAsync`, `SendPacket`, and `ReceivePackets` are declared `internal`, and on `SocketPairTransport<TServerSocket, TClientSocket>` the `ServerSocket` and `ClientSocket` properties themselves are `internal` too - there is no public surface left to build a socket pair from outside the engine. `AssemblyInfo.cs` grants exactly one exception, `[assembly: InternalsVisibleTo("Nucleus.Integrations.BlitzRelay")]`, so that relay and rendezvous code can stay out of the engine rather than being folded into it to reach this machinery.
+You cannot write a `Transport` outside the Nucleus assembly today. `CommonSocket`'s `ConnectAsync`, `SendPacket`, and `ReceivePackets` are declared `internal`, and on `SocketPairTransport<TServerSocket, TClientSocket>` the `ServerSocket` and `ClientSocket` properties themselves are `internal` too - there is no public surface left to build a socket pair from outside the engine. The engine grants exactly one exception, to the `Nucleus.Integrations.BlitzRelay` assembly, so that relay and rendezvous code can stay out of the engine rather than being folded into it to reach this machinery.
 
 If you want to understand the shape of a real transport, read the source: `Yak` for the minimal offline case, `Synapse` for a full socket-backed one.

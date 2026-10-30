@@ -34,7 +34,7 @@ The client stops being served that scene's objects immediately, not when it conf
 
 - **`None`** (the default) - keeps everything the client holds and adds this scene to it.
 - **`AllScenes`** - releases every server-opened scene the client holds or is loading, then loads this one. The target is validated before anything is released, so a refusal leaves the client where it was.
-- **`AllScenesAfterLoad`** - loads this scene first, and only releases the client's other scenes once it confirms this one and acknowledges the state that went out with the confirmation. This is what to use when an object needs to move with the client rather than be rebuilt: releasing first would destroy the client's copy of everything in the scene it's leaving before the move can ride across.
+- **`AllScenesAfterLoad`** - loads this scene first, and only releases the client's other scenes once it confirms this one and acknowledges the state that went out with the confirmation. This is what to use when an object needs to move with the client rather than be rebuilt: releasing first would destroy the client's copy of everything in the scene it's leaving before the move can reach it.
 
 The replace form exists because the removal half is easy to forget: passing `SceneReplaceMode.None` and manually calling `RequestSceneUnload` for every other scene the client holds means finding all of them yourself and getting the ordering right. `AllScenes` and `AllScenesAfterLoad` fold that bookkeeping into the load call itself.
 
@@ -54,7 +54,7 @@ The replace form exists because the removal half is easy to forget: passing `Sce
 
 ## Load requests that go unanswered
 
-`SceneManager.LoadRequestTimeoutSeconds` (default 180, three minutes) bounds how long the server waits for a client to answer a load request. The request itself rides the reliable channel, so it always arrives; the timeout is for a client whose loader never finishes - a scene stuck fetching, a hung load, a client that stopped answering.
+`SceneManager.LoadRequestTimeoutSeconds` (default 180, three minutes) bounds how long the server waits for a client to answer a load request. The request itself is sent reliably, so it always arrives; the timeout is for a client whose loader never finishes - a scene stuck fetching, a hung load, a client that stopped answering.
 
 Setting it to zero or less turns the timeout off and the server waits indefinitely. When it expires, the request is cancelled and latched as a failure exactly as a client-reported failure is, and an answer that arrives afterward is discarded rather than acted on.
 

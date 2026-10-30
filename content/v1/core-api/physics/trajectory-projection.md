@@ -63,7 +63,7 @@ Controls whether `TrajectoryProjector` folds gravity into a projection.
 
 - **Apply** — gravity is always applied.
 - **None** — gravity is never applied.
-- **Auto** — gravity is applied only when the snapshot is already descending fast enough to be a real fall, not solver jitter or quantization noise on a resting or supported body. A slow or upward-moving snapshot projects without gravity even under `Auto`, so a resting body is not projected into the ground.
+- **Auto** — gravity is applied only when the snapshot is already descending fast enough to be a real fall, not solver jitter or noise on a resting or supported body. A slow or upward-moving snapshot projects without gravity even under `Auto`, so a resting body is not projected into the ground.
 
 `Auto` is a black-box test against the snapshot's own descent speed; it does not read a "grounded" flag or any collision state.
 

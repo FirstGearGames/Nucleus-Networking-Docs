@@ -6,7 +6,7 @@ title: "Versioning, upgrading and release notes"
 
 Every Unity release names itself in two places. `Assets/Nucleus/VERSION.txt` reads `Nucleus <version>`, so you can check what a project has installed without building anything, and a running player writes `Thank you for using Nucleus Networking <version>.` to its log at launch, so you can check what a built player is running.
 
-The DLLs themselves carry no version: `Nucleus.csproj` sets `GenerateAssemblyInfo` to `false`, and `AssemblyInfo.cs` declares only the title, product, company, copyright and a licence metadata string, with no `AssemblyVersion` or `AssemblyFileVersion` attribute. There is no protocol-version handshake between peers at connect time either, so the version a peer runs is something you check, not something the connection checks for you.
+The DLLs themselves carry no version number. There is no protocol-version handshake between peers at connect time either, so the version a peer runs is something you check, not something the connection checks for you.
 
 ## What this page will become
 
@@ -29,7 +29,7 @@ Separately, a framework-wide naming audit renamed roughly 1,300 members in one p
 
 ## Mixed builds are not supported
 
-Both peers in a connection must run the same build. The wire format carries no version number, so a client and server on different builds will not fail cleanly — they'll either misread each other's packets or silently disagree about what a message means. There is no handshake to catch this for you. If you see corruption or unexplained desync, confirm both ends are on the same build before looking anywhere else.
+Both peers in a connection must run the same build. Nothing checks this, so a client and server on different builds will not fail cleanly — they'll either misread each other's packets or silently disagree about what a message means. There is no handshake to catch this for you. If you see corruption or unexplained desync, confirm both ends are on the same build before looking anywhere else.
 
 ## Can't find where something moved?
 

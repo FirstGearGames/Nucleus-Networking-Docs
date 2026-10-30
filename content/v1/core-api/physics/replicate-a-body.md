@@ -39,7 +39,7 @@ After your own world step, call `CaptureBody`:
 physicsComponent.CaptureBody(physicsBody, tick: currentTick);
 ```
 
-This reads `Position`, `Rotation`, and the sleeping/kinematic flags off `physicsBody` into the component's replicated members. The `tick` argument is stamped onto `CaptureTick` only when the capture actually changed something a receiver could observe — a resting body stays wire-quiet — and it is what lets a receiver anchor a snapshot to its exact age instead of estimating it. Omit it and no attribution is carried.
+This reads `Position`, `Rotation`, and the sleeping/kinematic flags off `physicsBody` into the component's replicated members. The `tick` argument is stamped onto `CaptureTick` only when the capture actually changed something a receiver could observe, so a resting body sends no updates. It is what lets a receiver anchor a snapshot to its exact age instead of estimating it. Omit it and no attribution is carried.
 
 ## The follower half: converge
 
@@ -52,7 +52,7 @@ float ticksToProject = GetTicksToProject(physicsComponent);
 convergence.Step(physicsBody, in snapshot, tickDelta, ticksToProject);
 ```
 
-`BuildSnapshot` rebuilds position and rotation straight from the replicated members; linear and angular velocity are derived from the change between the last two committed ticks, so they never ride the wire themselves. `Step` projects that snapshot forward by `ticksToProject` ticks and steers `physicsBody` toward it — riding its projected velocity, teleporting on a large divergence, blending a smaller one back in. `Step` does nothing to a kinematic body.
+`BuildSnapshot` rebuilds position and rotation straight from the replicated members; linear and angular velocity are not replicated, and are derived from the change between the last two committed ticks. `Step` projects that snapshot forward by `ticksToProject` ticks and steers `physicsBody` toward it — riding its projected velocity, teleporting on a large divergence, blending a smaller one back in. `Step` does nothing to a kinematic body.
 
 `ticksToProject` is the snapshot's age in ticks. Peers do not share a tick counter, so it is not this peer's tick minus `CaptureTick`: measure it in the server's numbering, with `Connection.TryGetServerTickEstimate` on the connection to the server.
 
@@ -126,8 +126,8 @@ if (!physicsComponent.TryAdoptInitialState(physicsBody))
 
 `TryAdoptInitialState` only does anything once: it returns `false`, and does nothing, until `HasReceivedState` first turns true (the component has captured at least once) and it has not already adopted (`HasAdoptedState`). After that first successful call every later step falls through to ordinary convergence.
 
-## A runnable sketch
+## Adapting a real engine
 
-`Nucleus.Tests/Physics/FakePhysicsBody.cs` is a minimal, engine-free `IPhysicsBody`: plain fields for position, rotation, and velocity, with an `Integrate` method standing in for a real simulation step. It is exactly what the snippets above are written against, and `Nucleus.Tests/Physics/NetworkPhysicsComponentTests.cs` exercises the whole round trip — capture, `BuildSnapshot`, tick attribution, and `TryAdoptInitialState` — against real rented systems, with no Unity dependency anywhere.
+The snippets above need nothing more than a minimal, engine-free `IPhysicsBody`: plain fields for position, rotation, and velocity, with a method standing in for a real simulation step. The whole round trip of capture, `BuildSnapshot`, tick attribution, and `TryAdoptInitialState` works with no Unity dependency anywhere.
 
 For adapting a real physics engine's body to `IPhysicsBody`, see the Unity integration's rigidbody page linked above.

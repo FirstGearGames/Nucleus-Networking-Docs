@@ -14,7 +14,7 @@ Your project needs one analyzer reference: `Nucleus.CodeAnalysis.SourceGenerator
 </ItemGroup>
 ```
 
-Without this reference the project still compiles, but nothing runs the generator over your types: no `Write`/`Read` methods, no module-initializer registration, and nothing replicates. There's no build error to point at it — the failure is silent.
+Without this reference the project still compiles, but nothing runs the generator over your types, and nothing replicates. There's no build error to point at it — the failure is silent.
 
 ## Keep generated output visible and current
 
@@ -38,7 +38,7 @@ Mixing DLLs from different builds isn't supported; take all four, the generator 
 
 ## Target framework
 
-`Nucleus.dll` targets `netstandard2.1`. The generated registrar uses `[ModuleInitializer]`, which the C# compiler recognizes by full name from any assembly rather than requiring a specific target framework. When your compilation doesn't already have a usable `System.Runtime.CompilerServices.ModuleInitializerAttribute` (true on frameworks older than .NET 5), the generator emits its own internal copy of that attribute into your assembly so the registrar compiles. This happens automatically per assembly; there's nothing in your project to reference for it. Module initializers do need C# 9, though, so a project whose default language version is older (`netstandard2.1` and .NET Core 3.x projects default to C# 8) needs `<LangVersion>9.0</LangVersion>` or newer.
+`Nucleus.dll` targets `netstandard2.1`, and the generated code works on frameworks older than .NET 5 with nothing extra to reference. It does need C# 9, though, so a project whose default language version is older (`netstandard2.1` and .NET Core 3.x projects default to C# 8) needs `<LangVersion>9.0</LangVersion>` or newer.
 
 ## Give your assembly a bundle id
 
@@ -48,7 +48,7 @@ If your project isn't the main assembly, declare a bundle id so its types don't 
 [assembly: NetworkBundle(1)]
 ```
 
-See [Type Identity on the Wire: Bundles and the Registry](./type-identity-and-bundles.md) for how bundle and local ids combine into a type's wire identity, and which ids are already taken.
+See [Type Identity on the Wire: Bundles and the Registry](./type-identity-and-bundles.md) for how bundle and local ids combine into a type's identity, and which ids are already taken.
 
 ## The generator skips assemblies that don't reference Nucleus
 

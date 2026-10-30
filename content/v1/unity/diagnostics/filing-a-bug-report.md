@@ -4,7 +4,7 @@ title: "Filing a bug report"
 
 ## What to include
 
-State the edition: Free or Pro. The edition is a compile-time choice, not a runtime flag — a Free build is produced with `-p:NucleusEdition=Free`, which drops every `*.Pro.cs` file from the compilation, so a report that says "Free" or "Pro" is telling us which files exist in the build, not a setting that could be misread.
+State the edition: Free or Pro. The edition is a compile-time choice, not a runtime flag, so a report that says "Free" or "Pro" tells us which features exist in the build, not a setting that could be misread.
 
 List the DLL set you deployed, and confirm every one of those DLLs came from the same build. A mismatched set (an old engine DLL next to a new source-generator DLL, for example) produces failures that look like engine bugs but are actually version skew. If Unity is involved, give the Unity version. If it's a plain host, give the target framework you're building against (the engine itself targets `netstandard2.1`).
 

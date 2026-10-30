@@ -98,4 +98,4 @@ if (coreManager is null)
 }
 ```
 
-`NucleusUnity.BoundCoreManager` is a plain static property, so with fast enter play mode (no domain reload) it can carry a previous session's value into the next one until `NucleusUnity.Initialize` re-binds it; the reset that guards against this runs at the start of every session. A script that reads it too early in a session, before that reset has run, can find a stale manager left over from the last play session rather than null.
+`NucleusUnity.BoundCoreManager` is `null` until `UnityCoreManager` binds the session, and it is cleared when the session ends. It never carries a previous play session's manager into the next one, even with domain reload disabled.

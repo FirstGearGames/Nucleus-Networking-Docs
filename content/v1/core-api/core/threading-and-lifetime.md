@@ -36,7 +36,7 @@ Two internal checks compiled only into a Debug build of `Nucleus.dll` log an err
 
 ## Isolation between CoreManagers
 
-The step-callback registry belongs to each `NetworkLoopManager` instance; it is not static state. Two `CoreManager` instances in the same process - a host pair, a bridge test - each own their own loop and their own callback registrations. One manager's registered callbacks are never dispatched by the other's steps.
+The step-callback registry belongs to each `NetworkLoopManager` instance; it is not static state. Two `CoreManager` instances in the same process - a host pair, a two-peer test - each own their own loop and their own callback registrations. One manager's registered callbacks are never dispatched by the other's steps.
 
 ## Async work and the loop
 

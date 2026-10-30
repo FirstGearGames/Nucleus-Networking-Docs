@@ -10,7 +10,7 @@ Every interesting piece of networked behavior is a difference between what two p
 
 ## ParrelSync clones
 
-The Unity integration project vendors [ParrelSync](https://github.com/VeriorPies/ParrelSync) at `Assets/ParrelSync`. A clone is a second Unity process pointed at a project folder whose name is the primary's with a `_clone` suffix — the checkout on disk has the primary (`Nucleus - Unity Integration`) alongside `Nucleus - Unity Integration_clone_0`, `_clone_1` and `_clone_2`.
+A [ParrelSync](https://github.com/VeriorPies/ParrelSync) clone is a second Unity process pointed at a project folder whose name is the primary's with a `_clone` suffix.
 
 A clone mirrors the primary's `Assets` folder rather than copying it. That's why the engine DLLs only need to be deployed into the primary project once: every open clone picks up the same files, and there's no separate deploy step per clone.
 
@@ -20,7 +20,7 @@ Unity's built-in Multiplayer Play Mode (MPPM) is the alternative to a clone: ins
 
 ## Which peer becomes which
 
-Role resolution for every demo lives in one place: `DemoNetworkDriver.ResolveRole`, in `Nucleus.Integrations.Unity/Demos/Common/Scripts/DemoNetworkDriver.cs`.
+Role resolution for every demo lives in one place: `DemoNetworkDriver.ResolveRole`.
 
 ```csharp
 internal static RoleMode ResolveRole(RoleMode startingRole, bool isCloneProject, bool isMainEditor)

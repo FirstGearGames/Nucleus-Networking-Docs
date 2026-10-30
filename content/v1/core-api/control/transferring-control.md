@@ -24,7 +24,7 @@ A single comparison - "does this connection hold `ControllerConnectionId`" - dec
 
 They're decided by the same comparison because they describe the same relationship from three angles: the connection driving the object, the peer allowed to run it ahead of the network, and the peer allowed to set its members. Splitting them would let a system take client state from one connection while letting another set its members, which is not a state Nucleus represents.
 
-A client write for a system it does not control - or a client delta that isn't fully absolute, since a client's write always has to be - is rejected by the server and raised as an `UnauthorizedMemberChangeViolation`:
+A client write for a system it does not control is rejected by the server and raised as an `UnauthorizedMemberChangeViolation`:
 
 ```csharp
 public struct UnauthorizedMemberChangeViolation : IViolation
@@ -41,4 +41,4 @@ The server drops the departing connection's reference automatically; a system do
 
 ## Replication
 
-Control is not something game code sends. `SerializeControllerToObservers` writes the current controller and its retention token into the state stream for every delta and full observer, so every peer learns a controller change the same way it learns any other replicated state - no separate message, no extra call.
+Control is not something game code sends. Every peer learns a controller change the same way it learns any other replicated state, with no separate message or extra call.

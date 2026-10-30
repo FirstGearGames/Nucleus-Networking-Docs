@@ -17,7 +17,7 @@ public partial class MatchClockComponent : NetworkComponent
 }
 ```
 
-You never write the serialization for these fields yourself. The class is `partial` because the source generator emits the other half: the reads and writes that put each `NetworkMember<T0>` on the wire, and the bookkeeping that tracks which members changed on a given tick. You declare the fields and their types; the generator supplies everything that moves them across the network.
+You never write the serialization for these fields yourself. The class is `partial` because the source generator supplies the rest of it. You declare the fields and their types; the generator supplies everything that moves them across the network.
 
 A `NetworkSystem` is the thing that gets spawned and despawned; the components attached to it are what carry state. A system can carry more than one component, which is what the spawning APIs below are generic over.
 

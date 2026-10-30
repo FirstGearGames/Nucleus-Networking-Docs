@@ -8,20 +8,18 @@ See [Start Here / How replication works](../../start-here/how-replication-works.
 
 A `NetworkSystem` holds `NetworkComponent`s, up to 64 per system. A `NetworkComponent` holds `NetworkMember`s, at most 64, one for each bit of the `ulong` `memberFlags` that `OnMembersChanged` reports. The generator does not check that limit on a component, so one that declares more still builds but does not replicate correctly. `Constants.MaximumNetworkMemberCount` (63) is a separate limit, on the structs and classes a member's value is made of: the generator reports `SERIALIZERS000` once such a type has 63 serialized fields and properties, so 62 is the most one can hold.
 
-Data lives in components, not in the `NetworkSystem` subclass itself. `NetworkSystem` tracks identity, lifecycle, and observers; the values that actually replicate are declared on the `NetworkComponent`s attached to it. A component exposes its own `Write`, `WriteDelta`, `Read`, and `ReadDelta`, and it is these that generated code fills in per member.
+Data lives in components, not in the `NetworkSystem` subclass itself. `NetworkSystem` tracks identity, lifecycle, and observers; the values that actually replicate are declared on the `NetworkComponent`s attached to it.
 
-## Full versus delta
+## Late joiners need nothing extra
 
-A member simply carries the value as of the last write. There is no separate late-joiner payload to author.
-
-When a new observer starts watching a system, that system serves a full snapshot of every component to that observer; every serialization after that is a delta of what changed. This applies uniformly: a full, a recovery serve, and an interest serve all ride the same absolute encoding, while an ordinary tick's serialize rides a delta. A member's author never writes two versions of anything - the full path and the delta path both read the same current value, just at different granularity.
+A member simply carries the value as of the last write. There is no separate late-joiner payload to author: when a new observer starts watching a system, it receives every member's current value. A member's author never writes two versions of anything.
 
 ## One write pass, one read pass, per tick
 
 Each tick raises `NetworkComponent.OnMembersChanged(ulong memberFlags, MemberChangeDirection memberChangeDirection)` up to twice per component: once for what this peer is sending, once for what it received.
 
 - `MemberChangeDirection.Write` fires before any of the tick's writing runs, on the peer that made the change. It reports that the members were committed to the outbound pass, not that bytes left the process - a system with no observers, or one withheld from an observer, still raises this.
-- `MemberChangeDirection.Read` fires after every packet of the inbound pass has landed, before reconciliation. A full apply (spawn, resync, reconcile, whole-component recovery) reports every member changed; a member-granular recovery reports only the members it repaired.
+- `MemberChangeDirection.Read` fires once everything received for the tick has been applied, before reconciliation. A full apply (spawn, resync, reconcile, whole-component recovery) reports every member changed; a member-granular recovery reports only the members it repaired.
 
 A host raises both directions in the same frame, write first, without waiting for its own packet to come back. Code that only cares about a remote change - anything calling `NetworkMemberBase.TryGetWritingClient` - must check for `MemberChangeDirection.Read`; that claim only resolves under a read.
 
@@ -33,9 +31,9 @@ By default, `MemberWriteAccess.Controller` (the enum's `0` value): the server, o
 
 Four independent axes decide the price of a member changing, each covered on its own page:
 
-- **Accuracy** - how finely a value's change is compared and encoded.
-- **Compression level** - how tightly the wire encoding packs the value.
-- **Transmission mode** - how the value's changes travel across ticks (e.g. absolute versus projected).
+- **Accuracy** - how precisely a value's change is compared and sent.
+- **Compression level** - how tightly the value is compressed when it is sent.
+- **Transmission mode** - how the value's changes are sent across ticks, such as `Interval` or `Divine` projection.
 - **Send interval** - how often a changed member is actually allowed to send.
 
 ## Vocabulary

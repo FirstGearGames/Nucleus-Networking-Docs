@@ -4,7 +4,7 @@ title: "Unity Types and System.Numerics"
 
 ## Declare members in System.Numerics, not UnityEngine
 
-The engine core replicates `System.Numerics` types. A networked member is declared as `NetworkMember<System.Numerics.Vector3>`, never `NetworkMember<UnityEngine.Vector3>`. Nucleus registers its vector and rotation handling, such as interpolation and Divine projection, for the `System.Numerics` types only. A member declared with a UnityEngine type still builds, but the generator treats the type like any struct of your own: it writes a plain serializer from the type's public fields and settable properties, and none of that handling applies. For `UnityEngine.Quaternion` that plain serializer also picks up the settable `eulerAngles` property, so every value carries the rotation twice.
+The engine core replicates `System.Numerics` types. A networked member is declared as `NetworkMember<System.Numerics.Vector3>`, never `NetworkMember<UnityEngine.Vector3>`. Nucleus registers its vector and rotation handling, such as interpolation and Divine projection, for the `System.Numerics` types only. A member declared with a UnityEngine type still builds and replicates, but it is treated like any struct of your own, so none of that handling applies, and a `UnityEngine.Quaternion` member sends more than it needs to.
 
 The shipped `UnityNavMeshAgentComponent` follows this exactly:
 
@@ -40,7 +40,7 @@ Everything above that boundary — the `NetworkComponent`, its `NetworkMember<T0
 
 Besides the `System.Numerics` vectors (`Vector2`, `Vector3`, `Vector4`), these CodeBoost types already have generated serializers and can be used in a `NetworkMember<T>` from Unity code without any attribute of your own: `Vector2Int`, `Vector3Int32`, `Vector4Int`, and `UnifiedColor`.
 
-All seven are reached through `ExternalNetworkTypes`, a marker struct in `Nucleus.Serializers` carrying `[NetworkType]` on behalf of types declared in assemblies nobody here can annotate. Nothing reads or constructs the struct at runtime; the generator only walks its field types to know which external types need serializers.
+All seven are reached through `ExternalNetworkTypes`, a marker struct in `Nucleus.Serializers` carrying `[NetworkType]` on behalf of types declared in assemblies nobody here can annotate.
 
 ## Your own structs need no attribute
 
@@ -48,7 +48,7 @@ A struct you declare yourself, made entirely of natively-serializable fields, ne
 
 ## The error you get instead of a crash
 
-An unserializable member type is caught at build time, not at runtime. The generator reports a `SERIALIZERS`-series diagnostic (`SERIALIZERS000` as an error, `SERIALIZERS001` as a warning) naming the member. A member declared as `NetworkMember<UnityEngine.Vector3>` is not caught this way: the generator can read the type's public fields, so it builds without a diagnostic and replicates through the plain serializer described above.
+An unserializable member type is caught at build time, not at runtime. The generator reports a `SERIALIZERS`-series diagnostic (`SERIALIZERS000` as an error, `SERIALIZERS001` as a warning) naming the member. A member declared as `NetworkMember<UnityEngine.Vector3>` is not caught this way: it builds without a diagnostic and replicates as a plain struct, as described above.
 
 ## Adding a type you can't annotate
 

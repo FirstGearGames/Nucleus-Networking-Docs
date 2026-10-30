@@ -78,10 +78,10 @@ None of this can grant a connection more than the broadcast-to-everyone default.
 
 ## A worked condition
 
-From the test suite, a condition that always approves spawn — the shape a non-distance rule (scene membership, team, bundle ownership) takes:
+A condition that always approves spawn has the shape a non-distance rule (scene membership, team, bundle ownership) takes:
 
 ```csharp
-private sealed class TestAlwaysMetInterestCondition : IInterestCondition
+private sealed class AlwaysMetInterestCondition : IInterestCondition
 {
     public InterestEffect Capabilities => InterestEffect.Spawn;
 
@@ -92,12 +92,12 @@ private sealed class TestAlwaysMetInterestCondition : IInterestCondition
 And a condition driven by an external rule, evaluated per pair against a caller-supplied policy:
 
 ```csharp
-private sealed class ProbeInterestCondition : IInterestCondition
+private sealed class PolicyInterestCondition : IInterestCondition
 {
     public InterestEffect Capabilities { get; }
     private readonly Func<NetworkSystem, Connection, InterestResult> _evaluator;
 
-    public ProbeInterestCondition(Func<NetworkSystem, Connection, InterestResult> evaluator, InterestEffect capabilities = InterestEffect.Spawn | InterestEffect.Stop)
+    public PolicyInterestCondition(Func<NetworkSystem, Connection, InterestResult> evaluator, InterestEffect capabilities = InterestEffect.Spawn | InterestEffect.Stop)
     {
         _evaluator = evaluator;
         Capabilities = capabilities;
@@ -107,7 +107,7 @@ private sealed class ProbeInterestCondition : IInterestCondition
 }
 
 // Cull one connection from a system while every other connection keeps receiving it:
-networkSystem.AddInterestCondition(new ProbeInterestCondition(
+networkSystem.AddInterestCondition(new PolicyInterestCondition(
     (system, connection) => InterestResult.Spawn(connection != culledConnection)));
 ```
 

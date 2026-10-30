@@ -4,11 +4,11 @@ title: "NetworkPhysicsComponent"
 
 ## This component replicates a body through ordinary member replication
 
-`NetworkPhysicsComponent` replicates a physics body's kinematic state through ordinary member replication. The server captures its body into typed members each tick; proxies rebuild the latest server `PhysicsSnapshot` from those members as the projection source. Only position and rotation ride the wire — linear and angular velocity are derived from their per-tick change when a snapshot is built, so a moving body carries roughly half the members it otherwise would.
+`NetworkPhysicsComponent` replicates a physics body's kinematic state through ordinary member replication. The server captures its body into typed members each tick; proxies rebuild the latest server `PhysicsSnapshot` from those members as the projection source. Velocity is not replicated: linear and angular velocity are derived from the per-tick change in position and rotation when a snapshot is built.
 
 ## Replicated members
 
-| Member | Type | Wire settings |
+| Member | Type | Settings |
 |---|---|---|
 | `WorldPosition` | `NetworkMember<Vector3>` | `CompressionLevel.Aggressive`, `TransmissionModeDefaults.Motion` |
 | `WorldRotation` | `NetworkMember<Quaternion>` | `TransmissionModeDefaults.Motion` |
@@ -17,13 +17,13 @@ title: "NetworkPhysicsComponent"
 
 `WorldPosition` and `WorldRotation` are built at `TransmissionModeDefaults.Motion`, so they divinely project wherever that mode is available.
 
-`BodyFlags` carries a `PhysicsBodyFlags` value as an int member, since byte members do not currently ride the replication pipeline; the delta encoding keeps the wire cost equivalent.
+`BodyFlags` holds a `PhysicsBodyFlags` value as an int member.
 
-`CaptureTick` is the tick the carried state was captured at, counted on the capturing peer's own tick counter: the server's for a body the server controls, the controlling client's for a body a client controls. It lets receivers anchor reconciles and projections to the snapshot's exact age instead of estimating it. It is carried as a signed int so the delta encoder can represent a decrease: a pooled component reused for a fresh body resets below the delta baseline, and an unsigned delta of that decrease would wrap to a 64-bit value and corrupt the stream. It holds `NetworkLoopManager.UnsetTick` until a ticked capture runs, and it is only re-stamped when the captured state actually changed, so a resting body stays wire-quiet instead of dirtying the member every tick.
+`CaptureTick` is the tick the replicated state was captured at, counted on the capturing peer's own tick counter: the server's for a body the server controls, the controlling client's for a body a client controls. It lets receivers anchor reconciles and projections to the snapshot's exact age instead of estimating it. It holds `NetworkLoopManager.UnsetTick` until a ticked capture runs, and it is only re-stamped when the captured state actually changed, so a resting body sends no updates instead of changing the member every tick.
 
 ## PhysicsBodyFlags
 
-Replicated body condition bits packed into `BodyFlags`.
+Replicated body condition flags held in `BodyFlags`.
 
 | Flag | Value | Meaning |
 |---|---|---|
@@ -49,13 +49,13 @@ Replicated body condition bits packed into `BodyFlags`.
 public void CaptureBody(IPhysicsBody physicsBody, uint tick = Managers.NetworkLoop.NetworkLoopManager.UnsetTick)
 ```
 
-Called once per tick, before serialization, by the peer that controls the body (the server, unless a client controls it), to capture the body's current state into the replicated members. `CaptureTick` is only re-stamped when the captured position or rotation would actually serialize a change at that member's wire accuracy, not on every exact inequality, which would re-stamp on sub-quantum float jitter and drag the whole component onto the wire each tick even though nothing the receiver could observe had moved. This is what keeps a resting body wire-quiet.
+Called once per tick, before the tick's state is sent, by the peer that controls the body (the server, unless a client controls it), to capture the body's current state into the replicated members. `CaptureTick` is only re-stamped when the captured position or rotation changed by more than that member's accuracy, so float jitter that no receiver could observe does not count as a change. This is what keeps a resting body from sending updates.
 
 ```csharp
 public PhysicsSnapshot BuildSnapshot()
 ```
 
-Rebuilds the latest server snapshot from the replicated members, called by proxies as the projection source. Linear and angular velocity are not replicated: they are derived from the change in `WorldPosition` and `WorldRotation` across their last two committed ticks, halving the moving wire cost in exchange for the small finite-difference error a one-tick-old average velocity carries into the projection.
+Rebuilds the latest server snapshot from the replicated members, called by proxies as the projection source. Linear and angular velocity are not replicated: they are derived from the change in `WorldPosition` and `WorldRotation` across their last two committed ticks, so the projection carries the small error of a one-tick-old average velocity.
 
 ```csharp
 public bool TryAdoptInitialState(IPhysicsBody physicsBody)

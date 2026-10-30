@@ -4,26 +4,26 @@ title: "How Often a Member Is Sent"
 
 ## Interval or Divine, not both
 
-A `NetworkMember<T0>` picks a `TransmissionMode`: `Interval` or `Divine`. Projection and pacing are alternative rate strategies for the same job, deciding how often a value is worth putting on the wire, so a member is either projected or interval-paced, never both. That is why `TransmissionMode` is one enum rather than two independent switches: there is no state where both a send interval and a projected path apply at once.
+A `NetworkMember<T0>` picks a `TransmissionMode`: `Interval` or `Divine`. Projection and pacing are alternative rate strategies for the same job, deciding how often a value is worth sending, so a member is either projected or interval-paced, never both. That is why `TransmissionMode` is one enum rather than two independent switches: there is no state where both a send interval and a projected path apply at once.
 
-`Interval` encodes ordinary deltas paced to the member's `SendInterval`. `Divine` is a Pro-only alternative for values whose motion tends to be predictable (a moving transform, for example): it can go quiet for stretches where a plain interval would still be sending deltas, correcting only when needed. A member built with `Divine` ignores its send interval entirely; the field is meaningless once the mode isn't `Interval`. The mechanism itself isn't something you need to reason about to use it — pick `Divine` for a value that tends to move smoothly, `Interval` otherwise.
+`Interval` sends changes paced to the member's `SendInterval`. `Divine` is a Pro-only alternative for values whose motion tends to be predictable (a moving transform, for example): it can go quiet for stretches where a plain interval would still be sending updates, correcting only when needed. A member built with `Divine` ignores its send interval entirely; the field is meaningless once the mode isn't `Interval`. The mechanism itself isn't something you need to reason about to use it — pick `Divine` for a value that tends to move smoothly, `Interval` otherwise.
 
 ## The three spans
 
 `SendInterval` has exactly three values, named by the span they cover rather than by a tick count, so the meaning doesn't move when the tick rate changes:
 
-- `Normal` — a delta on every tick the value changed. The default, and the only interval a free build actually paces to.
-- `Short` — a delta at most every 250ms.
-- `Long` — a delta at most once a second.
+- `Normal` — an update on every tick the value changed. The default, and the only interval a free build actually paces to.
+- `Short` — an update at most every 250ms.
+- `Long` — an update at most once a second.
 
 `SendIntervalTicks.Resolve(SendInterval, uint)` turns a span into a tick count for a given tick rate. It rounds up, never down, so a rate that doesn't divide the span evenly costs at most one tick of extra latency rather than quietly pacing faster than asked. `Normal` always resolves to a single tick.
 
 Two paced tiers, not a ladder. A third tier between `Short` and `Long` would sit close enough to both to be chosen by guesswork, and every extra tier costs a population of members whose sends have to be kept off the other tiers' ticks. `Short` and `Long` are far enough apart that the real choice is between them: does this value need to look live, or only to be right before long.
 
-Pacing never loses a value. A member that changes several times inside its interval rides its latest value on the next due tick, and a member that stops changing still rides its final delta on its next due tick. Full serializations — spawn, resync, recovery, reconcile — always carry the current value regardless of what the interval says.
+Pacing never loses a value. A member that changes several times inside its interval sends its latest value on the next due tick, and a member that stops changing still sends its final value on its next due tick. A spawn, resync, recovery or reconcile always delivers the current value regardless of what the interval says.
 
 ```csharp
-// Interval-paced, at most one delta every 250ms.
+// Interval-paced, at most one update every 250ms.
 NetworkMember<float> health = new(sendInterval: SendInterval.Short);
 
 // Divine projection; sendInterval is ignored while this mode is set.
@@ -38,11 +38,11 @@ Under `Interval`, `true` lets a receiver render up to one send interval ahead of
 
 ## A receiver adopts the sender's mode automatically
 
-Both `TransmissionMode` and `isExtrapolationEnabled` are construction defaults, optionally overridden per instance at runtime. A receiver doesn't need to be built with the same values: every full serialization carries the sender's mode and extrapolation setting, and the receiver adopts them automatically. Nothing here has to be toggled in lockstep ahead of time, though each value is meant to be set once rather than changed mid-stream.
+Both `TransmissionMode` and `isExtrapolationEnabled` are construction defaults, optionally overridden per instance at runtime. A receiver doesn't need to be built with the same values: it adopts the sender's mode and extrapolation setting automatically. Nothing here has to be toggled in lockstep ahead of time, though each value is meant to be set once rather than changed mid-stream.
 
 ## Pro gating
 
-`Divine` and every `SendInterval` above `Normal` are Pro, and both are gated the same way. They compile fine in a free build, because an enum can't be split by edition, so the values stay declared, but they change nothing there. A member set to `TransmissionMode.Divine` replicates with ordinary deltas, as `Interval` does. `SendInterval.Short` and `SendInterval.Long` pace nothing: free resolves every span to a single tick and replicates every changed tick, which is what `Normal` already means. That's what lets one prefab load in either edition without a `#if` around every member declaration.
+`Divine` and every `SendInterval` above `Normal` are Pro, and both are gated the same way. They compile fine in a free build, because an enum can't be split by edition, so the values stay declared, but they change nothing there. A member set to `TransmissionMode.Divine` replicates as `Interval` does. `SendInterval.Short` and `SendInterval.Long` pace nothing: free resolves every span to a single tick and replicates every changed tick, which is what `Normal` already means. That's what lets one prefab load in either edition without a `#if` around every member declaration.
 
 ## Interval and interpolation
 

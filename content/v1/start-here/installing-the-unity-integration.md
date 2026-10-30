@@ -38,7 +38,7 @@ That label is what tells Unity to run the DLL as a Roslyn source generator inste
 
 The integration supports **Unity 6.5 (6000.5) and newer**. It uses Unity APIs that older editors lack, so it does not compile on them.
 
-Every file in the integration also opens with the same conditional compilation gate, for example `Managers/Core/UnityCoreManager.cs`:
+Every file in the integration also opens with the same conditional compilation gate:
 
 ```csharp
 #if UNITY_EDITOR || UNITY_2021_3_OR_NEWER

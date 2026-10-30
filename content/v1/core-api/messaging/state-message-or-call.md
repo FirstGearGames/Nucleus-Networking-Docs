@@ -10,14 +10,6 @@ A **message** is addressed to a peer and forgotten. It has no address beyond the
 
 A **call** is addressed to a `NetworkSystem`. The receiver resolves that system before any handler runs, so a call for a system the receiver does not have is stepped over rather than delivered to the wrong place.
 
-## Each mechanism carries a different envelope
-
-A message's envelope carries a hash of the message type (`ushort`), so the receiver knows which handler decodes the body. There is no address and no framing beyond that.
-
-A call's envelope (`RpcPacket`) carries the addressed system's id (`SystemId`), a route (`RpcRoute`, telling the server whether it is a fan-out to observers or bound for one target), and the call's own type hash. The body itself is length-framed (`PackedBytes`) so an unresolvable call can be skipped without decoding it, and the packet after it still reads correctly.
-
-A replicated member sends a delta against a baseline rather than a fresh value every time, so its ongoing cost is the size of what changed, not the size of the whole value.
-
 ## The late-joiner rule
 
 A replicated member shows a new observer the value as of the last write. That is what "current value" means: the member's job is to be caught up to, not to be replayed.
@@ -38,4 +30,4 @@ The same protection holds on receive: a message or call whose hash two types col
 - **A door's open state.** Same reasoning: a peer that walks up to a door five minutes after it opened needs to see it open, not miss the event that opened it. Replicated member.
 - **A chat line.** Nobody who wasn't there needs to receive it later, and it isn't addressed to an object in the world, just to peers. Message.
 - **A hit effect.** It plays once, on the object it happened to, and a peer who joins after the hit doesn't need to see it play. That address to a specific `NetworkSystem` is what makes it a call rather than a message.
-- **A server answer to one player's request.** Addressed to that one player's system, resolved once, done. Call, sent with a routed `RpcRoute` rather than fanned out to every observer.
+- **A server answer to one player's request.** Addressed to that one player's system, resolved once, done. Call, sent with `RpcTarget.To` rather than fanned out to every observer.

@@ -63,7 +63,7 @@ Override these `protected virtual` methods on `NucleusBehaviourBase`:
 | `OnClientStopped()` | The client-role counterpart of `OnServerStopped`. |
 | `OnControllerChanged(Connection previousControllerConnection, Connection currentControllerConnection)` | Called on every peer when control of the linked system moves. |
 
-Linking adopts whichever roles are already started rather than waiting for an edge: `LinkSystem` reseeds its tracked server/client flags from the live state and immediately raises `OnServerStarted`/`OnClientStarted` for any role already up, instead of only firing on a later start/stop transition. A scene object's `Awake` runs on every peer regardless of which of them already has a role running, so a script that only reacted to edges would miss a role that started before it linked.
+Linking adopts whichever roles are already started rather than waiting for an edge: it immediately raises `OnServerStarted`/`OnClientStarted` for any role already up, instead of only firing on a later start/stop transition. A scene object's `Awake` runs on every peer regardless of which of them already has a role running, so a script that only reacted to edges would miss a role that started before it linked.
 
 ## Overriding Awake, OnEnable, OnDisable and OnDestroy
 

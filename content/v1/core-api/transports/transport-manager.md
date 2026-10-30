@@ -60,7 +60,7 @@ if (transportManager.TryGetConnection(storedHandle, out Connection connection))
 
 ## HostLoopbackDelivery
 
-`HostLoopbackDelivery` governs when a host's server half delivers a message or call it addressed to its own client half (and vice versa), instead of that copy making a real round trip. It is only ever `HostLoopbackDelivery.Immediate` from game code — handlers run at the send site, before the send call returns. Setting it to anything else is refused, and logged, rather than silently ignored. `HostLoopbackDelivery.Deferred` exists so the engine's own tests can measure the alternative; it is not reachable from game code.
+`HostLoopbackDelivery` governs when a host's server half delivers a message or call it addressed to its own client half (and vice versa), instead of that copy making a real round trip. It is only ever `HostLoopbackDelivery.Immediate` from game code — handlers run at the send site, before the send call returns. Setting it to anything else is refused, and logged, rather than silently ignored. `HostLoopbackDelivery.Deferred` is not reachable from game code.
 
 ## The transport-implementer side
 

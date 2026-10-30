@@ -30,8 +30,6 @@ A type's wire identity is the tuple of its bundle id and a per-assembly local id
 
 Applies to a `NetworkMemberBase` field, or to a whole `NetworkComponent` class (in which case it excludes every member the component declares). Keeps the value off the wire entirely while leaving how it is saved alone — the inverse of `[WorldStateIgnore]`.
 
-It is an attribute rather than a constructor argument, and the reason is performance. A constructor argument is a runtime value, so honoring one would mean the generator still emitting every member's serialize and deserialize lines, each testing a flag at runtime on every peer, for the life of the build. An attribute is answered while code is being generated, so the member's serialize lines are never emitted at all — there is no branch to predict and no instruction to retire, because there is no code. A tick on which only marked members changed produces no packet.
-
 Two consequences follow from that:
 
 - **The value is the constructed default on every peer but the server.** Nothing ever arrives to populate it, so reading one on a client returns the type's default rather than what the server holds.
@@ -43,7 +41,7 @@ Two consequences follow from that:
 
 ### Attributes that do not exist
 
-`[NetworkTypeContainer]`, `[NetworkAccuracy(float)]`, `[NetworkSerializeMode(CompressionLevel)]`, and `[NetworkExcludeCount]` have no declaration anywhere in this tree. Accuracy and compression level are not attributes — they are constructor arguments on `NetworkMember<T0>` itself, for example `new NetworkMember<float>(CompressionLevel.Aggressive, accuracy: 0.01f)`.
+`[NetworkTypeContainer]`, `[NetworkAccuracy(float)]`, `[NetworkSerializeMode(CompressionLevel)]`, and `[NetworkExcludeCount]` do not exist in Nucleus. Accuracy and compression level are not attributes — they are constructor arguments on `NetworkMember<T0>` itself, for example `new NetworkMember<float>(CompressionLevel.Aggressive, accuracy: 0.01f)`.
 
 ### Persistence
 

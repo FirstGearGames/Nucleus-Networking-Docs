@@ -44,4 +44,4 @@ When a distance can't be measured (the connection controls nothing yet, or a con
 
 ## Distance conditions ship only in Pro
 
-Every file behind this page — `DistanceInterestConditionBase.Pro.cs`, `InterestPositionConditionBase.Pro.cs`, and `DistanceInterestLadder.Pro.cs` — is a `.Pro.cs` file. A free build has the interest system but not distance conditions.
+Distance conditions are part of Nucleus Pro. A Free build has the interest system but not distance conditions.

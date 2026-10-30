@@ -48,7 +48,7 @@ An id inside a packet is a claim, not a fact. Never trust a sender id read out o
 
 `TransportManager.RawPacketReceived` (`RawPacketReceivedHandler(Connection sendingConnection, Reader reader)`) fires only for `PacketType.Raw`. This is not a tap on ordinary arriving traffic.
 
-`PacketType.Raw` is a DEBUG-only packet type — it doesn't exist in the enum in Release at all. The engine itself never sends one; the only producers are the transport test suites, which hand-write a `PacketType.Raw` header themselves to exercise a transport directly (see `Nucleus.Tests/Transports/SynapseTransportTests.cs`). If you want to see what a transport actually put on the wire, you construct and send a raw packet yourself and subscribe to this event to observe it arrive — you don't get it for free by listening in on real gameplay traffic.
+`PacketType.Raw` is a DEBUG-only packet type; it doesn't exist in the enum in Release at all. The engine itself never sends one. If you want to see what a transport actually delivers, you construct and send a raw packet yourself and subscribe to this event to observe it arrive; you don't get it for free by listening in on real gameplay traffic.
 
 ```csharp
 fixture.CoreManager.TransportManager.RawPacketReceived += (sendingConnection, reader) =>

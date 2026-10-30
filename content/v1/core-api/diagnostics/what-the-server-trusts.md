@@ -12,7 +12,7 @@ The controller is checked next: a system's controller may always write to it or 
 
 ## Nothing travels as a grant
 
-The server tells each observer two things about a system: the access value in force, and a one-bit hint of whether that observer personally may act. Neither is a permission a client can spend on its own. The server re-checks every incoming write and every incoming call against its own copy of the access, on every packet, so a client that forges or replays a favorable-looking declaration gains nothing - the check that matters runs on the receiving side, not the sending side.
+The server tells each observer two things about a system: the access value in force, and a hint of whether that observer personally may act. Neither is a permission a client can spend on its own. The server re-checks every incoming write and every incoming call against its own copy of the access, on every packet, so a client that forges or replays a favorable-looking declaration gains nothing - the check that matters runs on the receiving side, not the sending side.
 
 The capability hint exists only so a well-behaved client avoids sending something the server is going to refuse anyway. A client that ignores the hint and sends regardless is met with the same enforcement as one that never saw it.
 

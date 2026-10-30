@@ -18,7 +18,7 @@ Start every networked object the same way: create the prefab, add `NetworkSystem
 
 ## Giving the prefab an id
 
-A prefab with no `PrefabId` can't spawn over the network. Run **Nucleus > Rebuild Network Prefab Collection** from the Unity menu (`NetworkPrefabCollectionBuilder.Rebuild`, on `[MenuItem("Nucleus/Rebuild Network Prefab Collection")]`) after adding a new networked prefab, and again any time you add or remove one. It scans the project for prefabs carrying a `NetworkSystemObject`, stamps each with a prefab id and its bundle's id, and writes the shard's prefab collection asset.
+A prefab with no `PrefabId` can't spawn over the network. Run **Nucleus > Rebuild Network Prefab Collection** from the Unity menu after adding a new networked prefab, and again any time you add or remove one. It scans the project for prefabs carrying a `NetworkSystemObject`, stamps each with a prefab id and its bundle's id, and writes the shard's prefab collection asset.
 
 The id lives on the prefab asset itself, which is where the trap comes from: duplicate a networked prefab in the Project window and the copy carries the same stamped `_prefabId` as the original, because duplication copies the serialized data verbatim. Until you rebuild, both prefabs claim the same identifier and the wrong one can end up resolved on the receiving end, and a player build fails with the clash listed. Rebuilding gives the copy a fresh identifier and leaves the original's alone: the rebuild keeps an identifier on the prefab the collection already lists, and on a base over its own variant, so you don't need to clear anything by hand.
 
@@ -29,7 +29,7 @@ Add `NetworkTransform` to the same GameObject and the object's position, rotatio
 Two fields are worth knowing on day one:
 
 - **Transform Space** (`_transformSpace`, a `TransformSpace`) — `Local` by default, replicating the offset the object holds inside its parent, which is what lets a carried object (one riding a moving platform, say) cost nothing while it rides. Switch to `World` for an object that may hang from something unreplicated; a `World` object's pose is unaffected by reparenting.
-- **Send Interval** (`_sendInterval`, a `SendInterval`) — defaults to `Normal`. Only applies under the `Interval` transmission mode; the default transmission mode projects the path instead and isn't paced by this field.
+- **Send Interval** (`_sendInterval`, a `SendInterval`) — defaults to `Normal`. Only applies under the `Interval` transmission mode; the default transmission mode isn't paced by this field.
 
 The inspector also exposes **Interpolate Scale Enabled**, **Kinematic Management Enabled**, **Transmission Mode**, and **Extrapolation Enabled**. They exist and are worth knowing about later; the two above are the ones that matter for getting an object moving today.
 

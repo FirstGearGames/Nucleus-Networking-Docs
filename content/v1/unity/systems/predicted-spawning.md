@@ -16,7 +16,7 @@ A `NetworkSystemObject` carries a **Predicted Spawn Policy** field: what a clien
 - `SpawnAndDespawn` — both of the above.
 - `AllowUndeclaredComposition` — permits a predicted spawn whose component composition no call site in this build declares. Every composition a build can produce is normally named at some call site, so refusing an undeclared one is the safe default; this flag opts an object out of that check.
 
-The policy is authored on the prefab, not passed in code, because it is never replicated. Every peer reads its own copy of the same prefab, so every peer answers the same question the same way without a bit of it going on the wire. That matters most on the server: it judges a predicted request against its own copy of the object, never against what the asking client claims.
+The policy is authored on the prefab, not passed in code, because it is never replicated. Every peer reads its own copy of the same prefab, so every peer answers the same question the same way. That matters most on the server: it judges a predicted request against its own copy of the object, never against what the asking client claims.
 
 ## Asking for one
 

@@ -32,7 +32,7 @@ public enum LocalConnectionState : byte
 }
 ```
 
-`Disconnected` is the zero value, so a `Connection` nothing has touched yet reads as down rather than as some other state. The values are not written to the wire and nothing orders them numerically; the walk from `Disconnecting` to `Disconnected` doesn't mean less than `Connecting` to `Connected`, it just names the state passed through.
+`Disconnected` is the zero value, so a `Connection` nothing has touched yet reads as down rather than as some other state. Nothing orders the values numerically; the walk from `Disconnecting` to `Disconnected` doesn't mean less than `Connecting` to `Connected`, it just names the state passed through.
 
 The shipped transports never set `Error` or `TimedOut`. A connect that fails and a link that drops later both end at `Disconnected`.
 

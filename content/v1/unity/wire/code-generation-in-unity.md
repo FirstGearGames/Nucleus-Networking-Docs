@@ -29,15 +29,13 @@ The generator inspects each assembly Unity compiles and skips any assembly that 
 - **Scripts with no asmdef** compile into `Assembly-CSharp`, which references `Nucleus.dll` automatically. `Nucleus.Integrations.Unity.asmdef` is marked `autoReferenced: true`, so any assembly Unity auto-references picks it up without you adding anything.
 - **Scripts under your own `.asmdef`** need an explicit reference to `Nucleus.Integrations.Unity` (or another assembly that itself references `Nucleus.dll`) added to that asmdef's `references` array.
 
-`Nucleus.asmdef`, the core engine's own assembly definition, sets `noEngineReferences: true`: the engine assembly does not automatically reference `UnityEngine`/`UnityEditor`, keeping it free of a direct engine dependency. In the shipped Unity workflow the engine reaches your project as the precompiled `Nucleus.dll` in `Assets/Nucleus`, not as this asmdef's source.
-
 ## The C# 9 ceiling
 
 Unity's generated project pins `LangVersion` to 9. Anything Unity compiles - your components, the integration source, generated partials - is limited to C# 9 syntax: namespaces need braces (no `namespace Foo;`), and there's no collection-expression syntax (`[1, 2, 3]`). This ceiling applies only to source Unity compiles. It doesn't touch the prebuilt DLLs in `Assets/Nucleus`, which are built against a newer language version outside Unity.
 
 ## Symptom: a component that compiles but replicates nothing
 
-If the generator didn't run against your assembly, a `partial` `NetworkComponent` still compiles - the class is valid C#, it just has no generated half. Both the serializer (the Write/Read pair) and the `[ModuleInitializer]` registration that wires the type into the network system are missing. Nothing throws. The component sits in the scene, does nothing on the wire, and the only sign is silence: no errors, no replicated state, no console warning pointing at the cause.
+If the generator didn't run against your assembly, a `partial` `NetworkComponent` still compiles - the class is valid C#, it just has no generated half, so the type is never registered and never replicates. Nothing throws. The component sits in the scene, does nothing on the wire, and the only sign is silence: no errors, no replicated state, no console warning pointing at the cause.
 
 Check first: is the DLL's `.meta` still carrying `RoslynAnalyzer`, and does the component's assembly reference `Nucleus.dll`?
 
@@ -47,4 +45,4 @@ Generator diagnostics appear in the Unity console, using the same diagnostic ids
 
 ## See also
 
-For what the generator emits, and for wiring it into a plain .NET project outside Unity, see [Wiring the Source Generator into a .NET Project](../../core-api/wire/source-generator-setup.md).
+For wiring the generator into a plain .NET project outside Unity, see [Wiring the Source Generator into a .NET Project](../../core-api/wire/source-generator-setup.md).
