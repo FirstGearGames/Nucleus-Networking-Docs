@@ -44,9 +44,9 @@ Assigning `null` restores the default (`DefaultNetworkPrefabPool`). The assignme
 
 ## What survives a pooled life, and what doesn't
 
-A GameObject recycled by `NetworkPrefabPool` is not a fresh object as far as `NetworkSystemObject` is concerned. Its `SystemLinked` and `SystemUnlinked` subscriptions, and any standing `RequireSystem` declarations scripts on it made, are held across pooled lives and cleared only on true destruction (`OnDestroy`), never on a despawn that returns the object to the pool. That's deliberate: a recycled instance never runs a second `Awake`, so a co-located script that declared what it needs once keeps that declaration, and the next `Rent`'s link serves it again without re-declaring anything.
+A GameObject recycled by `NetworkPrefabPool` is not a fresh object as far as `NetworkSystemObject` is concerned. Its `SystemLinked` and `SystemUnlinked` subscriptions, and any standing `RequireSystem` declarations scripts on it made, are held across pooled lives and cleared only on true destruction (`OnDestroy`), never on a despawn that returns the object to the pool. A recycled instance does not run `Awake` again, so a script on it that declared what it needs in `Awake` keeps that declaration, and the instance's next life is served again without re-declaring anything.
 
-What does not survive a recycle is the `NetworkSystem` itself. The marker (`NetworkSystemObject`) is the stable GameObject-side identity across pooled lives; the `NetworkSystem` is what despawns and is pooled underneath, and it's also the RPC scope. When it's returned, its RPC handlers go with it - a script that registered a handler against that system needs to re-register against whatever system the next `Rent` links in, through `SystemLinked` rather than assuming the old registration still applies.
+What does not survive a recycle is the `NetworkSystem` itself. The marker (`NetworkSystemObject`) is the stable GameObject-side identity across pooled lives; the `NetworkSystem` is what despawns, and it's also the RPC scope. When it's returned, its RPC handlers go with it - a script that registered a handler against that system needs to re-register against whatever system the next `Rent` links in, through `SystemLinked` rather than assuming the old registration still applies.
 
 ## Reading the plateau
 

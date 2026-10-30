@@ -20,7 +20,7 @@ A body only collides within its own scene's physics world. Moving a `NetworkRigi
 
 ## Moving a body across scenes
 
-`NetworkRigidbody.NotifySceneChanged` re-resolves which driver a body steps under. A scene move made with `MoveGameObjectToScene` fires no `OnEnable` or `OnDisable` on the component, and the driver is chosen at `OnEnable`, so without this call the body keeps stepping the world it left. `NotifySceneChanged` leaves the old driver and asks the new scene for its driver; a local-physics destination already has its driver attached from load, so the ask resolves immediately and the body steps the right world from the next tick.
+`NetworkRigidbody.NotifySceneChanged` tells a body it has moved to another scene. A scene move made with `MoveGameObjectToScene` does not tell the body on its own, so call `NotifySceneChanged` right after the move; without it, the body keeps simulating in the scene it left. With it, the body simulates in its new scene from the next tick.
 
 You don't need to call this yourself for a spawn move: the spawn handler calls it on every `NetworkRigidbody` under a moved system right after the move.
 

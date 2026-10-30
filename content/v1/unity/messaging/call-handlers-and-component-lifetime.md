@@ -11,14 +11,14 @@ title: "Registering Call Handlers Across a Component's Lifetime"
 - `SystemLinked` / `SystemUnlinked` fire for each individual system as it links or unlinks. A `NetworkSystemGroup` can put several systems on one GameObject, and these fire once per member.
 - `SystemsLinked` / `SystemsUnlinked` fire once for the object's whole set: an ungrouped object is a batch of one and fires on its first link, a grouped object fires when its linked count reaches the group's replicated member count.
 
-For a component that wants to act on the object as a whole, rather than on one member of a group, `SystemsLinked` and `SystemsUnlinked` are the pair to use. There's a further reason `SystemsLinked` in particular is the safer subscription: its `add` accessor checks whether the object has already finished linking its systems and, if it has, invokes the handler immediately on the new subscriber. A component that wakes after the object has already linked doesn't miss the event, it's replayed. `SystemsUnlinked` has no such replay, it's a plain event, so a subscriber that joins after the object has already unlinked hears nothing until the next unlink.
+For a component that wants to act on the object as a whole, rather than on one member of a group, `SystemsLinked` and `SystemsUnlinked` are the pair to use. There's a further reason `SystemsLinked` in particular is the safer subscription: if you subscribe after the object has already finished linking its systems, your handler runs right away. A component that wakes after the object has already linked doesn't miss the event. `SystemsUnlinked` does not do this, so a subscriber that joins after the object has already unlinked hears nothing until the next unlink.
 
 ```csharp
 private void Awake()
 {
     _networkSystemObject = GetComponent<NetworkSystemObject>();
 
-    // Replays at once if the object already linked before this Awake ran.
+    // Runs OnSystemsLinked at once if the object already linked before this Awake ran.
     _networkSystemObject.SystemsLinked += OnSystemsLinked;
     _networkSystemObject.SystemsUnlinked += OnSystemsUnlinked;
 }

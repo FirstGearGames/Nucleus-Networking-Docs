@@ -14,17 +14,17 @@ A `UnityPhysicsManager` is always present, so a missing manager is never the cau
 
 ## A body jitters or trails
 
-**Visual Smoothing with no Smoothed Visual.** `NetworkRigidbody`'s Visual Smoothing low-passes the render pose of `SmoothedVisual` toward the interpolated physics pose, hiding tick-to-tick correction jitter. Without a `SmoothedVisual` assigned it has nothing to act on. Assign a child of the body that holds its renderer, as the demo prefabs do with a child named `Visual`: `NetworkRigidbody` writes a world pose onto it every frame, so the parent's own motion does not fight it. Leave that child's transform to `NetworkRigidbody`; another script or animation writing the same transform would.
+**Visual Smoothing with no Smoothed Visual.** `NetworkRigidbody`'s Visual Smoothing smooths the visible motion of `SmoothedVisual` to hide the small jumps corrections cause. Without a `SmoothedVisual` assigned it has nothing to act on. Assign a child of the body that holds its renderer, as the demo prefabs do with a child named `Visual`: `NetworkRigidbody` writes a world pose onto it every frame, so the parent's own motion does not fight it. Leave that child's transform to `NetworkRigidbody`; another script or animation writing the same transform would.
 
-**Blend Mode Position on a body in contact.** `ConvergenceBlendMode.Position` (the **Blend Mode** field) writes the pose directly toward the target every over-threshold step. On a body resting in a stack or against the ground, that direct pose write fights the solver's own contact resolution, producing visible jitter. Switch to `ConvergenceBlendMode.Velocity` (see below).
+**Blend Mode Position on a body in contact.** `ConvergenceBlendMode.Position` (the **Blend Mode** field) moves the body straight toward where it should be when it corrects. On a body resting in a stack or against the ground, that fights the body's contacts and shows as visible jitter. Switch to `ConvergenceBlendMode.Velocity` (see below).
 
-**Residual Close Maximum Speed set too low.** **Residual Close Maximum Speed** gates the sub-threshold residual close: above that speed the body falls back to the plain deadband and holds its offset instead of bleeding it off. Set too low, a body that is still genuinely moving reads above the gate on every step, the residual close never runs, and the un-closed offset shows up as a small, persistent trail behind the target. Raise it so a body's ordinary travel speed stays under it.
+**Residual Close Maximum Speed set too low.** **Residual Close Maximum Speed** is the body speed above which a small positional error is left alone instead of being closed. Set too low, a body that is still moving is always above it, its small error is never closed, and it shows as a small, persistent trail behind where the body should be. Raise it so a body's ordinary travel speed stays under it.
 
 ## A body fights the ground or a stack
 
-Set **Blend Mode** to `ConvergenceBlendMode.Velocity`. Instead of writing the pose directly, Velocity mode applies the same closing fraction as a solver-integrated velocity bias, so the correction is folded into physics rather than overriding it, and never disrupts a contact or a stack.
+Set **Blend Mode** to `ConvergenceBlendMode.Velocity`. Velocity mode corrects through the body's own motion instead of moving it directly, so a correction never disrupts a contact or a stack.
 
-The sub-threshold residual close (**Residual Close Rate**) gates itself on speed for the same reason: it only runs below **Residual Close Maximum Speed**, so a body that was just bumped or is still settling holds its offset on the plain deadband instead of the residual close fighting the fresh contact. Above that speed the gentle bleed-off is simply not applied until the body slows back down.
+The gradual close of small errors (**Residual Close Rate**) only runs below **Residual Close Maximum Speed** for the same reason: a body that was just bumped or is still settling keeps its small error instead of the close fighting the fresh contact. The close resumes once the body slows back down.
 
 ## A body snaps
 
@@ -40,9 +40,9 @@ If bodies are snapping on ordinary corrections rather than these cases, raise **
 
 ## A body still steps the world it left after a scene move
 
-A scene move (for example a spawn handler calling `MoveGameObjectToScene`) fires no `OnDisable`/`OnEnable`, but `NetworkRigidbody` picks its `PhysicsSimulationDriver` when it is enabled. Without further action the body keeps registered with, and stepped by, the driver of the scene it left, not the scene it now lives in.
+A scene move (for example a spawn handler calling `MoveGameObjectToScene`) does not tell `NetworkRigidbody` that the body moved, so the body keeps simulating in the scene it left, not the scene it now lives in.
 
-Call `NetworkRigidbody.NotifySceneChanged()` right after the move. It deregisters from the old driver and asks the scene the object now lives in for that scene's driver; a local-physics destination already has its driver attached by the time anything can move into it, so the ask resolves immediately and the body steps the right world from the next tick.
+Call `NetworkRigidbody.NotifySceneChanged()` right after the move. The body then simulates in its new scene from the next tick.
 
 ## Two drivers on one scene
 
@@ -52,9 +52,7 @@ A second driver for a scene that already has one is refused, and it logs: *"Scen
 
 ## A NetworkTransform and a NetworkRigidbody on the same object
 
-`NetworkRigidbody` follows a non-server body as a proxy: it either adopts the first received state, follows a remote client state proxy on the interpolation buffer as a kinematic body, or runs the convergence follower. While a remote-controlled proxy follows the interpolation buffer, its rigidbody is kinematic (`Rigidbody.isKinematic` is true), and the original flag is restored when that role ends.
-
-Putting a `NetworkTransform` on the same object as a `NetworkRigidbody` means two components are both trying to move the same transform from replicated state: the `NetworkRigidbody` drives the physics body (kinematically, while it is a remote client state proxy), and the `NetworkTransform` drives the same transform independently. Use one or the other for a given object's pose, not both.
+`NetworkRigidbody` already moves the body from replicated state on every peer other than the server. Putting a `NetworkTransform` on the same object means two components both move the same transform from replicated state, independently of each other, and they fight. Use one or the other for a given object's pose, not both.
 
 ## Reading bandwidth and round-trip time
 

@@ -78,7 +78,7 @@ public delegate T0 ReadHandler(Reader reader, T0 previousValue);
 public delegate T0 ReadWithAccuracyHandler(Reader reader, T0 previousValue, float accuracy);
 ```
 
-`isSerializerCustom` is what decides precedence. Every `UseWriteHandler` / `UseReadHandler` overload first checks whether a custom handler is already registered for its slot, full or delta: if one is, the call is a no-op. Register your handler with `isSerializerCustom: true` and it locks the slot; anything the generator later tries to register for the same type is silently declined. Calling `UseWriteHandler` directly is the same operation the attribute route performs, so a plugin, a test, or code that runs early can install a handler exactly the same way:
+`isSerializerCustom` is what decides precedence. Register your handler with `isSerializerCustom: true` and it always wins: once it is registered, nothing replaces it, neither a generated serializer for the same type nor a later registration of your own, so register each of a type's custom handlers only once. Calling `UseWriteHandler` directly is the same operation the attribute route performs, so a plugin, a test, or code that runs early can install a handler exactly the same way:
 
 ```csharp
 GenericFullWriter<MyType>.UseWriteHandler(WriteMyType, isSerializerCustom: true);

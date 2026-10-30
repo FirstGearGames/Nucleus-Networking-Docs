@@ -32,7 +32,7 @@ The **Replay Hold Radius** field sets `SystemManager.ReplayHoldRadius` as the ma
 
 ## Send Result Values
 
-The **Send Result Values** field (on by default) sets `SystemManager.IsResultValueSendEnabled`. It is read on the controller: while it is on, the controller sends its `MemberRole.Validate` result values beside the hash every tick, so a server that finds a result different can name the members and both values through `NetworkSystem.ResultMismatched`. The values cost bandwidth on every tick, so turn it off for a release build to keep the hash alone.
+The **Send Result Values** field (on by default) sets `SystemManager.IsResultValueSendEnabled`, and it is the controlling client's setting that counts. While it is on, a server that finds a client's `MemberRole.Validate` result different can report which members differed and both values through `NetworkSystem.ResultMismatched`, and a member's `resultTolerance` applies. Turning it off saves bandwidth on every tick, but the report then shows only that a mismatch happened and on which tick, and results are compared exactly. Turn it off for a release build if you do not need the values.
 
 ## Predicted By Observers
 

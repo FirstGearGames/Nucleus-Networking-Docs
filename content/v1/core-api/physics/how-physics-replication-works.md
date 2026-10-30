@@ -34,7 +34,7 @@ This model does not include:
 
 - Replay-correct collision callbacks
 
-This is planned, not hidden. A converged body is never rewound. An integration can still step its physics world on each replayed tick through `SystemManager.ReplayEarlyFixedUpdated`; the Unity integration does, and rewinds only the bodies its validated behaviours predict (see [Predicting a body with a validated behaviour](../../unity/physics/predicting-a-body-with-a-validated-behaviour.md)).
+A converged body is never rewound. An integration can still step its physics world on each replayed tick through `SystemManager.ReplayEarlyFixedUpdated`; the Unity integration does, and rewinds only the bodies its validated behaviours predict (see [Predicting a body with a validated behaviour](../../unity/physics/predicting-a-body-with-a-validated-behaviour.md)).
 
 Judging a shot against where targets were is a separate feature that does not touch physics bodies at all: [lag compensation](../lag-compensation/how-lag-compensation-works.md) (Pro) keeps its own hitbox history and its own geometry. Catching a freshly spawned projectile up through the latency it lost is [spawn compensation](../systems/spawn-compensation.md) (Pro).
 

@@ -39,7 +39,7 @@ public interface INetworkLoopStepProvider
 
 ## Building a provider on NetworkLoopStepDriver
 
-Both shipped providers, `SystemNetworkLoopStepProvider` and the Unity integration's, drive a `NetworkLoopStepDriver` rather than calling `NetworkLoopManager.InvokeNetworkLoopStep` themselves. The driver keeps the tick cadence, catches up at most two ticks in one frame, and invokes the eleven `NetworkLoopSteps` in their canonical order, so a provider only has to feed it a frame delta and let it decide when a tick actually runs.
+Both shipped providers, `SystemNetworkLoopStepProvider` and the Unity integration's, are built on a `NetworkLoopStepDriver` rather than calling `NetworkLoopManager.InvokeNetworkLoopStep` themselves. Build yours on it too and it keeps the tick rate for you: call its `Initialize` once with the manager and the tick interval, then hand it each frame's elapsed time through `AdvanceEarly` and `AdvanceLate`.
 
 ```csharp
 public sealed class HostClockStepProvider : INetworkLoopStepProvider
@@ -75,7 +75,7 @@ public sealed class HostClockStepProvider : INetworkLoopStepProvider
 }
 ```
 
-`AdvanceEarly` accumulates the frame, decides whether a tick fires, and invokes everything from `EarlyVariableUpdate` through the mid-cycle `VariableUpdate`. `AdvanceLate` finishes the same frame: on a frame that ticks it runs `EarlySerialize`, `LateSerialize` and `TickAdvance`, on every frame it sends that frame's messages, and it ends with `LateVariableUpdate`. The split exists so a host that runs distinct early/late phases (Unity's `Update`/`LateUpdate`) can call them separately; a host with one frame callback, like the one above, calls both back to back.
+Call `AdvanceEarly` at the start of each of your host's frames and `AdvanceLate` at the end of the same frame, passing both the same frame delta and the same `isVariableUpdateAllowed` value. A host that runs separate early and late phases (Unity's `Update` and `LateUpdate`) calls one from each; a host with one frame callback, like the one above, calls both back to back.
 
 ## Naming your provider in the constructor
 
@@ -133,10 +133,10 @@ networkLoopManager.InvokeNetworkLoopStep(NetworkLoopSteps.TickAdvance, delta);
 networkLoopManager.InvokeNetworkLoopStep(NetworkLoopSteps.LateVariableUpdate, delta);
 ```
 
-Do not reorder or skip steps: framework work is woven into specific steps (packet receive and message dispatch on `EarlyVariableUpdate`, state apply and RPC dispatch on `LateStateUpdate`, state serialization and the send of messages, RPCs and kicks on `LateSerialize`, the tick advance at the end of `TickAdvance`, among others), and replicated state depends on that order holding. Only `TickAdvance` advances `Tick`. Left false, `IsTickFrame` makes `EarlySerialize` and `LateSerialize` write no state and raise no callbacks, though the pass still sends its messages.
+Do not reorder or skip steps: replicated state, messages and RPCs only work when every step runs, in this order. Only `TickAdvance` advances `Tick`. Left false, `IsTickFrame` makes `EarlySerialize` and `LateSerialize` write no state and raise no callbacks, though the pass still sends its messages.
 
 ## One loop, one manager
 
-Each `CoreManager` owns exactly one `NetworkLoopManager`, and that manager enforces that only one thread drives it at a time. `InvokeNetworkLoopStep` claims the calling thread for the duration of the step; a second thread that calls in while a step is already executing is turned away rather than run, and the rejection is logged at most once a minute so a stuck second driver does not flood the log. A re-entrant call from the thread that already holds the step is not a second driver, and runs normally.
+Each `CoreManager` owns exactly one `NetworkLoopManager`, and only one thread may drive it at a time. A call to `InvokeNetworkLoopStep` from a second thread while a step is already running on another is refused and logs an error. A re-entrant call from the thread that is already running the step is not a second driver, and runs normally.
 
 In practice this means: do not call a hand-driven `InvokeNetworkLoopStep` from one thread while a real provider (the default timer, or your own) is also stepping the same manager. Pick one driver for a given `CoreManager`'s whole life, either a provider or hand-driving, never both at once.

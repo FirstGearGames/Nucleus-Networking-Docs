@@ -22,7 +22,7 @@ Three of the steps on the Build tab rebuild the project's network assets, and Va
 
 Scans the project for every prefab whose root carries a `NetworkSystemObject`, groups them by the asset bundle they're assigned to, and writes each group's `NetworkPrefabCollection` asset. The collection with no asset bundle assignment is the base build's shard, stored under `Assets/Resources/NetworkPrefabCollection.asset` so it loads by name at runtime.
 
-Each prefab is stamped with a local prefab id and a bundle id. Ids are assigned once and then preserved: a prefab that already carries a valid, unique id keeps it on every rescan. Only an unset or duplicated id gets the next free number for its shard. Ids restart at one per shard, because a prefab is identified by its bundle id and local id together, not by the local id alone.
+Each prefab is stamped with a local prefab id and a bundle id. Ids are assigned once and then kept: a prefab that already carries a valid, unique id keeps it on every rebuild, and only a prefab with no id or a duplicated one is given a new id.
 
 A rebuild that renumbers a duplicated id says so: it logs a warning naming the prefab that carried the id, the prefab that already holds it, and the new id. It logs an error when two collections resolve to the same prefab bundle, because the second of them to load is refused at runtime; give each content bundle assembly its own `[NetworkBundle(n)]`.
 
@@ -59,7 +59,7 @@ Three more steps run without a button press, so an author never has to remember 
 
 ## Two authoring traps
 
-**A copied prefab carries the original's stamped id.** Duplicating a prefab asset in the Project window duplicates its `NetworkSystemObject` component, id and all. Until the next `Rebuild Network Prefab Collection`, the copy has the same prefab id as the original. At runtime the registry keeps whichever of the two registered first and logs an error for the other, so a spawn of one can build the other, and a player build fails until you rebuild. Rebuild after every prefab duplication, not just after adding a new prefab. The rebuild keeps the id on the prefab the collection already lists, which is the original, and on a base over its own variant, gives the copy the next free id, and logs a warning for each prefab it renumbers.
+**A copied prefab carries the original's stamped id.** Duplicating a prefab asset in the Project window duplicates its `NetworkSystemObject` component, id and all. Until the next `Rebuild Network Prefab Collection`, the copy has the same prefab id as the original. At runtime the registry keeps whichever of the two registered first and logs an error for the other, so a spawn of one can build the other, and a player build fails until you rebuild. Rebuild after every prefab duplication, not just after adding a new prefab. The rebuild keeps the id on the prefab the collection already lists, which is the original, gives the copy a new id, and logs a warning for each prefab it renumbers.
 
 **A scene object id only has to be unique within its own scene.** Saving a scene reassigns collisions inside that scene, but the same id in two different scenes is fine and expected, because each scene's own id tells them apart. Don't assume a scene object id has to be globally unique across the project; it doesn't.
 

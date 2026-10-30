@@ -62,6 +62,6 @@ A received payload is copied into a pooled buffer exactly once, and that buffer 
 
 ## You can write a transport in your own assembly
 
-A custom transport does not have to live in the Nucleus assembly. `Transport`, `SocketPairTransport<TServerSocket, TClientSocket>` and `CommonSocket` are public abstract classes that any assembly can derive from, and every member a transport has to implement is public or protected. `CommonSocket`'s connect, disconnect, send and receive members are declared `protected internal`, so a socket in your assembly overrides them as `protected`. A `SocketPairTransport` subclass reaches its `ServerSocket` and `ClientSocket` the same way.
+A custom transport does not have to live in the Nucleus assembly. `Transport`, `SocketPairTransport<TServerSocket, TClientSocket>` and `CommonSocket` are public abstract classes that any assembly can derive from, and every member a transport has to implement is public or protected. A socket in your own assembly can override `CommonSocket`'s connect, disconnect, send and receive members; declare each override `protected`. A `SocketPairTransport` subclass reaches its `ServerSocket` and `ClientSocket` the same way.
 
 For the shape of a real transport, see [Yak](./yak-offline-transport.md) for the minimal offline case and [Synapse](./synapse-transport.md) for a full socket-backed one.

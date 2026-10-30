@@ -18,13 +18,13 @@ public readonly NetworkMember<ushort> Health = new();
 | --- | --- | --- | --- |
 | `Replicate` | An ordinary member. Inbound values apply as they arrive. | The server, or a client its write access allows. | The value, when it changes and write access allows it |
 | `Predict` | Client state: a per-tick value the simulation reads. | Whoever controls the system, on its live tick. | The value, every tick (see [Client state](./client-state-components.md)) |
-| `Validate` | A predicted result, computed from the client state. | Every peer that simulates the system. | A hash of the tick's results, with its client state, and the result values beside it while `SystemManager.IsResultValueSendEnabled` is on (the default), for the server to check, never to apply |
+| `Validate` | A predicted result, computed from the client state. | Every peer that simulates the system. | Nothing the server applies. The server checks the controller's result for each tick against its own and orders a correction when they differ |
 
 Roles are per member. Members of every role can share a component, and the usual predicted object has all three: `Predict` members for what the player asked, `Validate` members for what the step computes from them, and `Replicate` members for what only the server decides.
 
 What a predicted role does depends on the peer:
 
-- **The pure-client controller** predicts the system: it writes its `Predict` members on its live tick, runs the step at once to compute its `Validate` members, and sends those upstream only for the server to check, never to apply. The server checks the result and orders a correction when it differs.
+- **The pure-client controller** predicts the system: it writes its `Predict` members on its live tick, and runs the step at once to compute its `Validate` members. The server checks that result without ever applying it, and orders a correction when it differs.
 - **The server** takes the controller's `Predict` members, simulates the same tick, and checks the controller's `Validate` result against its own.
 - **Any other client** applies the server's values as they arrive, but a member with a role other than `Replicate` takes part in a reconcile: it is held at the server's start-tick values while the controlled systems replay. A client that sets `NetworkSystem.IsObserverPredictionEnabled` predicts the system as its controller does (see [Predicting another client's object](./reconciliation.md#predicting-another-clients-object)).
 - **A host** applies values as they arrive. It is the server, so nothing it predicts is ever corrected.
@@ -33,17 +33,17 @@ What a predicted role does depends on the peer:
 
 A `Validate` member puts the check on the server, which holds the client state and everything else the step reads:
 
-1. After its live fixed updates, the controller hashes its system's `Validate` members at their `Accuracy` and sends the hash with that tick's client state.
-2. The server simulates the same tick of client state, hashes its own `Validate` members the same way and compares. On a difference it counts `Connection.ResultMismatchCount`, orders a reconcile (counted in `ReconcileSentCount`) and raises `NetworkSystem.ResultMismatched`; see [Validate results the server found different](./reconciliation.md#validate-results-the-server-found-different).
+1. The controller runs its live fixed updates and computes that tick's `Validate` results.
+2. The server simulates the same tick of client state and compares its own `Validate` results with the controller's. On a difference it counts `Connection.ResultMismatchCount`, orders a reconcile (counted in `ReconcileSentCount`) and raises `NetworkSystem.ResultMismatched`; see [Validate results the server found different](./reconciliation.md#validate-results-the-server-found-different).
 3. Results the controller computed before the correction arrived are passed over instead of ordering a reconcile for each. If the controller has not applied the correction within a round trip plus `StateInterpolation`, the server sends the reconcile again (`ReconcileResentCount`), so a lost reconcile costs one round trip, not a stuck client. A resend that reaches a controller which already applied the first does not order a second replay.
 
 The controller never judges its own prediction. Every server value for a predicted member that arrives leaves the prediction standing; only a reconcile the server orders corrects it. That is why the check works for results that depend on values the client cannot see in time: a jump the server refuses because of health only the server drains is still caught, because the server holds both the client state and the health.
 
-A hash compares exactly, so a `Validate` member is rounded to its `Accuracy` on every write, on both peers. Choose an accuracy the simulation can tolerate rounding to. A `Validate` member may use any `SendInterval`.
+A `Validate` member's value is only as precise as its `Accuracy`, the same on both peers. Choose an accuracy the simulation can tolerate. A `Validate` member may use any `SendInterval`.
 
-For a value a replay cannot reproduce exactly, such as one a physics engine moves, construct the member with `resultTolerance`. A predicted value within that distance of the server's does not count as a misprediction, so it orders no reconcile. The server can only measure the distance while the controller sends its result values (`SystemManager.IsResultValueSendEnabled`, on by default); with only the hash, the result is compared exactly. The Unity validated behaviours set it on their position, rotation and velocities.
+For a value a replay cannot reproduce exactly, such as one a physics engine moves, construct the member with `resultTolerance`. A predicted value within that distance of the server's does not count as a misprediction, so it orders no reconcile. It applies only while the controller's `SystemManager.IsResultValueSendEnabled` is on, the default; with it off, the result is compared exactly. The Unity validated behaviours set it on their position, rotation and velocities.
 
-A predicted system needs `Predict` members, because the server checks the result against each tick of client state. A system with `Validate` members and no client state sends nothing for the server to check, and the server's values simply overwrite the prediction.
+A predicted system needs `Predict` members, because the server checks the result against each tick of client state. A system with `Validate` members and no client state gives the server nothing to check, and the server's values simply overwrite the prediction.
 
 The result check runs after the client state is validated. A tick the server's `IMemberWriteValidator<T0>` corrected therefore produces a different result, and the controller is reconciled onto the server's outcome.
 

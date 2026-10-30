@@ -31,7 +31,7 @@ public event ClientDisconnectingHandler? ClientDisconnecting;
 public delegate void ClientDisconnectingHandler(Connection connection);
 ```
 
-Raised on the server for a client that has dropped, while the objects it controlled are still readable through it. It is raised immediately before the connection's controlled systems are released, which is why a lookup of what the connection controlled still answers correctly here and not a line later.
+Raised on the server for a client that has dropped, while the objects it controlled are still readable through it. Inside this handler you can still look up which systems the connection controlled; once the handler returns, they are released.
 
 Do not subscribe to a lower-level transport disconnect event expecting the same guarantee. Handler order between independent subscribers of a raw transport event is not something to rely on; `ClientDisconnecting` is the event that promises "before release" as a contract.
 
@@ -59,7 +59,7 @@ These are about *other* peers, not this connection's own session. They fire once
 - On a client, `PeerConnectionDiscovered` fires when the server reports a new peer. The `Connection` handed out is a stand-in — an identity with no live link behind it (`Connection.IsPeerStandIn` is true).
 - On a host, the same event fires once `ApproveClient` has admitted the peer. The `Connection` is the server's own entry for that peer, so `IsPeerStandIn` is false. It is never raised for the host's own client, since no client is ever told about itself this way.
 
-`PeerConnectionDropped` mirrors this exactly, firing on a client when the server reports the peer gone, or on a host when the peer leaves, in both cases while the entry is still held. Anything that referenced a stand-in must drop that reference inside this handler: the instance returns to its pool immediately afterward, and the next peer to connect can be handed that same object.
+`PeerConnectionDropped` mirrors this exactly, firing on a client when the server reports the peer gone, or on a host when the peer leaves, in both cases while the entry is still held. Anything that referenced the `Connection` must drop that reference inside this handler. Do not keep or use it after the handler returns.
 
 Unlike `ClientAuthenticated` and `ClientDisconnecting`, these two never fire for this peer's own session — they only ever describe someone else.
 
@@ -81,4 +81,4 @@ Disconnection follows the mirror shape: `ClientDisconnecting` is raised before a
 | `ClientDisconnecting` | Look up what this connection controlled or owned; nothing has released yet. | Anything that depends on the connection's controlled systems already being gone — release runs immediately after this returns. |
 | `LocalClientAuthenticated` | Read this peer's own `Connection.Id` for the first time; anything scoped to "who am I". | Assuming the roster of other peers has already arrived; it arrives separately. |
 | `PeerConnectionDiscovered` | Store a reference to the peer's `Connection` for later use. | — |
-| `PeerConnectionDropped` | Drop every stored reference to this peer's `Connection`. | Holding onto it past this handler — the instance is pooled and reused right after. |
+| `PeerConnectionDropped` | Drop every stored reference to this peer's `Connection`. | Holding onto it past this handler. |

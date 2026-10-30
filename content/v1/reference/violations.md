@@ -20,7 +20,7 @@ These fire from state application and recovery, spawning, RPC dispatch, and lag 
 | `InvalidStateAckViolation` | `AckedTick` | Whether the two peers' tick counters have actually diverged (a restart, a save/load, a manual tick reset) rather than assuming a forged ack. |
 | `RetentionExceededViolation` | `AckedTick`, `ConsecutiveCount` | The peer's latency against `SystemManager.StateRetentionMilliseconds`; a single raise is ordinary heavy loss, not abuse. |
 | `RecoveryUnconfirmedViolation` | `UnconfirmedServeCount` | Whether the peer's connection is dropping the recovery serve itself (packet loss eating the recovery, not just the state it was fixing) before assuming it is stalling on purpose. |
-| `RecoveryBudgetExhaustedViolation` | `ConsecutiveSeconds`, `SecondsInLastMinute` | The peer's packet loss. An honest peer through a burst of loss draws on its banked repair budget (`SystemManager.RecoveryBudgetFullWorlds`) and is not throttled, so a long run of seconds means constant heavy loss, or a peer dropping packets or reporting losses on purpose. It is raised at most once a second per Connection. |
+| `RecoveryBudgetExhaustedViolation` | `ConsecutiveSeconds`, `SecondsInLastMinute` | The peer's packet loss. It is raised for a second in which the server refused the peer some repair because the peer had already asked for as much as it is allowed. An honest peer gets through a burst of loss without raising it, so a long run of seconds means constant heavy loss, or a peer dropping packets or reporting losses on purpose. It is raised at most once a second per Connection. |
 | `StateLossReportFloodViolation` | `AllowedLossRepairCount` | Whether the peer has just come out of a stall, which lets an honest peer ask for several ticks of repair at once. The repairs past the allowance are refused either way. |
 | `UnexpectedStateLossReportViolation` | `Tick` | Whether a handover changed which peer serves the sender state while the report was in flight. The report is discarded, and this type logs a warning by default. |
 | `UnauthorizedSpawnViolation` | `SystemId`, `SystemBundleId`, `SystemLocalId` | Whether the server just despawned that system id and the client's own recovery re-sent it before learning of the despawn; that path raises nothing, so a raise here means the id was never one the server despawned. |
@@ -42,7 +42,7 @@ These fire from state application and recovery, spawning, RPC dispatch, and lag 
 
 | Type | Payload | Check first |
 |---|---|---|
-| `ClientLimitViolation` | `Kind` (`PacketBytes`, `SplitPacketBytes`, `PacketsPerSecond`, `BytesPerSecond`), `MeasuredValue`, `MaximumValue`, `Channel` | Whether the limit leaves room for what an honest client sends at its busiest. Set `ClientLimits.MaximumPacketBytes` at least one transmission unit above the largest packet a client honestly sends, since a split packet can be refused up to one piece short of the limit. |
+| `ClientLimitViolation` | `Kind` (`PacketBytes`, `SplitPacketBytes`, `PacketsPerSecond`, `BytesPerSecond`), `MeasuredValue`, `MaximumValue`, `Channel` | Whether the limit leaves room for what an honest client sends at its busiest. Set `ClientLimits.MaximumPacketBytes` at least one transmission unit above the largest packet a client honestly sends. |
 
 ## Protocol-direction violations
 

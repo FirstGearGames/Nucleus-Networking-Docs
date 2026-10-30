@@ -4,7 +4,7 @@ title: "NetworkRigidbody"
 
 > **Driving the core API directly?** See [PhysicsConvergence](../../core-api/physics/physics-convergence.md).
 
-`NetworkRigidbody` is a `MonoBehaviour` that drives physics sync for one rigidbody. It requires a `Rigidbody` and a `NetworkSystemObject`, declares its need for the `NetworkSystem` carrying that body's replicated `NetworkPhysicsComponent`, and steps the body each tick: proxies adopt, follow the interpolation buffer, or run its `PhysicsConvergence` follower before the world simulates, and the server captures the stepped result afterward.
+`NetworkRigidbody` is a `MonoBehaviour` that drives physics sync for one rigidbody. It requires a `Rigidbody` and a `NetworkSystemObject`, declares its need for the `NetworkSystem` carrying that body's replicated `NetworkPhysicsComponent`, and keeps that body in agreement across every peer, each tick.
 
 ## Runtime surface
 
@@ -21,7 +21,7 @@ title: "NetworkRigidbody"
 
 These gate both the predicted and the proxy correction paths.
 
-- **Position Threshold** (meters) — the positional divergence past which the body blends back toward the projected target. Below it, counter-velocity alone holds the offset steady.
+- **Position Threshold** (meters): the positional divergence past which the body blends back toward where it should be. Below it, the body keeps its small offset unless the residual fields below close it.
 - **Rotation Threshold** (degrees) — the rotational divergence past which the body blends back toward the target.
 
 ## Closing fields
@@ -30,14 +30,14 @@ How a body over its threshold corrects splits by role:
 
 - **Blend Per Tick** — the fraction of the remaining gap a *proxy* closes per tick while over threshold. A predicted body ignores this.
 - **Prediction Correction Rate** (default `0.1`): how aggressively a *predicted* body (one whose `Convergence.IsLocallyPredicted` is set) corrects toward the server: the fraction of the gap taken off per tick, once past Position Threshold. Higher snaps back harder and sooner; lower lets the prediction ride looser. `NetworkRigidbody` runs its follower only on a peer that is not the body's controller, so this field only acts where such a peer steers the body with its own client state and sets `IsLocallyPredicted`.
-- **Blend Mode** (`ConvergenceBlendMode.Position` or `.Velocity`) — how the closing fraction is applied. `Position` writes the pose directly toward the target each step, identical to `Velocity` in free space, but bypasses the solver, so a blend into geometry penetrates and depenetrates rather than resolving as a contact. `Velocity` applies the same closing fraction as a solver-integrated velocity bias, so contacts, stacks, and other bodies are never disrupted — a blend against geometry becomes a bounded press instead of a penetration.
+- **Blend Mode** (`ConvergenceBlendMode.Position` or `.Velocity`): how a correction moves the body. In open space the two look the same. `Position` moves the body straight toward where it should be, so a correction into geometry can briefly push the body into it before it is pushed back out. `Velocity` corrects through the body's own motion, so contacts, stacks, and other bodies are never disrupted, and a correction against geometry presses on it instead of passing into it.
 
 ## Residual fields
 
-Below threshold, a sub-threshold residual can still be bled off rather than held frozen:
+Below Position Threshold, a small positional error can still be closed gradually instead of being left in place:
 
-- **Residual Close Rate** — the per-second rate a sub-threshold positional residual is bled off by a velocity bias toward the target. Higher closes a slow body's drift faster, lower is gentler at first contact, zero holds the offset frozen.
-- **Residual Close Maximum Speed** — the maximum body speed at which the residual close runs. A freshly bumped or still-moving body reads above it and falls back to the plain deadband, so the gentle close never fights a fresh contact.
+- **Residual Close Rate**: how quickly that small error is closed, per second. Higher closes a slow body's drift faster, lower is gentler at first contact, and zero leaves the small offset in place.
+- **Residual Close Maximum Speed**: the body speed above which the small error is left alone. A body that was just bumped or is still moving is faster than this, so the gentle close never fights a fresh contact.
 
 ## Escape hatches
 
@@ -47,7 +47,7 @@ Below threshold, a sub-threshold residual can still be bled off rather than held
 
 ## Visual smoothing changes the render, never the body
 
-- **Visual Smoothing** (seconds, default `0`) — low-passes `SmoothedVisual` toward the interpolated physics pose to hide tick-to-tick correction jitter. Requires a `SmoothedVisual`; without one it has nothing to act on. The physics body itself stays exact — captured state and collisions are untouched, so nothing can desync — only the render eases toward it. Larger smooths harder but lets the render trail the body more; zero, the default, is off.
+- **Visual Smoothing** (seconds, default `0`): smooths the visible motion of `SmoothedVisual` to hide the small jumps corrections cause. Requires a `SmoothedVisual`; without one it has nothing to act on. It changes only what is drawn: the physics body, its collisions and what it replicates are untouched, so nothing can desync. Larger values smooth more but let the drawn object trail the body further; zero, the default, turns it off.
 
 ## Replay hold keeps the body still while a correction replays
 
@@ -69,8 +69,8 @@ The maths behind each of these values, and the full settings surface, live on th
 
 `NetworkRigidbody` exposes three public methods, all already called for you by the `PhysicsSimulationDriver` and the spawn handler:
 
-- `PreSimulate(float stepDelta)` — the pre-step half of a tick-aligned world step. Proxies adopt, follow, or run the follower here; authorities do their work post-step.
-- `PostSimulate(uint tick)` — the post-step half. A server captures the freshly stepped state into its replicated component, and the step-pose window advances for the smoothed visual's render interpolation.
-- `NotifySceneChanged()` — re-resolves the physics driver after this body's `GameObject` moves to another scene. A scene move fires no disable or enable, and the driver is cached at enable, so without this the body keeps stepping the world it left.
+- `PreSimulate(float stepDelta)`: the body's work for a tick before the physics world steps.
+- `PostSimulate(uint tick)`: the body's work for a tick after the physics world steps.
+- `NotifySceneChanged()`: tells the body its `GameObject` moved to another scene. Call it after such a move; without it, the body keeps simulating in the scene it left.
 
 You will not normally call any of these directly.

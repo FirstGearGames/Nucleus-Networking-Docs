@@ -10,11 +10,11 @@ This is the first thing a plain .NET host gets wrong. Every loop step callback (
 
 ## One loop drives one manager
 
-Only one thread can run `NetworkLoopManager.InvokeNetworkLoopStep` at a time. If a second thread calls in while a step is already executing on a different thread, that call is refused outright: the step's callbacks do not run, and the refusal is logged as an error (throttled to at most once every sixty seconds so a stuck second driver does not flood the log). The step is not queued or retried; it simply costs that tick's work for whatever registered on it.
+Only one thread can run `NetworkLoopManager.InvokeNetworkLoopStep` at a time. If a second thread calls in while a step is already executing on a different thread, that call is refused and logs an error, and nothing registered on that step runs for it.
 
 A re-entrant call from *inside* a step, on the thread that already holds it, is not a second driver and runs normally.
 
-The refusal exists because two threads walking or mutating the same loop-owned collection at once is exactly the kind of fault that does not surface where it happens: a modified-collection exception out of a receive drain, a null entry from a torn callback lookup, a pooled `Writer` handed to two owners at once. Refusing the second call keeps the corruption from happening instead of trying to detect it afterward. The usual cause of seeing this in your own log is a `CoreManager` that was never given a step provider, leaving the default timer stepping it from the thread pool while something else - a manual step, a second timer - also drives it.
+The usual cause of seeing this in your own log is a `CoreManager` that was never given a step provider, leaving the default timer stepping it from the thread pool while something else, such as a manual step or a second timer, also drives it.
 
 ## Register your provider at construction, not after
 
