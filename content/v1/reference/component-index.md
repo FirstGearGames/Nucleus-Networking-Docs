@@ -53,6 +53,7 @@ title: "Component Index"
 | `ValidatedCharacterControllerAdvanced` | Adds the controller's height, center and radius. |
 | `ValidatedConstantForce`, `ValidatedConstantForce2D` | Keeps a `ConstantForce`'s forces and torques in predicted members. |
 | `ReconciledAnimator` | A `NetworkAnimator` for a predicted object, which also puts the parameters back before a replay. |
+| `ValidatedAnimator` | Keeps an `Animator`'s parameters, layer weights and speed in predicted members the server checks, for parameters that decide gameplay. |
 | `ValidatedAnimatorRootMotion` | Keeps the base layer's playback in predicted members, for root motion that decides where a character goes. |
 | `GraphicalSmoother` | Glides a child graphic across each tick and each correction while the object stays at its true pose. |
 
