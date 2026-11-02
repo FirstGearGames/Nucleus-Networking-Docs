@@ -29,19 +29,21 @@ public class Health : NucleusBehaviour<HealthComponent>
 
 ## The loud guards
 
-`EnsureIsController(ControllerType)` and `EnsureIsStarted(Invoker)` answer the same question as `IsController` and `IsStarted`, but log a warning when the answer is false instead of letting the caller silently do nothing:
+`EnsureIsController(ControllerType)` and `EnsureIsStarted(Invoker)` answer the same question as `IsController` and `IsStarted`, but log a warning when the answer is false instead of letting the caller quietly do nothing. The warning names the calling member and is logged once per calling member on each behaviour.
+
+Use the plain `IsController` and `IsStarted` for any check that is expected to fail on some peers. Input handling, RPC sends and per-frame or per-tick hooks all run on peers that do not control the object as a matter of course, so a false answer there is normal and should log nothing:
 
 ```csharp
 private void RequestFire()
 {
-    if (!EnsureIsController(ControllerType.Client))
+    if (!IsController(ControllerType.Client))
         return;
 
     // fire
 }
 ```
 
-The warning names the calling member and is logged once per calling member on each behaviour, so a guard that keeps failing from the same place warns the first time and then stays quiet. `RequestFire` above is a one-off call from an input handler, where a failure is worth logging loudly because it means something is actually wrong. Reach for the loud forms there; reach for the plain `IsController` / `IsStarted` in a per-frame or per-tick hook, where a non-controlling peer failing the check is the normal, expected path rather than a mistake.
+Use the loud forms only where reaching the code without that control or role is a programming error, such as a server-only method that only other server code calls. There, the warning points straight at the mistake.
 
 ## Reacting to control changing
 

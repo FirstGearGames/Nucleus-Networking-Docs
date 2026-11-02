@@ -6,10 +6,10 @@ title: "Giving a client control of an object"
 
 ## Calling SetController
 
-`SetController` is a member of the networked system, not of the `NucleusBehaviour`, so a component calls it through `NetworkSystem`. It is server-only: calling it from a client is rejected and logged. Guard the call with `EnsureIsStarted(Invoker.Server)` so a misplaced call fails loudly instead of silently doing nothing on a client.
+`SetController` is a member of the networked system, not of the `NucleusBehaviour`, so a component calls it through `NetworkSystem`. It is server-only: calling it from a client is rejected and logged. Guard the call with `IsStarted(Invoker.Server)`, which quietly skips it on clients when the same script runs on every peer:
 
 ```csharp
-if (EnsureIsStarted(Invoker.Server))
+if (IsStarted(Invoker.Server))
     NetworkSystem.SetController(connection);
 ```
 

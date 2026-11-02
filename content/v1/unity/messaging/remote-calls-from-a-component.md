@@ -53,12 +53,12 @@ The return value reports only what this peer can see. `true` means the call was 
 
 ## Guarding the send
 
-Address checks and role checks belong to `NucleusBehaviourBase`, not to hand-written comparisons against connections or transport state. `EnsureIsController(ControllerType)` reports whether this peer controls the linked system, and logs a warning naming the caller the first time it fails from that calling member:
+Address checks and role checks belong to `NucleusBehaviourBase`, not to hand-written comparisons against connections or transport state. `IsController(ControllerType)` reports whether this peer controls the linked system. Input reaches every copy of an object, so a false answer on the peers that do not control it is the normal case, and it logs nothing:
 
 ```csharp
 private void OnFireButton()
 {
-    if (!EnsureIsController(ControllerType.Client))
+    if (!IsController(ControllerType.Client))
         return;
 
     NetworkSystem.TrySendRpc(RpcTarget.Server, Channel.Reliable, new AddScoreRpc { Amount = 1 });
