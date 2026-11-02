@@ -109,6 +109,40 @@ A server handler can trust `RpcContext.SenderConnection`, which the transport re
 
 Most violations are rejected silently and never kick. Register a deciding handler to kick for the faults an honest client cannot produce, count raises per connection before kicking for the ones it can reach through ordinary loss or a race, and register an `IViolationObserver` to log everything. Register handlers on the build that runs the server, since a kick decided on a client-only peer is never enforced. See [Decide what each violation costs the client](../../core-api/diagnostics/securing-a-server.md#decide-what-each-violation-costs-the-client) for worked handlers, [Handling violations in Unity](./handling-violations-in-unity.md) for Unity timing and cleanup, and the [Violation reference](./violation-reference.md) for each type.
 
+## Leave server-only code out of client builds
+
+Unity defines the `UNITY_SERVER` scripting symbol when it builds for the Dedicated Server platform. Code wrapped in it is compiled into the server build and left out of every client build, so a player cannot read your validation rules, cheat thresholds or loot tables out of the game files. This hides how your checks work; it does not make them stronger, because a check on the server holds whether or not the client carries a copy of it.
+
+Wrap the server-only logic, such as a call handler and its registration:
+
+```csharp
+public class ScoreBoard : NucleusBehaviour<ScoreComponent>
+{
+    protected override void OnSystemLinked()
+    {
+#if UNITY_SERVER || UNITY_EDITOR
+        NetworkSystem.RegisterRpcHandler<AddScoreRpc>(OnAddScore);
+#endif
+    }
+
+#if UNITY_SERVER || UNITY_EDITOR
+    private RpcRelayAction OnAddScore(in RpcContext rpcContext, AddScoreRpc rpc)
+    {
+        if (rpc.Amount is < 1 or > 10)
+            return RpcRelayAction.Cancel;
+
+        Component.Score.Value += rpc.Amount;
+
+        return RpcRelayAction.Relay;
+    }
+#endif
+}
+```
+
+- **Keep everything networked the same in both builds.** Never wrap a `NucleusBehaviour` or `NetworkComponent` class, a member, or a `[NetworkType]` type, including a call or message that only the server handles. The client still sends that call, and both builds must agree on every networked type. A build that differs reads to the other side as a forged packet and raises `MalformedDataViolation`, as the [Violation reference](./violation-reference.md) explains.
+- **Add `UNITY_EDITOR` to the condition.** It keeps the server code in the editor, where you play-test as the server whichever build platform is selected.
+- **Use it only when every server is a dedicated server.** A build without the server code cannot act as the server, so a game whose players host needs the code in every build that can host.
+
 ## Check this list before you ship a server
 
 - **The Synapse Transport's client limits are on.** Client Limits Enabled is ticked and the rates suit your game.
