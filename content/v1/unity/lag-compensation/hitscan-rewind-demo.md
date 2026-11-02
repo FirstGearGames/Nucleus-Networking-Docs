@@ -4,7 +4,7 @@ title: "Worked example: the HitscanRewind demo"
 
 ## What the demo shows
 
-The `LagCompensation/HitscanRewind` demo is one idea: the server judges a client's shot against the targets where that client saw them, not where they are by the time the shot arrives. Open `Scenes/HitscanRewindDemo.unity` in two editors (a ParrelSync clone or an MPPM virtual player becomes the client), play the main editor first, then click a moving target in the client's Game view. The demo folder's `README.html` walks through every step; this page reads the code as a template for your own game.
+The `LagCompensation/HitscanRewind` demo is one idea: the server judges a client's shot against the targets where that client saw them, not where they are by the time the shot arrives. Open `Scenes/HitscanRewindDemo.unity` in two editors (a ParrelSync clone becomes the client), play the main editor first, then click a moving target in the client's Game view. The demo folder's `README.html` walks through every step; this page reads the code as a template for your own game.
 
 Three blue targets, each a capsule body with a sphere head, sweep side to side across the camera's view, fast enough mid-swing that the delay between server and client puts what you see well behind where they really are. The transport adds 75 milliseconds to every packet each way, so even two editors on one machine see the effect. There are no walls, so every miss is a miss in time rather than a miss behind cover.
 
