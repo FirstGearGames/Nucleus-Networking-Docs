@@ -41,12 +41,12 @@ The integration supports **Unity 6.5 (6000.5) and newer**. It uses Unity APIs th
 Every file in the integration also opens with the same conditional compilation gate:
 
 ```csharp
-#if UNITY_EDITOR || UNITY_2021_3_OR_NEWER
+#if UNITY_EDITOR || UNITY_6000_5_OR_NEWER
 #define UNITY_ENGINE
 #endif
 ```
 
-That gate is not the version floor. It only tells a Unity build apart from a plain .NET one, so the same sources can sit in a non-Unity project without pulling in `UnityEngine`. The floor is Unity 6.5.
+It tells a Unity build apart from a plain .NET one, so the same sources can sit in a non-Unity project without pulling in `UnityEngine`.
 
 ## What's in Integrations, and what's gated
 
