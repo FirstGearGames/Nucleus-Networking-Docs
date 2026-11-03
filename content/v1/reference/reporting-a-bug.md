@@ -16,7 +16,7 @@ An issue without a reproduction project is investigated at lower priority, and i
 
 **Zip your project and keep the archive under 1 MB. Attachments over 1 MB are deleted, and there are no exceptions.**
 
-That limit sounds tight, and it is not. A Unity project carrying one scene, a handful of prefabs and the Nucleus package fits comfortably once the regenerated folders are gone, and every reproduction project can be reduced to that.
+That limit sounds tight, and it is not. A Unity project carrying one scene and a handful of prefabs fits comfortably once the regenerated folders are gone, and every reproduction project can be reduced to that.
 
 Delete these folders before zipping, because Unity rebuilds every one of them the first time the project is opened:
 
@@ -29,7 +29,7 @@ Delete these folders before zipping, because Unity rebuilds every one of them th
 ## The project should contain only what the bug needs
 
 - **Remove every third-party asset.** Replace anything from the Asset Store with primitives and untextured materials, because a project that cannot be opened without buying something cannot be used to investigate your bug.
-- **Leave the Nucleus package in place, exactly as you have it installed.** Which build you are running is part of the report, so do not strip it out to save space.
+- **DO NOT INCLUDE the Nucleus package.** Delete the `Assets/Nucleus` folder before zipping, and give your Nucleus version on the issue form instead.
 - **Reduce the project to one scene showing one fault.** If two things are wrong, please open two issues.
 - **Name the steps precisely.** Say which scene to open, what to press, and what to watch for.
 
