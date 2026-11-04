@@ -1,27 +1,27 @@
 ---
-title: "Spawn pacing"
+title: "Object pacing"
 ---
 
 ## An unpaced world sends its biggest tick to the peer least able to take it
 
 A tick's update to a connection arrives whole or not at all, so the bigger the tick, the more likely it is to be lost. An unpaced world sends every new object as soon as interest allows it, which means the biggest ticks (a client joining a large world, a scene binding, a bundle releasing a world's worth of withheld spawns) land exactly on the peer least able to absorb them: one still building its connection, with nothing yet to fall back on.
 
-Spawn pacing turns that one enormous tick into several ordinary ones. Each is complete and recoverable on its own, and the receiver's instantiation cost spreads over several frames instead of landing in one.
+Object pacing turns that one enormous tick into several ordinary ones. Each is complete and recoverable on its own, and the receiver's instantiation cost spreads over several frames instead of landing in one.
 
 This is a Pro feature. The Free edition does no pacing and ignores the setting below.
 
 ## The budget is a number of kilobytes per client per tick
 
-`InterestManager.MaximumSpawnKilobytesPerTick` is the most new-object data, in kilobytes (1 kB is 1,024 bytes), that any one `Connection` is sent on a single tick. Whatever does not fit is sent on the ticks that follow, oldest first.
+`ServerManager.MaximumObjectKilobytesPerTick` is the most whole-object data, in kilobytes (1 kB is 1,024 bytes), that any one `Connection` is sent on a single tick. Whole objects are new objects (spawns) and objects a client is sent again whole after a loss. Ordinary updates to objects a client already holds are not paced. Whatever does not fit is sent on the ticks that follow, oldest first.
 
-- `DefaultMaximumSpawnKilobytesPerTick` is `50`.
-- `MinimumSpawnKilobytesPerTick` is `1`. A value below it is read as `1`, so pacing cannot be switched off.
+- `DefaultMaximumObjectKilobytesPerTick` is `50`.
+- `MinimumObjectKilobytesPerTick` is `1`. A value below it is read as `1`, so pacing cannot be switched off.
 - The setting is a `byte`, so the widest budget it can hold is `255` kilobytes.
 
 The budget is per connection, because what it bounds is one peer's tick.
 
 ```csharp
-coreManager.InterestManager.MaximumSpawnKilobytesPerTick = 50;
+coreManager.ServerManager.MaximumObjectKilobytesPerTick = 20;
 ```
 
 ## These counters show how hard pacing is working
@@ -30,14 +30,14 @@ coreManager.InterestManager.MaximumSpawnKilobytesPerTick = 50;
 - `InterestManager.TotalSpawnsDeferred` counts the spawns that have had to wait.
 - `InterestManager.ConnectionsAwaitingSpawnAdmissionCount` is how many connections are currently owed at least one waiting spawn. It is zero in a world that never fills the budget, which is where a well-tuned budget spends nearly all of its time.
 - `Connection.SystemsAwaitingSpawnAdmissionCount` is the backlog for one connection. It rises on a burst and falls each tick as the budget lets objects through, until that peer holds the world.
-- `InterestManager.SpawnAdmissionStallWarningTicks` (`90`) is how many ticks in a row a connection that is still owed spawns may receive none before the stall is logged. A backlog only stalls when every tick's budget is going to spawns ahead of it, which means the world is spawning faster than `MaximumSpawnKilobytesPerTick` lets that peer receive.
+- `InterestManager.SpawnAdmissionStallWarningTicks` (`90`) is how many ticks in a row a connection that is still owed spawns may receive none before the stall is logged. A backlog only stalls when every tick's budget is going to spawns ahead of it, which means the world is spawning faster than `MaximumObjectKilobytesPerTick` lets that peer receive.
 
 `TotalSpawnsDeferred` counts deferrals, not deferred systems: a system is counted once per connection when it first has to wait, not again on each tick it waits through. A world built out of `NetworkSystemGroup`s reads high here by construction, because a grouped system always waits so its group can start whole, and so counts here even on a tick where it starts straight afterwards. Read `TotalSpawnsDeferred` against `TotalSpawnsAdmitted` as a ratio of how hard the budget is working, not as a count of objects still waiting; use `ConnectionsAwaitingSpawnAdmissionCount` and `Connection.SystemsAwaitingSpawnAdmissionCount` for that.
 
 ## Pacing keeps these promises
 
 - **A group is never left half started.** A `NetworkSystemGroup` starts replicating as a whole, even when the budget has room for only some of its members, and a group wider than the whole budget still starts, on a tick of its own. Its objects then count against the budget as they are sent, so a wide group can take more than one tick to arrive. In Unity the object is announced once every member has arrived.
-- **The first object of a tick is always sent.** An object wider than the whole budget still arrives, alone on its tick.
+- **The first object of a tick is always sent.** An object wider than the whole budget still arrives, alone on its tick. What it sends past the budget comes out of the ticks after it, so a world of wide objects still arrives at the budget's rate rather than one object a tick.
 - **A peer's own controlled object never waits.** The object a connection controls is never held back.
 - **Objects sent again after packet loss share the budget.** Whatever a client has to be sent again counts against the same budget, so recovering from loss never arrives as one huge burst either.
 - **A host's own client is never paced.** Neither is an emulated peer, because a loopback connection has no network link to protect.
@@ -49,4 +49,4 @@ Keep the budget low enough that one tick's worth of new objects arrives comforta
 
 ## In Unity this budget is an inspector field
 
-In the Unity integration, this budget is the **Maximum Spawn Kilobytes Per Tick** slider on the Unity Interest Manager component. See [Unity Interest Manager component](../../unity/interest/unity-interest-manager-component.md).
+In the Unity integration, this budget is the **Maximum Object Kilobytes Per Tick** slider under the **Object Pacing** header on the Unity Server Manager component. The slider runs from `1` to `255`. In the Free edition the header and the field are absent, and every whole object is sent on the tick it is owed. See [Manager components reference](../../unity/core/unity-manager-components.md).

@@ -4,7 +4,7 @@ title: "Unity Interest Manager"
 
 ## This component is the inspector-side driver for the core InterestManager
 
-`UnityInterestManager` is the inspector-side driver for the core `InterestManager`. It carries the world-wide interest rules this peer is authored with, controls how often interest is re-resolved, and, in Pro, how spawns are paced and how distance is measured. Every field is pushed onto the core `InterestManager` in `ManagersInstantiated`, so script execution order cannot lose a setting. Both host switches are copied at that point, so ticking either in the inspector mid-session changes nothing. The engine reads its own `InterestManager.HostInterestEnabled` on every pass, but whether a host hides objects is decided once, when the peer first becomes a host with its own client linked.
+`UnityInterestManager` is the inspector-side driver for the core `InterestManager`. It carries the world-wide interest rules this peer is authored with, controls how often interest is re-resolved, and, in Pro, how distance is measured. Every field is pushed onto the core `InterestManager` in `ManagersInstantiated`, so script execution order cannot lose a setting. Both host switches are copied at that point, so ticking either in the inspector mid-session changes nothing. The engine reads its own `InterestManager.HostInterestEnabled` on every pass, but whether a host hides objects is decided once, when the peer first becomes a host with its own client linked.
 
 ## World Rules
 
@@ -27,13 +27,7 @@ When enabled, a `NetworkHostVisibility` component is put on each networked objec
 
 ## A free build draws only some of these fields
 
-In a free build the inspector draws only **World Rules**, **Evaluation Cadence Ticks**, and the two host switches. **Maximum Spawn Kilobytes Per Tick** and the entire **Distance Measurement** and **Level Of Detail** sections are Pro-only. Those fields do not exist in a free build, so the editor skips drawing them rather than disabling them.
-
-## Maximum Spawn Kilobytes Per Tick (Pro)
-
-Default: `50` (`InterestManager.DefaultMaximumSpawnKilobytesPerTick`). The slider runs from `1` to `255`.
-
-This is the most kilobytes (1 kB is 1,024 bytes) of new objects any one client is sent per tick. Whatever does not fit is sent on the ticks after, so a join, a scene load or newly unlocked content arrives over several ticks instead of one. Objects a client is sent again after packet loss share the same budget. Keep it low enough that one tick's worth arrives comfortably: raise it for a fast LAN or a world of many small objects that should arrive faster, and lower it for slow links. Pacing cannot be switched off. See [Spawn pacing](../../core-api/interest/spawn-pacing.md).
+In a free build the inspector draws only **World Rules**, **Evaluation Cadence Ticks**, and the two host switches. The entire **Distance Measurement** and **Level Of Detail** sections are Pro-only. Those fields do not exist in a free build, so the editor skips drawing them rather than disabling them.
 
 ## Distance Measurement (Pro)
 
