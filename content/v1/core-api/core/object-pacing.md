@@ -30,14 +30,14 @@ coreManager.ServerManager.MaximumObjectKilobytesPerTick = 20;
 - `InterestManager.TotalSpawnsDeferred` counts the spawns that have had to wait.
 - `InterestManager.ConnectionsAwaitingSpawnAdmissionCount` is how many connections are currently owed at least one waiting spawn. It is zero in a world that never fills the budget, which is where a well-tuned budget spends nearly all of its time.
 - `Connection.SystemsAwaitingSpawnAdmissionCount` is the backlog for one connection. It rises on a burst and falls each tick as the budget lets objects through, until that peer holds the world.
-- `InterestManager.SpawnAdmissionStallWarningTicks` (`90`) is how many ticks in a row a connection that is still owed spawns may receive none before the stall is logged. A backlog only stalls when every tick's budget is going to spawns ahead of it, which means the world is spawning faster than `MaximumObjectKilobytesPerTick` lets that peer receive.
+- `InterestManager.SpawnAdmissionStallWarningTicks` (`90`) is how many ticks in a row a connection that is still owed spawns may receive none before the stall is logged. A stall means the world is spawning faster than `MaximumObjectKilobytesPerTick` lets that peer receive.
 
 `TotalSpawnsDeferred` counts deferrals, not deferred systems: a system is counted once per connection when it first has to wait, not again on each tick it waits through. A world built out of `NetworkSystemGroup`s reads high here by construction, because a grouped system always waits so its group can start whole, and so counts here even on a tick where it starts straight afterwards. Read `TotalSpawnsDeferred` against `TotalSpawnsAdmitted` as a ratio of how hard the budget is working, not as a count of objects still waiting; use `ConnectionsAwaitingSpawnAdmissionCount` and `Connection.SystemsAwaitingSpawnAdmissionCount` for that.
 
 ## Pacing keeps these promises
 
 - **A group is never left half started.** A `NetworkSystemGroup` starts replicating as a whole, even when the budget has room for only some of its members, and a group wider than the whole budget still starts, on a tick of its own. Its objects then count against the budget as they are sent, so a wide group can take more than one tick to arrive. In Unity the object is announced once every member has arrived.
-- **The first object of a tick is always sent.** An object wider than the whole budget still arrives, alone on its tick. What it sends past the budget comes out of the ticks after it, so a world of wide objects still arrives at the budget's rate rather than one object a tick.
+- **An object wider than the whole budget still arrives.** No budget makes a tick smaller than the widest object it carries.
 - **A peer's own controlled object never waits.** The object a connection controls is never held back.
 - **Objects sent again after packet loss share the budget.** Whatever a client has to be sent again counts against the same budget, so recovering from loss never arrives as one huge burst either.
 - **A host's own client is never paced.** Neither is an emulated peer, because a loopback connection has no network link to protect.

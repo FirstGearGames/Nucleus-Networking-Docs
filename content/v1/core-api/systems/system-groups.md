@@ -87,7 +87,7 @@ What `Release` and `Retain` actually do is covered where controller retention it
 
 Two other parts of the engine treat a group as a single unit rather than repeating this page's material:
 
-- Object pacing starts a group as a whole rather than splitting it across ticks, even when the group is wider than the per-tick budget. Its objects then count against the budget as they are sent, so a wide group can take more than one tick to arrive.
+- Object pacing never splits a group: it arrives as one object, even when it is wider than the per-tick budget, and a wide group can take more than one tick to arrive.
 - Interest resolution folds each member's despawn and stop votes across the whole group, so one member out of range or one member still wanted is enough to decide the fate of every member.
 
 ## INetworkSystemGroup
