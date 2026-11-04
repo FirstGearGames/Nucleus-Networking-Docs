@@ -27,22 +27,22 @@ When enabled, a `NetworkHostVisibility` component is put on each networked objec
 
 ## A free build draws only some of these fields
 
-In a free build the inspector draws only **World Rules**, **Evaluation Cadence Ticks**, and the two host switches. **Maximum Spawns Per Tick** and the entire **Distance Measurement** and **Level Of Detail** sections are Pro-only. Those fields do not exist in a free build, so the editor skips drawing them rather than disabling them.
+In a free build the inspector draws only **World Rules**, **Evaluation Cadence Ticks**, and the two host switches. **Maximum Spawn Kilobytes Per Tick** and the entire **Distance Measurement** and **Level Of Detail** sections are Pro-only. Those fields do not exist in a free build, so the editor skips drawing them rather than disabling them.
 
-## Maximum Spawns Per Tick — Pro
+## Maximum Spawn Kilobytes Per Tick (Pro)
 
-Default: `500`; `0` means unpaced.
+Default: `50` (`InterestManager.DefaultMaximumSpawnKilobytesPerTick`). The slider runs from `1` to `255`.
 
-How many objects may start replicating to any one client per tick; the rest wait for the ticks after. When set to `0` (`InterestManager.UnlimitedSpawnsPerTick`), the inspector shows an info note: spawns are not paced, and a join or scene load arrives as one tick however large it is.
+This is the most kilobytes (1 kB is 1,024 bytes) of new objects any one client is sent per tick. Whatever does not fit is sent on the ticks after, so a join, a scene load or newly unlocked content arrives over several ticks instead of one. Objects a client is sent again after packet loss share the same budget. Keep it low enough that one tick's worth arrives comfortably: raise it for a fast LAN or a world of many small objects that should arrive faster, and lower it for slow links. Pacing cannot be switched off. See [Spawn pacing](../../core-api/interest/spawn-pacing.md).
 
-## Distance Measurement — Pro
+## Distance Measurement (Pro)
 
 - **Interest Technique**: how every distance in this world is measured (pairwise comparison, or a spatial grid).
 - **Interest Axes**: which axes distances are measured across (full volume, or height dropped for surface play).
 
 Both fields must be settled before anything carrying a distance rule spawns. Changing either after a distance condition has registered is refused, and the engine logs an error.
 
-## Level Of Detail — Pro
+## Level Of Detail (Pro)
 
 - **Level Of Detail Enabled**: measures each opted-in object's distance from each player into a Near, Medium or Far band your game can read. It changes nothing about what is sent or how often, and nothing is culled by it.
 - **Near Distance**: inside this distance an object reads as Near (no level of detail).

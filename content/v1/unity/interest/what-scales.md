@@ -20,7 +20,7 @@ There are four ways to spend less on replication, and they save different amount
 
 **Per-client egress.** How many bytes one peer's connection pushes per second. This is what `TotalBytesSent` and the per-object/state-only bandwidth stat providers measure. The fix is fewer or smaller sends to that peer: spawn/stop culling first, interval and compression second.
 
-**Per-tick burst size.** How much of that egress lands in a single tick rather than spread across several. A join, a scene load, a bundle release, or a peer walking back into range can put the starting state of every system it reaches into one tick. A large tick is costly to lose, and redundancy (`GlobalRedundancy`) adds to its cost. `InterestManager.MaximumSpawnsPerTick` (default 500, 0 for unlimited) is the lever here. It caps how many objects one peer is given in a single tick, so a large join arrives over a few ticks instead of all at once. It does not lower what the join costs in total, and it does nothing for steady-state egress; a world under the ceiling never touches it.
+**Per-tick burst size.** How much of that egress lands in a single tick rather than spread across several. A join, a scene load, a bundle release, or a peer walking back into range can put the starting state of every system it reaches into one tick. A large tick is costly to lose, and redundancy (`GlobalRedundancy`) adds to its cost. `InterestManager.MaximumSpawnKilobytesPerTick` (default 50) is the lever here. It caps how many kilobytes of new objects one peer is sent in a single tick, so a large join arrives over a few ticks instead of all at once. It does not lower what the join costs in total, and it does nothing for steady-state egress; a join that fits inside the budget never touches it.
 
 **The O(systems × connections) resolution pass.** How much work the server itself does deciding who sees what, independent of what gets sent. Every registered `IInterestCondition` is evaluated per (system, Connection) pair on `InterestManager.EvaluationCadenceTicks`, and that cost scales with systems times connections regardless of how few of those pairs end up replicating. A world with no condition registered skips evaluation entirely and replicates broadcast-to-everyone. A world with conditions pays the evaluation cost even for pairs that resolve to "don't spawn." This is a CPU-time bottleneck, not a bandwidth one, and cadence/staggering is the only lever the engine currently has for it.
 
@@ -32,7 +32,7 @@ The bandwidth counters (`TotalBytesSent`, `TotalBytesReceived`, `TotalStatePacke
 
 ## Burst versus steady state
 
-A spike on a join and a steady per-tick overspend are different failures with different fixes. A join spike is bounded and temporary: it costs frames and, if unpaced, risks losing a large tick — the fix is `MaximumSpawnsPerTick`, and it doesn't touch what the world costs once everyone has finished joining. A steady overspend is what egress and resolution-pass measurements are for, and its fix is spawn/stop culling or interval/compression tuning, not pacing.
+A spike on a join and a steady per-tick overspend are different failures with different fixes. A join spike is bounded and temporary: it costs frames and, if unpaced, risks losing a large tick; the fix is `MaximumSpawnKilobytesPerTick`, and it doesn't touch what the world costs once everyone has finished joining. A steady overspend is what egress and resolution-pass measurements are for, and its fix is spawn/stop culling or interval/compression tuning, not pacing.
 
 Redundancy makes a burst worse than it looks. A higher `GlobalRedundancy` buys better tolerance of packet loss at the cost of extra bandwidth, and a burst pays that extra on its whole size, on top of the ordinary traffic running alongside it. This is the concrete reason pacing a burst is worth doing even though it doesn't move the steady-state number: a wide, unpaced tick multiplies its own cost, a paced one doesn't.
 
@@ -40,13 +40,13 @@ Redundancy makes a burst worse than it looks. A higher `GlobalRedundancy` buys b
 
 Don't design a world around any of these — none of them exist:
 
-- **No per-connection byte-budget scheduler.** There's no cap on how many bytes a peer's connection may spend per tick, and no priority or staleness scheduling deciding what gets sent first when a peer is behind. The spatial grid and per-connection spawn pacing exist; a bandwidth cap does not.
+- **No bandwidth cap on ordinary traffic.** Spawn pacing caps the kilobytes of new objects a peer is sent per tick, but nothing caps the rest of a connection's traffic, and no priority or staleness scheduling decides what gets sent first when a peer is behind. The spatial grid and per-connection spawn pacing exist; a general bandwidth cap does not.
 - **No per-object send priority.** Nothing lets you mark one object as more urgent than another when a peer is bandwidth-constrained. Every eligible object is served the same way.
 - **No broadphase seam for interest.** There's no hook letting an integration hand the interest pass a pre-narrowed candidate set; evaluation is the O(systems × connections) pass described above for every world.
 
 ## Edition effects on the budget
 
-Several of the levers above only exist in Pro: distance and spatial-grid interest culling (the conditions that drive `InterestEffect.Spawn`/`Stop`), level-of-detail interest, and per-connection spawn pacing (`MaximumSpawnsPerTick`) are all Pro-only. Free still has the four-lever framework and the broadcast-to-everyone default, but the conditions that make spawn/stop culling and burst pacing possible are Pro.
+Several of the levers above only exist in Pro: distance and spatial-grid interest culling (the conditions that drive `InterestEffect.Spawn`/`Stop`), level-of-detail interest, and per-connection spawn pacing (`MaximumSpawnKilobytesPerTick`) are all Pro-only. Free still has the four-lever framework and the broadcast-to-everyone default, but the conditions that make spawn/stop culling and burst pacing possible are Pro.
 
 Compression is the other edition split. Pro compresses values more tightly than Free. It is fixed by which edition built the peer, so it is not something you can toggle per world.
 
@@ -58,6 +58,6 @@ Steady-state egress, ignoring redundancy: 50 objects × 20 connections = 1,000 p
 
 Resolution-pass cost, if you add one distance condition: 50 systems × 20 connections = 1,000 pair evaluations every `EvaluationCadenceTicks` ticks. At a cadence of 1 that's 1,000 evaluations/tick; staggering it across a cadence of, say, 10 spreads that to roughly 100 evaluations on any given tick, at the cost of resolving each pair up to 10 ticks stale.
 
-Burst size on a join: a joining peer is registered against every started system at once — the starting state of all 50 objects lands in one tick unless spawn pacing caps it. At the default `MaximumSpawnsPerTick` of 500, a 50-object world never touches the ceiling; the burst is whatever 50 objects' starting state costs, in one tick, with no pacing needed. That ceiling only starts mattering once system count times joining-peer count starts approaching it — this world is nowhere close.
+Burst size on a join: a joining peer is registered against every started system at once, so the starting state of all 50 objects is owed in one tick. At the default `MaximumSpawnKilobytesPerTick` of 50, fifty objects this small fit inside one tick's budget; the burst is whatever 50 objects' starting state costs, in one tick, with no pacing needed. The budget only starts mattering once the starting state one joining peer is owed adds up to more than 50 kB, and this world is nowhere close.
 
-The arithmetic is the budget: egress scales with objects × connections that can see them, the resolution pass scales with objects × connections regardless of visibility, and burst size scales with objects per joining peer against the pacing ceiling. Three different multiplications, three different levers, and a 50-object/20-connection world doesn't need any of them pulled yet.
+The arithmetic is the budget: egress scales with objects × connections that can see them, the resolution pass scales with objects × connections regardless of visibility, and burst size scales with how much new-object data a joining peer is owed, against the pacing budget. Three different multiplications, three different levers, and a 50-object/20-connection world doesn't need any of them pulled yet.

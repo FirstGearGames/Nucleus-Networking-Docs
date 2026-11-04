@@ -39,7 +39,7 @@ The step provider is not on this list. `NetworkLoopManager.UseNetworkLoopStepPro
 |---|---|---|
 | `EvaluationCadenceTicks` | 5 (`DefaultEvaluationCadenceTicks`) | How often, in ticks, a system's interest is re-evaluated per connection. |
 | `MaximumControlledInterestObjects` | 1 (`DefaultMaximumControlledInterestObjects`) | `UnlimitedControlledInterestObjects` (0) measures against every controlled object. |
-| `MaximumSpawnsPerTick` | 500 (`DefaultMaximumSpawnsPerTick`) | Pro only. Caps how many spawns a peer is admitted per tick; the rest queue and drain over following ticks. |
+| `MaximumSpawnKilobytesPerTick` | 50 (`DefaultMaximumSpawnKilobytesPerTick`) | Pro only. The most kilobytes (1 kB is 1,024 bytes) of new objects one client is sent per tick; the rest follow on later ticks, and objects resent after packet loss share the budget. A value below 1 (`MinimumSpawnKilobytesPerTick`) is read as 1, so pacing cannot be switched off. |
 
 ## SceneManager
 

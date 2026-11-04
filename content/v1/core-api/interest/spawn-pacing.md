@@ -4,47 +4,49 @@ title: "Spawn pacing"
 
 ## An unpaced world sends its biggest tick to the peer least able to take it
 
-A tick's update to a connection arrives whole or not at all, so the bigger the tick, the more likely it is to be lost. An unpaced world spawns every system it can as soon as interest admits it, which means the biggest ticks — a client joining a large world, a scene binding, a bundle releasing a world's worth of withheld spawns — land exactly on the peer least able to absorb them: one still building its connection, with nothing yet to fall back on.
+A tick's update to a connection arrives whole or not at all, so the bigger the tick, the more likely it is to be lost. An unpaced world sends every new object as soon as interest allows it, which means the biggest ticks (a client joining a large world, a scene binding, a bundle releasing a world's worth of withheld spawns) land exactly on the peer least able to absorb them: one still building its connection, with nothing yet to fall back on.
 
 Spawn pacing turns that one enormous tick into several ordinary ones. Each is complete and recoverable on its own, and the receiver's instantiation cost spreads over several frames instead of landing in one.
 
-This is a Pro feature.
+This is a Pro feature. The Free edition does no pacing and ignores the setting below.
 
-## The ceiling
+## The budget is a number of kilobytes per client per tick
 
-`InterestManager.MaximumSpawnsPerTick` is the most `NetworkSystem`s that may begin replicating to any one `Connection` on a single tick. Spawns beyond it are admitted on the ticks that follow, oldest first.
+`InterestManager.MaximumSpawnKilobytesPerTick` is the most new-object data, in kilobytes (1 kB is 1,024 bytes), that any one `Connection` is sent on a single tick. Whatever does not fit is sent on the ticks that follow, oldest first.
 
-- `DefaultMaximumSpawnsPerTick` is `500`.
-- `UnlimitedSpawnsPerTick` is `0` — set the ceiling to this and nothing is paced; every spawn is admitted on the tick it resolves, exactly as Free behaves.
+- `DefaultMaximumSpawnKilobytesPerTick` is `50`.
+- `MinimumSpawnKilobytesPerTick` is `1`. A value below it is read as `1`, so pacing cannot be switched off.
+- The setting is a `byte`, so the widest budget it can hold is `255` kilobytes.
 
-The ceiling is per connection, because what it bounds is one peer's tick.
+The budget is per connection, because what it bounds is one peer's tick.
 
 ```csharp
-interestManager.MaximumSpawnsPerTick = 200;
+coreManager.InterestManager.MaximumSpawnKilobytesPerTick = 50;
 ```
 
-## Reading the queue
+## These counters show how hard pacing is working
 
-- `InterestManager.TotalSpawnsAdmitted` — spawns this peer has admitted to its clients, counting each system once per connection it was admitted to.
-- `InterestManager.TotalSpawnsDeferred` — the running deferral count.
-- `InterestManager.ConnectionsAwaitingSpawnAdmissionCount` — how many connections are currently owed at least one deferred spawn. Zero in a world that never reaches the ceiling, which is where a well-tuned ceiling spends nearly all of its time.
-- `Connection.SystemsAwaitingSpawnAdmissionCount` — the backlog for one connection: it rises on a burst and falls by at most `MaximumSpawnsPerTick` each tick until that peer holds the world.
-- `InterestManager.SpawnAdmissionStallWarningTicks` (`90`) — how many consecutive drains may admit nothing to a connection that is still owed spawns before the stall is logged. A backlog only stalls when the whole of every tick's budget is going to spawns resolved ahead of it — the world is spawning faster than the ceiling lets that peer receive.
+- `InterestManager.TotalSpawnsAdmitted` counts the spawns this peer has sent to its clients, once for each connection a spawn was sent to.
+- `InterestManager.TotalSpawnsDeferred` counts the spawns that have had to wait.
+- `InterestManager.ConnectionsAwaitingSpawnAdmissionCount` is how many connections are currently owed at least one waiting spawn. It is zero in a world that never fills the budget, which is where a well-tuned budget spends nearly all of its time.
+- `Connection.SystemsAwaitingSpawnAdmissionCount` is the backlog for one connection. It rises on a burst and falls each tick as the budget lets objects through, until that peer holds the world.
+- `InterestManager.SpawnAdmissionStallWarningTicks` (`90`) is how many ticks in a row a connection that is still owed spawns may receive none before the stall is logged. A backlog only stalls when every tick's budget is going to spawns ahead of it, which means the world is spawning faster than `MaximumSpawnKilobytesPerTick` lets that peer receive.
 
-`TotalSpawnsDeferred` counts deferrals, not deferred systems: a system is counted once per connection when it is first queued, not again on each pass it waits through. A world built out of `NetworkSystemGroup`s reads high here by construction, because a grouped system is always queued so its group can be admitted whole, and so counts here even on a tick where it is admitted straight afterwards. Read `TotalSpawnsDeferred` against `TotalSpawnsAdmitted` as a ratio of how hard the ceiling is working, not as a count of objects still waiting; use `ConnectionsAwaitingSpawnAdmissionCount` and `Connection.SystemsAwaitingSpawnAdmissionCount` for that.
+`TotalSpawnsDeferred` counts deferrals, not deferred systems: a system is counted once per connection when it first has to wait, not again on each tick it waits through. A world built out of `NetworkSystemGroup`s reads high here by construction, because a grouped system always waits so its group can start whole, and so counts here even on a tick where it starts straight afterwards. Read `TotalSpawnsDeferred` against `TotalSpawnsAdmitted` as a ratio of how hard the budget is working, not as a count of objects still waiting; use `ConnectionsAwaitingSpawnAdmissionCount` and `Connection.SystemsAwaitingSpawnAdmissionCount` for that.
 
-## Correctness rules
+## Pacing keeps these promises
 
-- **A group is admitted whole.** A `NetworkSystemGroup` is queued and admitted together, even when the ceiling has budget free for only some of its members. If a group's member count exceeds `MaximumSpawnsPerTick`, it is still admitted whole rather than starved forever, and the manager logs a warning naming the group.
-- **A peer's own controlled object never waits.** The system a connection controls is never paced, and neither is any group it belongs to.
-- **A peer that already holds the object is never withheld.** Re-priming an existing observer is not a spawn, so the ceiling never defers it.
-- **A host's own client is never paced**, nor is an emulated peer, because a loopback connection has no network link to protect.
+- **A group is never left half started.** A `NetworkSystemGroup` starts replicating as a whole, even when the budget has room for only some of its members, and a group wider than the whole budget still starts, on a tick of its own. Its objects then count against the budget as they are sent, so a wide group can take more than one tick to arrive. In Unity the object is announced once every member has arrived.
+- **The first object of a tick is always sent.** An object wider than the whole budget still arrives, alone on its tick.
+- **A peer's own controlled object never waits.** The object a connection controls is never held back.
+- **Objects sent again after packet loss share the budget.** Whatever a client has to be sent again counts against the same budget, so recovering from loss never arrives as one huge burst either.
+- **A host's own client is never paced.** Neither is an emulated peer, because a loopback connection has no network link to protect.
 - **A receiver is never told that a spawn waited.** A receiver cannot tell a paced spawn from one that arrived late for any other reason. Pacing is a sender-side policy only.
 
-## Choosing a ceiling
+## Choose a budget a client can take in one tick
 
-Measure a real join or scene load's peak spawns-per-tick before and after setting `MaximumSpawnsPerTick`, rather than guessing a number. Set the ceiling above what ordinary play spawns at once, so pacing engages only on the bursts that would otherwise have cost a whole tick — a join, a scene binding, a bundle release — and leaves normal spawning untouched. If `ConnectionsAwaitingSpawnAdmissionCount` sits near zero outside those bursts, the ceiling is sized correctly; a stall warning in the log means it is set below what the world spawns and needs raising.
+Keep the budget low enough that one tick's worth of new objects arrives comfortably. Raise it for a fast LAN, or for a world of many small objects that should arrive faster. Lower it for slow links. As a guide, the budget times the tick rate should stay under what the slowest client's connection carries in a second: at 30 ticks a second, 8 kilobytes a tick is about 240 kilobytes a second. If `ConnectionsAwaitingSpawnAdmissionCount` sits near zero outside the bursts pacing exists for (a join, a scene binding, a bundle release), ordinary play fits inside the budget. A stall warning in the log means the world spawns faster than the budget lets a peer receive: raise the budget or spawn less at once.
 
-## In Unity this ceiling is an inspector field
+## In Unity this budget is an inspector field
 
-In the Unity integration, this ceiling is the **Maximum Spawns Per Tick** field on the Unity Interest Manager component — see [Unity Interest Manager component](../../unity/interest/unity-interest-manager-component.md).
+In the Unity integration, this budget is the **Maximum Spawn Kilobytes Per Tick** slider on the Unity Interest Manager component. See [Unity Interest Manager component](../../unity/interest/unity-interest-manager-component.md).
