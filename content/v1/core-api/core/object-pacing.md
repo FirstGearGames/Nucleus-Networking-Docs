@@ -14,8 +14,9 @@ This is a Pro feature. The Free edition does no pacing and ignores the setting b
 
 `ServerManager.MaximumObjectKilobytesPerTick` is the most whole-object data, in kilobytes (1 kB is 1,024 bytes), that any one `Connection` is sent on a single tick. Whole objects are new objects (spawns) and objects a client is sent again whole after a loss. Ordinary updates to objects a client already holds are not paced. Whatever does not fit is sent on the ticks that follow, oldest first.
 
+- `ServerManager.ObjectPacingEnabled` switches pacing off and on, and is on by default. Off, every whole object is sent on the tick it is owed. Objects still waiting when it is switched off are sent on the next tick.
 - `DefaultMaximumObjectKilobytesPerTick` is `50`.
-- `MinimumObjectKilobytesPerTick` is `1`. A value below it is read as `1`, so pacing cannot be switched off.
+- `MinimumObjectKilobytesPerTick` is `1`. A value below it is read as `1`.
 - The setting is a `byte`, so the widest budget it can hold is `255` kilobytes.
 
 The budget is per connection, because what it bounds is one peer's tick.
