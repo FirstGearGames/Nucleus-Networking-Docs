@@ -6,19 +6,17 @@ title: "Capturing a shot"
 
 ## Capture on the frame the shot is fired
 
-The shooter's half of lag compensation is one call. On the frame the player fires, capture the shot:
-
 ```csharp
 LagCompensatedShot lagCompensatedShot = coreManager.LagCompensationManager.CaptureShot(origin, direction);
 ```
 
-`CaptureShot(Vector3 origin, Vector3 direction)` returns a `LagCompensatedShot` carrying the origin and direction unchanged and the view `CaptureView()` returns at that moment. The direction does not need to be of unit length. Taking the ray and the view in the same call means they can never come from different frames.
+`CaptureShot(Vector3 origin, Vector3 direction)` returns a `LagCompensatedShot` with the origin and direction unchanged and the view that `CaptureView()` returns at that moment. The direction does not need to be of unit length.
 
-Capture on the firing frame, not when the next tick's client state is built. A tick spans several rendered frames, each drawing a different blend between two server ticks, and the view records which blend was on screen. A view taken a frame later names a different moment from the one the player aimed at.
+Call it on the frame the player fires, not when the next tick's client state is built. Each rendered frame within a tick shows a different moment, so a view taken a frame later is not what the player aimed at.
 
 ## Send the shot whole
 
-Put the `LagCompensatedShot` itself in a message, a remote call argument or a client state member, and send it to the server:
+Put the `LagCompensatedShot` itself in a message, a remote call argument or a client state member:
 
 ```csharp
 using Nucleus.Managers.LagCompensation;
@@ -37,13 +35,13 @@ if (coreManager.TransportManager.TryGetServerConnection(out Connection serverCon
     serverConnection.SendMessage(Channel.Reliable, new ShotMessage { Shot = lagCompensatedShot });
 ```
 
-Do not copy the origin and direction into plain `Vector3` fields. A plain `Vector3` in a message is sent at a lower precision, which can turn a unit direction by about 0.9 milliradians: roughly 0.04 metres at 50 metres and 0.09 metres at 100 metres, enough to lose a headshot at range with nothing to show why. A `LagCompensatedShot` keeps its origin and direction at full precision wherever it is sent. An infinity or NaN in either vector arrives as zero, so no peer can put one into the server's queries.
+Do not copy the origin and direction into plain `Vector3` fields. A plain `Vector3` is sent at lower precision, which can turn the direction enough to miss a headshot at range: roughly 0.04 metres off at 50 metres and 0.09 metres at 100 metres. A `LagCompensatedShot` keeps full precision. An infinity or NaN in either vector arrives as zero.
 
-`LagCompensatedShot` is compared bit for bit, view included, so a member holding one sees a new shot as a change.
+`LagCompensatedShot` is compared bit for bit, view included, so a member holding one sees each new shot as a change.
 
-## On the server, the shot feeds a query directly
+## Pass the shot to a query on the server
 
-The shot's three fields, `View`, `Origin` and `Direction`, are the arguments a query takes:
+The shot's `View`, `Origin` and `Direction` are the query's arguments:
 
 ```csharp
 LagCompensatedShot shot = shotMessage.Shot;
@@ -51,11 +49,11 @@ LagCompensatedShot shot = shotMessage.Shot;
 bool isHit = coreManager.LagCompensationManager.TryRaycast(messageContext.SenderConnection, shot.View, shot.Origin, shot.Direction, maximumDistance, hitboxLayerMask, out LagCompensatedHit lagCompensatedHit);
 ```
 
-See [Judging a shot with rewound queries](./rewound-queries.md) for every query and what a hit reports.
+See [Judging a shot with rewound queries](./rewound-queries.md) for every query.
 
 ## A 2D shot captures with a Z of zero
 
-A 2D game captures with a Z of zero and reads the shot back through its 2D properties, `Origin2D` and `Direction2D`, which the 2D queries take:
+Capture with a Z of zero, then read the shot back through `Origin2D` and `Direction2D` for the 2D queries:
 
 ```csharp
 LagCompensatedShot lagCompensatedShot = coreManager.LagCompensationManager.CaptureShot(new Vector3(origin2D, 0f), new Vector3(direction2D, 0f));
@@ -65,12 +63,12 @@ LagCompensatedShot lagCompensatedShot = coreManager.LagCompensationManager.Captu
 bool isHit = coreManager.LagCompensationManager.TryRaycast2D(messageContext.SenderConnection, shot.View, shot.Origin2D, shot.Direction2D, maximumDistance, hitboxLayerMask, out LagCompensatedHit lagCompensatedHit);
 ```
 
-## Capturing a view alone
+## Capture a view alone
 
-A shot that is not a ray, such as a melee swing whose volume the server builds itself, only needs the view. `CaptureView()` returns the `LagCompensationView` on screen right now, and the server passes it to an overlap query. A `LagCompensationView` is a `[NetworkType]`, so it can ride a message, a remote call or a client state member directly; inside client state it changes only on ticks that fire, so it costs almost nothing on every other tick.
+A shot that is not a ray, such as a melee swing whose volume the server builds, only needs the view. `CaptureView()` returns the `LagCompensationView` on screen now, and the server passes it to an overlap query. A `LagCompensationView` is a `[NetworkType]`, so it can ride a message, a remote call or a client state member directly. In client state it changes only on ticks that fire.
 
-## What a server or host captures
+## A server or host captures the present
 
-On a server or host, `CaptureView` returns the newest recorded tick with a fraction of zero, because a server's screen shows the present. A host's own shots are therefore judged against the present, which is what its player saw.
+On a server or host, `CaptureView` returns the newest recorded tick with a fraction of zero, so a host's own shots are judged against the present, which is what its player saw.
 
 An empty view, `default`, has a `Tick` of `NetworkLoopManager.UnsetTick` and is judged as the present. A client captures an empty view before any state has arrived, and a free build always does.
