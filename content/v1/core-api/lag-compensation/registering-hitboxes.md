@@ -4,13 +4,13 @@ title: "Registering hitboxes"
 
 > **Using Unity?** See [Making an object hittable](../../unity/lag-compensation/making-an-object-hittable.md), where `NetworkHitboxRoot` does all of this for you.
 
-## A root is one object's set of hitboxes
+## Register one hitbox root per object
 
-The engine knows nothing about transforms, meshes or colliders. A networked object that can be hit registers one **hitbox root** with `LagCompensationManager.TryRegisterHitboxRoot`, giving it three things:
+Call `LagCompensationManager.TryRegisterHitboxRoot` with:
 
 - the `NetworkSystem` the hitboxes belong to, one root per system;
-- an `IHitboxPoseSource` that writes the hitboxes' world poses whenever the server records a tick;
-- a `HitboxDefinition` for each hitbox, the fixed shape in its own unscaled frame, in the order the pose source writes them.
+- an `IHitboxPoseSource` that writes the hitboxes' world poses each recorded tick;
+- a `HitboxDefinition` for each hitbox, its fixed shape in its own unscaled frame, in the order the pose source writes them.
 
 ```csharp
 HitboxDefinition[] hitboxDefinitions =
@@ -22,15 +22,17 @@ HitboxDefinition[] hitboxDefinitions =
 bool isRegistered = coreManager.LagCompensationManager.TryRegisterHitboxRoot(networkSystem, soldierHitboxes, hitboxDefinitions);
 ```
 
-The definitions are copied, so the caller may reuse the array. A root holds between 1 and `LagCompensationManager.MaximumHitboxesPerRoot` (64) hitboxes, which is the width of the per-tick active mask.
+The definitions are copied, so you may reuse the array. A root holds 1 to `LagCompensationManager.MaximumHitboxesPerRoot` (64) hitboxes.
 
-`TryRegisterHitboxRoot` returns `false`, with a logged error, when the system or pose source is `null`, when the hitbox count is out of range, or when the system already has a root. It returns `false` without an error when this peer is not running a server, because only a server records; register once the server is running, for example when the system starts on the server. In a free build it returns `false` and logs once that lag compensation is not available.
+`TryRegisterHitboxRoot` returns `false`:
 
-How far back a root's history reaches is sized from `MaximumRewindMilliseconds` when the root registers; see [The rewind window and the view clamp](./the-rewind-window.md).
+- with a logged error, when the system or pose source is `null`, the hitbox count is out of range, or the system already has a root;
+- without an error, when this peer is not running a server. Register once the server is running, for example when the system starts on the server;
+- in a free build, logging once that lag compensation is not available.
 
-## Describing a hitbox
+The root's history length comes from `MaximumRewindMilliseconds` at registration; see [The rewind window and the view clamp](./the-rewind-window.md).
 
-`HitboxShape` has three 3D shapes and three 2D shapes, each of which a query can test exactly:
+## Describe each hitbox
 
 | Shape | Described by |
 | --- | --- |
@@ -41,11 +43,11 @@ How far back a root's history reaches is sized from `MaximumRewindMilliseconds` 
 | `Box2D` | `Size`, reading X and Y only, in the XY plane |
 | `Capsule2D` | `Radius` and `Height`, along the hitbox's own up axis, in the XY plane |
 
-`HitboxDefinition`'s constructor is `HitboxDefinition(HitboxShape shape, float radius, Vector3 size, float height, byte layer = 0)`; a field a shape does not use is ignored. `Layer` runs from 0 to 31, and a larger value wraps into that range. A query's layer mask, one bit per layer, chooses which layers it can hit, so a game can keep heads, bodies and shields on separate layers.
+The constructor is `HitboxDefinition(HitboxShape shape, float radius, Vector3 size, float height, byte layer = 0)`; fields a shape does not use are ignored. `Layer` runs from 0 to 31, and a larger value wraps into that range. A query's layer mask, one bit per layer, chooses which layers it can hit, so you can keep heads, bodies and shields on separate layers.
 
-Scale is not part of the definition. It is recorded with every pose, so a hitbox whose object grows or shrinks is judged at the size it had on the tick being asked about.
+Scale is not part of the definition. It is recorded with every pose, so a hitbox that grows or shrinks is judged at its size on the tick asked about.
 
-## Writing poses
+## Write every hitbox's pose every tick
 
 `IHitboxPoseSource` has one method:
 
@@ -53,13 +55,13 @@ Scale is not part of the definition. It is recorded with every pose, so a hitbox
 public ulong WriteHitboxPoses(Span<HitboxPose> hitboxPoses);
 ```
 
-It is called on the network loop thread, once per recorded tick, with one `HitboxPose` slot per registered hitbox in registration order. It must not allocate. For each hitbox, write:
+It is called on the network loop thread, once per recorded tick, with one `HitboxPose` slot per hitbox in registration order. It must not allocate. For each hitbox, write:
 
-- `Position`, the world position of the hitbox's center, including any offset from whatever it follows;
-- `Rotation`, the world rotation; a capsule's length runs along its own up axis, so a capsule lying along another axis turns its recorded rotation onto it;
-- `Scale`, the absolute world scale in the hitbox's own frame; for a capsule, Y is the scale along its length and X and Z the two across it.
+- `Position`: the world position of the hitbox's center, including any offset from what it follows.
+- `Rotation`: the world rotation. A capsule's length runs along its own up axis, so turn the rotation onto a capsule lying along another axis.
+- `Scale`: the absolute world scale in the hitbox's own frame. For a capsule, Y is the scale along its length and X and Z the two across it.
 
-Return a mask with bit `i` set when hitbox `i` is active on this tick. An inactive hitbox is recorded but never hit on that tick. Write every hitbox's pose every tick even when it is inactive: a shot judged between two ticks blends both ticks' poses, and the bounding test that culls roots covers inactive hitboxes for that reason.
+Return a mask with bit `i` set when hitbox `i` is active this tick. An inactive hitbox is recorded but never hit on that tick. Still write every hitbox's pose every tick, active or not, because a shot judged between two ticks uses both ticks' poses.
 
 ```csharp
 using System;
@@ -94,14 +96,12 @@ A source that throws is logged and loses only its own slot for that tick; every 
 
 ## 2D hitboxes lie in the XY plane
 
-A 2D game registers `Circle`, `Box2D` and `Capsule2D` hitboxes and judges them with the 2D queries. A 2D shape is the slice the plane Z = 0 cuts through the matching 3D shape, so it is tested with the same exact math. Write its pose in that plane: a `Position` whose Z is zero and a `Rotation` about the Z axis only. It reads the X and Y of its `Scale`, and for a 2D capsule X is the one scale across it.
+A 2D game registers `Circle`, `Box2D` and `Capsule2D` hitboxes and judges them with the 2D queries. Write a 2D pose in the plane: a `Position` with a Z of zero and a `Rotation` about the Z axis only. Only the X and Y of `Scale` are read; for a 2D capsule, X is the scale across it. See [2D queries](./rewound-queries.md#2d-queries) for how 2D and 3D hitboxes mix.
 
-2D and 3D hitboxes are kept apart the way Unity keeps its 2D and 3D physics apart: a 3D query never touches a 2D hitbox, and a 2D query touches 3D hitboxes only when the game allows it. See [2D queries](./rewound-queries.md#2d-queries).
+## End a recording
 
-## Ending a recording
-
-A system that stops or returns to its pool is unregistered by the engine. Call `TryUnregisterHitboxRoot(networkSystem)` only to stop recording a system that keeps running; it returns `true` when the system had a root. Either way, what was already recorded stays readable until it leaves the rewind window, so a shot fired just before the change is still judged fairly.
+The engine unregisters a system that stops or returns to its pool. Call `TryUnregisterHitboxRoot(networkSystem)` only to stop recording a system that keeps running; it returns `true` when the system had a root. Either way, what was recorded stays readable until it leaves the rewind window.
 
 ## A grouped object registers once
 
-A grouped object's members share the object's hitboxes. Register one root for the whole object, under one member, rather than one per member, or a single shot will report each hitbox once for every root that recorded it. The member carrying the object's `TransformComponent` is the right one when there is a choice, because a target whose position is sent on an interval is judged where its transform was drawn, and only that member knows the interval. See [How lag compensation works](./how-lag-compensation-works.md#grouped-objects-are-recorded-once).
+Register one root for a grouped object, under one member, not one per member, or a single shot reports each hitbox once for every root that recorded it. When there is a choice, use the member carrying the object's `TransformComponent`, so a target sent on an interval is judged where it was drawn.
