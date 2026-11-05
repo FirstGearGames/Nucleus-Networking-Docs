@@ -4,32 +4,32 @@ title: "The rewind window and the view clamp"
 
 > **Using Unity?** See [UnityLagCompensationManager](../../unity/lag-compensation/unity-lag-compensation-manager.md).
 
-## How far back a shot can be judged
+## Set how far back a shot can be judged
 
-`LagCompensationManager.MaximumRewindMilliseconds` is how far back poses are kept and a shot may be judged. It defaults to `LagCompensationManager.DefaultMaximumRewindMilliseconds`, 500 milliseconds.
+`LagCompensationManager.MaximumRewindMilliseconds` is how far back poses are kept and a shot may be judged. It defaults to `LagCompensationManager.DefaultMaximumRewindMilliseconds`, 500 milliseconds. It is held to `MaximumRewindCeilingMilliseconds`, which also defaults to 500 milliseconds. A window set above the ceiling reads as the ceiling until the ceiling is raised, so the two can be set in either order.
 
 ```csharp
 coreManager.LagCompensationManager.MaximumRewindMilliseconds = 300;
 ```
 
-It is read when a root registers, which sizes that root's history to the window at the current tick rate plus two ticks, so a change applies to roots registered afterwards. Set it before objects spawn. The oldest tick a query will answer for is worked out from the same setting on every query.
+Set it before objects spawn: each root's history length is fixed when the root registers. Queries read the current value every time.
 
-An honest client's view stays inside the window unless its latency exceeds it. Size the window to the slowest link the game is willing to favor the shooter for: a longer window lets a player on a slow link land shots on targets that have long since moved on, which the targets experience as being hit behind cover.
+An honest client's view stays inside the window unless its latency exceeds it. Size the window to the slowest link you are willing to favor the shooter for. A longer window lets a player on a slow link hit targets that have long since moved on, which the targets feel as being hit behind cover.
 
 ## A view the server could not have shown is clamped
 
-A view older than the window, or newer than anything the server has recorded, is one the server could never have shown that shooter. Rather than refuse the shot, the query clamps the view into range and still judges it: an old view is judged at the oldest tick kept, and a view from the future at the newest tick recorded, both with a fraction of zero. A player on a very slow link still gets an answer, but cannot ask to be judged against an arbitrarily old world.
+A view older than the window, or newer than anything recorded, is clamped and still judged: an old view at the oldest tick kept, a future view at the newest tick recorded, both with a fraction of zero.
 
-Each clamp raises `LagCompensationViewClampedViolation` against the shooter's `Connection`, at most once per query. It carries:
+Each clamp raises `LagCompensationViewClampedViolation` against the shooter's `Connection`, at most once per query, with:
 
-- `ReportedTick`, the tick the shooter reported;
-- `ClampedTick`, the tick the shot was judged at instead.
+- `ReportedTick`: the tick the shooter reported.
+- `ClampedTick`: the tick the shot was judged at instead.
 
-It defaults to `ViolationAction.Ignore`. A shot fired by the server itself, with a `null` shooter, raises nothing.
+It defaults to `ViolationAction.Ignore`. A shot the server fires itself, with a `null` shooter, raises nothing.
 
-## Watching for clamps
+## Watch for clamps
 
-Subscribe to `ViolationManager.LagCompensationViewClampedViolationDetected` to be told about each clamp without changing the outcome:
+Subscribe to `ViolationManager.LagCompensationViewClampedViolationDetected` to hear about each clamp without changing the outcome. It is raised on the network loop.
 
 ```csharp
 coreManager.ViolationManager.LagCompensationViewClampedViolationDetected += OnLagCompensationViewClamped;
@@ -42,12 +42,8 @@ private void OnLagCompensationViewClamped(in ViolationContext<LagCompensationVie
 }
 ```
 
-The event is raised on the network loop, by the query that received the view. A single clamp is ordinary on a link that spiked. A steady stream from one connection is either a very slow link or a client asking to be judged against the oldest world it can get. To act on it, kicking for example, register a deciding handler with `RegisterViolationHandler<LagCompensationViewClampedViolation>`; see [Violations](../diagnostics/violations.md).
+A single clamp is normal on a link that spiked. A steady stream from one connection is either a very slow link or a client asking to be judged against the oldest world it can get. To act on it, for example by kicking, register a deciding handler with `RegisterViolationHandler<LagCompensationViewClampedViolation>`; see [Violations](../diagnostics/violations.md).
 
-## Targets that stopped stay in the window
+## The spawn compensation cap is set here too
 
-A target that stops, dies or despawns stays hittable until its last recorded tick leaves the window, so a shot fired just before the target went away is still judged against it. Its hit names no `NetworkSystem`; read `SystemId` instead.
-
-## The spawn compensation cap lives here too
-
-`LagCompensationManager` also holds the cap on [spawn compensation](../systems/spawn-compensation.md), the other half of the same problem: `MaximumSpawnCompensationMilliseconds`, defaulting to `DefaultMaximumSpawnCompensationMilliseconds` (150) and held by its setter to `MaximumSpawnCompensationCeilingMilliseconds` (500). Lag compensation judges a shot against the past; spawn compensation brings a freshly spawned object up to the present. The setting exists in every edition so code that sets it compiles against any build.
+`LagCompensationManager.MaximumSpawnCompensationMilliseconds` caps [spawn compensation](../systems/spawn-compensation.md). It defaults to `DefaultMaximumSpawnCompensationMilliseconds` (150), and its setter holds it to at most `MaximumSpawnCompensationCeilingMilliseconds` (500). It exists in every edition, so code that sets it compiles against any build.

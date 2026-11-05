@@ -6,10 +6,10 @@ title: "Judging a shot with rewound queries"
 
 ## Every query takes a shooter and a view
 
-The server judges a shot with one of `LagCompensationManager`'s queries. Each one rebuilds every registered hitbox where the shooter saw it and tests the shot against those rebuilt shapes. They all begin with the same two arguments:
+Each `LagCompensationManager` query rebuilds every registered hitbox where the shooter saw it and tests the shot against them. All of them start with the same two arguments:
 
-- `shooterConnection`, the `Connection` that fired, normally `MessageContext.SenderConnection`. Its view is checked against what the server could have shown it, and hitboxes on any object it controls are skipped, so a shot never hits its own shooter. Pass `null` for a shot the server fires itself.
-- `lagCompensationView`, the view the shooter captured when it fired, normally `LagCompensatedShot.View`. An empty view, `default`, means the present.
+- `shooterConnection`: the `Connection` that fired, normally `MessageContext.SenderConnection`. Its view is checked against what the server could have shown it, and hitboxes on any object it controls are skipped, so a shot never hits its own shooter. Pass `null` for a shot the server fires itself.
+- `lagCompensationView`: the view captured when the shot was fired, normally `LagCompensatedShot.View`. An empty view, `default`, means the present.
 
 ```csharp
 private void OnShotReceived(in MessageContext messageContext, ShotMessage shotMessage)
@@ -26,9 +26,9 @@ private void OnShotReceived(in MessageContext messageContext, ShotMessage shotMe
 }
 ```
 
-The layer mask has one bit per hitbox layer. A query never moves anything and allocates nothing, so it can run as often as the game needs.
+The layer mask has one bit per hitbox layer. A query never moves anything and allocates nothing, so it can run as often as you need.
 
-## The 3D queries
+## Pick a 3D query
 
 | Query | Returns | Use it for |
 | --- | --- | --- |
@@ -40,9 +40,9 @@ The layer mask has one bit per hitbox layer. A query never moves anything and al
 | `OverlapCapsule` | every hitbox a capsule overlaps, nearest first | a melee swing |
 | `OverlapBox` | every hitbox a rotated box overlaps, nearest first | an area attack |
 
-The casts take their arguments in the order Unity's physics queries do: origin, then radius for a sphere cast, then direction, then maximum distance. A direction does not need to be of unit length. A query with no direction, no reach or a negative radius finds nothing.
+Casts take their arguments in Unity's physics query order: origin, then radius for a sphere cast, then direction, then maximum distance. A direction does not need to be of unit length. A query with no direction, no reach or a negative radius finds nothing. Every geometric test is exact.
 
-The `All` forms and the overlaps take a `List<LagCompensatedHit>`, clear it, fill it and return the count. Keep one list and reuse it across calls so nothing is allocated:
+The `All` forms and the overlaps take a `List<LagCompensatedHit>`, clear it, fill it and return the count. Reuse one list so nothing is allocated:
 
 ```csharp
 private readonly List<LagCompensatedHit> _lagCompensatedHits = new();
@@ -56,45 +56,45 @@ for (int i = 0; i < hitCount; i++)
 }
 ```
 
-Every geometric test is exact. A swept sphere touches a hitbox exactly where a ray from its center enters the hitbox grown by the radius on every side.
-
-## What a hit reports
+## Read what a hit reports
 
 `LagCompensatedHit` carries:
 
-- `NetworkSystem`, the system the hitbox belongs to, or `null` when that system has stopped since the judged tick;
-- `SystemId`, the Id the system had, which stays readable after it stops;
-- `HitboxIndex`, the hitbox's index within its root, in registration order;
-- `Layer`, the hitbox's layer;
-- `Distance`, `Point` and `Normal`, the first contact.
+- `NetworkSystem`: the system the hitbox belongs to, or `null` when that system has stopped since the judged tick.
+- `SystemId`: the system's Id, readable even after it stops.
+- `HitboxIndex`: the hitbox's index within its root, in registration order.
+- `Layer`: the hitbox's layer.
+- `Distance`, `Point` and `Normal`: the first contact.
 
-What the contact means depends on the query:
+The contact depends on the query:
 
-- **Ray.** `Distance` is from the origin to the hit and `Point` is where the ray hit.
-- **Cast.** `Distance` is how far the swept shape's center travelled before it touched the hitbox, and `Point` is the point on the hitbox it first touched.
-- **Overlap.** `Point` is where the query first touches the hitbox as it fills out from its core: the hitbox's nearest point to a sphere's center or a capsule's segment, or the point of the hitbox inside a box nearest the box's center. `Distance` is how far that point lies from the core, never more than the radius for a sphere or capsule, so an explosion reads its falloff straight from it. When the core itself reaches the hitbox, `Distance` is zero and `Point` is the query's own origin: the sphere's or box's center, or where a capsule's segment, walked from its start, first enters the hitbox. Order those zero-distance capsule hits along the swing by the distance from the segment's start to each `Point`.
+- **Ray:** `Distance` is from the origin to the hit, and `Point` is where the ray hit.
+- **Cast:** `Distance` is how far the swept shape's center travelled before touching the hitbox, and `Point` is where it first touched.
+- **Overlap:** `Point` is the hitbox's nearest point to a sphere's center or a capsule's segment, or, for a box, the point of the hitbox inside it nearest its center. `Distance` is how far that point lies from the core, never more than the radius for a sphere or capsule, so an explosion can read falloff straight from it. When the core itself reaches the hitbox, `Distance` is zero and `Point` is the query's own origin: the sphere's or box's center, or where a capsule's segment, walked from its start, first enters the hitbox. Order those zero-distance capsule hits along the swing by the distance from the segment's start to each `Point`.
 
 `Normal` is the hitbox's outward surface normal at the point, facing the query, and is never zero, so its negation always pushes the hitbox away from the query. At a box's edge or corner it is the direction there that faces the query.
 
-An overlap's `Point` is a contact, not the hitbox's position. Code that needs where the hitbox itself was should look the hitbox up through its root.
+An overlap's `Point` is a contact, not the hitbox's position. To find where the hitbox itself was, look it up through its root.
 
-## Ignoring an object
+## Ignore an object
 
-Every query, 3D and 2D, has an overload that takes a `NetworkSystem ignoredNetworkSystem` straight after the shooter. Pass the root of the object to ignore, normally the shooter's own root object, or `null` to ignore nothing. Everything nested under it is ignored too:
+Every query, 3D and 2D, has an overload that takes a `NetworkSystem ignoredNetworkSystem` right after the shooter. Pass the root of the object to ignore, or `null` to ignore nothing:
 
 ```csharp
 bool isHit = lagCompensationManager.TryRaycast(shooterConnection: null, turretSystem, view, muzzle, aim, MaximumDistance, HitboxLayerMask, out LagCompensatedHit lagCompensatedHit);
 ```
 
-The shooter's connection already skips what that connection controls, so the overload is for the cases it cannot cover: a host firing for its own avatar, which passes a `null` shooter, or a turret or NPC the server fires for itself. Naming any member of a grouped object skips the whole object, because a grouped object records its hitboxes under one member, which need not be the member you hold. A history that has ended keeps the group its system had, so a shot judged just after the object despawned still skips it.
+The shooter's connection already skips what it controls, so use this overload when that does not cover it: a host firing for its own avatar with a `null` shooter, or a turret or NPC the server fires for.
 
-Every object parented under the ignored one with `SystemManager.EnsureSetSystemParent`, at any depth, is skipped as well, so a weapon or shield a character carries never blocks that character's own shot. This is why you pass the root: naming a nested object skips only that object and what is nested under it, and leaves its parent hittable. Detaching an object ends the skip from that tick on. One case is not covered: a nested object that despawned before the shot is judged has no live parent left to follow, so only its own system and group are matched.
+- Naming any member of a grouped object skips the whole object, even after it despawned.
+- Every object parented under the ignored one with `SystemManager.EnsureSetSystemParent`, at any depth, is skipped too, so a carried weapon or shield never blocks its owner's shot. Pass the root: naming a nested object leaves its parent hittable. Detaching an object ends the skip from that tick on.
+- A nested object that despawned before the shot is judged is matched only by its own system and group, not through its old parent.
 
 ## A ray can start inside a hitbox
 
-`CanQueriesStartInHitboxes` is on by default, matching Unity's `Physics2D.queriesStartInColliders`. A ray whose origin lies inside a hitbox, or a sphere or circle cast that starts touching one, hits it at distance zero, with its own origin as the point and a normal facing back along the query, and that hit is the nearest one.
+`CanQueriesStartInHitboxes` is on by default, matching Unity's `Physics2D.queriesStartInColliders`. A ray whose origin is inside a hitbox, or a sphere or circle cast that starts touching one, hits it at distance zero, with its own origin as the point and a normal facing back along the query. That hit is the nearest one.
 
-Turn it off and a ray or cast ignores every hitbox it starts inside or touching: that hitbox is neither reported nor taken as the nearest hit, and the query goes on to whatever lies beyond. That suits a muzzle that sits inside some other object's hitbox. Overlaps are not affected; they still report every hitbox their volume touches, including one their center lies inside. The setting is read once per query, so it can change at any time.
+Turn it off and a ray or cast ignores every hitbox it starts inside or touching, and goes on to whatever lies beyond. This suits a muzzle that sits inside another object's hitbox. Overlaps are not affected. It is read on every query, so you can change it at any time.
 
 ```csharp
 coreManager.LagCompensationManager.CanQueriesStartInHitboxes = false;
@@ -112,12 +112,20 @@ The 2D queries take `System.Numerics.Vector2` and run in the plane Z = 0, where 
 | `OverlapCapsule2D` | `OverlapCapsule` |
 | `OverlapBox2D` | `OverlapBox`, with the rectangle turned by `angleRadians` about Z, counterclockwise |
 
-`OverlapBox2D` takes its angle in radians; a Unity angle in degrees is multiplied by `Mathf.Deg2Rad` first. A hit on a 2D hitbox has a `Point` and `Normal` with a Z of zero.
+`OverlapBox2D` takes radians; multiply a Unity angle in degrees by `Mathf.Deg2Rad` first. A hit on a 2D hitbox has a `Point` and `Normal` with a Z of zero.
 
-2D and 3D hitboxes are kept apart the way Unity keeps its 2D and 3D physics apart. A 2D query touches only circles, 2D boxes and 2D capsules, and a 3D query only spheres, boxes and capsules. A 3D query never touches a 2D hitbox, which has no depth for it to meet, so a 2D game that calls `TryRaycast` finds nothing.
+A 2D query touches only 2D hitboxes, and a 3D query only 3D hitboxes, so a 2D game that calls `TryRaycast` finds nothing.
 
-A game that mixes the two can set `Can2DQueriesHit3DHitboxes` to let its 2D queries reach 3D hitboxes as well. A 2D ray and `OverlapBox2D` have no depth, so they touch a 3D hitbox only where the plane Z = 0 cuts it; an `OverlapBox2D` hit's `Point` keeps a Z of zero while its `Normal` is the 3D hitbox's own and can tilt out of the plane. A circle, a 2D capsule and a circle cast have their radius in every direction, so they reach a 3D hitbox as a ball or capsule lying in the plane, up to their radius either side of it. Like the setting above, it is read on every query.
+Set `Can2DQueriesHit3DHitboxes` to let 2D queries reach 3D hitboxes too. It is read on every query.
+
+- A 2D ray and `OverlapBox2D` touch a 3D hitbox only where the plane Z = 0 cuts it. An `OverlapBox2D` hit's `Point` keeps a Z of zero, but its `Normal` is the 3D hitbox's own and can tilt out of the plane.
+- A circle, a 2D capsule and a circle cast reach a 3D hitbox up to their radius either side of the plane.
 
 ## Walls are not in the history
 
-Only hitboxes are recorded, so a rewound query sees no walls. Clip the shot against the present-time world first, with your own engine's raycast against level geometry, and pass the distance to the nearest wall as the query's maximum distance. Make sure that raycast passes over the colliders of the networked objects themselves: a present-time collider on a target running toward the shooter stands nearer than its rewound hitbox and would turn a clean hit into a miss. The Unity integration ships this check as [`LagCompensationWalls`](../../unity/lag-compensation/clipping-shots-at-walls.md).
+Only hitboxes are recorded, so a rewound query sees no walls. Clip the shot first:
+
+1. Raycast the present-time world with your engine against level geometry, skipping the networked objects' own colliders. A target's present-time collider can stand nearer than its rewound hitbox and turn a clean hit into a miss.
+2. Pass the distance to the nearest wall as the query's maximum distance.
+
+The Unity integration ships this as [`LagCompensationWalls`](../../unity/lag-compensation/clipping-shots-at-walls.md).
