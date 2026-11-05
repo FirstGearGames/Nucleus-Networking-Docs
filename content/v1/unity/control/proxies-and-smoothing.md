@@ -2,13 +2,9 @@
 title: "Objects this peer does not control"
 ---
 
-Most objects in a session run on peers that don't control them: every client watching another client's character, and the server itself when a client is the controller. Nothing about the network loop skips these objects. Every `NucleusBehaviour` hook still fires, every tick, on every peer — control only changes what the code inside the hook should do.
+Most objects run on peers that do not control them: every client watching another player's character, and the server while a client controls an object. Every `NucleusBehaviour` hook, `OnControllerChanged` included, still runs on these peers every tick. Control only changes what your code inside the hook should do.
 
-## What still fires
-
-`NucleusBehaviourBase` dispatches its per-step hooks (`OnEarlyVariableUpdate`, `OnEarlyStateUpdate`, `OnLateStateUpdate`, `OnReconcile`, `OnEarlyFixedUpdate`, `OnLateFixedUpdate`, `OnVariableUpdate`, `OnEarlySerialize`, `OnLateSerialize`, `OnTickAdvance`, `OnLateVariableUpdate`) whenever the concrete type overrides them, regardless of whether this peer controls the linked system. `OnControllerChanged` is the same: it runs on every peer the moment control moves, not just the one gaining or losing it.
-
-Control is a question a hook answers for itself, with `IsController`:
+## Skip controller-only work with IsController
 
 ```csharp
 protected override void OnEarlySerialize(StepDelta stepDelta)
@@ -16,33 +12,23 @@ protected override void OnEarlySerialize(StepDelta stepDelta)
     if (!IsController(ControllerType.AnyController))
         return;
 
-    // Set gameplay members here; a non-controlling peer skips this and falls through to nothing.
+    // Set gameplay members here.
 }
 ```
 
-`IsController(ControllerType controllerType)` returns false whenever no system is linked yet, and otherwise the system's own answer. `EnsureIsController` is the loud version of the same check: it returns the same bool but also logs a warning the first time it fails from a given calling member. Neither of them stops the hook from running; a script that doesn't call one of them on a non-controlling peer does its writing work anyway, against members it doesn't own.
+Nothing stops a hook running on a non-controlling peer, so a script that does not check writes anyway, against members it does not own. See [Control in a Unity script](./control-in-unity-scripts.md) for `IsController`, `EnsureIsController` and `IsStarted`.
 
-`IsStarted(Invoker)` is a separate axis entirely — server-started or client-started — and answers independently of who controls the object. A host can be `IsStarted(Invoker.Server)` and still not be the controller of a client-controlled object.
+## Do not move a proxy locally
 
-## NetworkTransform on a proxy
+With a `NetworkTransform`, a non-controlling peer follows the controller's position, rotation and, if enabled, scale, interpolating on `VariableUpdate`. Velocity is never sent. Anything that moves a proxy locally, such as a collision, a force or a script setting `transform.position`, is overwritten or fought on the next tick it receives.
 
-`NetworkTransform` is written from wherever the controller is and applied everywhere else. Two inspector fields govern what a proxy does with it, both on by default:
+- **Kinematic Management Enabled** (default on) holds an attached `Rigidbody` kinematic on every non-controlling peer, including the server while a client controls the object, so physics cannot push back against the pose. Turn it off only when other code owns the body's kinematic state.
+- **Interpolate Scale Enabled** (default on) interpolates scale too. Off, the local scale keeps its current value.
 
-- **Kinematic Management Enabled** (`_kinematicManagementEnabled`, default `true`) holds an attached `Rigidbody` kinematic on every non-controlling peer — including the server while a client controls the system — and returns it to simulation on the controller, switching only when the role actually changes. Turn it off only when other code already owns that rigidbody's kinematic state.
-- **Interpolate Scale Enabled** (`_interpolateScaleEnabled`, default `true`) has a proxy interpolate the replicated scale alongside position and rotation. Disabled, the local scale keeps whatever value it already holds — it's excluded from the sweep, not zeroed.
+See [NetworkTransform](../state/network-transform.md) for its other fields.
 
-Both only matter on a peer that isn't the controller. A non-controlling peer interpolates the replicated pose on `VariableUpdate`, and the controller captures its pose on `EarlySerialize`. A given peer runs exactly one side of that split per tick, decided by the same `IsController(ControllerType.AnyController)` check every other hook uses.
+## Raise State Interpolation for smoothness against jitter
 
-## Buffering: State Interpolation
+**State Interpolation** on `UnitySystemManager` (`NucleusSystemManager.StateInterpolation`) is how many ticks received state waits before it is applied. The buffer lets a proxy interpolate between two real values instead of snapping to each one. It defaults to 1, the smallest the inspector allows. Raising it trades latency for smoothness against jitter and loss.
 
-`UnitySystemManager` exposes `_stateInterpolation`, defaulting to `1` in the inspector, and applies it as `NucleusSystemManager.StateInterpolation`. It's how many ticks received state waits before it is applied. A proxy isn't drawing the instant a value arrives — it's drawing from a small buffer of recently-received ticks, which is what lets `NetworkTransform` interpolate between two real values instead of snapping to each one the moment it lands. Raising it trades latency for smoothness against jitter and loss; the default of `1` is the smallest buffer the inspector allows.
-
-## The subtick fraction
-
-Interpolation doesn't jump from tick to tick: within a tick it sweeps, and the fraction it's swept by is the subtick percentage. It is updated every frame right before `VariableUpdate` runs, so anything that reads it, `NetworkTransform`'s sweep included, reads the current frame's fraction through `NetworkLoopManager.SubtickPercentage`.
-
-## A pose follower, not a simulation
-
-A proxy isn't simulating anything. It's told where the controller's transform is — position, rotation, and, if enabled, scale — and it follows that pose. Velocity is never sent. That's also why kinematic management matters: while a rigidbody is kinematic, Unity's physics can't push back against a written pose, and nothing local — a collision, a force, a script nudging `transform.position` — should be moving a proxy either, since whatever it moves gets overwritten, or fought, on the very next tick it receives.
-
-See [NetworkTransform](../state/network-transform.md) for the rest of its inspector fields, and [NetworkMember](../../core-api/state/network-member.md) for the per-member interpolation snap threshold that cuts a large discontinuity instead of sweeping across it.
+Within a tick, interpolation sweeps by `NetworkLoopManager.SubtickPercentage`, which updates every frame before `VariableUpdate`. To jump across a large discontinuity instead of sweeping, set a member's interpolation snap threshold; see [NetworkMember](../../core-api/state/network-member.md).
