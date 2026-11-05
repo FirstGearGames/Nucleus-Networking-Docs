@@ -2,9 +2,11 @@
 title: "API type reference"
 ---
 
-## Where to start
+This page covers the types you are expected to use directly. A generated reference listing every type is planned but not yet published. Using Unity? See the [manager components reference](../unity/core/unity-manager-components.md) for the components that front each core manager.
 
-Every session hangs off one object: `CoreManager`. Construct one and it builds the whole manager graph for you; everything else in the engine is reached from a manager on that graph, not constructed on its own.
+## Everything is reached from CoreManager
+
+Construct one `CoreManager` and it builds every manager. Everything else in the engine is reached from one of these fields, which are `readonly` and set in the constructor:
 
 ```csharp
 public readonly NetworkLoopManager NetworkLoopManager;
@@ -20,18 +22,18 @@ public readonly RpcManager RpcManager;
 public readonly ViolationManager ViolationManager;
 ```
 
-These eleven fields are `readonly` and set once, in the constructor, in this order. A Pro build adds two more:
+A Pro build adds two fields that are not `readonly`:
 
 ```csharp
 public BundleManager BundleManager;
 public WorldPersistenceManager WorldPersistenceManager;
 ```
 
-Unlike the other manager fields, `BundleManager` and `WorldPersistenceManager` are not `readonly`. In a Free build the fields do not exist on the type at all, so code referencing them fails to compile against a Free build rather than failing at runtime.
+In a Free build these two fields do not exist, so code that uses them fails to compile rather than failing at runtime. The same holds for every Pro-only type and member.
 
-`CoreManager.Instance` is a static convenience slot naming the oldest live `CoreManager` in the process, for the common case of a process running exactly one. It is not meant for a process running several managers at once (a host pair, a two-peer test) — pass the manager explicitly there instead. `CoreManager.EnsureSetInstance(CoreManager)` moves the slot to a manager of your choosing; it fails and logs if the manager passed is null or already deinitialized.
+`CoreManager.Instance` names the oldest live `CoreManager` in the process, for a process running exactly one. With several managers in one process, such as a host pair or a two-peer test, pass the manager explicitly instead. `CoreManager.EnsureSetInstance(CoreManager)` points the slot at a manager you choose; it fails and logs if that manager is null or already deinitialized.
 
-## Namespace map
+## Find types by namespace
 
 | Namespace | What lives there |
 |---|---|
@@ -56,28 +58,16 @@ Unlike the other manager fields, `BundleManager` and `WorldPersistenceManager` a
 | `Nucleus.Physics` | Physics-adjacent components and adapters |
 | `Nucleus.Transports` | Transport base types, plus the `Synapse`, `Yak`, and `Sockets` sub-namespaces for the shipped transport implementations |
 
-Everything reachable from a `CoreManager` field lives under `Nucleus.Managers.*`; the types those managers hand you (systems, components, connections, packets, serializers) live in the flatter namespaces above.
+Managers live under `Nucleus.Managers.*`; the types they hand you live in the flatter namespaces.
 
-## Reading the markers
+## Read the usage markers
 
-Three attributes tell you how a member is meant to be used before you call it. They are declared in CodeBoost, the utility library Nucleus builds on, in the `CodeBoost.Types` namespace (see [CodeBoost reference](./codeboost-reference.md)):
+These attributes, from the `CodeBoost.Types` namespace (see [CodeBoost reference](./codeboost-reference.md)), say how a member is meant to be used. The compiler does not enforce them.
 
-- `[ServerOnly]` — only meaningful, or only safe to call, from server-side code.
-- `[ClientOnly]` — only meaningful, or only safe to call, from client-side code.
-- `[InternalApi]` — exposed for convenience but primarily for internal use; it can change or move without warning, and takes an optional `Details` string explaining why.
-
-None of these are compiler-enforced access restrictions — they are promises about intended use, not guardrails that stop a misuse from compiling.
-
-A Pro-only type or member is a build-time absence in a Free build, not a runtime failure: `CoreManager.BundleManager` and `CoreManager.WorldPersistenceManager` simply do not exist on the compiled type in a Free build. Code that references them against a Free build fails to compile, it does not throw at runtime.
+- `[ServerOnly]`: only meaningful, or only safe to call, from server-side code.
+- `[ClientOnly]`: only meaningful, or only safe to call, from client-side code.
+- `[InternalApi]`: mainly for internal use, and can change or move without warning. Its optional `Details` string says why.
 
 ## Custom transports can live in your own assembly
 
-You can write a custom transport in your own assembly, as part of your game or as a separate package. The transport base types are public, and every member a transport implements is public or protected. [The Transport contract](../core-api/transports/transport-contract.md) lists what to implement.
-
-## Full type listing
-
-This page and the rest of the hand-written reference never try to enumerate every type. They cover the surface you're expected to reach for directly. A generated, exhaustive API reference is planned but not yet published.
-
-## Working in Unity
-
-If you're building against the Unity integration rather than plain C#, see the [manager components reference](../unity/core/unity-manager-components.md) for the `UnityManager`-derived components that front each core manager on the manager GameObject.
+The transport base types are public, and every member a transport implements is public or protected, so you can write a transport in your own game or package. [The Transport contract](../core-api/transports/transport-contract.md) lists what to implement.
