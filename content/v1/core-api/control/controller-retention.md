@@ -2,66 +2,61 @@
 title: "Controller retention"
 ---
 
-> **Using Unity?** See [Keeping a player's objects across a disconnect](../../unity/control/controller-retention-in-unity.md).
+> **Using Unity?** See [Keeping a player's objects across a disconnect](../../unity/control/controller-retention-in-unity.md) for the inspector fields and `NetworkPlayerDisconnectMode`.
 
-Connection ids are recycled. An object left naming a departed controller is one the next renter of that id inherits, along with its write permission and its client state routing, because both are decided by the same comparison against `ControllerConnectionId`. Control is therefore always surrendered the moment a connection leaves - there is no configuration that keeps an object controlled by somebody who is gone. `ControllerRetentionPolicy` only decides whether a token is issued so the objects can be handed back to whoever comes next.
+Control is always given up the moment a connection leaves. Connection ids are recycled, so an object still naming a departed controller would hand its write permission and client state routing to the next connection given that id. `ControllerRetentionPolicy` only decides whether the departing connection is issued a token so its objects can be handed back later.
 
-## A policy either releases a departing controller or retains it
+## Choose Release or Retain
 
-`ControllerRetentionPolicy` has two values:
+- `Release` (0), the default: the object is uncontrolled once its controller leaves, and nothing is remembered about who held it.
+- `Retain` (1): the object is uncontrolled, and it joins the retention record the departing connection is issued a token for, so a returning player can be handed it back.
 
-- `Release` (0) - the object is simply uncontrolled once its controller leaves, and nothing is remembered about who held it. This is the default: it costs nothing and cannot leak, because an object nobody is coming back for should not occupy a retention record.
-- `Retain` (1) - the object is uncontrolled, and it joins the retention record the departing connection is issued a token for, so a returning player can be handed it back.
+`SystemManager.ResolveControllerRetentionPolicy(NetworkSystem)` returns a system's policy, taking the first that is set:
 
-`SystemManager.ResolveControllerRetentionPolicy(NetworkSystem)` resolves the policy for one system, most specific first:
-
-1. `NetworkSystem.ControllerRetentionPolicyOverride`, if set.
-2. The system's group's override, if set.
+1. `NetworkSystem.ControllerRetentionPolicyOverride`.
+2. The override on the system's group.
 3. `SystemManager.DefaultControllerRetentionPolicy` (`Release` by default).
 
-A system and its group both leave their override unset by default, so an unconfigured world resolves to `DefaultControllerRetentionPolicy` on one comparison each.
+Systems and groups leave their override unset by default.
 
-## The token
+## Save the token on the client
 
-`ControllerRetentionToken` is a readonly struct with `Id` and `Generation`, plus `IsValid` (true when `Id` is not the unset value). It is opaque: it is meaningful only to the peer that issued it, and it is safe to store beside an account record. It is a token rather than the departed connection's id on purpose - ids are rented from a pool and handed out again, so a stored id would eventually name somebody else's retention. `Generation` is what makes a stale token fail rather than alias: a record's identifier reissued later is a different token, and only the current one resolves.
+When a connection is first given control of something retained, the server delivers it a token once, reliably, over `ControllerRetentionTokenNotice`. On the client, `SystemManager.LocalControllerRetentionToken` holds it and `SystemManager.LocalControllerRetentionTokenReceived` fires when it arrives. Persist it then, somewhere that outlives the session.
 
-When a connection is first given control of something retained, the server reserves a token for it and delivers it once, reliably, over `ControllerRetentionTokenNotice`. On the client, `SystemManager.LocalControllerRetentionToken` holds the token reserved for this session, and `SystemManager.LocalControllerRetentionTokenReceived` fires when it arrives. That is the moment to persist it somewhere that outlives the session, because the connection carrying it is the one whose loss the token exists to survive.
+`ControllerRetentionToken` is a readonly struct with `Id`, `Generation` and `IsValid` (true when `Id` is not the unset value). It is meaningful only to the peer that issued it and is safe to store beside an account record. A stale token fails to resolve instead of naming somebody else's record.
 
-## A returning connection reclaims its objects with its token
+## Reclaim the objects with the token
 
-`SystemManager.TryReclaimController(Connection connection, ControllerRetentionToken controllerRetentionToken)` hands a returning connection every object a retention record holds, and ends the record. It refuses only a token that does not resolve - a stale one, whose record expired, was evicted, or was already redeemed, returns `false` rather than a wrong answer. It does not check whether the returning peer is the same player; that question is the game's to answer before calling it.
+```csharp
+public bool TryReclaimController(Connection connection, ControllerRetentionToken controllerRetentionToken)
+```
 
-Three events report what happens to a record over its lifetime:
+`SystemManager.TryReclaimController` hands the connection every object the record holds and ends the record. It returns `false` for a token that does not resolve: one whose record expired, was evicted or was already redeemed.
 
-- `ControllerRetained` - a record opened for a departing connection, raised only when at least one object was actually retained.
-- `ControllerRetentionEnded` - a record stopped being redeemable, carrying the token and a `ControllerRetentionEndReason`.
-- `ControllerRetentionAdopted` - a record standing after this peer adopted a dead host's world. It only means anything under host migration, which is planned but not yet built.
+It does not check that the returning peer is the same player. Prove that first, through whatever channel your authentication already trusts, and store the token against a server-determined identity rather than in place of one. A server that accepts a token straight off the wire with no identity check behind it trusts whatever a client sends.
 
-## Only a reclaim returns the objects; every other ending leaves them uncontrolled
+## Three events report a record's lifetime
 
-`ControllerRetentionEndReason` explains why a record stopped being redeemable:
+- `ControllerRetained`: a record opened for a departing connection. Raised only when at least one object was retained.
+- `ControllerRetentionEnded`: a record stopped being redeemable. Carries the token and a `ControllerRetentionEndReason`.
+- `ControllerRetentionAdopted`: a record standing after this peer adopted a dead host's world. It only means anything under host migration, which is planned but not yet built.
 
-- `Reclaimed` (0) - a returning connection redeemed the token and was handed the objects.
-- `Expired` (1) - the record outlived `SystemManager.ControllerRetentionSeconds` without being redeemed.
-- `Evicted` (2) - the record was the oldest standing when a new one needed room under `SystemManager.MaximumRetainedControllerRecords`.
-- `Emptied` (3) - every object the record held left the world or was handed to another controller, so there was nothing left to redeem.
+## Only a reclaim returns the objects
 
-Every reason but `Reclaimed` leaves the objects uncontrolled and nothing relating them to one another. A handler that wants to act on a record's objects as a set - despawning a player's belongings when they don't return, for example - has to do it from `ControllerRetentionEnded`, before that reason takes effect.
+`ControllerRetentionEndReason` says why a record ended:
 
-## A record is bounded by both a timeout and a record count
+- `Reclaimed` (0): a returning connection redeemed the token and was handed the objects.
+- `Expired` (1): the record outlived `SystemManager.ControllerRetentionSeconds`.
+- `Evicted` (2): the record was the oldest standing when a new one needed room under `SystemManager.MaximumRetainedControllerRecords`.
+- `Emptied` (3): every object in the record left the world or was handed to another controller.
 
-`SystemManager.ControllerRetentionSeconds` (default `DefaultControllerRetentionSeconds`, 120) is how long a record stays redeemable before it expires. Setting it to `SystemManager.UnlimitedControllerRetentionSeconds` (0) disables expiry entirely, leaving `MaximumRetainedControllerRecords` as the only bound.
+Every reason but `Reclaimed` leaves the objects uncontrolled and unrelated to one another. To act on a record's objects as a set, such as despawning a player's belongings when they don't return, do it in `ControllerRetentionEnded`, before the reason takes effect.
 
-`SystemManager.MaximumRetainedControllerRecords` (default `DefaultMaximumRetainedControllerRecords`, 64) is how many records may stand at once. Past that, the oldest standing record is evicted to make room for a new one - the most recent departure, which is the one most likely to come back, is kept redeemable.
+## Limit records by time and by count
 
-## Proving that a returning peer is the same player is the game's job
+- `SystemManager.ControllerRetentionSeconds` (default `DefaultControllerRetentionSeconds`, 120) is how long a record stays redeemable. `SystemManager.UnlimitedControllerRetentionSeconds` (0) disables expiry, leaving the record count as the only limit.
+- `SystemManager.MaximumRetainedControllerRecords` (default `DefaultMaximumRetainedControllerRecords`, 64) is how many records may stand at once. Past that, the oldest is evicted, so the most recent departure stays redeemable.
 
-The framework never decides that a returning peer is the same player who left. That is why a token is issued rather than an identity matched: `TryReclaimController` trusts whatever token it is handed and only refuses one that fails to resolve. Getting the token from a departed player back to the server is the game's business, not the engine's - present it through whatever channel the game's own authentication already trusts, and store it against a server-determined identity rather than in place of one. A server that accepts a token straight off the wire with no identity check behind it is trusting whatever a client hands it.
+## Retention does not migrate a host
 
-## The Unity page covers the inspector fields for retention
-
-Inspector fields for controller retention, and `NetworkPlayerDisconnectMode`, are covered on the Unity page: [Keeping a player's objects across a disconnect](../../unity/control/controller-retention-in-unity.md).
-
-## Host migration
-
-Controller retention is what lets a peer promoted after a host dies rebuild retained records from the objects it adopted, rather than losing them. Retention itself does not migrate a host - see [Surviving the loss of a host](../transports/hosting-topologies.md) for that.
+Retention lets a peer promoted after a host dies rebuild retained records from the objects it adopted. Migrating the host itself is covered in [Surviving the loss of a host](../transports/hosting-topologies.md).
