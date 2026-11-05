@@ -4,51 +4,41 @@ title: "NetworkTransform"
 
 > **Driving the core API directly?** See [TransformComponent](../../core-api/state/transform-component.md).
 
-`NetworkTransform` replicates a GameObject's position, rotation, and scale. Add it to a networked object, either on the GameObject that carries the `NetworkSystemObject` or on a child of it, and the controller's transform replicates to every other peer. A `NetworkTransform` belongs to the nearest `NetworkSystemObject` at or above it; with none there, it is never given a system (**Tools > Nucleus > Build > Validate Network Prefabs** reports that).
+`NetworkTransform` replicates a GameObject's position, rotation and scale from the controller to every other peer. Add it to a networked object, on the GameObject that carries the `NetworkSystemObject` or on a child of it. It belongs to the nearest `NetworkSystemObject` at or above it; with none there it never gets a system. To catch that, open the Nucleus window (**Tools > Nucleus**), select the **Build** tab and click **Validate** next to **Validate Network Prefabs**.
 
-The controller's pose is sampled just before serialization, on the `EarlySerialize` loop step, so it does not matter what order your own scripts run in relative to it. The capture always happens right before the tick's state goes out, not whenever some earlier `Update` left the transform. A non-controller never drives the transform: it is a pose follower, animated between the last two received values. Velocity is not replicated.
+The controller's pose is captured on the `EarlySerialize` step, just before the tick is sent. Every other peer follows that pose smoothly, slightly behind.
 
-## Inspector Fields
+## Configure it in the inspector
 
 | Field | Default | Effect |
 |---|---|---|
-| Transforms | empty | The transforms this component replicates, all on one system. Empty replicates the component's own GameObject. See [Replicating several parts](#replicating-several-parts). |
-| Transform Space | `Local` | Which space the pose replicates in. See below. |
-| Interpolate Scale Enabled | `true` | Interpolates the replicated scale on non-controllers alongside position and rotation. Disabled, local scale is left alone. |
-| Kinematic Management Enabled | `true` | Holds an attached `Rigidbody` kinematic on every non-controlling peer, including the server while a client controls the system, and returns it to simulation on the controller. |
-| Send Interval | `Normal` | Paces ordinary replication while Transmission Mode is `Interval`. Has no effect on a projecting (`Divine`) member — a projected path already streams and smooths on its own. |
-| Transmission Mode | `TransmissionModeDefaults.Motion` | The replication strategy applied to position, rotation, and scale on bind. Resolves to `Divine` projection where a projector is registered, `Interval` otherwise. |
-| Extrapolation Enabled | `true` | Whether other peers keep the object moving through the sender's silence, under either Transmission Mode. On, a lost update is covered by motion but may briefly overshoot; turn it off if that overshoot is visible, and the object holds still until told instead. Under `Interval`, on costs a tiny overhead on each update plus one extra update each time the object stops. See [How Often a Member Is Sent](../../core-api/state/send-pacing.md). |
+| Transforms | empty | The transforms to replicate, all on one system. Empty replicates the component's own GameObject. See [Replicate several parts with one NetworkTransform](#replicate-several-parts-with-one-networktransform). |
+| Transform Space | `Local` | Which space the pose replicates in. See [Choose the transform space](#choose-the-transform-space). |
+| Interpolate Scale Enabled | `true` | Interpolates the replicated scale on non-controllers. Off, local scale is left as it is. |
+| Kinematic Management Enabled | `true` | Holds an attached `Rigidbody` kinematic on every peer that is not the controller, including the server while a client controls the system, so local physics cannot fight the replicated pose. The controller's body is returned to simulation. Turn it off when other code owns the body's kinematic state. |
+| Send Interval | `Normal` | Paces replication while Transmission Mode is `Interval`. No effect under `Divine`. |
+| Transmission Mode | `TransmissionModeDefaults.Motion` | Applied to position, rotation and scale. Resolves to `Divine` where a projector is registered, `Interval` otherwise. |
+| Extrapolation Enabled | `true` | Keeps the object moving on other peers through the sender's silence, under either mode. A lost update is then covered by motion but can briefly overshoot; turn it off if that is visible, and the object holds still until told instead. Under `Interval` it costs a little extra bandwidth. See [How often a member is sent](../../core-api/state/send-pacing.md). |
 
-Transmission Mode, Extrapolation Enabled, and Send Interval are pushed onto the underlying `UnityTransformComponentBase` on bind (`SetTransmissionMode`, `SetExtrapolationEnabled`, `SetSendInterval`), so a pooled instance re-applies the same authored values on every reuse. Interpolate Scale Enabled and Kinematic Management Enabled stay on `NetworkTransform` itself and are read directly each step, not pushed to the component. Transforms and Transform Space are spent earlier still, once in `Awake`, before any bind happens, and both are locked in the inspector during play mode.
+Transforms and Transform Space cannot change during play.
 
-## Replicating several parts
+## Choose the transform space
 
-An object made of several moving pieces (a turret and its barrel, a body and an animated arm) does not need a `NetworkTransform` on every piece. List the pieces in **Transforms** on one `NetworkTransform` and they all replicate on a single system: one controller and one spawn for all of them, with every piece sharing the component's settings. Each listed transform gets its own transform component on that system, so moving one piece sends only that piece.
+The space is fixed for the object's life.
 
-The order of the list matters. Entry *i* is bound to component Id *i* on every peer, and both peers instantiate the same prefab, so they agree as long as the list is part of the prefab rather than edited per instance. Every entry must sit at or below the object's `NetworkSystemObject`, null entries are skipped, and a list longer than a system can hold (`NetworkSystem.MaximumComponentCount`, 31) is refused with an error.
+- **`TransformSpace.Local`** (default) uses a `UnityLocalTransformComponent`, which replicates `Transform.localPosition` and `Transform.localRotation`. An object that stays put inside a moving parent sends nothing. The parent must be replicated too, so both peers measure the offset from the same frame. On a reparent the object keeps its local offset inside the new parent (`IsWorldPoseKeptOnReparent` is `false`).
+- **`TransformSpace.World`** uses a `UnityWorldTransformComponent`, which replicates `Transform.position` and `Transform.rotation`. Use it when the object can hang from something that is not replicated, such as a client-local rig. A reparent moves nothing (`IsWorldPoseKeptOnReparent` is `true`), but a carried object sends its pose every tick it rides, even while still relative to its carrier.
 
-You can also put a `NetworkTransform` directly on a child, for example an animated part that should replicate with its own settings. It joins the nearest `NetworkSystemObject` above it and declares its own system under that one marker, so several `NetworkTransform` components can share a marker this way. Do not add a second `NetworkSystemObject` to the child: only a prefab's root marker is spawned.
+## Replicate several parts with one NetworkTransform
 
-When the parts share settings, prefer one `NetworkTransform` with a list over one per part: it registers with the network loop once instead of once per part, and costs less to send on every update.
+For an object with several moving pieces, such as a turret and its barrel, list the pieces in **Transforms** on one `NetworkTransform`. They replicate on one system with one controller and one spawn, share the component's settings, and moving one piece sends only that piece. When the parts share settings, this costs less to send than one `NetworkTransform` per part.
 
-## Transform Space
+- Keep the list on the prefab, not edited per instance: entry *i* is matched to the same entry on every peer by its position in the list.
+- Every entry must sit at or below the object's `NetworkSystemObject`. Null entries are skipped.
+- A list longer than `NetworkSystem.MaximumComponentCount` (31) is refused with an error.
 
-`TransformSpace` is read once, when the component declares its requirement, and fixes which transform component type the object's `NetworkSystem` carries for the rest of its life:
+To give a part its own settings, put a separate `NetworkTransform` directly on the child. It joins the nearest `NetworkSystemObject` above it. Do not add a second `NetworkSystemObject` to the child: only a prefab's root one is spawned.
 
-- **`TransformSpace.Local`** (default) — the system carries a `UnityLocalTransformComponent`, which replicates `Transform.localPosition` and `Transform.localRotation`. A carried object rides for free: as long as it stays where it was inside its parent, its own replication stays silent no matter how far the parent travels. This requires the parent to be replicated too, since an offset only means the same thing on both peers if they agree on the frame it's measured against. A reparent carries the local values straight through the move — the object lands at the same offset, now measured inside the new parent, so the replicated numbers never jump (`IsWorldPoseKeptOnReparent` is `false`).
-- **`TransformSpace.World`** — the system carries a `UnityWorldTransformComponent`, which replicates `Transform.position` and `Transform.rotation`. The pose means the same thing on every peer regardless of what the object is parented to, so use it when an object can hang from something that isn't itself replicated (a client-local rig, a per-peer presentation root). A reparent moves nothing (`IsWorldPoseKeptOnReparent` is `true`); the cost is that a carried object pays full pose replication for as long as it rides, since its world pose changes every tick even while it sits still relative to its carrier.
+## Use NetworkRigidbody for a simulated body
 
-Both peers instantiate the same prefab, so they always agree on which space an object uses, and the choice cannot drift between peers.
-
-## Kinematic Management
-
-With Kinematic Management Enabled on, an attached `Rigidbody` is held kinematic on every peer that is not the controller — including the server, while a client controls the system — so local physics can't fight the interpolated pose writes. The controller's rigidbody is returned to simulation. This is applied only when the controlling role actually changes, not every frame. Disable it when other code owns the rigidbody's kinematic state.
-
-## Projected Physics Bodies
-
-`NetworkTransform` interpolates a received pose; it does not run local physics on non-controllers. For a rigidbody that should simulate locally on every peer and converge toward the server's state instead of just following it, use `NetworkRigidbody`.
-
-## See Also
-
-The replicated component this behaviour owns and binds to is `UnityTransformComponentBase` (`UnityLocalTransformComponent` or `UnityWorldTransformComponent` depending on Transform Space) — see [TransformComponent](../../core-api/state/transform-component.md) for its API.
+`NetworkTransform` makes non-controllers follow a received pose; it does not run local physics on them. For a rigidbody that should simulate locally on every peer and converge toward the server's state, use `NetworkRigidbody`.
