@@ -4,28 +4,21 @@ title: "Player objects"
 
 ## NetworkPlayerSpawner gives every client one object of its own
 
-`NetworkPlayerSpawner` is a `MonoBehaviour` that gives every authenticated client one object of its own. On the server it spawns one prefab per client, hands that client control of the spawned object, and keeps a connection-to-object relationship so the rest of the game can ask which object belongs to whom.
+On the server, `NetworkPlayerSpawner` spawns one prefab for each authenticated client, gives that client control of it, and remembers which object belongs to which connection. A player object is an ordinary networked object that one client controls; replication, interest, client state, write permission and controller retention all work as for any controlled object.
 
-The engine itself has no player concept, and this component does not add one. A player object is an ordinary networked object that happens to be controlled by one client, so everything the engine already does for a controlled object applies unchanged: replication, interest, client state routing, write permission, controller retention. What this component adds is the one decision the engine leaves to the game: whether an object needs creating for a given client at all.
+Only the server spawns. The spawner also gives an object to every client that authenticated before it existed, and does so again whenever this peer's server role starts. Losing the server role clears every connection-to-object record the spawner holds.
 
-Only the server spawns. The component observes its role from the transport (`IsServerStarted`) rather than assuming it, because a server start can fail.
+## Set it up in the inspector
 
-## Inspector fields
+- **Player Prefab** (`GameObject`): the networked prefab spawned for each client. It needs a `NetworkSystemObject`; without one, the spawner logs an error and disables itself.
+- **Spawn Points** (`Transform[]`): the poses new objects are placed on, taken in turn and wrapping round. Leave it empty to spawn every player on the spawner's own transform.
+- **Disconnect Mode** (`NetworkPlayerDisconnectMode`, default `Despawn`): what happens to a player's object when that player leaves.
+  - `Despawn`: the object leaves with the player, and a returning player always gets a new one.
+  - `RetainForReturn`: the object stays in the world, uncontrolled, and is handed back to the same player if they return before the retention record lapses. The spawner marks every system on the object `ControllerRetentionPolicy.Retain`. An object whose record expires, is evicted or empties is despawned then.
 
-- **Player Prefab** (`GameObject`) — the networked prefab spawned for each client. It needs a `NetworkSystemObject` marker; without one, `Awake` logs an error and disables the component.
-- **Spawn Points** (`Transform[]`) — poses new objects are placed on, taken in turn and wrapping when exhausted. Leave this empty to spawn every player on the spawner's own transform.
-- **Disconnect Mode** (`NetworkPlayerDisconnectMode`) — what happens to a player's object when that player's connection leaves. Defaults to `Despawn`.
+`RetainForReturn` matches a returning player by `Connection.Identity`, so it is only as trustworthy as that identity. The default `AddressClientAuthenticator` identifies a client by its address, which two players behind one NAT can share, so the second player could be handed the first player's object. Use an `IClientAuthenticator` that issues a real per-player identity with this mode.
 
-## Disconnect modes
-
-`NetworkPlayerDisconnectMode` has two values:
-
-- **`Despawn`** (the default) — the player's object leaves the world with them, and a returning player is always given a new one. Needs no identity worth trusting, since every join is a first spawn.
-- **`RetainForReturn`** — the player's object stays in the world, uncontrolled, and is handed back to the same player if they return before the retention record lapses. The spawner marks every system on the object `ControllerRetentionPolicy.Retain`, stores the token the departure issues against `Connection.Identity`, and redeems it when that identity returns. An object whose record expires, is evicted, or empties is despawned at that point.
-
-`RetainForReturn` is only as trustworthy as the identity behind it. The default `AddressClientAuthenticator` identifies a client by the address it connected from, which two players behind one NAT can share — under it, this mode can hand the second player the first player's object. Use an `IClientAuthenticator` that issues a real per-player identity if you turn this on.
-
-## The public members
+## Find a player's object from code
 
 ```csharp
 public bool IsServerStarted { get; }
@@ -37,13 +30,11 @@ public bool TryGetPlayerObject(uint connectionId, out NetworkSystemObject player
 public bool TryGetPlayerObject(Connection connection, out NetworkSystemObject playerNetworkSystemObject);
 ```
 
-`EnsurePlayerObject` is the only route to an object, and it is idempotent: a client that already holds one is a no-op, not a second spawn. It resolves in order — this spawner's own record, then whatever the connection already controls (the case after a world adoption), then a retention record redeemed by identity, and only then a fresh spawn. Call it as often as you want; asking twice for the same connection never produces a second object.
+- `EnsurePlayerObject` gives a connection its object. Calling it again for the same connection never spawns a second one: it first uses this spawner's record, then an object the connection already controls (after a world adoption), then a retention record redeemed by identity, and only then spawns.
+- `TryGetPlayerObject` looks up by `Connection.Id` or by the `Connection`. It only answers for objects this spawner created or took over.
+- `PlayerObjectCount` is how many clients this spawner holds an object for.
 
-`TryGetPlayerObject` has two overloads: by connection identifier (`Connection.Id`) or by the `Connection` itself. Both only answer for objects this spawner created or took responsibility for.
-
-`PlayerObjectCount` is how many clients this spawner currently holds an object for.
-
-## Events this component raises
+## React when a player gets or loses an object
 
 ```csharp
 public event PlayerObjectSpawnedHandler PlayerObjectSpawned;
@@ -51,19 +42,15 @@ public event PlayerObjectReclaimedHandler PlayerObjectReclaimed;
 public event PlayerObjectDespawnedHandler PlayerObjectDespawned;
 ```
 
-- **`PlayerObjectSpawned(Connection connection, NetworkSystemObject playerNetworkSystemObject)`** — raised on the server when a client is given a newly created object, after that client has been made its controller.
-- **`PlayerObjectReclaimed(Connection connection, NetworkSystemObject playerNetworkSystemObject)`** — raised when a client is given an object that already existed, whether redeemed from a retention record or found already under that client's control after this peer adopted a world. The object carries whatever state it had when its previous controller left, so anything a game resets for a fresh player has to run here too, and has to be safe to run on a used object.
-- **`PlayerObjectDespawned(NetworkSystemObject playerNetworkSystemObject)`** — raised when a player object leaves the world, whether because its player left under `NetworkPlayerDisconnectMode.Despawn` or because the retention record holding it lapsed unredeemed.
+- **`PlayerObjectSpawned(Connection connection, NetworkSystemObject playerNetworkSystemObject)`**: raised on the server when a client is given a new object, after it has been made the controller.
+- **`PlayerObjectReclaimed(Connection connection, NetworkSystemObject playerNetworkSystemObject)`**: raised when a client is given an object that already existed, either redeemed from a retention record or already under its control after this peer adopted a world. The object keeps the state it had, so anything you reset for a fresh player must also run here and be safe on a used object.
+- **`PlayerObjectDespawned(NetworkSystemObject playerNetworkSystemObject)`**: raised when a player object leaves the world, because its player left under `Despawn` or its retention record lapsed.
 
-## The adopt pass
+## Write your own spawner
 
-`Awake` resolves the component's managers from the bound `CoreManager`, subscribes to `ClientAuthenticated` and the connection state-change events, and then — only if `IsServerStarted` is already true — sweeps every currently active, authenticated client and calls `EnsurePlayerObject` on each.
+Your own spawner needs two things:
 
-That sweep exists because an event does not fire retroactively. A peer that was a client before it became the server already holds connections that authenticated before this component's subscription existed, and an emulated or in-memory connection is authenticated the moment it connects, never passed to the authenticator, so it raises no event at all. Without the adopt pass those clients would never be given an object. The same sweep runs again whenever the local connection's server role turns on, and losing that role clears every relationship this spawner is holding, since the objects belonged to the session that just ended.
-
-## Writing your own spawner
-
-`NetworkPlayerSpawner` adds nothing the engine doesn't already support — it just makes the per-joining-client decision for you. Writing your own is the same two calls:
+1. On `ClientAuthenticated`, spawn your prefab, get its `NetworkSystemObject`, and give the client control:
 
 ```csharp
 private void OnClientAuthenticated(Connection connection)
@@ -73,4 +60,4 @@ private void OnClientAuthenticated(Connection connection)
 }
 ```
 
-plus the adopt-pass sweep over already-authenticated connections at startup, for the same reason: an event you subscribe to in `Awake` never fires for a client that authenticated before your component existed.
+2. At startup, do the same for every connection that is already authenticated. `ClientAuthenticated` never fires for a client that authenticated before you subscribed, and an emulated or in-memory connection is authenticated as it connects without raising the event at all.
