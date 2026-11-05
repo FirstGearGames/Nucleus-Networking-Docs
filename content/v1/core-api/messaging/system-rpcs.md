@@ -4,11 +4,9 @@ title: "System RPCs"
 
 > **Using Unity?** See [Sending a Remote Call From a Component](../../unity/messaging/remote-calls-from-a-component.md).
 
-A system RPC is a remote call addressed to a `NetworkSystem`. The receiver resolves the object before any handler runs, so a call for a system this peer does not hold is stepped over whole instead of being decoded into nothing. Without that address, a game would have to put a system id in its own payload, re-resolve it on receipt, write its own fan-out, decide relay itself, and invent a permission check. A system RPC closes all of that.
+A system RPC is a remote call addressed to a `NetworkSystem`. The receiver finds the object before any handler runs, and skips a call for a system it does not hold.
 
-## A call is a struct that implements IRpc
-
-A call is a plain `[NetworkType]` struct that implements `IRpc`:
+## Declare a call as a struct that implements IRpc
 
 ```csharp
 [NetworkType]
@@ -18,25 +16,23 @@ public struct DamageRpc : IRpc
 }
 ```
 
-`IRpc` is a marker interface. Every call requires an authenticated sender, with no per-type opt-out: a call is admitted against the addressed object's own permission, so there is no shape of call an unauthenticated peer can reach.
+`IRpc` is a marker interface. Every call requires an authenticated sender; there is no opt-out.
 
-## Sending a call
-
-`NetworkSystem.TrySendRpc<T0>` sends a call to the peers a target names:
+## Send a call
 
 ```csharp
 bool sent = TrySendRpc(RpcTarget.Observers, Channel.Reliable, new DamageRpc { Amount = 10 });
 ```
 
-- `RpcTarget` is who the call is for: `RpcTarget.Server` (client to server only), `RpcTarget.Observers` (fan-out to every observer), `RpcTarget.ObserversExcept(connection, isControllerExcluded)` (server only), or `RpcTarget.To(connection)` (one named connection).
-- `Channel` is the channel to send on, which a call keeps whatever its size; an unreliable call larger than the MTU is split by the engine and arrives whole or not at all.
-- `RpcSelfDelivery` controls when this peer sees its own call back (`RpcSelfDelivery.None` by default).
+- `RpcTarget` is who the call is for. See [Choosing Who Receives a Call](./rpc-targets.md).
+- `Channel` is kept whatever the call's size. See [Channels and What Is Guaranteed](./channels-and-delivery-guarantees.md).
+- `RpcSelfDelivery` (optional, `None` by default) decides whether this peer sees its own call. See [Seeing Your Own Call: RpcSelfDelivery](./rpc-self-delivery.md).
 
-The return value reports only what this peer can see: a client cannot know the server's observer set, so a call it routed returning `true` means it was queued, not that it was delivered.
+A client cannot see the server's observers, so `true` from a client means the call was queued, not delivered.
 
-## Handling a call
+## Handle a call
 
-Register a handler on the system so it runs only for that system's calls:
+Register the handler on the system so it runs only for that system's calls:
 
 ```csharp
 RegisterRpcHandler<DamageRpc>(OnDamageRpc);
@@ -55,19 +51,17 @@ private RpcRelayAction OnDamageRpc(in RpcContext rpcContext, DamageRpc rpc)
 }
 ```
 
-Return `RpcRelayAction.Relay` to let the call pass on if it was going to; return `RpcRelayAction.Cancel` to keep it on this peer. Where nothing was going to be passed on, the answer is discarded, so `Relay` is always safe.
+Return `RpcRelayAction.Relay` to let the call travel on if it was going to, or `RpcRelayAction.Cancel` to keep it on this peer. Where nothing was going to travel on, the answer is ignored, so `Relay` is always safe.
 
-## RpcContext
-
-The handler's `in RpcContext` parameter carries the call's circumstances:
+## Read the call's circumstances from RpcContext
 
 | Member | Meaning |
 |---|---|
 | `Channel` | The channel the call travelled on. |
 | `NetworkSystem` | The system the call is addressed to, already resolved. |
-| `SenderConnection` | The peer the call originated from. Nullable: null only when neither role is running locally. |
-| `TargetConnection` | The connection a routed call is bound for, or null unless this peer is a routing waypoint. |
-| `Disposition` | What this peer is to the call: `RpcDisposition.Origin`, `RpcDisposition.Recipient`, or `RpcDisposition.Routing`. |
-| `IsSenderServer` | Whether the server is what sent this call. |
+| `SenderConnection` | The peer the call came from. Null only when neither role is running locally. |
+| `TargetConnection` | The connection a routed call is bound for. Null unless `Disposition` is `Routing`. |
+| `Disposition` | What this peer is to the call: `RpcDisposition.Recipient`, `RpcDisposition.Origin` or `RpcDisposition.Routing`. See [Judging and Refusing a Relayed Call](./rpc-relay-and-moderation.md). |
+| `IsSenderServer` | Whether the server sent this call. |
 
-`Disposition` is the field worth branching on. When it is `RpcDisposition.Routing`, the call was addressed to a different peer and this one is only deciding whether it travels, so a handler should judge and return without applying the call's effect.
+When `Disposition` is `RpcDisposition.Routing`, the call is for another peer: judge it and return without applying its effect.
