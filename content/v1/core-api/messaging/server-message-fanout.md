@@ -2,55 +2,53 @@
 title: "Sending a Message to Many Peers"
 ---
 
-## Sending to everyone
+## Send to every authenticated client
 
-`ServerManager.SendMessage<T0>` sends a message to every authenticated client. A host's own client is included, delivered in process rather than over a socket. A client still awaiting an authentication outcome is left out.
+`ServerManager.SendMessage<T0>` sends a message to every authenticated client, including a host's own client. A client still waiting to be authenticated is left out.
 
 ```csharp
 CoreManager.ServerManager.SendMessage(Channel.Reliable, new SomeMessage());
 ```
 
-There is no client-side equivalent that fans out to multiple peers. See [The client direction](#the-client-direction) below.
+Clients have no fan-out; see [The client direction](#the-client-direction).
 
-## Sending to a chosen set
+## Send to a chosen set
 
-The overload taking an `IReadOnlyCollection<Connection>` sends to exactly the clients you supply, without the authentication filter the whole-session overload applies. A caller that assembled its own set has already decided who belongs in it.
+This overload sends to exactly the connections you pass, with no authentication filter:
 
 ```csharp
 CoreManager.ServerManager.SendMessage(Channel.Reliable, new SomeMessage(), myConnections);
 ```
 
-## Sending to everyone but one
+`myConnections` is an `IReadOnlyCollection<Connection>`.
 
-`SendMessageExcept<T0>` sends to every authenticated client except the one named.
+## Send to everyone but one
+
+`SendMessageExcept<T0>` sends to every authenticated client except one:
 
 ```csharp
 CoreManager.ServerManager.SendMessageExcept(Channel.Reliable, new SomeMessage(), excludedConnection);
 ```
 
-The exclusion is matched on `Connection.Id`, not by reference, so a `Connection` from any lookup, or one held from an earlier one, still names the same player. `excludedConnection` may be null, and null excludes nobody.
+The exclusion matches on `Connection.Id`, so any `Connection` for that player works, including one held from earlier. A null `excludedConnection` excludes nobody.
 
-## Sending to a scene's occupants
+## Send to a scene's occupants
 
-`SendMessageToScene<T0>` sends to every client that has the given scene instance loaded.
+`SendMessageToScene<T0>` sends to every active connection for which `connection.IsSceneLoaded(sceneHandle)` is true:
 
 ```csharp
 CoreManager.ServerManager.SendMessageToScene(Channel.Reliable, new SomeMessage(), sceneHandle);
 ```
 
-`SceneManager.CollectConnectionsInScene` decides who counts as an occupant: every active connection for which `connection.IsSceneLoaded(sceneHandle)` is true. A scene is the observer rule most games actually want, so it's worth one call instead of renting a list and doing the filtering yourself.
+## These calls need a started server
 
-## The refusal on a peer with no server
-
-Each of these calls first checks that this peer has started a server. On a peer that has not, the call does nothing and logs an error naming the method that refused. This is a loud refusal rather than a silent no-op: a send from a peer that is not the server would otherwise walk an empty or stand-in-only connection set and go quietly nowhere, which reads as a lost message rather than as a call that was never valid.
+On a peer that has not started a server, each of these calls does nothing and logs an error naming the method.
 
 ## The client direction
 
-There is no client-side fan-out API: a client only ever has one peer to send to, the server it's connected to.
+A client only sends to the server it is connected to:
 
 ```csharp
 if (CoreManager.TransportManager.TryGetServerConnection(out Connection serverConnection))
     serverConnection.SendMessage(Channel.Reliable, new SomeMessage());
 ```
-
-`TransportManager.TryGetServerConnection` resolves the local server connection, then `Connection.SendMessage` sends on it directly.
