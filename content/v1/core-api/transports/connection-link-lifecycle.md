@@ -2,9 +2,9 @@
 title: "Link states and connection events"
 ---
 
-## Invoker: which role acted
+## Invoker names which role acted
 
-Most connection operations happen for a specific role, and one process can run both roles at once on a host. `Invoker` names which one:
+A host runs a server and a client in one process. Every state-change event and connect or disconnect result carries an `Invoker` saying which half it is about:
 
 ```csharp
 public enum Invoker : byte
@@ -14,11 +14,9 @@ public enum Invoker : byte
 }
 ```
 
-Every state-change event and every connect/disconnect result carries an `Invoker` so a handler on a host build can tell which half of the process the change is about.
+## Read a connection's local and remote state
 
-## LocalConnectionState and RemoteConnectionState
-
-`LocalConnectionState` describes a socket this peer owns - its own client connection, or (on a server) one of its client sockets:
+`Connection.LocalState` is a `LocalConnectionState`, the state of a socket this peer owns: its own client connection, or on a server one of its client sockets.
 
 ```csharp
 public enum LocalConnectionState : byte
@@ -32,11 +30,9 @@ public enum LocalConnectionState : byte
 }
 ```
 
-`Disconnected` is the zero value, so a `Connection` nothing has touched yet reads as down rather than as some other state. Nothing orders the values numerically; the walk from `Disconnecting` to `Disconnected` doesn't mean less than `Connecting` to `Connected`, it just names the state passed through.
+A `Connection` nothing has touched reads `Disconnected`. The shipped transports never set `Error` or `TimedOut`: a failed connect and a later drop both end at `Disconnected`.
 
-The shipped transports never set `Error` or `TimedOut`. A connect that fails and a link that drops later both end at `Disconnected`.
-
-`RemoteConnectionState` describes what this peer believes about the other side of a link, and only has two values:
+`Connection.RemoteState` is a `RemoteConnectionState`, what this peer believes about the other side:
 
 ```csharp
 public enum RemoteConnectionState : byte
@@ -46,9 +42,17 @@ public enum RemoteConnectionState : byte
 }
 ```
 
-A `Connection`'s current values are read from its `LocalState` and `RemoteState` properties.
+`ConnectionStateExtensions` adds two checks on `LocalConnectionState`:
 
-## The state-change events
+```csharp
+public static bool IsConnectedOrDisconnected(this LocalConnectionState localConnectionState);
+public static bool IsAnyDisconnected(this LocalConnectionState localConnectionState);
+```
+
+- `IsConnectedOrDisconnected`: true only for `Connected` or `Disconnected`, the two resting states.
+- `IsAnyDisconnected`: true for anything but `Connecting` and `Connected`.
+
+## Subscribe to state changes
 
 `TransportManager` raises two events, both carrying a `ConnectionStateChange`:
 
@@ -68,13 +72,21 @@ public readonly struct ConnectionStateChange
 }
 ```
 
-`ConnectionLocalStateChanged` fires when a `Connection.LocalState` changes - a socket this peer owns starting, connecting, or dropping. Check `Invoker.Client` alongside `LocalConnectionState.Connected` to see your own client socket come up, but that is not the same as the server accepting it: a `Synapse` client reaches `Connected` as soon as it has sent its handshake, before the server has answered. To know your own client has actually joined, use `ClientManager.LocalClientAuthenticated`, which fires once the server has accepted it and assigned its `Id`, or read `TransportManager.IsClientStarted`, which is only true once the client is both connected and authenticated.
+- `ConnectionLocalStateChanged` fires when `Connection.LocalState` changes.
+- `ConnectionRemoteStateChanged` fires when `Connection.RemoteState` changes. On a server, this tells you a client arrived or left.
+- `IsRemoteStateChange` tells a shared handler which event it is handling.
 
-`ConnectionRemoteStateChanged` fires when a `Connection.RemoteState` changes - this peer's belief about the far side of a link. On a server this is the event that answers "did a client arrive or leave". `ConnectionStateChange.IsRemoteStateChange` tells a shared handler which of the two events it's looking at without needing separate methods for each.
+**A local `Connected` does not mean the server accepted you.** A `Synapse` client reaches `Connected` once it has sent its handshake, before the server answers. To know your client has joined, use `ClientManager.LocalClientAuthenticated`, which fires once the server accepts it and assigns its `Id`, or read `TransportManager.IsClientStarted`.
 
-## ConnectionStateChangeResult
+## Check connect and disconnect results
 
-Every connect and disconnect call returns one of these instead of throwing:
+These `Transport` calls return a result instead of throwing:
+
+```csharp
+public abstract Task<ConnectionStateChangeResult> ConnectAsync(Invoker invoker);
+public abstract Task<ConnectionStateChangeResult> DisconnectLocalConnectionAsync(Invoker invoker);
+public abstract Task<ConnectionStateChangeResult> DisconnectRemoteClientAsync(Connection connection);
+```
 
 ```csharp
 public enum ConnectionStateChangeResult : byte
@@ -87,19 +99,9 @@ public enum ConnectionStateChangeResult : byte
 }
 ```
 
-`Transport` exposes the calls that return it:
+`AlreadyInState`, `InvalidConnection` and `InvalidSocketState` mean the call was redundant or the link was already gone. Log `UnspecifiedError`.
 
-```csharp
-public abstract Task<ConnectionStateChangeResult> ConnectAsync(Invoker invoker);
-public abstract Task<ConnectionStateChangeResult> DisconnectLocalConnectionAsync(Invoker invoker);
-public abstract Task<ConnectionStateChangeResult> DisconnectRemoteClientAsync(Connection connection);
-```
-
-`AlreadyInState` and `InvalidConnection`/`InvalidSocketState` are not failures worth alarming over - they mean the call was redundant or arrived after the link was already gone. Treat `UnspecifiedError` as the one worth logging.
-
-## PeerConnectionDiscovered and PeerConnectionDropped
-
-`TransportManager` also raises two peer-naming events, separate from the state-change events:
+## Track peers with PeerConnectionDiscovered and PeerConnectionDropped
 
 ```csharp
 public event PeerConnectionChangedHandler? PeerConnectionDiscovered;
@@ -108,25 +110,14 @@ public event PeerConnectionChangedHandler? PeerConnectionDropped;
 public delegate void PeerConnectionChangedHandler(Connection connection);
 ```
 
-`PeerConnectionDiscovered` and `PeerConnectionDropped` are for game code that wants to know about peers specifically, including on a host. On a client, the `Connection` handed over is a stand-in: an identity with no link behind it (`Connection.IsPeerStandIn`). A host hears about peers through the same events, so code watching them works the same way on any kind of peer. `PeerConnectionDropped` fires while the `Connection` is still valid, so a handler can clear anything referencing it; keep no reference to it after the handler returns.
+These `TransportManager` events report peers the same way on a server, client or host. On a client, the `Connection` is a stand-in with no link behind it (`Connection.IsPeerStandIn`). `PeerConnectionDropped` fires while the `Connection` is still valid; clear anything that references it, and keep no reference after the handler returns.
 
-## Reading a link without holding it
+## Store a handle, not a Connection
 
-Holding a `Connection` reference across time is unsafe: connections are pooled, and an entry returned to the pool is handed to the next peer that arrives. Read `LocalState`, `RemoteState`, and `Transport` while you have a live reference, but don't keep the reference itself around.
-
-To remember a peer for longer than its link lasts, take its `ConnectionHandle` (`Connection.Handle`) instead of the `Connection`. A handle pairs the connection's `Id` with a `Generation`, so a handle taken from an earlier occupant of a recycled `Id` fails to resolve rather than silently naming whoever replaced it:
+`Connection` objects are reused for later peers, so do not keep a reference. Read `LocalState`, `RemoteState` and `Transport` while you hold it, and store `Connection.Handle` (a `ConnectionHandle`) to remember the peer. A handle pairs the `Id` with a `Generation`, so a handle to a departed peer fails to resolve rather than naming whoever reused the `Id`:
 
 ```csharp
 public bool TryGetConnection(ConnectionHandle connectionHandle, out Connection connection)
 ```
 
-Resolve it fresh each time you need it - don't cache the `Connection` the resolve returns either.
-
-`LocalConnectionStateExtensions` (declared as `ConnectionStateExtensions`) adds two checks on `LocalConnectionState`:
-
-```csharp
-public static bool IsConnectedOrDisconnected(this LocalConnectionState localConnectionState);
-public static bool IsAnyDisconnected(this LocalConnectionState localConnectionState);
-```
-
-`IsConnectedOrDisconnected` is true only for `Connected` or `Disconnected` - the two resting states. `IsAnyDisconnected` is true for anything but `Connecting` and `Connected`, which covers `Disconnecting`, `Disconnected`, `Error`, and `TimedOut` in one check.
+Resolve it each time you need it, and do not cache the `Connection` it returns either.
