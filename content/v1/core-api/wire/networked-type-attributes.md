@@ -2,47 +2,35 @@
 title: "Networked Type Attributes"
 ---
 
-## The attributes
+Most code needs none of these attributes. A type reached through a `NetworkMember<T0>` field is serialized automatically, and a member on a `NetworkComponent` is networked by default.
 
-The generator reads a small set of attributes to decide what to serialize and what to leave alone. Most code needs none of them — a type reached through a `NetworkMember<T0>` field is walked automatically, and a member on a `NetworkComponent` is networked by default.
+## [NetworkType] makes the generator serialize a type it cannot otherwise find
 
-### `[NetworkType]`
+Applies to a class, struct or enum. Use it only for a type nothing reaches through a `NetworkMember<T0>` field, such as one that is only boxed or reflected into. It also marks the structs described in [Reaching Types You Cannot Annotate](./external-network-types.md).
 
-Applies to a class, struct, or enum. Forces the generator to create serializers for that type even though nothing in the assembly reaches it through a `NetworkMember<T0>` field.
+## [NetworkIgnore] excludes a member from generation
 
-You will almost never need this. It exists for a type the generator has no other way to discover — one that is only ever boxed, reflected into, or otherwise referenced outside the normal member graph. Anything a `NetworkMember<T0>` already walks to gets its serializers generated automatically and does not need the attribute.
+Applies to a field or property. The generator skips the member entirely and produces no code for it.
 
-### `[NetworkIgnore]`
-
-Applies to a field or property. Excludes that member from generation entirely — the generator does not walk it, does not include it in serialization, and produces no code for it.
-
-### `[NetworkBundle(ushort)]`
-
-Assembly-level. Names the bundle identifier half of every type identity the assembly declares:
+## [NetworkBundle(ushort)] sets an assembly's bundle id
 
 ```csharp
 [assembly: NetworkBundle(1)]
 ```
 
-A type's wire identity is the tuple of its bundle id and a per-assembly local id, so bundle ids only need to be unique across the assemblies present in a build. The always-present main bundle defaults to `0` when the attribute is absent; every other bundle should declare its own unique id exactly once. See the type identity page for how the local id side of that tuple is assigned.
+The main bundle defaults to `0` when the attribute is absent. Every other assembly with networked types declares its own unique id exactly once. See [Type Identity on the Wire: Bundles and the Registry](./type-identity-and-bundles.md).
 
-### `[ReplicationIgnore]`
+## [ReplicationIgnore] keeps a value off the network
 
-Applies to a `NetworkMemberBase` field, or to a whole `NetworkComponent` class (in which case it excludes every member the component declares). Keeps the value off the wire entirely while leaving how it is saved alone — the inverse of `[WorldStateIgnore]`.
+Applies to a `NetworkMemberBase` field, or to a whole `NetworkComponent` class to exclude every member it declares. Saving is unaffected; [`[WorldStateIgnore]`](../scenes/world-state-ignore.md) is the opposite, keeping a member out of a saved world while still replicating it.
 
-Two consequences follow from that:
+- On every peer but the server, the value stays at its constructed default.
+- A peer promoted to server by adoption never received these values. It holds the defaults, and saving from it writes those defaults over what the store held. Server-only values do not survive a handover.
 
-- **The value is the constructed default on every peer but the server.** Nothing ever arrives to populate it, so reading one on a client returns the type's default rather than what the server holds.
-- **A peer promoted to server by adoption never received these values.** It holds the defaults rather than what the previous server had, and saving from it writes those defaults over whatever the store already held. Server-only values do not survive a handover.
+## Serializer attributes mark hand-written serializers
 
-### Custom serializer attributes
+`[DefaultWriter]`, `[DefaultReader]`, `[DefaultDeltaWriter]` and `[DefaultDeltaReader]` derive from `SerializerAttribute`. See [Writing a Custom Serializer](./custom-serializers.md).
 
-`[DefaultWriter]`, `[DefaultReader]`, `[DefaultDeltaWriter]`, and `[DefaultDeltaReader]` mark a method as the default (delta) writer or reader for a type, and all four derive from the abstract `SerializerAttribute` base. These are for hand-written serialization, covered on the custom serializer page.
+## Some attributes do not exist
 
-### Attributes that do not exist
-
-`[NetworkTypeContainer]`, `[NetworkAccuracy(float)]`, `[NetworkSerializeMode(CompressionLevel)]`, and `[NetworkExcludeCount]` do not exist in Nucleus. Accuracy and compression level are not attributes — they are constructor arguments on `NetworkMember<T0>` itself, for example `new NetworkMember<float>(CompressionLevel.Aggressive, accuracy: 0.01f)`.
-
-### Persistence
-
-`[WorldStateIgnore]` is the persistence-side inverse of `[ReplicationIgnore]` — it keeps a member out of a saved world while leaving replication alone. It's covered in the persistence section.
+`[NetworkTypeContainer]`, `[NetworkAccuracy(float)]`, `[NetworkSerializeMode(CompressionLevel)]` and `[NetworkExcludeCount]` do not exist in Nucleus. Accuracy and compression level are `NetworkMember<T0>` constructor arguments, for example `new NetworkMember<float>(CompressionLevel.Aggressive, accuracy: 0.01f)`.
