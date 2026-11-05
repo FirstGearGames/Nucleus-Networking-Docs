@@ -2,40 +2,40 @@
 title: "Binding spawns to your own engine"
 ---
 
-## The seam
+## Register a spawn handler
 
-`SystemManager.SetSpawnHandler(INetworkSystemSpawnHandler)` registers the one object that correlates a spawned `NetworkSystem` with an object in your engine. Only systems that carry a `PlatformId` reach it: a spawn whose `PlatformId` is set is routed to the handler, while a code-only system (`PlatformId` of `NetworkSystem.UnsetPlatformId`) never does and keeps the framework's default construction path. If you need to react to a code-only system starting, watch for it instead of expecting the spawn handler to fire.
-
-Register the handler once, at bootstrap:
+`SystemManager.SetSpawnHandler(INetworkSystemSpawnHandler)` registers the one object that links a spawned `NetworkSystem` to an object in your engine. Register it once, at bootstrap:
 
 ```csharp
 systemManager.SetSpawnHandler(mySpawnHandler);
 ```
 
-## Two object categories, two directions of control
+Only spawns with a `PlatformId` reach the handler. A code-only system (`NetworkSystem.UnsetPlatformId`) never does; [watch for it](./renting-and-watching-systems.md) instead.
 
-`INetworkSystemSpawnHandler` has two members that mirror the two kinds of networked object, and they invert who builds the `NetworkSystem`:
+## Bind scene objects and link spawned prefabs
 
-- **Scene objects** already exist locally before any spawn arrives. The receiver builds the system itself, and the spawn only has to bind onto it. `TryBindSceneObject` hands back that already-built system:
+`INetworkSystemSpawnHandler` has one member for each kind of networked object, and they differ in who builds the `NetworkSystem`.
+
+**Scene objects** already exist locally. Return the system you built for the object from `TryBindSceneObject`:
 
 ```csharp
 bool TryBindSceneObject(in SceneObjectKey sceneObjectKey, out NetworkSystem networkSystem);
 ```
 
-  A `false` result is an error at the call site: the scene was not loaded, or the scenes diverge. The returned system has been rented and initialized but not started; the framework assigns its network identifiers and applies the incoming state.
+Return a system that is rented and initialized but not started; the framework assigns its identifiers and applies the incoming state. Returning `false` is an error: the scene was not loaded, or the scenes differ.
 
-- **Dynamic prefabs** are the opposite: the framework builds and starts the system from its type identity first, and only then tells the handler, so the handler can instantiate the matching prefab and link it:
+**Dynamic prefabs** are built and started by the framework, with state applied, before the handler is called. Instantiate the matching prefab and link it:
 
 ```csharp
 void OnDynamicSystemSpawned(NetworkSystem networkSystem, ushort prefabBundleId,
     uint prefabLocalId, uint groupId, uint sceneHandle);
 ```
 
-  `prefabBundleId` is the content shard the prefab ships in (zero is the base build's default shard); `prefabLocalId` is the prefab's local identifier within that shard, and is also the spawn's `PlatformId`. By the time this is called the system is fully started with its state already applied, so the handler is free to instantiate and link immediately.
+`prefabBundleId` is the content bundle the prefab ships in (zero is the base build). `prefabLocalId` is the prefab's identifier within that bundle, and is also the spawn's `PlatformId`.
 
-## SceneObjectKey
+## Look up scene objects by scene and id
 
-A scene object's identifier is only unique inside the scene file it was stamped in. Two live instances of the same scene, or two different scenes, can each hold an object stamped with the same id. `SceneObjectKey` pairs the two halves so a receiver holding several scenes at once binds a spawn to the right instance rather than just the right id:
+A scene object's id is unique only inside its scene, and several live scenes can each hold the same id. `SceneObjectKey` carries both halves; use both to find the object:
 
 ```csharp
 public readonly struct SceneObjectKey : IEquatable<SceneObjectKey>
@@ -45,22 +45,22 @@ public readonly struct SceneObjectKey : IEquatable<SceneObjectKey>
 }
 ```
 
-`SceneHandle` is the live scene instance the object belongs to (or `NetworkSystem.UnsetSceneHandle` when the peer is in whatever scene it booted into rather than one the server opened). `SceneObjectId` is the id stamped on the object, unique only inside its one scene. Both halves are required to look a scene object up correctly.
+`SceneHandle` is the live scene instance, or `NetworkSystem.UnsetSceneHandle` for the scene the peer booted into rather than one the server opened. `SceneObjectId` is the id stamped on the object.
 
-## Group handling
+## Link a group's members to one instance
 
-`OnDynamicSystemSpawned` takes a `groupId`. Systems that share a non-`NetworkSystem.UnsetGroupId` group id are meant to link onto **one** engine instance rather than each getting their own: the first member to spawn instantiates the object, and every later member with the same `groupId` attaches to that same instance instead of instantiating a second one. Track the live instance per group id so a later member can find it.
+Systems that share a `groupId` other than `NetworkSystem.UnsetGroupId` link onto one engine instance. The first member to spawn instantiates the object; later members with the same `groupId` attach to it. Track the live instance per group id so later members can find it.
 
-## The rest of the contract
+## Handle moves, reparenting and despawns
 
-- `OnSystemSceneChanged(NetworkSystem networkSystem, uint newSceneHandle)` — the system moved to a different server-opened scene; relocate its linked object into that scene rather than rebuilding it. Must be idempotent, since it can be invoked again for a move already applied.
-- `OnSystemParentChanged(NetworkSystem childNetworkSystem, NetworkSystem parentNetworkSystem)` — the system's parent changed; re-seat the linked object under the new parent's linked object, or back to the scene root when `parentNetworkSystem` is null. What the re-seat must preserve depends on the space the object's transform replicates in, which the handler reads from the object itself. Also idempotent.
-- `OnSystemDespawned(NetworkSystem networkSystem, bool isObjectKept)` — the system stopped, on the server once its despawn has been sent to observers, or on a receiver when the server's despawn applies. `isObjectKept` is true when an interest condition stopped the system for this peer alone and the server wants the engine object retained rather than reclaimed: release the link, but keep the object and register it against `networkSystem`'s `Id` so a later re-entry spawn links onto it instead of building a second one. `false` is every ordinary despawn, where the handler releases every link it holds and destroys the object (unless the object's own destruction is what initiated the stop).
-- `OnRetainedObjectReleased(uint systemId)` — the counterpart to a kept object: the server has now culled the system outright, or despawned it for everyone, so the object parked under `systemId` should be reclaimed exactly as an ordinary despawn would. Called for every despawn naming an id this peer no longer routes, so it must be a no-op when nothing is retained under that id.
+- `OnSystemSceneChanged(NetworkSystem networkSystem, uint newSceneHandle)`: the system moved to another server-opened scene. Move its object into that scene rather than rebuilding it. Must be idempotent.
+- `OnSystemParentChanged(NetworkSystem childNetworkSystem, NetworkSystem parentNetworkSystem)`: re-seat the object under the new parent's object, or at the scene root when `parentNetworkSystem` is null. What the re-seat must preserve depends on the space the object's transform replicates in, which the handler reads from the object. Must be idempotent.
+- `OnSystemDespawned(NetworkSystem networkSystem, bool isObjectKept)`: the system stopped, on the server once its despawn was sent, or on a receiver when the despawn applies.
+  - `isObjectKept` true: an interest condition stopped the system for this peer alone and the server wants the object kept. Release the link, keep the object, and register it against `networkSystem`'s `Id` so a later re-entry spawn links onto it instead of building a second one.
+  - `isObjectKept` false: release every link and destroy the object, unless the object's own destruction started the stop.
+- `OnRetainedObjectReleased(uint systemId)`: the server has now culled or despawned a system whose object you kept. Reclaim the object kept under `systemId` as an ordinary despawn would. It is called for any despawn of an id this peer no longer routes, so it must do nothing when no object is kept under that id.
 
-## Failure modes the handler owns
+## Handle the failures the framework cannot catch
 
-Two things the handler is responsible for getting right that the framework cannot catch for you:
-
-- **A spawn for an unregistered bundle.** `OnDynamicSystemSpawned` can be called with a `prefabBundleId`/`prefabLocalId` pair your content registry has not loaded yet. Content must be loaded before spawns for it can arrive; treat an unresolved pair as an error rather than silently dropping the system.
-- **Placing the instance in the named scene.** The handler must put the freshly built or moved object in the scene `sceneHandle` names, not in whatever scene the engine would place a new object into by default. A world holding several open scenes otherwise collapses every dynamic spawn into one scene.
+- **A spawn for content not yet loaded.** `OnDynamicSystemSpawned` can name a `prefabBundleId`/`prefabLocalId` pair your registry has not loaded. Load content before spawns for it can arrive, and treat an unresolved pair as an error rather than dropping the system.
+- **The wrong scene.** Put each built or moved object in the scene `sceneHandle` names, not the engine's default scene. Otherwise a world with several open scenes collapses every dynamic spawn into one.

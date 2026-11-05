@@ -2,52 +2,51 @@
 title: "Spawn compensation"
 ---
 
-## A spawned object starts a round trip behind on an observer
+An object the server spawns reaches an observer a round trip late, after the spawn crosses the network and waits out that peer's interpolation. A projectile spawned moving appears at its origin instead of along the path it has already travelled. Spawn compensation closes the gap by giving the object extra simulation time right after it starts, most of it in the opening ticks. It is a Pro feature.
 
-An object spawned by the server does not exist on an observer until its spawn crosses the network and waits out that peer's state interpolation. By the time the observer starts simulating it, the object is already a round trip behind where it should be. A projectile spawned moving is the clearest case: it appears at its origin point instead of somewhere along the path it has already travelled, and it stays visibly behind until something closes the gap.
-
-Spawn compensation closes that gap by giving the object a burst of extra simulation time right after it starts, front-loaded so most of the catch-up happens in the opening ticks and the rest eases out smoothly. It is a Pro feature.
+It only advances the new object's own simulation for a short window. It does not rewind the world or touch any other object, and it is not [lag compensation](../lag-compensation/how-lag-compensation-works.md), which judges a shot against where targets were.
 
 ## Enable compensation once the object has started
 
-Call `NetworkSystem.EnableSpawnCompensation` once the object has started, typically from whatever the game runs when the object comes into being:
+Call `NetworkSystem.EnableSpawnCompensation` once the object has started:
 
 ```csharp
 EnableSpawnCompensation(SpawnCompensationScope.All);
 ```
 
-`aggression` controls how strongly the budget is front-loaded and defaults to `SpawnCompensationCurve.DefaultAggression` (2). Passing a value below `SpawnCompensationCurve.MinimumAggression` (1) clamps up to it; at 1 the budget is spent at a constant rate across the schedule instead of easing.
+`aggression` sets how strongly the time is front-loaded. It defaults to `SpawnCompensationCurve.DefaultAggression` (2); a value below `SpawnCompensationCurve.MinimumAggression` (1) clamps to 1, which spends the time at a constant rate. It changes how quickly the time is spent, never how much.
 
 ```csharp
 EnableSpawnCompensation(SpawnCompensationScope.All, aggression: 3f);
 ```
 
-Calling it a second time restarts the schedule rather than adding to it. `CancelSpawnCompensation` abandons a catch-up still owed time, leaving the object wherever the schedule had reached:
+Calling it again restarts the schedule rather than adding to it. `CancelSpawnCompensation` abandons the rest of a catch-up, leaving the object where the schedule had reached:
 
 ```csharp
 CancelSpawnCompensation();
 ```
 
-Each peer resolves its own budget from its own role and its own measured link.
+Each peer works out its own budget from its role and its measured link.
 
-## Choosing a scope
+## Choose a scope by who simulates the object
 
-`SpawnCompensationScope` is a flags enum that says which peers run the catch-up:
+`SpawnCompensationScope` is a flags enum naming which peers catch up:
 
-- `None` — nobody compensates; the object starts its life at the tick it was built on.
-- `Authority` — the server catches the object up through the latency a client's spawn *request* spent reaching it. Only a client-predicted spawn has lost any time getting to the server; the server's own spawns are on time by definition and this scope compensates nothing for them.
-- `RemoteClients` — every client other than the one that predicted the spawn catches the object up through its own downstream latency.
-- `All`: both hops compensate. They stack: a remote client is owed what the server already spent plus its own delivery delay, and the two together are held to the one cap.
+- `None`: nobody compensates.
+- `Authority`: the server catches up through the time a client's predicted spawn request spent reaching it. The server's own spawns are never late, so this does nothing for them.
+- `RemoteClients`: every client other than the one that predicted the spawn catches up through its own downstream latency.
+- `All`: both. A remote client is owed what the server already spent plus its own delay, held to one cap.
 
-Whichever scope is declared, the peer that predicted the spawn never compensates: it has been simulating the object since the tick it spawned it, so it is already exactly as far ahead as the budget would carry it.
+The client that predicted the spawn never compensates, whatever the scope.
 
-The choice is really about who simulates the object. An object the server simulates and replicates the pose of wants `Authority` alone — a receiving client that fast-forwarded it would be dragged straight back by the next update from the server, so the catch-up would only show as a stutter. An object every peer simulates for itself from the parameters it spawned with, the ordinary projectile, wants `All` — no correction is coming to fight it, and the receiving client's own downstream latency is real time the object owes.
+- An object the server simulates and replicates the pose of wants `Authority` alone. A client that fast-forwarded it would be pulled back by the next server update, which shows as a stutter.
+- An object every peer simulates from its spawn parameters, such as an ordinary projectile, wants `All`.
 
-## Two members report the catch-up while it runs
+## Advance motion by the catch-up time
 
-`IsSpawnCompensating` is true while a schedule is still owed time on the object. `SpawnCompensationSeconds` is the extra time the current tick is spending on the catch-up, in seconds, and reads zero when nothing is compensating — read it beside the tick's own delta when the game simulates on a step of its own rather than subscribing to the event.
+`IsSpawnCompensating` is true while a schedule still owes time. `SpawnCompensationSeconds` is the extra time this tick spends on the catch-up, or zero when nothing is compensating; read it beside the tick delta if the game simulates on its own step.
 
-The more direct hook is `SpawnCompensationStepped`, raised once per tick while the schedule is running, immediately before that tick's early fixed-update callbacks:
+Or subscribe to `SpawnCompensationStepped`, raised once per tick while the schedule runs, before that tick's early fixed-update callbacks:
 
 ```csharp
 SpawnCompensationStepped += OnSpawnCompensationStepped;
@@ -58,28 +57,28 @@ void OnSpawnCompensationStepped(in SpawnCompensationDelta delta)
 }
 ```
 
-`SpawnCompensationDelta` carries the timing for that step: `FixedDelta` is the tick's ordinary fixed delta, `CompensationDelta` is the extra time this step is spending, and `TotalDelta` is the two added together — the figure to advance motion by so the handler needs no branch for whether a catch-up is running. `BudgetSeconds` and `RemainingSeconds` report the whole schedule and what is still owed after this step; `StepIndex` and `StepCount` (counting from one) report progress through it.
+`SpawnCompensationDelta` carries:
 
-## How much time a peer may be asked to make up is capped
+| Field | Meaning |
+|---|---|
+| `FixedDelta` | The tick's ordinary fixed delta. |
+| `CompensationDelta` | The extra time this step spends. |
+| `TotalDelta` | Both added together. Advance motion by this so the handler needs no branch. |
+| `BudgetSeconds` | The whole schedule. |
+| `RemainingSeconds` | What is still owed after this step. |
+| `StepIndex`, `StepCount` | Progress through the schedule, counting from one. |
 
-How much a peer can be asked to compensate is capped, in milliseconds:
+## Cap how much time a peer makes up
 
-- `LagCompensationManager.DefaultMaximumSpawnCompensationMilliseconds` is 150, the default cap.
-- `LagCompensationManager.MaximumSpawnCompensationCeilingMilliseconds` is 500, the highest the live setting can be raised to.
-- `LagCompensationManager.MaximumSpawnCompensationMilliseconds` is the live setting; its setter clamps to the ceiling above.
+The cap bounds one peer's whole catch-up across every hop, and so also how long it runs. In Unity it is **Max Spawn Compensation (ms)** on the Unity Lag Compensation Manager.
+
+| Member | Value |
+|---|---|
+| `LagCompensationManager.DefaultMaximumSpawnCompensationMilliseconds` | 150, the default cap. |
+| `LagCompensationManager.MaximumSpawnCompensationCeilingMilliseconds` | 500, the highest the cap can be set. |
+| `LagCompensationManager.MaximumSpawnCompensationMilliseconds` | The live cap. Its setter clamps to the ceiling. |
+| `NetworkSystem.MaximumTransmittedSpawnCompensationTicks` | 63, the most ticks of server-side compensation a remote client is told about. Larger amounts clamp to 63, independent of the millisecond cap. |
 
 ```csharp
 CoreManager.LagCompensationManager.MaximumSpawnCompensationMilliseconds = 300;
 ```
-
-The setting lives beside lag compensation's because the two are halves of one problem: lag compensation judges a shot against the past, and spawn compensation brings a freshly spawned object up to the present. In Unity it is **Max Spawn Compensation (ms)** on the Unity Lag Compensation Manager.
-
-The cap bounds the whole of one peer's catch-up, counted across every hop the object travelled. Under `SpawnCompensationScope.All`, a remote client adds what the server already spent to its own delay and holds the sum to the cap, so an object that crossed two links is displaced no further than one that crossed a single slow link. Because a schedule is never longer than its budget, the cap also bounds how long a catch-up runs.
-
-`NetworkSystem.MaximumTransmittedSpawnCompensationTicks` is 63: the most ticks of already-spent server-side compensation a remote client is told about. A larger amount is clamped to 63 ticks, independent of the millisecond cap.
-
-`aggression` shapes the curve rather than the budget: it never changes how much time is owed, only how quickly the schedule spends it.
-
-## Spawn compensation is not lag compensation
-
-Spawn compensation does not rewind the world. It only advances a newly spawned object's own simulation faster for a short window after it starts; nothing else on the peer is touched, and no other object's state is altered or replayed. It is also not lag compensation, which judges a shot against where targets were on the shooter's screen when it fired, from a recorded hitbox history rather than by moving anything. The two are halves of one problem: [lag compensation](../lag-compensation/how-lag-compensation-works.md) judges a shot against the past, and spawn compensation brings one freshly spawned object up to the present. Both are Pro, and the cap on spawn compensation lives on `LagCompensationManager` for that reason.
