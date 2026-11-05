@@ -6,7 +6,7 @@ title: "Your first networked component"
 
 ## Declare the component
 
-A networked component is a `partial class` inheriting `NetworkComponent`, with one or more `readonly NetworkMember<T0>` fields:
+A networked component is a `partial class` that inherits `NetworkComponent` and declares `readonly NetworkMember<T0>` fields:
 
 ```csharp
 public partial class SimpleStateComponent : NetworkComponent
@@ -15,13 +15,13 @@ public partial class SimpleStateComponent : NetworkComponent
 }
 ```
 
-The `partial` keyword is not optional. Nucleus completes the type from its `NetworkMember<T0>` fields, including a per-component flags enum with one bit per member, in member-Id order. Without `partial` there is nowhere for that generated code to attach, and the component never replicates anything.
+`partial` is required. Nucleus generates the rest of the type, including a flags enum with one bit per member in member-Id order. Without `partial`, the component never replicates anything.
 
-Add more fields for more values; each gets its own bit in the generated flags enum and its own Id within the component.
+Add a field for each value. Each gets its own Id and its own bit in the flags enum.
 
 ## Rent a system that carries it
 
-A `NetworkComponent` doesn't exist on its own; it lives on a `NetworkSystem`. `NetworkSystemPool.TryRent` takes the system type and one type argument per component it should carry, and hands back a started system through its `out` argument. It returns `false` when no `CoreManager` could be found or the start was refused:
+A component lives on a `NetworkSystem`. `NetworkSystemPool.TryRent` takes the system type and one type argument per component, and returns a started system through its `out` argument. It returns `false` when no `CoreManager` was found or the start was refused:
 
 ```csharp
 if (!NetworkSystemPool.TryRent<NetworkSystem, SimpleStateComponent>(coreManager, out NetworkSystem? system, canStartSystem: true))
@@ -31,13 +31,11 @@ system.TryGetComponent(out SimpleStateComponent component);
 component.Counter.Value = 31337;
 ```
 
-`canStartSystem` defaults to `true`. Renting starts the system immediately unless you pass `false`, in which case you start it yourself later. A system rented this way carries no engine object at all - it's pure C# on both sides of the wire.
+`canStartSystem` defaults to `true`. Pass `false` to start the system yourself later. A system rented this way has no engine object: it is plain C# on both peers.
 
-## Find it again on a peer
+## Find it on the other peer
 
-A system rented purely from code reaches the other peer as a bare wire spawn: its `PlatformId` is `NetworkSystem.UnsetPlatformId`, so it never reaches a spawn handler (`INetworkSystemSpawnHandler.OnDynamicSystemSpawned` is not called for it). There's no engine object to have hung a reference off in advance, so nothing on the receiving peer already knows this system exists.
-
-`NetworkSystemPool.Watch` is how you find it anyway. It registers a standing subscription for every system of a given composition - a system type plus a set of component types - and hands each matching system to your handler as it starts locally or arrives over the wire:
+A system rented from code has `PlatformId` `NetworkSystem.UnsetPlatformId`, so no spawn handler hears about it (`INetworkSystemSpawnHandler.OnDynamicSystemSpawned` is not called). Use `NetworkSystemPool.Watch` instead. It hands your handler every system with the given system type and component types, as each starts locally or arrives:
 
 ```csharp
 NetworkSystemWatch watch = NetworkSystemPool.Watch<NetworkSystem, SimpleStateComponent>(
@@ -49,26 +47,26 @@ NetworkSystemWatch watch = NetworkSystemPool.Watch<NetworkSystem, SimpleStateCom
     })!;
 ```
 
-The match is on composition, not on type identity: any `NetworkSystem` (or subclass) carrying a `SimpleStateComponent` satisfies this watch, regardless of what else it carries. That's why the type argument list matters - a watch for a plain `NetworkSystem` with no component arguments would match every system in the world.
+The match is on the components a system carries, not its exact type: any `NetworkSystem` or subclass carrying a `SimpleStateComponent` matches, whatever else it carries. A watch for a plain `NetworkSystem` with no component arguments matches every system.
 
-Call `NetworkSystemPool.Unwatch(watch)` when you no longer need it. An optional released handler on `Watch` fires when an acquired system stops, which for a wire-constructed system means it's about to return to its pool - drop any reference you took before that call returns.
+Call `NetworkSystemPool.Unwatch(watch)` when you are done. `Watch` also takes an optional released handler, called when a matched system stops. For a system that arrived over the network, that means it is about to return to its pool, so drop any reference to it before the handler returns.
 
-## Read the value back
+## Read and write the value
 
-`NetworkSystem.TryGetComponent<T0>` is how you get a component off a system, on either peer:
+`NetworkSystem.TryGetComponent<T0>` gets a component from a system on either peer:
 
 ```csharp
 if (system.TryGetComponent(out SimpleStateComponent component))
 {
-    component.Counter.Value = 42;   // write - only meaningful on the system's writer
-    int current = component.Counter.Value;  // read - always safe
+    component.Counter.Value = 42;   // write: only meaningful on the system's writer
+    int current = component.Counter.Value;  // read: always safe
 }
 ```
 
-Setting `Value` marks the member changed for the current tick and queues it to be sent. Reading `Value` returns the current value, which on a non-writing peer is the last value received.
+Setting `Value` marks the member changed this tick and queues it to send. On a peer that does not write the system, `Value` is the last value received.
 
-## The overrides you don't call
+## Do not call the generated overrides
 
-`NetworkComponent` declares `Write`, `WriteDelta`, `Read`, `ReadDelta`, `Initialize`, `Deinitialize`, and `OnReturn` as `public virtual`. Nucleus implements `Write`/`WriteDelta`/`Read`/`ReadDelta` for you from your `NetworkMember<T0>` fields, and calls `Initialize`/`Deinitialize`/`OnReturn` at the points in a component's lifecycle where they apply - rent and system-start, system-stop, and pool-return, respectively.
+`NetworkComponent` declares `Write`, `WriteDelta`, `Read`, `ReadDelta`, `Initialize`, `Deinitialize` and `OnReturn` as `public virtual`. Nucleus implements the first four from your fields, and calls `Initialize` on rent and system start, `Deinitialize` on system stop, and `OnReturn` on return to the pool. Do not call any of them.
 
-None of these are yours to call. They exist for Nucleus to implement and invoke on its own schedule. If you need to react to a value changing, override `OnMembersChanged` instead - it's called once per tick per direction whenever any member of the component changed, and it's the supported hook for reacting without polling.
+To react to a value changing, override `OnMembersChanged`. See [Reacting to changes: OnMembersChanged](./change-callbacks.md).
