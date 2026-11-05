@@ -2,48 +2,42 @@
 title: "What the server trusts"
 ---
 
+Every check on this page runs on the server's copy of the system. A client can reach the same verdict locally for prediction or UI, but a kick it decides or a write it declines to send is not enforcement.
+
 ## Observation gates everything
 
-Every access check the engine makes, for setting a member or for a remote call, starts with the same test: is the sending connection an observer of the system being addressed. That test runs first, before the access value and before whether the sender controls the object. A connection that does not observe a system is rejected outright, regardless of `MemberWriteAccess` or `RpcSendAccess`.
+Before any access check, the server asks whether the sending connection observes the system being addressed. A connection that does not is rejected, whatever the `MemberWriteAccess` or `RpcSendAccess`. A client therefore cannot reach a system by guessing its id: an id it was never told about, or has lost interest in, resolves to nothing.
 
-This means a client cannot reach a system by guessing its id. An identifier that names something the client was never told about, or has since lost interest in, resolves to nothing on the server. Access - `Controller` or `AnyClient` - only decides what an observer may do once it has cleared this gate. It never substitutes for being told about the object in the first place.
-
-The controller is checked next: a system's controller may always write to it or call it, under any access. An observer that is not the controller is admitted only when the access in force is `AnyClient`.
+Next, the system's controller may always set its members and call it, under any access. Any other observer is admitted only when the access is `AnyClient`.
 
 ## Nothing travels as a grant
 
-The server tells each observer two things about a system: the access value in force, and a hint of whether that observer personally may act. Neither is a permission a client can spend on its own. The server re-checks every incoming write and every incoming call against its own copy of the access, on every packet, so a client that forges or replays a favorable-looking declaration gains nothing - the check that matters runs on the receiving side, not the sending side.
+The server re-checks every incoming write and call against its own copy of the access, on every packet. The access value and the hint the server sends each observer only let an honest client avoid sends the server would refuse. A client that forges them or ignores them gains nothing.
 
-The capability hint exists only so a well-behaved client avoids sending something the server is going to refuse anyway. A client that ignores the hint and sends regardless is met with the same enforcement as one that never saw it.
+## The sender is the connection the transport resolved
 
-## Who actually sent it
+An id a client puts in a payload is only a claim. A handler is given the `Connection` the transport resolved for the packet (`RpcContext.SenderConnection` for a call, and the same resolved connection for a member write), and the client cannot change it.
 
-An identifier a client places in a payload is a claim about itself, nothing more. What a handler is handed as the sender is the `Connection` the transport resolved for that packet - `RpcContext.SenderConnection` for a call, the equivalent resolved connection for a member value it sets. That resolution happens below any code the client controls, so there is no field a client can set to speak as someone else.
-
-For a call the server relays on to other observers, the relayed copy still carries the original sender's connection id, so attribution survives the hop; a client that receives a relayed call is being told who actually said it, not who forwarded it. Only the authority writes that original-sender id. A call arriving from a client is attributed to the client that sent it, whatever originator id its packet names, so a client cannot dress a call up as coming from another client to fool a handler, the relay's sender exclusion, or `RpcContext.SenderConnection`.
+A call the server relays to other observers still carries the original sender's connection id. Only the server writes that id: a call arriving from a client is attributed to that client whatever originator id its packet names, so a client cannot pose as another client to a handler, to the relay's sender exclusion, or to `RpcContext.SenderConnection`.
 
 ## Connections are not players
 
-A `Connection`'s `RemoteAddress` is where it connected from, observed by the server rather than asserted by the client, which is what makes it usable as part of an identity check - but it names a location, not a player, since multiple clients behind the same NAT share one address.
-
-A `Connection.Id` is assigned per session and reused once a connection is gone; nothing about it survives a disconnect. Anything that needs to recognize the same player across a reconnect keys on `Connection.Identity` instead - the value an authenticator stamps in on approval, meant to persist across sessions. Correlating a returning `Identity` with what it previously owned is game code's job; the engine holds no player-to-object mapping of its own.
+- `Connection.RemoteAddress` is where the connection came from, observed by the server, so it can be part of an identity check. It names a location, not a player: clients behind the same NAT share one address.
+- `Connection.Id` is assigned per session and reused once a connection is gone.
+- To recognize a player across a reconnect, key on `Connection.Identity`, the value your authenticator sets on approval. Matching a returning `Identity` to what it owned before is up to your game code.
 
 ## Arbitration is not a security boundary
 
-`MemberWriteAccess.AnyClient` (Pro) lets every observer, not just the controller, set a system's members. A Free build has no `MemberWriteAccess` at all: only a system's controller may set its members, so there is never a contested write to arbitrate.
+`MemberWriteAccess.AnyClient` (Pro) lets every observer set a system's members. A Free build has no `MemberWriteAccess`, so only the controller sets members and nothing needs arbitrating.
 
-Contested multi-writer arbitration - resolving which of several observers' simultaneous writes to a system wins - is a Pro feature. Where it exists, the resolution is not adversarially safe: it is arbitrary but stable, and a client that keeps reconnecting to change its own connection id can farm a favorable outcome under it. Arbitration decides whose write is shown when two are equally legitimate; it does not decide whether a write should have been allowed, and it is not a defense against a client trying to win by gaming the mechanism. Anything where that matters needs its own arbiter in game code, sitting on top of the access check, not the arbitration itself.
+In Pro, when several observers write to a system at once, arbitration picks a winner that is arbitrary but stable. A client that keeps reconnecting to change its connection id can farm a favorable outcome. Arbitration only chooses between equally legitimate writes; it does not decide whether a write should be allowed. Where winning matters, put your own arbiter in game code on top of the access check.
 
-## What Nucleus does not do
+## Nucleus does not encrypt traffic
 
-Nucleus does not encrypt transport traffic. That is not built in, and adding encryption on top is game code's responsibility.
-
-If you need to protect the bytes themselves - encryption, compression, obfuscation, or a custom integrity check - the one seam for it is the packet-transform layer, `TransportManager.PacketTransform` (Pro-only): it rewrites every packet's payload on its way to and from the transport, on both peers, before anything else in the engine sees it. That layer is not otherwise documented on this page.
+To encrypt, compress, obfuscate or add an integrity check to the bytes themselves, use the packet-transform layer, `TransportManager.PacketTransform` (Pro). It rewrites every packet's payload on both peers before anything else in the engine sees it.
 
 ## A shooter's view is bounded, not trusted
 
-Lag compensation (Pro) judges a client's shot against the moment the client says its screen was showing. That view is the client's claim, so the server bounds it: a view older than `MaximumRewindMilliseconds`, or newer than anything the server has recorded, is clamped into range, still judged, and raises `LagCompensationViewClampedViolation`, ignored by default. Within the window a client can still name any moment, so the window itself is the limit on how far a shooter is favored. The ray is the client's claim too: clip it at walls on the server against the present-time scene, and the queries test it only against the hitboxes the server's own history holds, never against anything the client reports about a target. See [UnityLagCompensationManager](../lag-compensation/unity-lag-compensation-manager.md#the-view-clamp-violation).
+Lag compensation (Pro) judges a shot against the moment the client says its screen was showing. A claimed view older than `MaximumRewindMilliseconds`, or newer than anything the server recorded, is clamped into range, still judged, and raises `LagCompensationViewClampedViolation` (ignored by default). Within the window a client can name any moment, so the window is the limit on how far a shooter is favored.
 
-## Enforcement only happens on the server
-
-Every check above - observation, controller status, access, arbitration - runs on the server's copy of the system. A client build can run the same code and reach the same verdict locally for prediction or UI purposes, but that verdict changes nothing on the wire. A kick decided by a client, or a write a client's own code declines to send, is not enforcement; the server never asked for that answer and does not use it. The only check that matters is the one the server performs when the packet arrives.
+The ray is also the client's claim. Clip it at walls on the server against the present-time scene. The queries test it only against the hitboxes in the server's own history, never against anything the client reports about a target. See [UnityLagCompensationManager](../lag-compensation/unity-lag-compensation-manager.md#the-view-clamp-violation).
