@@ -2,60 +2,51 @@
 title: "NetworkSystemObject component"
 ---
 
-## This marker is the one link between a GameObject and its systems
+## NetworkSystemObject links a GameObject to its systems
 
-`NetworkSystemObject` is a `MonoBehaviour` and the single point of correlation between a GameObject and one or more `NetworkSystem` instances. It is `[DisallowMultipleComponent]`: exactly one marker per GameObject, on the root of a networked prefab or scene object.
+Put one `NetworkSystemObject` on the root of each networked prefab or scene object. It links the GameObject to one or more `NetworkSystem` instances. An object normally links one system; it links several when a `NetworkSystemGroup` hosts more than one system on it (see [Several systems on one object](./grouped-systems.md)).
 
-An object normally links to one system. Several systems link to the same marker when a `NetworkSystemGroup` hosts more than one system on that GameObject; the first to link becomes `System`, and the rest are reachable through `Systems`.
+## Set it up in the inspector
 
-## Inspector fields
+| Section | Field | Purpose |
+|---|---|---|
+| Identity | **Scene Object Id**, or **Prefab Id** and **Prefab Bundle Id** | Read-only, stamped by the editor. A scene object shows its scene object id; a prefab shows its prefab id and bundle id. See [Prefab identity and the prefab collection](./prefab-ids-and-collections.md). |
+| Predicted Spawning | **Predicted Spawn Policy** (default `None`) | What a client may do to this object before the server agrees: create it, remove it, both or neither. The server still decides. It is applied to each system as it links (`NetworkSystem.PredictedSpawnPolicy`). See [Client-predicted spawning in Unity](./predicted-spawning.md). |
+| Prediction | **Predicted By Observers** | Observing clients predict this object as its controller does. See [Predicting a body with a validated behaviour](../physics/predicting-a-body-with-a-validated-behaviour.md). |
+| Content Bundle | **Override Required Bundle** | Off, the content bundle a client must hold before this object may spawn for it is read from the prefab. On, **Required Bundle Id** is used instead. |
+| Content Bundle | **Required Bundle Id** | The bundle to require when the override is on. `0` means the object needs no content, whichever bundle it ships in. |
+| Controller Retention | **Override On Disconnect** | Off, the object uses the Unity System Manager's default for what happens when its controller disconnects. On, **On Controller Disconnect** decides it for this object. |
+| Controller Retention | **On Controller Disconnect** (default `Retain`) | Control is surrendered when the controller disconnects either way; this decides only whether the object is held so a returning player can be handed it back. The value is applied when the object's group is rented, not read continuously. |
+| Spawn Payload | **Payload** and **Auto Transform Payload** | One-time data sent with the spawn. See [Spawning and despawning objects](./spawning-objects.md). |
 
-### Required Bundle Override
+A duplicated prefab carries the same **Prefab Id** as its source. Rebuilding the prefab collection gives the copy a new id; see [Prefab identity and the prefab collection](./prefab-ids-and-collections.md).
 
-- **Override Required Bundle** (`_requiredBundleOverrideEnabled`) — when off, the content bundle a client must hold before this object may spawn for it is read from the prefab. When on, `Required Bundle Id` is used instead.
-- **Required Bundle Id** (`_requiredBundleId`) — the bundle to require when the override is on. An explicit `0` means "this object needs no content, whatever shard it ships in," which the toggle distinguishes from never having configured an override at all.
-
-### Controller Retention Override
-
-- **Override On Disconnect** (`_controllerRetentionOverrideEnabled`) — when off, the object takes its controller-retention behavior from the Unity System Manager's default. When on, `On Controller Disconnect` decides it for this object instead.
-- **On Controller Disconnect** (`_controllerRetentionPolicy`) — `ControllerRetentionPolicy`, defaulting to `Retain`. Control is surrendered when the controller disconnects either way; this only decides whether the object is held so a returning player can be handed it back. The override is pushed onto the object's `NetworkSystemGroup.ControllerRetentionPolicyOverride` when the group is rented, not read continuously.
-
-### Predicted Spawn Policy
-
-**Predicted Spawn Policy**, a `PredictedSpawnPolicy` defaulting to `None`, decides what a client may do to this object before the server agrees: create it, remove it, both, or neither. The server still decides whether it happens. It is authored on the prefab rather than set in code so every peer reads the same answer. It is applied to each system as it links to this marker (`NetworkSystem.PredictedSpawnPolicy`).
-
-## Stamped identity fields
-
-Three fields are stamped by editor tooling and shown read-only in the inspector: a scene object's `Scene Object Id`, or a prefab's `Prefab Id` and `Prefab Bundle Id` pair. None of them needs a hand edit. A duplicated prefab carries the same `Prefab Id` as its source, and rebuilding the prefab collection repairs that: the prefab the collection already lists keeps the id, the other is given the next free one, and a warning names both; see [Prefab identity and the prefab collection](./prefab-ids-and-collections.md). The inspector shows one or the other depending on `IsSceneObject`, never all three at once.
-
-## Runtime read surface
+## Read it from a script
 
 | Member | Type | Meaning |
 |---|---|---|
-| `System` | `NetworkSystem` | The first system linked to this object, or `null`. |
-| `Systems` | `IReadOnlyCollection<NetworkSystem>` | Every system currently linked to this object. |
-| `LinkedSystemCount` | `int` | The number of systems currently linked. |
-| `TryGetFirstSystem(out NetworkSystem)` | `bool` | Resolves `System`; the canonical member to scope object-wide work against, such as an `IRpcScope` handler registration. |
-| `PrefabId` | `ushort` | The prefab identifier assigned by the prefab collection build, or zero when unset. |
+| `System` | `NetworkSystem` | The first system linked to this object, or `null`. If it leaves while others remain, the next-oldest takes its place. |
+| `Systems` | `IReadOnlyCollection<NetworkSystem>` | Every linked system, in the order each linked. |
+| `LinkedSystemCount` | `int` | How many systems are linked. |
+| `TryGetFirstSystem(out NetworkSystem)` | `bool` | Resolves `System`. Use it for object-wide work, such as registering remote-call handlers. |
+| `PrefabId` | `ushort` | The prefab identifier stamped by the prefab collection build, or zero when unset. |
 | `PrefabBundleId` | `ushort` | The content bundle whose collection stamped this prefab. |
-| `RequiredBundleId` | `ushort` | The override when `_requiredBundleOverrideEnabled` is set, otherwise `PrefabBundleId`. |
+| `RequiredBundleId` | `ushort` | **Required Bundle Id** when **Override Required Bundle** is on, otherwise `PrefabBundleId`. |
 | `SceneObjectId` | `uint` | This object's identifier within its scene, or zero when it is not a scene object. |
-| `IsSceneObject` | `bool` | True when `SceneObjectId != 0`. |
-| `PredictedSpawnPolicy` | `Nucleus.Systems.PredictedSpawnPolicy` | What a client may do to this object ahead of the server agreeing, as authored on the prefab. |
+| `IsSceneObject` | `bool` | True when `SceneObjectId` is not zero. |
+| `PredictedSpawnPolicy` | `Nucleus.Systems.PredictedSpawnPolicy` | The policy authored on the prefab. |
 
-## Events this component raises
+`NetworkSystemObject.TryGetLinked(NetworkSystem, out NetworkSystemObject)` goes the other way: it finds the marker linked to a system, or returns false when none is.
 
-- **`SystemLinked(NetworkSystem)`** — raised once each time a system links to this marker.
-- **`SystemUnlinked(NetworkSystem)`** — raised when a linked system is cleared on despawn.
-- **`SystemsLinked(NetworkSystemObject)`** — raised once the object's whole set of members has linked: an ungrouped object fires on its first link, a grouped object fires when its linked count reaches the group's replicated member count. It re-fires each time a completed set is assembled, including after the group is later grown by a further spawn. A handler added after the object is already complete is invoked immediately on subscription, so a late subscriber is not missed.
-- **`SystemsUnlinked(NetworkSystemObject)`** — raised once the object's last member unlinks.
+Remote-call handlers belong on a `NetworkSystem`, which implements `IRpcScope`, never on the marker. Resolve the system through `System`, `Systems` or `TryGetFirstSystem`.
 
-## Despawn and reverse lookup
+## Subscribe to its events
 
-`Despawn()` stops every system linked to this object on the server, replicating the despawn to observers; a call with no linked system is a no-op. It is the pooling counterpart to destroying the GameObject, which despawns network-wide through `OnDestroy`.
+- **`SystemLinked(NetworkSystem)`**: raised each time a system links.
+- **`SystemUnlinked(NetworkSystem)`**: raised when a linked system is cleared on despawn.
+- **`SystemsLinked(NetworkSystemObject)`**: raised once the object's whole set of systems has linked. An ungrouped object raises it on its first link; a grouped object raises it when its linked count reaches the group's member count. It is raised again each time a complete set is assembled, including after the group grows. A handler added after the set is complete is called at once.
+- **`SystemsUnlinked(NetworkSystemObject)`**: raised once the last system unlinks.
 
-`NetworkSystemObject.TryGetLinked(NetworkSystem, out NetworkSystemObject)` is the reverse of `System`: given a `NetworkSystem` handed to game code by the engine, it resolves the marker linked to it, or returns false if none is linked.
+## Despawn the object
 
-## RPC scope
-
-The marker links to one or more `NetworkSystem`s, but it is the `NetworkSystem` itself, not `NetworkSystemObject`, that implements `IRpcScope`. Register remote-call handlers against a system resolved through `System`, `Systems`, or `TryGetFirstSystem`, never against the marker.
+`Despawn()` stops every system linked to this object on the server and replicates the despawn to observers. A call with no linked system does nothing. Use it instead of destroying the GameObject when the instance should go back to the prefab pool; destroying the GameObject also despawns it network-wide. See [Spawning and despawning objects](./spawning-objects.md).
