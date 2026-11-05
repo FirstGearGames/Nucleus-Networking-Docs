@@ -4,44 +4,24 @@ title: "Replicate a rigidbody"
 
 > **Driving the core API directly?** See [Replicate a physics body](../../core-api/physics/replicate-a-body.md).
 
-Add `NetworkRigidbody` to a GameObject that has a `Rigidbody`. That's the whole setup.
+## Add NetworkRigidbody
 
-## Adding NetworkRigidbody pulls in two more components
+1. Add `NetworkRigidbody` to the GameObject. Unity also adds a `Rigidbody` and a `NetworkSystemObject` if the object lacks them.
+2. Optional: put the renderer on a child, such as one named `Visual`, and assign it to **Smoothed Visual** so the body draws smoothly between physics steps. Set **Visual Smoothing** if corrections show; leave it at `0` on a body that must not trail, such as a fast-falling object. See [NetworkRigidbody](./network-rigidbody.md).
+3. Do not add a `NetworkTransform` to the same object. See [NetworkTransform or NetworkRigidbody](./transform-or-rigidbody.md).
 
-`NetworkRigidbody` carries two `[RequireComponent]` attributes, so adding it pulls in the other two components you need:
+Under the default execution mode, `PhysicsExecutionMode.NucleusPerTick`, you never rent a system or add a physics driver yourself. Under `PhysicsExecutionMode.UnityRun` the default world is left to Unity and projected physics is unavailable there; see [Physics execution modes](./physics-execution-modes.md).
 
-- **Rigidbody** — the physics body itself. `NetworkRigidbody` never simulates on its own; it steps and reads Unity's own rigidbody.
-- **NetworkSystemObject** — the marker that gets this object a `NetworkSystem` to belong to.
-- **NetworkRigidbody** — the component you actually add, which ties the two together.
+## Only the controlling peer simulates freely
 
-You never rent or spawn anything by hand. In its own `Awake`, `NetworkRigidbody` calls `NetworkSystemObjectPool.RequireSystem<NetworkSystem, NetworkPhysicsComponent>`, declaring that this object needs a system carrying a replicated `NetworkPhysicsComponent`. Once that requirement is satisfied, three properties are populated for you to read:
+The peer where `NetworkSystem.IsController(ControllerType.AnyController)` is true steps the `Rigidbody` normally and sends the result each tick.
 
-- `NetworkSystem` — the system this body belongs to; its controller state decides which peer's simulation is treated as ground truth.
-- `PhysicsComponent` — the replicated `NetworkPhysicsComponent` this body captures into or converges from.
-- `Body` — a `UnityPhysicsBody`, the adapter wrapping your `Rigidbody`.
+On every other peer, the body appears where the server has it, then follows the server's body while it keeps simulating and colliding. The exception is a body a remote client controls with `RemoteExtrapolationEnabled` off, which follows the received states as a kinematic body; see [Driving a predicted body](./driving-a-predicted-body.md).
 
-Nothing else needs wiring. No manual `RequireSystem` call, no manual component lookup.
+## Check it across two editors
 
-## Exactly one peer simulates the body for real
+1. Run two editors.
+2. On the controlling peer, push the `Rigidbody` or let it fall.
+3. On the second editor, the same `Rigidbody` converges toward that motion tick by tick rather than teleporting.
 
-Exactly one peer simulates this body for real: the one where `NetworkSystem.IsController(ControllerType.AnyController)` is true. Every tick, that peer's `Rigidbody` steps normally, and the stepped result is captured into `PhysicsComponent` for replication.
-
-Every other peer's `Rigidbody` does not run free simulation. Instead it follows: it snaps to the first state it receives (so a freshly spawned proxy doesn't glide in from the prefab pose), then either follows the received states as a kinematic body (for a proxy driven by a remote controller's own client state) or is steered toward the freshest snapshot, projected toward the present. The Rigidbody on a non-controlling peer is still a real, simulated body doing collision response: it's being steered toward the server's target, not teleported onto it.
-
-## Smoothing the render without touching physics
-
-`Smoothed Visual` takes a child `Transform` of the body that holds its renderer, such as a child named `Visual`. It smooths the child's motion between physics steps, so tick-rate stepping does not show at frame rate. Only that child moves, so the smoothing never changes the physics body's own pose and cannot desync a collision or a captured state.
-
-`Visual Smoothing` (seconds) additionally eases that visual toward the interpolated pose over that time, softening the jitter a correction leaves. Leave it at `0` on a body that should not trail, such as a fast-falling object that needs its visual pinned exactly to the physics pose.
-
-## Don't also add NetworkTransform
-
-This object replicates its pose through `NetworkRigidbody`'s own `NetworkPhysicsComponent`. Adding `NetworkTransform` to the same object as well double-replicates the pose through two independent systems. See the transform-replication choosing page for which component fits which object.
-
-A `PhysicsSimulationDriver` present in this body's scene is what puts the body on the tick cadence. You don't have to add one yourself. A `UnityPhysicsManager` is added to the manager graph automatically, and under its default execution mode, `PhysicsExecutionMode.NucleusPerTick`, a `PhysicsSimulationDriver` for the default physics world is added with the managers too, so a body in an ordinary scene is on the tick from the start. A stacked local-physics scene gets its own driver when it loads. Under `PhysicsExecutionMode.UnityRun` the default world is left to Unity and projected physics is unavailable there; see [Physics execution modes](./physics-execution-modes.md).
-
-## Check the result across two editors
-
-Run two editors. On the controlling peer, move or nudge the `Rigidbody` — push it, let it fall, whatever your scene does. On the second editor, the same `Rigidbody` follows that motion: not by teleporting to each new position, but converging toward it tick by tick.
-
-Before any state has arrived at all, the second editor's copy sits at its prefab pose and does not move — there's nothing to follow yet, so the first received state is what gets adopted outright.
+Until the first state arrives, the second editor's copy sits at its prefab pose.
