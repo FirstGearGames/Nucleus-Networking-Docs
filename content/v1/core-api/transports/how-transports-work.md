@@ -2,48 +2,27 @@
 title: "How transports work"
 ---
 
-## What a transport does
+A `Transport` only moves bytes between peers: it connects, disconnects, sends and receives datagrams, and reports whether a connection is its own client talking to its own server (`IsOwnClientConnection`). Replication, spawning and reconciliation work the same on every transport, so you can swap one for another without changing game code.
 
-A `Transport` moves bytes between two peers, and nothing else. It connects, disconnects, sends and receives datagrams, and tells the engine whether a given connection is its own client talking to its own server (`IsOwnClientConnection`). It does not know about identity, interest, reliability semantics, acknowledgment, or recovery — those all live in the engine above it, in `Connection` and the managers that use it.
-
-That division is what lets you swap a transport without touching anything else. A game built against Synapse, Yak, or Blitz Relay replicates, spawns, and reconciles the same way regardless of which one is moving the bytes, because none of that logic ever reaches down into the transport.
-
-## Channels
-
-Every send picks a `Channel`:
-
-- `Channel.Reliable` — ordered and reliable.
-- `Channel.Unreliable` — unreliable.
-
-Nucleus is unreliable-first: state, RPCs, and messages default to `Channel.Unreliable` and only move to `Channel.Reliable` when something requires it.
-
-What happens past the transmission unit differs by what is being sent:
-
-- A reliable message or remote call that will not fit is handed to the transport whole, and the transport splits it.
-- An unreliable message or remote call that will not fit is split by the engine into pieces that each fit one datagram, so it stays unreliable on every transport, the relay included. It arrives whole or not at all.
-- A state write that will not fit is sent across several packets on whichever channel it was already using.
-
-## Maximum Transmission Unit
-
-`Configuration.MaximumTransmissionUnit` is 1200 bytes by default — the ceiling on what the engine packs into one packet before it fragments or promotes.
-
-The engine never gets the full 1200 bytes of payload to work with. Each transport reports `DatagramOverheadBytes`, the header it prepends to every datagram, and the engine reserves that out of the configured unit before writing anything. So the number you set is a limit on the datagram, not a guarantee of payload space, and how much space you actually lose depends on the transport:
-
-- Synapse reports its socket library's own header size as overhead.
-- Blitz Relay reports more: the relay's own framing on top of the same underlying socket header, because the relay is a hop the packet passes through, not the endpoint reading it. A relayed session always has less usable payload per packet than a direct Synapse connection at the same MTU.
-
-## The three shipped transports
+## Pick a transport
 
 | Transport | What it is | When to use it |
 |---|---|---|
-| Synapse | Real UDP sockets | Direct connections, dedicated servers, anywhere both peers (or the server) have a reachable address and port. |
-| Yak | Offline, in-process, nothing bound | Local single-player or same-process testing where no socket should exist at all. |
-| Blitz Relay | A third machine carries the traffic | Peers that can't reach each other directly — no port forwarding, both behind NAT — at the cost of relay overhead and a dependency on that third machine. |
+| Synapse | Real UDP sockets. | Direct connections and dedicated servers, wherever the server has a reachable address and port. |
+| Yak | Offline and in-process; nothing is bound. | Single-player or same-process testing where no socket should exist. |
+| Blitz Relay | A third machine carries the traffic. | Peers that cannot reach each other directly, such as both behind NAT with no port forwarding. Costs relay overhead and depends on that machine. |
 
-## Adding transports
+A `CoreManager` can hold several transports at once. Add each with `TransportManager.AddTransportAsync` or `TryAddTransportAsync`, then connect with a separate `ConnectAsync` call. See [TransportManager](./transport-manager.md).
 
-A `CoreManager` can hold several transports at once — add each with `TransportManager.AddTransportAsync` or `TryAddTransportAsync`. A transport is added and initialized before it is connected; `ConnectAsync` is a separate, later call.
+## Every send picks a channel
 
-## Where to go next
+- `Channel.Reliable`: ordered and reliable.
+- `Channel.Unreliable`: unreliable.
 
-Driving this from the Unity integration: see the transport component pages. Driving it from plain C#: see the API pages for `Transport`, `Configuration`, and `TransportManager`.
+State, remote calls and messages default to `Channel.Unreliable`. A message or remote call too large for one packet still arrives whole: a reliable one in order, an unreliable one whole or not at all, on every transport including the relay.
+
+## The transmission unit limits the datagram, not the payload
+
+`Configuration.MaximumTransmissionUnit` defaults to 1200 bytes. Each transport reports `DatagramOverheadBytes`, its per-datagram header, and that comes out of the 1200 before your data. The relay's overhead is larger than Synapse's, so a relayed session carries less per packet than a direct one at the same setting.
+
+To build your own transport, see [The Transport contract](./transport-contract.md).
