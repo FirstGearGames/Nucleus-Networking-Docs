@@ -2,46 +2,18 @@
 title: "How physics replication works"
 ---
 
-## The loop
+> **Driving the core API directly?** See [How physics replication works](../../core-api/physics/how-physics-replication-works.md).
 
-Every physics body Nucleus replicates follows the same loop, regardless of which engine drives it.
+## Every peer keeps simulating the body
 
-The controlling peer simulates the body normally and, once per tick, captures the stepped result: its world position, its world rotation, and whether it is sleeping or kinematic. That result replicates like any other member.
+The peer that controls a body simulates it and sends the result each tick. Every other peer keeps simulating its own copy and steers it toward the server's latest state, carried forward to the present, instead of teleporting it there. Contacts, stacks and collisions involving the body stay real on every peer.
 
-Every other peer holds a proxy for that body. Each physics step, the proxy rebuilds the latest server snapshot from those members, projects it forward by however many ticks old it is, and converges its own simulated body onto the projected result. The proxy is never teleported onto the raw received pose; it is steered toward a moving target that accounts for the snapshot's age.
+## A replay rewinds only predicted bodies
 
-## Velocity is derived, not sent
+When a client is corrected for an object it predicts, it replays every tick since the one that went wrong, and each replayed tick steps the whole physics world, 3D and 2D. Only a body predicted through a validated behaviour, such as `ValidatedRigidbody`, is put back to the server's values and stepped again. A `NetworkRigidbody` body is not rewound; its `ReplayHeldBody` holds it still for the replay. See [NetworkRigidbody](./network-rigidbody.md) and [Predicting a body with a validated behaviour](./predicting-a-body-with-a-validated-behaviour.md).
 
-Linear and angular velocity are not replicated. Each side derives them independently from the change in position and rotation across the last two committed ticks, divided by the time between those ticks.
+## Some things are not built
 
-A resting body sends nothing new at all.
-
-## A proxy keeps simulating
-
-A proxy body is never written directly onto the received pose. It keeps stepping through the same physics engine as the controller, with its velocity steered toward the projected target and its pose blended or corrected against divergence. Contacts, stacks, and collisions involving a proxy stay real on every peer, because every peer is still actually simulating it — not just moving a transform to match a number that arrived.
-
-## What is replicated, and what is not
-
-No engine type is ever replicated. The replicated members and the snapshot they rebuild are expressed in `System.Numerics` — `Vector3` and `Quaternion` — never an engine-specific vector, quaternion, or rigidbody handle. The core has no dependency on any particular physics engine; an integration is responsible for reading its engine's body into that shape and writing the projected result back onto it.
-
-Position and rotation use Divine or Interval transmission like any other member; the choice is per-member, not physics-specific. Divine can go quiet for stretches where Interval would still send every tick. Divine projection is Pro: a free build accepts `Divine` and replicates the member as `Interval` does.
-
-## A replay steps the world, but only predicted bodies rewind
-
-When a client is corrected for an object it predicts, it replays every tick since the one that went wrong, and each replayed tick steps the whole physics world, 3D and 2D, between the early and late fixed updates. Only a body predicted through a validated behaviour, such as `ValidatedRigidbody`, is put back to the server's values and stepped again. A `NetworkRigidbody` body is converged, not rewound, so it adds a `ReplayHeldBody` by default, which holds it kinematic for the replay and lets it go afterwards as it was. See [NetworkRigidbody](./network-rigidbody.md) and [Predicting a body with a validated behaviour](./predicting-a-body-with-a-validated-behaviour.md).
-
-## What isn't built
-
-This model does not include:
-
-- Replay-correct collision callbacks
-
-A replay steps the world again but rewinds only the bodies a validated behaviour predicts, as described above.
-
-Judging a shot against where targets were is a separate feature that does not touch physics bodies at all: [lag compensation](../lag-compensation/how-lag-compensation-works.md) (Pro) keeps its own hitbox history and its own geometry. Catching a freshly spawned projectile up through the latency it lost is [spawn compensation](../../core-api/systems/spawn-compensation.md) (Pro).
-
-## Where core ends and integration begins
-
-Everything above lives in the core engine, engine-agnostic and expressed in `System.Numerics`. Turning it into motion on an actual rigidbody — reading a body's state each tick, applying a projected target, wiring up sleep and kinematic flags — is an integration's job. Nucleus ships a Unity integration that does this for Unity's physics.
-
-The core-side member and convergence types are the entry point for a custom or unsupported engine. The Unity-side components are the entry point for Unity.
+- Collision callbacks are not replay-correct.
+- Judging a shot against where targets were is [lag compensation](../lag-compensation/how-lag-compensation-works.md) (Pro). It keeps its own hitbox history and does not touch physics bodies.
+- Catching a freshly spawned projectile up through the latency it lost is [spawn compensation](../../core-api/systems/spawn-compensation.md) (Pro).

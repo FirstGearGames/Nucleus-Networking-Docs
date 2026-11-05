@@ -2,36 +2,26 @@
 title: "Local physics scenes"
 ---
 
-## Each scene gets its own physics world
+## Give each scene its own physics world
 
-Give each loaded scene its own local physics world so a body only collides with other bodies loaded into that same scene. Two switches control it, both on the Unity scene-loading components.
+With a local physics world per scene, a body only collides with bodies loaded into the same scene. Turn it on with either field:
 
-`UnitySceneLoader.LocalPhysicsEnabled` (the **Local Physics** field in the inspector) loads each networked scene with `LocalPhysicsMode.Physics3D` instead of the default shared world, and attaches a `PhysicsSimulationDriver` to it.
+- **Local Physics** on `UnitySceneLoader` (`UnitySceneLoader.LocalPhysicsEnabled`) loads each networked scene with `LocalPhysicsMode.Physics3D` instead of the shared world.
+- **Auto Simulate Stacked Scenes** on `UnitySceneManager` sets the same field on the `UnitySceneLoader` the manager creates, so every stacked instance gets a local physics world.
 
-`UnitySceneManager`'s "Auto Simulate Stacked Scenes" inspector field pushes that same setting onto the `UnitySceneLoader` the manager creates, so every stacked instance gets a local physics world without touching the loader directly.
+Unity never steps a local physics scene on its own, so Nucleus adds a `PhysicsSimulationDriver` to each one as it loads and steps it on the tick. Bodies in a local physics scene still need manual interpolation.
 
-## Why the driver is needed
+## Call NotifySceneChanged after moving a body
 
-Unity never auto-simulates a local physics scene. A scene loaded with `LocalPhysicsMode.Physics3D` sits inert until something steps it. Nucleus adds a `PhysicsSimulationDriver` to the scene the moment it loads, and that driver is what the network loop steps on tick. Without local physics enabled, bodies share the one default world instead, which under the default `PhysicsExecutionMode.NucleusPerTick` is stepped on tick by the driver Nucleus adds for it automatically.
+A `NetworkRigidbody` collides only within its own scene's physics world, so moving it to another scene changes what it can hit. `MoveGameObjectToScene` does not tell the body it moved:
 
-## What changes for a body
+1. Move the GameObject with `MoveGameObjectToScene`.
+2. Call `NetworkRigidbody.NotifySceneChanged()` right after.
 
-A body only collides within its own scene's physics world. Moving a `NetworkRigidbody` to another scene changes what it can hit: it stops seeing the bodies it left behind and starts seeing whatever local world it landed in.
-
-## Moving a body across scenes
-
-`NetworkRigidbody.NotifySceneChanged` tells a body it has moved to another scene. A scene move made with `MoveGameObjectToScene` does not tell the body on its own, so call `NotifySceneChanged` right after the move; without it, the body keeps simulating in the scene it left. With it, the body simulates in its new scene from the next tick.
-
-You don't need to call this yourself for a spawn move: the spawn handler calls it on every `NetworkRigidbody` under a moved system right after the move.
-
-## Honest limits
-
-This is step routing onto Unity's own per-scene physics world, not a fully separated per-scene physics feature.
-
-Bodies in a local physics scene still need manual interpolation; local physics does not give you that for free.
+The body then simulates in its new scene from the next tick. Without the call, it keeps simulating in the scene it left. A spawn move calls it for you on every `NetworkRigidbody` under the moved system.
 
 ## See also
 
-- [UnitySceneLoader component](../scenes/unity-scene-loader.md) and [UnitySceneManager component](../scenes/unity-scene-manager.md) for the loader and manager settings themselves
-- [Opening and closing scene instances](../../core-api/scenes/opening-scene-instances.md) for opening the stacked instances this applies to
-- [Moving and carrying objects between scenes](../../core-api/scenes/moving-objects-between-scenes.md) for moving systems between scenes
+- [UnitySceneLoader component](../scenes/unity-scene-loader.md) and [UnitySceneManager component](../scenes/unity-scene-manager.md)
+- [Opening and closing scene instances](../../core-api/scenes/opening-scene-instances.md)
+- [Moving and carrying objects between scenes](../../core-api/scenes/moving-objects-between-scenes.md)
