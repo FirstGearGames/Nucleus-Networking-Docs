@@ -3,18 +3,13 @@ title: "Manager components reference"
 components: "UnityManager, UnitySystemManager, UnityClientManager, UnityServerManager, UnityPacketManager, UnityMessageManager"
 ---
 
-## UnityManager, the base
+Each manager component on the Nucleus GameObject sets up one core manager. For which manager owns what, see [The manager map](./manager-map.md).
 
-Every manager component on the manager GameObject derives from `UnityManager`. It gives each component two things:
+## Set fields before you press Play
 
-- `UnityCoreManager` — the `UnityCoreManager` component that owns the session's `CoreManager`.
-- `ManagersInstantiated(UnityCoreManager)` — a virtual method called once, after the `CoreManager` and every one of its managers exist. Override it, call `base.ManagersInstantiated(unityCoreManager)` first, then bind your core manager reference and push any inspector fields into it.
+Each inspector field is copied into its core manager once, when the session starts. Editing a field during play changes the component but not the running session. To change a setting at runtime, set it on the component's `Nucleus*` property instead.
 
-Binding happens in this callback rather than in `Awake` or `OnEnable` because Unity gives no ordering guarantee between components on the same GameObject. `ManagersInstantiated` runs only after the whole manager graph is built, so no component can read a core manager that hasn't been constructed yet regardless of script execution order.
-
-## Components that front a core manager
-
-Each of these exposes the `Nucleus*` core manager it drives as a public property, set inside its own `ManagersInstantiated` override:
+## Each component exposes its core manager
 
 | Component | Core manager property |
 |---|---|
@@ -25,39 +20,28 @@ Each of these exposes the `Nucleus*` core manager it drives as a public property
 | `UnitySystemManager` | `NucleusSystemManager` (`Nucleus.Managers.Systems.SystemManager`) |
 | `UnityInterestManager` | `NucleusInterestManager` (`Nucleus.Managers.Interest.InterestManager`) |
 | `UnitySceneManager` | `NucleusSceneManager` (`Nucleus.Managers.Scenes.SceneManager`) |
+| `UnityPacketManager` | `NucleusPacketManager` |
+| `UnityMessageManager` | `NucleusMessageManager` |
 
-## UnityServerManager
+`UnityClientManager`, `UnityPacketManager` and `UnityMessageManager` have no inspector fields. The settings on `UnitySystemManager` (redundancy, state interpolation, partial state apply, host migration, controller retention), `UnityInterestManager` (evaluation cadence, host interest, interest conditions) and `UnitySceneManager` (join placement, automatic scene requests, load timeout) are covered on their own pages.
 
-`UnityServerManager` carries the server's own settings. Its **Client Limits** section is covered in [Securing a server in Unity](../diagnostics/securing-a-server-in-unity.md).
+## Configure UnityServerManager
 
-In Pro, the bold **Object Pacing** header holds the **Object Pacing Enabled** switch, which sets `ServerManager.ObjectPacingEnabled` and is on by default, and below it the **Maximum Object Kilobytes Per Tick** slider, which sets `ServerManager.MaximumObjectKilobytesPerTick`. The slider is hidden while the switch is off. Its default is `50` (`ServerManager.DefaultMaximumObjectKilobytesPerTick`), and the slider runs from `1` to `255`.
+The **Client Limits** section is covered in [Securing a server in Unity](../diagnostics/securing-a-server-in-unity.md).
 
-This is the most kilobytes (1 kB is 1,024 bytes) of whole objects any one client is sent per tick: new objects, and objects a client is sent again whole after packet loss. Ordinary updates to objects a client already holds are not paced. Whatever does not fit is sent on the ticks after, so a join, a scene load or newly unlocked content arrives over several ticks instead of one. Keep it low enough that one tick's worth arrives comfortably: raise it for a fast LAN or a world of many small objects that should arrive faster, and lower it for slow links. Pacing cannot be switched off. In a free build the header and the field are absent, and every whole object is sent on the tick it is owed. See [Object pacing](../../core-api/core/object-pacing.md).
+In Pro, the **Object Pacing** section limits how many kilobytes (1 kB is 1,024 bytes) of whole objects any one client is sent per tick: new objects, and objects sent again whole after packet loss. Ordinary updates to objects a client already holds are not limited. What does not fit is sent on the ticks after, so a join, a scene load or newly unlocked content arrives over several ticks instead of one.
 
-## UnityPhysicsManager
+| Field | Default | Sets |
+|---|---|---|
+| **Object Pacing Enabled** | On | `ServerManager.ObjectPacingEnabled`. Off sends every whole object on the tick it is owed. |
+| **Maximum Object Kilobytes Per Tick** | `50` (`ServerManager.DefaultMaximumObjectKilobytesPerTick`), range 1 to 255 | `ServerManager.MaximumObjectKilobytesPerTick`. Hidden while pacing is off. Raise it for a fast LAN or a world of many small objects; lower it for slow links. |
 
-`UnityPhysicsManager` does not front a core manager the way the components above do — there is no core `PhysicsManager` and no `Nucleus*` property on it. It is the inspector seat for process-global physics settings, which the integration's physics stepping reads directly: `ExecutionMode` (a `PhysicsExecutionMode`) and a toggle that matches Unity's fixed delta time to the network tick rate. See the physics pages for what `ExecutionMode` controls and how the fixed-delta-time match works.
+A Free build has neither field and sends every whole object on the tick it is owed. See [Object pacing](../../core-api/core/object-pacing.md).
 
-## Components with no inspector fields
+## Configure UnityPhysicsManager
 
-`UnityClientManager`, `UnityPacketManager`, and `UnityMessageManager` carry no serialized fields. Each still exists to bind its core manager (`ClientManager`, `PacketManager`, `MessageManager`) into `UnityCoreManager`'s manager graph and expose it as a `Nucleus*` property, so the manager GameObject is a complete, discoverable front for every core manager even where there's nothing yet to configure from the Inspector.
+`UnityPhysicsManager` fronts no core manager. It holds `ExecutionMode` (a `PhysicsExecutionMode`) and a toggle that matches Unity's fixed delta time to the network tick rate. See [Physics execution modes](../physics/physics-execution-modes.md).
 
-## Tuning covered elsewhere
+## Write your own manager component
 
-Some components own inspector fields that are documented on their own pages rather than repeated here:
-
-- **UnitySystemManager** — redundancy, state interpolation, partial state apply, host migration, and controller retention settings.
-- **UnityInterestManager** — evaluation cadence, host interest, and interest condition settings.
-- **UnitySceneManager** — join placement, automatic scene requests, and load timeout settings.
-
-## Reaching a manager from a script
-
-Three ways to get from your own script to a core manager, depending on what reference you already hold:
-
-- **The component's `Nucleus*` property**, when you have a reference to the manager component, e.g. `unitySystemManager.NucleusSystemManager`.
-- **`UnityCoreManager.CoreManager`**, when you have a reference to the `UnityCoreManager` but not the specific component, e.g. `unityCoreManager.CoreManager.InterestManager`.
-- **`NucleusUnity.BoundCoreManager`**, when you have no reference at all. It's the `CoreManager` the Unity integration bound at startup.
-
-## Runtime changes don't travel
-
-Every inspector field covered here is pushed into its core manager once, inside `ManagersInstantiated`, when the manager graph is built. Editing a field in the Inspector after startup changes the serialized value on the component but does not push it into the core manager again — the core manager already has its own copy. To change a setting at runtime, set it directly on the `Nucleus*` property instead.
+Derive from `UnityManager` and override `ManagersInstantiated(UnityCoreManager)`. It runs once, after the `CoreManager` and all its managers exist. Call `base.ManagersInstantiated(unityCoreManager)` first, then bind your core manager reference and push your inspector fields into it. The `UnityCoreManager` property holds the component that owns the session.
