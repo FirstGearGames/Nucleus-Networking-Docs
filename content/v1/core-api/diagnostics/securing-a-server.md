@@ -141,31 +141,34 @@ public partial class InventoryComponent : NetworkComponent, IMemberWriteValidato
 }
 ```
 
-The validator runs on the server only, after the value is read and before it lands, so you can compare it against the current value through `networkMember.Value`. `Decline` keeps the old value, and other observers are never told about the rejected one. A validator that throws declines the write, so a value crafted to crash your check is not taken.
+- The validator runs on the server only, before the value lands, so `networkMember.Value` is still the current value.
+- `Decline` keeps the old value, and other observers never see the rejected one.
+- A validator that throws declines the write.
+- A declined write is not a violation. If a value can only come from a modified client, call `writingClientConnection.Kick()` from the validator.
 
-**Validate client state as well as replicated members.** The per-tick input a controlling client sends, in members declared with `MemberRole.Predict`, goes through the same validator. Clamp move directions, check that a jump is allowed, and decline anything a real controller could not produce. See [Judging and arbitrating client writes](../state/validating-client-writes.md) and [Client state components](../control/client-state-components.md).
-
-A declined write is not a violation, and nothing is counted against the client. If a value can only come from a modified client, kick from inside the validator by calling `writingClientConnection.Kick()`.
+**Validate client state too.** The per-tick input a controlling client sends, in members declared with `MemberRole.Predict`, goes through the same validator. Clamp move directions, check that a jump is allowed, and decline anything a real controller could not produce. See [Judging and arbitrating client writes](../state/validating-client-writes.md) and [Client state components](../control/client-state-components.md).
 
 ## Judge remote calls on the server
 
 ### Check the sender and the arguments in the handler
 
-A handler on the server receives an `RpcContext`. `RpcContext.SenderConnection` is the client that actually sent the call, resolved by the transport, so it is safe to use for permission checks and for cooldowns of your own. Check every argument against what the server knows: whether the sender is close enough to the door, owns the item, or has the money.
+A server handler receives an `RpcContext`. `RpcContext.SenderConnection` is the client that actually sent the call, so it is safe for permission checks and cooldowns. Check every argument against what the server knows: whether the sender is close enough to the door, owns the item, or has the money.
 
 ### Refuse to relay a call that should not reach other clients
 
-Every server handler returns an `RpcRelayAction`. Return `RpcRelayAction.Cancel` to keep a call on the server instead of passing it on to the system's other observers. Any single `Cancel` wins, a later `Relay` cannot undo it, and a handler that throws counts as `Cancel`. Use this to moderate chat, emotes or anything else clients send each other through the server. See [Judging and refusing a relayed call](../messaging/rpc-relay-and-moderation.md).
+Every server handler returns an `RpcRelayAction`. Return `RpcRelayAction.Cancel` to keep a call on the server instead of passing it to the system's other observers. Any single `Cancel` wins, and a handler that throws counts as `Cancel`. Use this to moderate chat, emotes or anything else clients send each other. See [Judging and refusing a relayed call](../messaging/rpc-relay-and-moderation.md).
 
 ### Tune the call cap to your game
 
-`RpcManager.MaximumInboundRpcsPerConnectionPerDrain` (64 by default) bounds how many calls one client may deliver in a single drain. Lower it if your clients never send many calls at once. Setting it to `UnsetMaximumInboundRpcsPerConnectionPerDrain` (`0`) removes the cap, which a public server should not do.
+`RpcManager.MaximumInboundRpcsPerConnectionPerDrain` (64 by default) bounds how many calls one client may deliver in a single drain. Lower it if your clients never send many calls at once. A public server should not set it to `UnsetMaximumInboundRpcsPerConnectionPerDrain` (`0`), which removes the cap.
 
 ## Decide what each violation costs the client
 
+Register deciding handlers in your server code, since a kick is only enforced on a peer that has started a server.
+
 ### Kick for faults an honest client cannot produce
 
-Register a deciding handler for each violation type you want to escalate. A handler returns `ViolationAction.Kick` or `ViolationAction.Ignore`, and can set `context.Log` to log a line of its own:
+A handler returns `ViolationAction.Kick` or `ViolationAction.Ignore`, and can set `context.Log` to log a line of its own:
 
 ```csharp
 coreManager.ViolationManager.RegisterViolationHandler<RpcFloodViolation>((ref ViolationContext<RpcFloodViolation> context) =>
@@ -175,11 +178,11 @@ coreManager.ViolationManager.RegisterViolationHandler<RpcFloodViolation>((ref Vi
 });
 ```
 
-There is one deciding handler per type, and registering another replaces it. A throwing handler falls back to the default action, so a bug in your handler does not let an offender escape a default kick.
+There is one handler per type, and registering another replaces it. A throwing handler falls back to the default action.
 
 ### Count before you kick for faults an honest client can reach
 
-`UnauthorizedMemberChangeViolation`, `RpcSendPermissionViolation`, `RetentionExceededViolation`, `StateLossReportFloodViolation` and several others can be raised once by an honest client through a race or a bad connection. Kicking on the first raise will drop real players. Instead, count raises per connection and kick only past a threshold you choose:
+An honest client can raise `UnauthorizedMemberChangeViolation`, `RpcSendPermissionViolation`, `RetentionExceededViolation`, `StateLossReportFloodViolation` and several others once, through a race or a bad connection. Count raises per connection and kick past a threshold you choose:
 
 ```csharp
 private readonly Dictionary<uint, int> _permissionFaultCounts = new();
@@ -194,29 +197,12 @@ private ViolationAction OnRpcSendPermission(ref ViolationContext<RpcSendPermissi
 }
 ```
 
-Clear a connection's count when it disconnects, since connection ids are reused. The [Violation reference](./violation-reference.md) lists each type with what to check before you assume an attack.
+Clear a connection's count when it disconnects, since connection ids are reused. The [Violation reference](./violation-reference.md) lists what to check for each type before you assume an attack.
 
 ### Watch every violation for auditing
 
-To log or report every violation without changing any outcome, implement `IViolationObserver` and register it with `ViolationManager.RegisterViolationObserver`. One observer hears every type. To watch a single type, subscribe to its event, such as `ViolationManager.ClientLimitViolationDetected`. Feed these into your own logs or anti-cheat reporting, so you can spot patterns no single violation reveals. See [Watching without deciding](./violations.md#watching-without-deciding).
-
-A kick is only enforced on a peer that has started a server, so register deciding handlers in your server code.
+To log every violation without changing any outcome, register an `IViolationObserver` with `ViolationManager.RegisterViolationObserver`. To watch a single type, subscribe to its event, such as `ViolationManager.ClientLimitViolationDetected`. Feed these into your own logs or anti-cheat reporting to spot patterns no single violation reveals. See [Watching without deciding](./violations.md#watching-without-deciding).
 
 ## Kick cleanly when you remove a client
 
-`ServerManager.KickClient` and the `Connection.Kick()` shorthand mark a client for removal. Under the default `KickOptions` the server immediately stops sending the client anything further and stops believing anything it sends, and the link closes at the end of the frame. Pass a notice message to tell the client why; the kick sends it first, so it is not dropped. `ServerManager.KickTimeoutMilliseconds` (500 by default) closes the link outright if the client never acknowledges. See [Kicking and disconnecting a client](../core/kicking-and-disconnecting.md).
-
-## Check this list before you ship a server
-
-- **The transport's own limits are on.** For Synapse, `Synapse.ClientLimits.Enabled` is `true` and the rates suit your game.
-- **The engine limits cover any transport without limits of its own.** `ServerManager.ClientLimits.Enabled` is `true` for such a transport, with `MaximumPacketBytes` set.
-- **The server has a connection cap.** `SetMaximumConnections` is set to what your hardware can carry.
-- **Your own authenticator is installed.** `AddressClientAuthenticator` is replaced, and `AuthenticationTimeoutSeconds` is above zero.
-- **Only the login message skips authentication.** Every other message type keeps `IsAuthenticationRequired` at `true`.
-- **Access is widened only where it is needed.** Every system on `MemberWriteAccess.AnyClient` or `RpcSendAccess.AnyClient` is there on purpose.
-- **Every value a client can write is validated.** Each component with members a client can write, client state included, implements `IMemberWriteValidator<T0>`.
-- **Every server call handler checks its sender and arguments.** Handlers that relay between clients return `Cancel` for anything you would not show other players.
-- **The violations you care about kick.** Deciding handlers escalate the faults an honest client cannot produce, and count the ones it can.
-- **Violations are audited.** An `IViolationObserver` and a `Synapse.ViolationObserved` subscriber log what was refused.
-- **The server runs a release build.** A debug build ignores `MalformedDataViolation` instead of kicking for it.
-- **Sensitive bytes are protected.** If traffic must be encrypted, a packet transform is in place.
+`ServerManager.KickClient` and the `Connection.Kick()` shorthand mark a client for removal. Under the default `KickOptions` the server stops sending to the client and stops believing anything it sends, and the link closes at the end of the frame. Pass a notice message to tell the client why; it is sent before the link closes. `ServerManager.KickTimeoutMilliseconds` (500 by default) closes the link outright if the client never acknowledges. See [Kicking and disconnecting a client](../core/kicking-and-disconnecting.md).
