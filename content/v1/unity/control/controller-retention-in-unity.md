@@ -4,46 +4,36 @@ title: "Keeping a player's objects across a disconnect"
 
 > **Driving the core API directly?** See [Controller retention](../../core-api/control/controller-retention.md).
 
-By default, a disconnecting player's object is left in the world, uncontrolled, and nothing remembers who held it. Retention changes that: the object is also held on a record and handed back to the same player if they reconnect before the record expires. Two components decide whether that happens and how long it lasts, and a third can override it per prefab.
+By default, a disconnecting player's object stays in the world, uncontrolled, and nothing remembers who held it. With retention, the object is also held on a record and handed back to the same player if they reconnect before the record expires. An object whose record expires, is evicted or is redeemed by someone else is despawned.
 
-## Unity System Manager: the project-wide default
+These settings act only on the server. They do nothing on a client.
 
-The **Unity System Manager** component exposes three fields, under its **Controller Retention** heading, that configure `SystemManager` when the managers are instantiated. The last two are drawn only while the first is set to `Retain`:
+## Set the project default on Unity System Manager
 
-- **On Controller Disconnect**: the retention policy applied to every controlled object whose system, and whose object, does not override it. Defaults to `ControllerRetentionPolicy.Release`, so retention is off project-wide until something turns it on.
-- **Retention Seconds**: how long a retained set stays redeemable, in seconds. Defaults to 120. Zero never expires it.
-- **Maximum Retained Sets**: how many retained sets may stand at once before the oldest is evicted. Defaults to 64.
+Under **Controller Retention** on the **Unity System Manager**:
 
-These three map straight onto `SystemManager.DefaultControllerRetentionPolicy`, `ControllerRetentionSeconds`, and `MaximumRetainedControllerRecords`.
+| Field | Default | Sets |
+|---|---|---|
+| **On Controller Disconnect** | `ControllerRetentionPolicy.Release` | `SystemManager.DefaultControllerRetentionPolicy`: the policy for every controlled object that does not override it. |
+| **Retention Seconds** | 120 | `SystemManager.ControllerRetentionSeconds`: how long a retained set stays redeemable. Zero never expires. |
+| **Maximum Retained Sets** | 64 | `SystemManager.MaximumRetainedControllerRecords`: how many retained sets may stand at once before the oldest is evicted. |
 
-## NetworkSystemObject: the per-prefab override
+The last two are shown only while **On Controller Disconnect** is `Retain`.
 
-`NetworkSystemObject` carries its own retention toggle, for a prefab that needs to disagree with the project default. It has two fields:
+## Override it per prefab on NetworkSystemObject
 
-- **Override On Disconnect**: off by default. Leave it off and the prefab follows the manager's default; turn it on to choose a policy for this prefab.
-- **On Controller Disconnect**: shown and used only while the toggle is on, and it defaults to `ControllerRetentionPolicy.Retain` once enabled.
+Turn on **Override On Disconnect** on a prefab's `NetworkSystemObject`, then set its **On Controller Disconnect**, which defaults to `ControllerRetentionPolicy.Retain`. The override (`ControllerRetentionPolicyOverride`) covers every system the object carries.
 
-Turning the toggle on applies the policy to the object's whole system group (`ControllerRetentionPolicyOverride`), so it covers every system the object carries, not one system in isolation.
+## Choose a Disconnect Mode on NetworkPlayerSpawner
 
-## NetworkPlayerSpawner: Disconnect Mode
+**Disconnect Mode** (`NetworkPlayerDisconnectMode`) on `NetworkPlayerSpawner` decides what happens to the player objects it spawns, overriding the manager's default:
 
-`NetworkPlayerSpawner` has its own setting, **Disconnect Mode**, of type `NetworkPlayerDisconnectMode`:
+- **`Despawn`** (default): the object leaves with its player, and a returning player gets a new one.
+- **`RetainForReturn`**: the object stays, uncontrolled, and is handed back through the spawner when the same `Connection.Identity` reconnects before the record lapses.
 
-- **`Despawn`** (default) — the player's object leaves the world with them. A returning player is always given a new one. Nothing is correlated, so there's nothing to hand to the wrong person.
-- **`RetainForReturn`** — the player's object stays in the world, uncontrolled, and is handed back to the same player if they reconnect before the record lapses. The spawner marks every system it spawns `Retain`, and stores the retention token the departure issues against the connection's `Connection.Identity`. When that identity reconnects, the token is redeemed and the object is handed back through the same spawner.
+Use `RetainForReturn` only with an `IClientAuthenticator` that gives each player a real identity. The default `AddressClientAuthenticator` identifies a client by its address, and two players behind one NAT share an address, so the second can be handed the first player's object.
 
-An object whose record expires, is evicted, or is redeemed by someone else is despawned; nobody is coming back for it.
+## Read further
 
-## The NAT warning
-
-`RetainForReturn` is only as trustworthy as the identity behind it. The default `AddressClientAuthenticator` identifies a client by the address it connected from, and two players behind one NAT share that address. Under the default authenticator, `RetainForReturn` can hand the second player the first player's object. Use `RetainForReturn` only with an `IClientAuthenticator` that issues a real per-player identity.
-
-## What none of this does on a client
-
-Controller retention is server bookkeeping: the Unity System Manager fields, the `NetworkSystemObject` override, and the `NetworkPlayerSpawner` Disconnect Mode all govern what the server does when a controller disconnects. A plain client can have every one of these fields set — they're serialized on the prefab and the scene components either way — but none of them does anything on a client. A client never decides retention for an object it doesn't control the fate of.
-
-## Where to go next
-
-Tokens, the retention events, and reclaiming a retained object by hand are covered on the API page: [Controller retention](../../core-api/control/controller-retention.md).
-
-This page does not cover host migration or world adoption. For what happens to retained objects when the host itself is lost, see [Surviving the loss of a host](../transports/hosting-topologies.md).
+- Tokens, the retention events and reclaiming an object by hand: [Controller retention](../../core-api/control/controller-retention.md).
+- What happens to retained objects when the host itself is lost: [Surviving the loss of a host](../transports/hosting-topologies.md).
