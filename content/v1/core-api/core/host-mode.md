@@ -2,75 +2,56 @@
 title: "Host mode"
 ---
 
-## What a host is
+> **Using Unity?** See [Host mode](../../unity/core/host-mode.md).
 
-A host is one process running both roles at once: it starts a server and connects its own client to that server. `TransportManager.IsServerStarted` and `TransportManager.IsClientStarted` are both true, and `IsHostStarted` is defined as `IsServerStarted && IsClientStarted`. Nothing else distinguishes host mode from a pure server or a pure client: the same `CoreManager`, the same transport, both halves live in one process.
+A host is one process that starts a server and connects its own client to it. `TransportManager.IsServerStarted` and `IsClientStarted` are both true, and `IsHostStarted` is `IsServerStarted && IsClientStarted`. It uses the same `CoreManager` and transport as any other peer.
+
+## Start a host by connecting both invokers
+
+```csharp
+await transport.ConnectAsync(Invoker.Server);
+await transport.ConnectAsync(Invoker.Client);
+```
 
 ## A host holds one Connection for its own player
 
-A host's own client is described by one `Connection`. The server side keeps a roster entry for every connected player, and for the host's own client that roster entry is the client side's local `Connection` itself, under either Synapse pairing. A call that names the host's own player by its local `Connection`, such as `RpcTarget.To` or `RpcTarget.ObserversExcept`, therefore matches the roster entry the server holds.
+The server's roster entry for the host's own client is the client side's local `Connection` itself. So a call that names the host's own player by its local `Connection`, such as `RpcTarget.To` or `RpcTarget.ObserversExcept`, matches the roster entry the server holds.
 
-Compare players by `Connection.Id` all the same:
+Still compare players by `Connection.Id`, because a `Connection` is pooled and reused once its link ends:
 
 ```csharp
 bool isSelf = someConnection.Id == localClientConnection.Id;
 ```
 
-A `Connection` is pooled and reused once its link ends, so a reference kept past that point names whoever rents the instance next, while the Id is what names a player.
-
-Or resolve each side explicitly through the `TransportManager` rather than holding a reference across the two halves:
+Or resolve each side through the `TransportManager` rather than holding a reference across the two halves:
 
 ```csharp
 transportManager.TryGetLocalClientConnection(out Connection localClient);
 transportManager.TryGetServerConnection(out Connection localServer);
 ```
 
-`TryGetLocalClientConnection` returns this peer's own client `Connection`; it is false on a pure server. `TryGetServerConnection` returns this peer's own server `Connection`; a controlling client uses it to find the upstream observer target. Both resolve to the owner-held instance for that side rather than scanning transports.
+- `TryGetLocalClientConnection` returns this peer's own client `Connection`. It is false on a pure server.
+- `TryGetServerConnection` returns this peer's own server `Connection`. A controlling client uses it to find the upstream observer target.
 
-## IsHostLoopback
+## Both halves of the host's own link are marked IsHostLoopback
 
-Both halves of the pairing above are marked `Connection.IsHostLoopback`, and the client half is also the server's roster entry for its own client. The mark identifies a link whose two ends are the same process. It is neither `IsEmulated` (no socket at all) nor `IsPeerStandIn` (a peer this client cannot reach directly) — it names a real, live link where both ends happen to be this peer.
+`Connection.IsHostLoopback` marks a real, live link whose two ends are this same process. It is neither `IsEmulated` (no socket at all) nor `IsPeerStandIn` (a peer this client cannot reach directly). State sent across a loopback link is discarded on arrival, because the receiving process wrote it.
 
-State addressed across a loopback link is discarded on arrival rather than applied: whatever was sent was written by the process it would be delivered to, so there is nothing to learn from reading it back.
+A custom `Transport` must implement `Transport.IsOwnClientConnection(Connection serverSideClientConnection)`, which answers whether a server-side client connection is this process's own client. A transport that cannot tell must answer false. A false answer only costs the host in-process delivery of its own traffic, but a wrong true answer would hand a stranger connecting over loopback this peer's own server half.
 
-A `Transport` answers the same question at the socket level, before a `Connection` can be marked at all, through the abstract `Transport.IsOwnClientConnection(Connection serverSideClientConnection)`. It exists because a `Connection` itself carries no endpoint or handshake to prove the two ends are the same process — only the transport underneath it knows what it's holding. A transport that cannot tell must answer false rather than guess: a false answer costs a host the in-process delivery of its own traffic, but a wrong true answer would hand a stranger connecting over loopback this peer's own server half.
+## Loopback delivery is always Immediate
 
-## HostLoopbackDelivery
-
-`TransportManager.HostLoopbackDelivery` controls when a host's two halves see what one of them addressed to the other. It is settable only to `HostLoopbackDelivery.Immediate`; setting anything else is refused with a `LogError` rather than silently ignored:
+`TransportManager.HostLoopbackDelivery` controls when one half of a host sees what it addressed to the other. The only value a game may set is `HostLoopbackDelivery.Immediate`, the default: the receiving half's handlers run at the send site, before the send call returns, and the message is never serialized. Setting anything else logs an error and leaves it at `Immediate`:
 
 ```csharp
 // Refused: logs an error and leaves HostLoopbackDelivery at Immediate.
 transportManager.HostLoopbackDelivery = HostLoopbackDelivery.Deferred;
 ```
 
-`Immediate` (the default, and the only value a game may set) runs the receiving half's handlers at the send site, before the send call returns — the same shape every other callback in the engine already uses. `Deferred` would run those handlers a tick later, at the loop step a genuinely remote copy lands on; game code cannot select it.
+## Peer events name real connections on a host
 
-A message delivered this way is never serialized. Under `Immediate` its handler runs synchronously at the send site, with nothing queued. `Deferred` queues it instead, and the queue is run at `NetworkLoopSteps.EarlyVariableUpdate`, the same step a wire copy would be read on.
+On a client, `TransportManager.PeerConnectionDiscovered` and `PeerConnectionDropped` hand over a stand-in `Connection` (`IsPeerStandIn` true) for a peer the server reported. On a host they name the server's own live roster entry for the joining or leaving peer, so `IsPeerStandIn` is false. A host raises them itself as a peer joins or leaves. Neither is ever raised for the host's own client.
 
-## Callbacks a host raises for itself
+## Never pair RpcTarget.To with Immediate self delivery on a host
 
-`TransportManager.PeerConnectionDiscovered` and `PeerConnectionDropped` normally hand a client a stand-in Connection (`Connection.IsPeerStandIn` true) for a peer it was told about. On a host these events instead name the server's own live roster entry for a joining or leaving peer — `IsPeerStandIn` reads false, because the Connection carries a real link rather than a bare identity. A host raises the two events itself as a peer joins or leaves, rather than from the roster message the server sends its clients.
-
-Neither event is ever raised for the host's own client. No client is told about itself.
-
-## The self-delivery hazard
-
-Never pair an addressed send (`RpcTarget.To(connection)`) with immediate self delivery (`RpcSelfDelivery.Immediate`) on a surface the host's own client also listens on. On a host, the process running the server is the same process running that client, so a handler registered for the surface runs once for the send and once more for the host's own copy — the host ends up running every player's copy of a call meant for one. See the RPC page for the detail on `RpcSelfDelivery` and `RpcTarget`.
-
-## Starting a host
-
-In Unity, set `UnityTransportManager`'s automatic start mode to `NetworkStartMode.Host` in the inspector, or call `StartHostAsync()` directly:
-
-```csharp
-await unityTransportManager.StartHostAsync();
-```
-
-`StartHostAsync` connects every added transport as both a server and a client, in that order.
-
-From plain C#, connect both invokers on the transport:
-
-```csharp
-await transport.ConnectAsync(Invoker.Server);
-await transport.ConnectAsync(Invoker.Client);
-```
+Do not pair an addressed send (`RpcTarget.To(connection)`) with immediate self delivery (`RpcSelfDelivery.Immediate`) on a surface the host's own client also listens on. The host's handler runs once for the send and once more for the host's own copy, so the host runs every player's copy of a call meant for one. See [RpcSelfDelivery](../messaging/rpc-self-delivery.md).
