@@ -4,31 +4,31 @@ title: "Saving and loading a world"
 
 > **Using Unity?** See [Saving and loading a world from Unity](../../unity/scenes/world-save-load-in-unity.md).
 
-## WorldPersistenceManager
+World persistence is a Pro feature. `CoreManager.WorldPersistenceManager` saves the server's world to a store and builds it back.
 
-`CoreManager.WorldPersistenceManager` writes the server's world to a store and builds it back. Register a store first:
+## Register a store
 
 ```csharp
 coreManager.WorldPersistenceManager.SetWorldStore(myWorldStore);
 ```
 
-`SetWorldStore` replaces whatever store was previously registered; passing `null` unregisters it. `SaveAsync` and `LoadAsync` both fail immediately if no store is registered.
+`SetWorldStore` replaces any store already registered, and `null` unregisters it. `SaveAsync` and `LoadAsync` fail at once when no store is registered. See [Writing a world store](./world-store.md).
 
-`IsBusy` is true for the duration of either operation. A second `SaveAsync` or `LoadAsync` called while one is already running is refused rather than allowed to interleave with it.
+## Save and load only on the server
 
-## Saving
+`SaveAsync` and `LoadAsync` are refused unless this peer's server is started. A client holds a copy of the server's world, not its own.
+
+`IsBusy` is true while either runs. A second `SaveAsync` or `LoadAsync` called during one is refused.
+
+## Save the world
 
 ```csharp
 bool saved = await coreManager.WorldPersistenceManager.SaveAsync();
 ```
 
-`SaveAsync` walks every open scene and every started system into the store's document, then awaits the store's own save. The store is arbitrary caller code, so the save can span any number of ticks before it resolves.
+`SaveAsync` writes every open scene and every started system, then awaits the store's own save, which can take any number of ticks. A save always captures the whole world. There is no partial or incremental save.
 
-## Loading, and the deadlock rule
-
-`LoadAsync` despawns and rebuilds the routing table, which only the network loop thread may touch. Because the store's load can resolve on any thread, `LoadAsync` marshals itself back onto the loop before it starts rebuilding.
-
-This means the thread that drives the loop must never block on it. Blocking that thread on the task (`.Result`, `.Wait()`) stops the loop from ever draining, the marshal never resolves, and the load deadlocks permanently. An ordinary `await` does not block: it hands the thread back, so the loop keeps being driven and the load finishes. The caller must keep the loop being driven, the normal way the host application drives it, for as long as the returned task is outstanding.
+## Load without blocking the loop thread
 
 ```csharp
 Task<bool> loadTask = coreManager.WorldPersistenceManager.LoadAsync();
@@ -36,44 +36,28 @@ Task<bool> loadTask = coreManager.WorldPersistenceManager.LoadAsync();
 bool loaded = await loadTask;
 ```
 
-Await it from any thread, the loop-driving one included, and this is all it takes; the loop keeps running and the task resolves once the build finishes. What the loop-driving thread must not do is block on the task, or await it inside the code that would otherwise go on to drive the next tick.
+`LoadAsync` finishes its work on the network loop thread. You can await it from any thread, the loop thread included, but:
 
-## Authority only
+- Never block the thread that drives the loop on the task (`.Result`, `.Wait()`).
+- Never await it inside the code that would go on to drive the next tick.
+- Keep driving the loop until the task completes.
 
-Both `SaveAsync` and `LoadAsync` are refused on a peer whose server is not started. A client holds a copy of the server's world, not one of its own, so there is nothing on a client worth saving and nothing a client can build without a server behind it.
+Breaking any of these stops the loop, and the load deadlocks permanently.
 
-## What a save keeps
+## Know what a save keeps
 
-A save records:
+A save records each object, the type it was built from, its scene, what it belonged to, and its members' values.
 
-- What objects existed
-- What type each object was built from
-- Where each object lived (its scene)
-- What each object belonged to
-- What each object's members held
+It does not record observers, interest, access rosters, acknowledgment positions or controller assignments. These describe connected peers, and a saved world outlives its session.
 
-## What a save drops, and why
+Only systems whose type is registered with `NetworkTypeRegistry` are saved. A started system of an unregistered type is left out, and an error naming its id and type is logged; the log is the only record of what was skipped. The rest of the save goes ahead.
 
-A save does not record observer sets, interest membership, access rosters, acknowledgment positions, or controller assignments. All of these describe peers connected to a session, and a saved world outlives the session it was taken from. There is nothing to restore them to.
+## A load replaces the whole world
 
-## Unregistered system types are skipped silently, per object
+A load does not merge. It:
 
-A save only writes systems whose type is registered with `NetworkTypeRegistry`. A started system of an unregistered type is left out of the save entirely, and an error is logged for that object naming its id and type. The rest of the save proceeds; there is no way to detect after the fact which objects were skipped other than by reading the logged errors.
+1. Despawns everything and closes every open scene. Connected clients see the despawns, then the spawns.
+2. Reopens each saved scene. If one cannot be opened, the store's `OnSceneUnavailable` either drops that scene's objects and continues, or fails the whole load. A failed load leaves an empty world, because the old world is already gone.
+3. Rebuilds the saved objects.
 
-## Loading replaces, it does not merge
-
-A load first despawns everything currently standing, then builds the saved world in its place. Connected clients see exactly that sequence: a world of despawns followed by a world of spawns.
-
-If no `ISceneLoader` is registered on `SceneManager`, a load logs a warning and drops every object inside every scene named by the saved world, because none of those scenes can be opened.
-
-## Scenes are reopened before objects are rebuilt
-
-A load closes all currently open scenes, then reopens each scene the saved world names before rebuilding any object into it. If a named scene cannot be opened, the store itself decides what happens next through its failure action: it can either let the load continue without that scene's objects, or fail the load outright, in which case no saved object is built. The world the load replaced does not come back either, because it was cleared before the saved scenes were read, so a failed load leaves an empty world.
-
-## Whole-world only
-
-A save always captures the entire world, and a load always replaces the entire world. There is no incremental or partial save.
-
-## World persistence ships only in Pro
-
-World persistence is a Pro feature.
+If no `ISceneLoader` is registered on `SceneManager`, a load logs a warning and drops every object in every saved scene, because none of those scenes can be opened.

@@ -2,12 +2,12 @@
 title: "Choosing what a save keeps"
 ---
 
-## WorldStateIgnoreAttribute
+## Keep a member out of saves with WorldStateIgnore
 
-`WorldStateIgnoreAttribute` (`Nucleus.Managers.Persistence`) keeps a member out of a saved world while leaving everything about how it replicates alone. Applied to a `NetworkMemberBase` field on a `NetworkComponent`, it excludes that one member. Applied to the component class itself, it excludes every member the component declares.
+`WorldStateIgnoreAttribute` (`Nucleus.Managers.Persistence`) leaves a member out of a saved world without changing how it replicates. Put it on a `NetworkMemberBase` field to exclude that member, or on a `NetworkComponent` class to exclude every member it declares.
 
 ```csharp
-public partial class WorldStateIgnoreStateComponent : NetworkComponent
+public partial class ScoreComponent : NetworkComponent
 {
     public readonly NetworkMember<int> Persisted = new();
 
@@ -20,41 +20,37 @@ public partial class WorldStateIgnoreStateComponent : NetworkComponent
 
 ```csharp
 [WorldStateIgnore]
-public partial class WorldStateIgnoreComponentStateComponent : NetworkComponent
+public partial class SessionStatsComponent : NetworkComponent
 {
     public readonly NetworkMember<int> Counter = new();
 }
 ```
 
-The exclusion is decided at compile time, so it adds no runtime cost to a save. A save written by an earlier build that still contains the member is simply never asked for it. After a load, the member keeps the value its component was constructed with — not a stored value, not the value from before the save, the constructed default.
+After a load, an excluded member holds the value its component was constructed with, not a saved value and not its value before the save. If a save from an earlier build still contains the member, that value is ignored.
 
-Replication does not change. The member replicates exactly as it did before, and marking it costs no bandwidth.
+The member replicates exactly as before, at no extra bandwidth.
 
-## WorldStateIgnore vs. ReplicationIgnore
+The attribute compiles in Free but has no effect there, because saving worlds is Pro.
 
-`ReplicationIgnoreAttribute` (`Nucleus.Components`) is the inverse: it keeps a member off the wire while leaving how it is saved alone. Same two targets — a field for one member, the class for all of them.
+## ReplicationIgnore is the opposite
 
-That pairing is the whole of what separates the two decisions:
+`ReplicationIgnoreAttribute` (`Nucleus.Components`) keeps a member off the wire but still saves it. It takes the same two targets: a field for one member, the class for all of them.
 
 | Attribute | Opts out of | Member still replicates? | Member still saved? |
 |---|---|---|---|
 | `WorldStateIgnoreAttribute` | the save | yes | no |
 | `ReplicationIgnoreAttribute` | the wire | no | yes, from whichever peer wrote it |
 
-### The adoption trap
+### A server promoted by adoption saves defaults
 
-A peer promoted to server by adoption never received `ReplicationIgnore`-marked values — nothing was ever sent to it for them. It holds the constructed defaults, not whatever the previous server had. Saving a world from that peer writes those defaults over whatever the store already held for those members. This is specific to `ReplicationIgnoreAttribute`; a `WorldStateIgnore` member behaves the same on every peer regardless of role, because no peer ever saves it.
+A peer promoted to server by adoption never received `ReplicationIgnore` values, so it holds the constructed defaults. Saving from it writes those defaults over what the store held. `WorldStateIgnore` members have no such problem, because no peer ever saves them.
 
-## Choosing between them
+## Choose between them
 
-- **A session counter or tick stamp** — worth replicating so observers see it live, not worth restoring after a load: `WorldStateIgnore`.
-- **A visual highlight or other purely presentational flag** — often neither needs saving nor needs to leave the peer that set it, so either attribute can apply depending on whether other peers need to see it.
-- **A cached local reference** (an object handle, a lookup result recomputed on start) — not meaningful to another peer and not meaningful after a load: mark it `ReplicationIgnore` if it must never leave the peer that holds it, or `WorldStateIgnore` if it should still replicate live but not survive a save.
+- **A session counter or tick stamp**: observers should see it live, but it should not come back after a load. Use `WorldStateIgnore`.
+- **A visual highlight or other presentation flag**: usually needs neither saving nor sending. Use either, depending on whether other peers need to see it.
+- **A cached local reference** (an object handle, a lookup recomputed on start): use `ReplicationIgnore` if it must never leave the peer that holds it, or `WorldStateIgnore` if it should replicate live but not survive a save.
 
-## Free vs. Pro
+## NetworkIgnore is unrelated
 
-`WorldStateIgnoreAttribute` is not Pro-gated. It compiles and works in a Free build. The attribute simply has no observable effect until Pro's world persistence is actually saving and loading worlds — there is nothing to exclude a member from until then.
-
-## Not the same as NetworkIgnoreAttribute
-
-`Nucleus.Serializers.NetworkIgnoreAttribute` is unrelated to both of the above. It leaves one field out when a struct or class of yours is sent, not a `NetworkComponent` member's participation in replication or saving.
+`Nucleus.Serializers.NetworkIgnoreAttribute` leaves a field out when a struct or class of yours is sent. It has nothing to do with `NetworkComponent` members, replication or saving.
