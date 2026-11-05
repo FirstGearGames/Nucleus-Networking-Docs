@@ -4,27 +4,27 @@ title: "Assigning and releasing control"
 
 > **Using Unity?** See [Giving a client control of an object](../../unity/control/transferring-control-in-unity.md).
 
-## Assigning and releasing control
-
-The server hands control of a `NetworkSystem` to a connection with `SetController`:
+## Assign control from the server
 
 ```csharp
 public void SetController(Connection controllingClientConnection)
 ```
 
-Pass a `Connection` to make that client the controller, or `null` to return control to the server. Only a peer with a started server may call it; a client that calls it gets a logged error and nothing happens - the call does not act on a non-server caller, it rejects it. An assignment that does not actually change the controlling identity queues nothing, so calling `SetController` with the current controller (or `null` when the server already controls it) is a no-op.
+- Pass a `Connection` to make that client the controller, or `null` to return control to the server.
+- Only a peer with a started server may call it. A client that calls it gets a logged error and nothing happens.
+- Calling it with the current controller, or with `null` when the server already controls the system, does nothing.
 
-## One comparison decides three separate things
+Every peer learns of the change through ordinary replication. There is no message to send.
 
-A single comparison - "does this connection hold `ControllerConnectionId`" - decides three separate things at once:
+## The controller decides client state, prediction and write permission
 
-- **Client state routing**: which connection's client state the system applies.
-- **Prediction**: whether this peer predicts the system locally at all.
-- **Write permission**: the controller may always set members, regardless of `MemberWriteAccess`.
+Whether a connection holds `ControllerConnectionId` decides:
 
-They're decided by the same comparison because they describe the same relationship from three angles: the connection driving the object, the peer allowed to run it ahead of the network, and the peer allowed to set its members. Splitting them would let a system take client state from one connection while letting another set its members, which is not a state Nucleus represents.
+- **Client state routing**: whose client state the system applies.
+- **Prediction**: whether this peer predicts the system locally.
+- **Write permission**: the controller may always set members, whatever `MemberWriteAccess` says.
 
-A client write for a system it does not control is rejected by the server and raised as an `UnauthorizedMemberChangeViolation`:
+The server rejects a client write to a system the client does not control and raises an `UnauthorizedMemberChangeViolation`:
 
 ```csharp
 public struct UnauthorizedMemberChangeViolation : IViolation
@@ -33,12 +33,8 @@ public struct UnauthorizedMemberChangeViolation : IViolation
 }
 ```
 
-It's raised with `ViolationAction.Ignore`: the ordinary cause is a race (control or permission changing before the client's earlier write lands), not an attack, so the default response is to drop the write and move on rather than punish the connection.
+It is raised with `ViolationAction.Ignore`, because the usual cause is a race (control or permission changed before the client's earlier write landed), not an attack. The write is dropped and the connection is not punished.
 
-## When the controller leaves
+## Retention decides what happens when the controller leaves
 
-The server drops the departing connection's reference automatically; a system does not have to notice its controller leaving on its own. Whether the controlling identity itself is cleared right away or held for a returning connection to reclaim is a retention decision, not part of this page - see [Controller retention](./controller-retention.md) for holding a departed controller's objects.
-
-## Replication
-
-Control is not something game code sends. Every peer learns a controller change the same way it learns any other replicated state, with no separate message or extra call.
+The server drops the departing connection's reference automatically. Whether the controlling identity is cleared at once or held for a returning connection to reclaim is set by [Controller retention](./controller-retention.md).
