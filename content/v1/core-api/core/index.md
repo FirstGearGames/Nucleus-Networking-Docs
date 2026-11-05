@@ -14,6 +14,7 @@ Pages in this category:
 - [Creating a CoreManager](./core-manager.md)
 - [Authenticating clients](./authentication.md)
 - [Kick and refusal notices](./server-notices.md)
+- [Object pacing](./object-pacing.md)
 - [The manager map](./manager-map.md)
 - [Driving the loop yourself](./custom-loop-step-provider.md)
 - [Kicking and disconnecting a client](./kicking-and-disconnecting.md)

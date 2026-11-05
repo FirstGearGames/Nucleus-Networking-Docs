@@ -1,55 +1,29 @@
 ---
-title: "Installing the Unity integration"
+title: "Install Nucleus in Unity"
 ---
 
-> **Driving the core API directly?** See [Adding Nucleus to a .NET project](./adding-nucleus-to-a-dotnet-project.md).
+> **Using plain .NET?** See [Add Nucleus to a .NET project](./adding-nucleus-to-a-dotnet-project.md).
 
-## What you get
+Nucleus needs Unity 6.5 (6000.5) or newer.
 
-Nucleus for Unity ships as prebuilt DLLs, not source, for the engine itself. Import the release's `.unitypackage` (**Assets > Import Package > Custom Package**), or copy the whole `Assets/Nucleus` folder into your project. It contains:
+## Import the package
 
-- `Nucleus.dll`, `CodeBoost.dll`, `SynapseSocket.dll` — the engine and its dependencies.
-- `Nucleus.CodeAnalysis.SourceGenerators.dll` — the Roslyn source generator that makes networked types compile.
-- A `.pdb` next to `Nucleus.dll`, `CodeBoost.dll`, and `SynapseSocket.dll`, for debuggable stack traces. The source generator DLL doesn't ship one.
-- `Nucleus.xml` and `SynapseSocket.xml`, the API documentation your IDE shows on hover.
-- `LICENSE.txt`, and `VERSION.txt`, which names the release you installed.
-- An `Integrations` folder.
+1. In Unity, choose **Assets > Import Package > Custom Package**.
+2. Select the Nucleus `.unitypackage` and click **Import**.
 
-`Integrations` holds four sub-folders — `Unity`, `Blitz Relay`, `Newfarm Client`, `Newfarm Migration` — each its own assembly definition. Mostly this is C# source and `.asmdef` files, not DLLs. Blitz Relay is the exception: alongside its own source and `.asmdef`, it also ships one precompiled dependency, `BlitzRelay.Protocol.dll`.
+Everything is placed in `Assets/Nucleus`. When the import finishes, **Tools > Nucleus** appears in the menu bar.
 
-## The one rule that matters: copy files, not `.meta`s
+## Check that the code generator runs
 
-Copy the DLLs and their `LICENSE.txt`/`.pdb` files. Do **not** copy the `.meta` files that ship alongside them into a project that already has its own Unity-generated `.meta`s for those paths, and never hand-edit or drop the `.meta` for `Nucleus.CodeAnalysis.SourceGenerators.dll`.
+Nucleus generates your networking code when Unity compiles. If the generator does not run, your project still compiles, but nothing replicates and no error appears.
 
-That file's `.meta` carries:
+1. In the Project window, open `Assets/Nucleus` and select `Nucleus.CodeAnalysis.SourceGenerators`.
+2. At the bottom of the Inspector, check that the asset has the `RoslynAnalyzer` label.
 
-```yaml
-labels:
-- RoslynAnalyzer
-```
+If the label is missing, add it in the Inspector.
 
-That label is what tells Unity to run the DLL as a Roslyn source generator instead of just referencing it as a normal plugin. Without it, the generator never runs: your project compiles — components, fields, everything looks fine — but nothing actually replicates, because the generated networking code was never produced. This fails silently, with no compile error, so it's worth checking directly: open `Nucleus.CodeAnalysis.SourceGenerators.dll.meta` in your project and confirm `RoslynAnalyzer` is present under `labels`.
+## Update by importing the whole new package
 
-## Keep the three engine DLLs matched
+When a new version comes out, import its `.unitypackage` over the old one. Never update only some of the DLLs in `Assets/Nucleus`, because DLLs from different versions fail at runtime.
 
-`Nucleus.dll`, `CodeBoost.dll`, and `SynapseSocket.dll` must all come from the same build. If you update one without the other two — for example, dropping in a fresh `Nucleus.dll` next to an old `CodeBoost.dll` — you won't get a compile error. You'll get a runtime failure, since the DLLs assume they're talking to matching versions of each other. When updating, replace all three together.
-
-## Unity version floor
-
-The integration supports **Unity 6.5 (6000.5) and newer**. It uses Unity APIs that older editors lack, so it does not compile on them.
-
-Every file in the integration also opens with the same conditional compilation gate:
-
-```csharp
-#if UNITY_EDITOR || UNITY_6000_5_OR_NEWER
-#define UNITY_ENGINE
-#endif
-```
-
-It tells a Unity build apart from a plain .NET one, so the same sources can sit in a non-Unity project without pulling in `UnityEngine`.
-
-## What's in Integrations, and what's gated
-
-The `Unity` folder is the integration itself — managers, components, everything that talks to `UnityEngine`. It has no `defineConstraints`, so it compiles as soon as it's in your project.
-
-`Blitz Relay`, `Newfarm Client`, and `Newfarm Migration` are separate assemblies alongside it. The Blitz Relay assembly is special: its `.asmdef` declares `"defineConstraints": ["BLITZ_RELAY"]`, so that assembly only compiles when the `BLITZ_RELAY` scripting define is set in your project. The Unity integration assembly itself carries no such constraint — it references Blitz Relay unconditionally, but the relay code only builds in when you opt in with that define.
+To copy files by hand instead, or to see what each file is, read [Installing and updating Nucleus in Unity](../reference/installing-and-updating-in-unity.md).

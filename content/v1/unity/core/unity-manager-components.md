@@ -26,13 +26,21 @@ Each of these exposes the `Nucleus*` core manager it drives as a public property
 | `UnityInterestManager` | `NucleusInterestManager` (`Nucleus.Managers.Interest.InterestManager`) |
 | `UnitySceneManager` | `NucleusSceneManager` (`Nucleus.Managers.Scenes.SceneManager`) |
 
+## UnityServerManager
+
+`UnityServerManager` carries the server's own settings. Its **Client Limits** section is covered in [Securing a server in Unity](../diagnostics/securing-a-server-in-unity.md).
+
+In Pro, the bold **Object Pacing** header holds the **Object Pacing Enabled** switch, which sets `ServerManager.ObjectPacingEnabled` and is on by default, and below it the **Maximum Object Kilobytes Per Tick** slider, which sets `ServerManager.MaximumObjectKilobytesPerTick`. The slider is hidden while the switch is off. Its default is `50` (`ServerManager.DefaultMaximumObjectKilobytesPerTick`), and the slider runs from `1` to `255`.
+
+This is the most kilobytes (1 kB is 1,024 bytes) of whole objects any one client is sent per tick: new objects, and objects a client is sent again whole after packet loss. Ordinary updates to objects a client already holds are not paced. Whatever does not fit is sent on the ticks after, so a join, a scene load or newly unlocked content arrives over several ticks instead of one. Keep it low enough that one tick's worth arrives comfortably: raise it for a fast LAN or a world of many small objects that should arrive faster, and lower it for slow links. Pacing cannot be switched off. In a free build the header and the field are absent, and every whole object is sent on the tick it is owed. See [Object pacing](../../core-api/core/object-pacing.md).
+
 ## UnityPhysicsManager
 
 `UnityPhysicsManager` does not front a core manager the way the components above do — there is no core `PhysicsManager` and no `Nucleus*` property on it. It is the inspector seat for process-global physics settings, which the integration's physics stepping reads directly: `ExecutionMode` (a `PhysicsExecutionMode`) and a toggle that matches Unity's fixed delta time to the network tick rate. See the physics pages for what `ExecutionMode` controls and how the fixed-delta-time match works.
 
 ## Components with no inspector fields
 
-`UnityServerManager`, `UnityClientManager`, `UnityPacketManager`, and `UnityMessageManager` carry no serialized fields. Each still exists to bind its core manager — `ServerManager`, `ClientManager`, `PacketManager`, `MessageManager` — into `UnityCoreManager`'s manager graph and expose it as a `Nucleus*` property, so the manager GameObject is a complete, discoverable front for every core manager even where there's nothing yet to configure from the Inspector.
+`UnityClientManager`, `UnityPacketManager`, and `UnityMessageManager` carry no serialized fields. Each still exists to bind its core manager (`ClientManager`, `PacketManager`, `MessageManager`) into `UnityCoreManager`'s manager graph and expose it as a `Nucleus*` property, so the manager GameObject is a complete, discoverable front for every core manager even where there's nothing yet to configure from the Inspector.
 
 ## Tuning covered elsewhere
 

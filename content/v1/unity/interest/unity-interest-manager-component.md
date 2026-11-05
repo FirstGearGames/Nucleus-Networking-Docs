@@ -4,7 +4,7 @@ title: "Unity Interest Manager"
 
 ## This component is the inspector-side driver for the core InterestManager
 
-`UnityInterestManager` is the inspector-side driver for the core `InterestManager`. It carries the world-wide interest rules this peer is authored with, controls how often interest is re-resolved, and, in Pro, how spawns are paced and how distance is measured. Every field is pushed onto the core `InterestManager` in `ManagersInstantiated`, so script execution order cannot lose a setting. Both host switches are copied at that point, so ticking either in the inspector mid-session changes nothing. The engine reads its own `InterestManager.HostInterestEnabled` on every pass, but whether a host hides objects is decided once, when the peer first becomes a host with its own client linked.
+`UnityInterestManager` is the inspector-side driver for the core `InterestManager`. It carries the world-wide interest rules this peer is authored with, controls how often interest is re-resolved, and, in Pro, how distance is measured. Its settings take effect as the session starts, so changing either host switch in the inspector during a session changes nothing.
 
 ## World Rules
 
@@ -27,22 +27,16 @@ When enabled, a `NetworkHostVisibility` component is put on each networked objec
 
 ## A free build draws only some of these fields
 
-In a free build the inspector draws only **World Rules**, **Evaluation Cadence Ticks**, and the two host switches. **Maximum Spawns Per Tick** and the entire **Distance Measurement** and **Level Of Detail** sections are Pro-only. Those fields do not exist in a free build, so the editor skips drawing them rather than disabling them.
+In a free build the inspector draws only **World Rules**, **Evaluation Cadence Ticks**, and the two host switches. The entire **Distance Measurement** and **Level Of Detail** sections are Pro-only. Those fields do not exist in a free build, so the editor skips drawing them rather than disabling them.
 
-## Maximum Spawns Per Tick — Pro
-
-Default: `500`; `0` means unpaced.
-
-How many objects may start replicating to any one client per tick; the rest wait for the ticks after. When set to `0` (`InterestManager.UnlimitedSpawnsPerTick`), the inspector shows an info note: spawns are not paced, and a join or scene load arrives as one tick however large it is.
-
-## Distance Measurement — Pro
+## Distance Measurement (Pro)
 
 - **Interest Technique**: how every distance in this world is measured (pairwise comparison, or a spatial grid).
 - **Interest Axes**: which axes distances are measured across (full volume, or height dropped for surface play).
 
 Both fields must be settled before anything carrying a distance rule spawns. Changing either after a distance condition has registered is refused, and the engine logs an error.
 
-## Level Of Detail — Pro
+## Level Of Detail (Pro)
 
 - **Level Of Detail Enabled**: measures each opted-in object's distance from each player into a Near, Medium or Far band your game can read. It changes nothing about what is sent or how often, and nothing is culled by it.
 - **Near Distance**: inside this distance an object reads as Near (no level of detail).

@@ -39,7 +39,6 @@ The step provider is not on this list. `NetworkLoopManager.UseNetworkLoopStepPro
 |---|---|---|
 | `EvaluationCadenceTicks` | 5 (`DefaultEvaluationCadenceTicks`) | How often, in ticks, a system's interest is re-evaluated per connection. |
 | `MaximumControlledInterestObjects` | 1 (`DefaultMaximumControlledInterestObjects`) | `UnlimitedControlledInterestObjects` (0) measures against every controlled object. |
-| `MaximumSpawnsPerTick` | 500 (`DefaultMaximumSpawnsPerTick`) | Pro only. Caps how many spawns a peer is admitted per tick; the rest queue and drain over following ticks. |
 
 ## SceneManager
 
@@ -62,6 +61,8 @@ The step provider is not on this list. `NetworkLoopManager.UseNetworkLoopStepPro
 |---|---|---|
 | `AuthenticationTimeoutSeconds` | 30 | `UnsetAuthenticationTimeout` (0) disables the timeout; a connecting client that never authenticates is disconnected after this. |
 | `KickTimeoutMilliseconds` | 500 | How long a kicked or refused client's link may stay open after its kick before it is closed outright. Overloads that take a `timeoutMilliseconds` override it for one kick. |
+| `ObjectPacingEnabled` | `true` | Pro only. Switches object pacing off and on. Off, every whole object is sent on the tick it is owed. |
+| `MaximumObjectKilobytesPerTick` | 50 (`DefaultMaximumObjectKilobytesPerTick`) | Pro only. The most kilobytes (1 kB is 1,024 bytes) of whole objects one client is sent per tick: new objects, and objects sent again whole after packet loss. The rest follow on later ticks, and ordinary updates to objects a client already holds are not paced. A value below 1 (`MinimumObjectKilobytesPerTick`) is read as 1, so pacing cannot be switched off. |
 
 ## ClientManager
 

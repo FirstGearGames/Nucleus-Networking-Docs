@@ -1,45 +1,35 @@
 ---
-title: "Nothing Is Replicating: A First-Run Checklist"
+title: "If nothing replicates"
 ---
 
-Scene compiles, both peers connect, and the second peer sees nothing: no spawned object, no scene content, no state. Work through these five checks in order — a first-run setup gap accounts for almost every case.
+If the second editor connects but does not show your objects, check these in order.
 
-## 1. Prefab not registered
+## 1. The session must be running in both editors
 
-A dynamically spawned object is instantiated on a client from `NetworkPrefabRegistry`, keyed by the prefab's `(bundleId, localId)` identity. If the prefab was never registered under that identity, the spawn arrives and has nothing to instantiate:
+During Play, open **Tools > Nucleus** and select the **Traffic** tab. If it shows **Start** buttons instead of **Stop** buttons, the session never started. Set **Start On Play** to **Auto** in the Setup tab, or start the session from your own code with `StartHostAsync`, `StartServerAsync` or `StartClientAsync` on `UnityTransportManager`.
+
+## 2. The code generator must be running
+
+If the generator does not run, nothing replicates and no error appears. Check the label as described in [Install Nucleus in Unity](./installing-the-unity-integration.md).
+
+## 3. The prefab must be registered
+
+If the client's Console shows this error, the client does not know the prefab:
 
 ```
-No networked prefab is registered for identity [{bundleId}, {localId}]; spawned NetworkSystem Id [{id}] cannot be instantiated. Content shards must load and register before spawns arrive.
+No networked prefab is registered for identity [...]; spawned NetworkSystem Id [...] cannot be instantiated.
 ```
 
-That log line is your confirmation. Causes: the prefab isn't in a `NetworkPrefabCollection` that has been built, its `NetworkSystemObject.PrefabId` is unset (rebuild the collection so it gets stamped), or its content shard/asset bundle hasn't loaded and called `RegisterAll` yet on the receiving peer.
+In the Nucleus window's **Build** tab, click **Rebuild** next to **Rebuild Network Prefab Collection**. Then click **Validate** next to **Validate Network Prefabs**, which logs any other problem with your prefabs.
 
-## 2. Scene not networked
+## 4. Your script must check the right role
 
-An object placed directly in a scene (`NetworkSystemObject.IsSceneObject` true, correlated by `SceneObjectId`) only binds once that scene is a live networked scene instance with a `sceneHandle` — not merely a scene Unity has loaded. The server opens the instance, and a client is placed in it through `SceneManager.TryRequestSceneLoad(connection, sceneHandle, ...)`. Load the scene with plain Unity APIs instead of going through Nucleus's scene system, or leave the scene out of the project's `NetworkSceneManifest`, and the scene's objects never get a handle to bind against.
+Code that only runs when `IsController(ControllerType.Client)` is true does nothing on the server, and code that only runs on the server does nothing on a client. On a host, both the server and the client are running, which can hide a check that is wrong.
 
-## 3. No interest rule is admitting the object
+## 5. An object placed in a scene needs a networked scene
 
-By default every started `NetworkSystem` is registered to every authenticated client and nothing is filtered — but `UnityInterestManager` ships one interest rule on by default: `AuthoredSceneInterestCondition`, the scene gate. It withholds an object from a player until that player holds the same scene instance the object lives in. If the second peer hasn't been placed in that scene (see #2), the object is fully spawned on the server and still invisible to that client.
+An object you place in a scene, rather than spawn, only appears on a client once the server has opened that scene through Nucleus and placed the client in it. See [Networked scenes in Unity](../unity/scenes/networked-scenes-in-unity.md).
 
-Check the **World Rules** list on `UnityInterestManager`, and the **Rules** list on the object's own `NetworkInterestObject`. Either can only restrict who receives the object, never expand it.
+## 6. Interest rules must let the client see the object
 
-## 4. Wrong role branch
-
-Spawn and write calls gated on the wrong role silently do nothing. `NetworkSystem` exposes `IsServerStarted`, `IsClientStarted`, `IsHostStarted`, and `IsController(ControllerType)` for exactly this; a spawn written inside a block guarded by the wrong one of these never runs on the peer that needed to run it. On a host, `IsServerStarted` and `IsClientStarted` are both true at once, which is the case most likely to hide a role mistake in testing.
-
-## 5. Transport never started
-
-`UnityTransportManager` connects nothing on its own unless **Automatic Start Mode** is set to `Server`, `Client`, or `Host` — its default is `None`. If you start the connection from code instead, confirm you actually called one of:
-
-```csharp
-await unityTransportManager.StartServerAsync();
-await unityTransportManager.StartClientAsync();
-await unityTransportManager.StartHostAsync();
-```
-
-`TransportManager.IsServerStarted` / `IsClientStarted` only go true once a connection reaches `LocalConnectionState.Connected` (the client side also needs to be authenticated) — a transport added but never connected leaves every system with nothing to send to.
-
-## A host's own client is not proof of anything
-
-If you're testing with a host and a second client, don't diagnose from what the host's own client half receives. A host's loopback packets, what the server side sent to itself, are discarded without ever being applied. What the host's client half needs was already handed to it in-process at the point the server sent it, so this discard is expected and costs nothing. Seeing no traffic parsed on a host's own loopback is not evidence that serialization was skipped; check the second, genuinely remote peer instead.
+Check the **World Rules** list on `UnityInterestManager` and the **Rules** list on the object's `NetworkInterestObject`, if it has one. Each rule can hide an object from a client. See [What area of interest is](../unity/interest/area-of-interest.md).

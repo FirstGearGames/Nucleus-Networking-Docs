@@ -10,6 +10,9 @@
     { "label": "Download PDF", "href": "/static/downloads/latest.pdf", "button": true },
     { "label": "Download Markdown", "href": "/static/downloads/latest.md", "button": true }
   ],
+  "redirects": {
+    "/docs/v1/core-api/interest/spawn-pacing": "/docs/v1/core-api/core/object-pacing"
+  },
   "announcement": {
     "text": "See something wrong or missing? File an issue on [GitHub](https://github.com/FirstGearGames/Nucleus-Networking-Docs/issues).",
     "dismissible": true

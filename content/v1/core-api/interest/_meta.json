@@ -36,10 +36,6 @@
     "title": "Interest level of detail"
   },
   {
-    "slug": "spawn-pacing",
-    "title": "Spawn pacing"
-  },
-  {
     "slug": "supplying-interest-positions",
     "title": "Supplying positions to the interest system"
   },

@@ -38,14 +38,14 @@ This is expected and self-resolving; there is nothing to configure. If the gap n
 
 ## A join or scene load arrives as one huge tick and drops
 
-Spawn pacing exists to prevent exactly this: `InterestManager.MaximumSpawnsPerTick` caps how many objects may start replicating to one client on a single tick, deferring the rest to later ticks. Left at zero it admits everything at once — a full join or scene load lands as a single, maximally expensive tick, the worst one to lose a packet on.
+Object pacing exists to prevent exactly this. `ServerManager.MaximumObjectKilobytesPerTick` is the most kilobytes (1 kB is 1,024 bytes) of new objects one client is sent on a single tick, 50 by default, and whatever does not fit is sent on the ticks after. Objects a client is sent again after packet loss share the same budget. Pacing cannot be switched off, so a join that still lands as one tick too large to arrive means the budget is set wider than that client's link can take: lower it. One object wider than the whole budget is still sent, alone on its tick, so no budget makes a tick smaller than the widest single object.
 
-To check whether the ceiling is actually the bottleneck, read:
-- `InterestManager.TotalSpawnsDeferred` — total deferrals so far; a world that never reaches the ceiling stays near zero.
-- `Connection.SystemsAwaitingSpawnAdmissionCount` — how many spawns a specific connection is still owed.
-- A `LogWarning` fires once a connection has been owed spawns for `InterestManager.SpawnAdmissionStallWarningTicks` (90) ticks without one being admitted, naming the connection and the current `MaximumSpawnsPerTick`.
+To check whether the budget is holding spawns back, read:
+- `InterestManager.TotalSpawnsDeferred` counts the spawns that have had to wait so far. A world that never fills the budget keeps it near zero.
+- `Connection.SystemsAwaitingSpawnAdmissionCount` is how many spawns one connection is still owed.
+- A `LogWarning` fires once a connection has been owed spawns for `InterestManager.SpawnAdmissionStallWarningTicks` (90) ticks without receiving one, naming the connection and the current `MaximumObjectKilobytesPerTick`.
 
-Fix: raise `MaximumSpawnsPerTick`, or spawn less at once. A `NetworkSystemGroup` is always admitted whole rather than starved, so also check for a single group larger than the ceiling — that alone will trigger the stall warning.
+If that warning fires, the world is spawning faster than the budget lets that peer receive: raise `MaximumObjectKilobytesPerTick`, or spawn less at once. A `NetworkSystemGroup` wider than the whole budget is not a fault on its own: its objects simply arrive over more than one tick.
 
 ## Setting the technique or axes logs an error and does nothing
 
@@ -61,6 +61,6 @@ The underlying type has no such limitation. `DistanceInterestCondition` (Unity's
 
 ## Every distance lever on this page is Pro-only
 
-Distance interest conditions, the spatial grid, level of detail, and spawn pacing are all Pro-only, and so are the Unity-side `AuthoredDistanceInterestCondition` and `DistanceInterestCondition`. On a Free build none of the above levers exist: no distance rule, no spatial grid, no level of detail, no spawn ceiling. The scene rule and the base interest system are not gated this way and ship in Free.
+Distance interest conditions, the spatial grid, level of detail, and object pacing are all Pro-only, and so are the Unity-side `AuthoredDistanceInterestCondition` and `DistanceInterestCondition`. On a Free build none of the above levers exist: no distance rule, no spatial grid, no level of detail, no object pacing. The scene rule and the base interest system are not gated this way and ship in Free.
 
 If a build behaves as though one of these settings simply doesn't apply, confirm it's a free build before debugging further.

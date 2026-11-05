@@ -8,13 +8,13 @@ title: "Component Index"
 | --- | --- |
 | `UnityCoreManager` | Owns the process's single CoreManager and bootstraps every other `UnityManager` on its GameObject. |
 | `UnityClientManager` | Inspector-side driver for the core client manager. |
-| `UnityServerManager` | Inspector-side driver for the core server manager. |
+| `UnityServerManager` | Inspector-side driver for the core server manager, including client limits and the per-tick object cap. |
 | `UnityTransportManager` | Adds and configures the CoreManager's transport, and chooses whether the peer starts as a server, client, or neither. |
 | `UnityNetworkLoopManager` | Carries the authored tick rate and gives the default physics world its driver. |
 | `UnityPacketManager` | Inspector-side driver for the core packet manager. |
 | `UnityMessageManager` | Inspector-side driver for the core message manager. |
 | `UnitySystemManager` | Exposes the system manager's runtime knobs as serialized fields. |
-| `UnityInterestManager` | Carries the world-wide interest rules, re-resolve interval, and per-tick spawn cap. |
+| `UnityInterestManager` | Carries the world-wide interest rules and re-resolve interval. |
 | `UnityPhysicsManager` | Inspector-side seat for the process-global physics execution mode and fixed-step alignment. |
 | `UnitySceneManager` | Exposes the scene manager's placement policy and supplies a scene loader if none is placed. |
 

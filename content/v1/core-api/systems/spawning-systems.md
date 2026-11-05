@@ -131,4 +131,4 @@ if (NetworkSystemPool.TryRent<NetworkSystem, CrateComponent>(coreManager, out Ne
 
 ## A system can reach a peer a tick or two after it starts
 
-A system may not start replicating to a given peer the instant it starts. Spawn admission is paced, so a peer can see the system a tick or two later than the tick it actually started on (see Interest Management).
+A system may not start replicating to a given peer the instant it starts. Spawn admission is paced, so a peer can see the system a tick or two later than the tick it actually started on (see [Object pacing](../core/object-pacing.md)).

@@ -2,38 +2,26 @@
 title: "What Nucleus is"
 ---
 
-Nucleus is a networking engine for server-authoritative multiplayer games. Its core is engine-agnostic C#, and Unity is one integration layer on top of it, not a dependency it needs.
+Nucleus is a networking engine for server-authoritative multiplayer games. Its core is plain C# that runs on any .NET host. The Unity integration is a layer on top of that core, so the same networking code runs in a Unity game and in a dedicated server with no Unity installed.
 
-## The shape of the product
+## Pick the pages for how you use Nucleus
 
-The core targets `netstandard2.1` and references no game engine. It compiles and runs on any .NET host that satisfies netstandard2.1, engine or none.
+- If you work in the Unity editor, follow the Unity pages in Start Here, then read the Unity section.
+- If you call Nucleus from plain C#, such as a console app or a dedicated server, follow the .NET pages in Start Here, then read the Core API section.
 
-Everything engine-specific sits above that core as an optional layer: the Unity integration, Blitz Relay, and Newfarm. None of them are things the core links against or needs to function. They consume the core; it does not know they exist.
+## Three ideas run through everything
 
-## What that buys you
-
-The practical result: the same replication code runs in a Unity client and in a headless .NET dedicated server with no Unity install at all. A `NetworkComponent` and its members don't change shape depending on which process is running them.
-
-Concretely, the core replicates in `System.Numerics` types — `Vector3`, `Quaternion` — not `UnityEngine.Vector3` or any other engine's vector types. A dedicated server built from the core alone never touches an engine assembly, and a `Vector3` value that started on a client's transform and crosses the wire arrives as the same `System.Numerics.Vector3` on the other side.
-
-## The three ideas everything else assumes
-
-**Replicated objects are NetworkSystems.** A `NetworkSystem` is the networked entity — it holds and serializes the `NetworkComponent`s attached to it. A `NetworkComponent` in turn holds the actual replicated values as `NetworkMember<T0>` fields:
+**Every networked object is a network system.** A `NetworkSystem` holds one or more `NetworkComponent`s, and each component declares its replicated values as `NetworkMember<T0>` fields:
 
 ```csharp
-public partial class ChangeDetectionStateComponent : NetworkComponent
+public partial class ScoreComponent : NetworkComponent
 {
-    public readonly NetworkMember<float> Drift = new(accuracy: 0.1f);
-    public readonly NetworkMember<int> CoarseCounter = new(accuracy: 5f);
+    public readonly NetworkMember<int> Score = new();
 }
 ```
 
-A `NetworkMember<T0>` is the unit of replication. Nothing above it — the `NetworkComponent`, the `NetworkSystem` — carries wire values directly.
+**The server decides what is true.** The server sends each object's state to the clients. A client can only change an object the server lets it control, such as its own player.
 
-**The server decides, clients propose.** One side of a connection controls an object's state; every other peer receives what the server decided rather than simulating its own version. A client that wants to affect that state sends a request; it doesn't write the value itself.
+**Each client receives only the objects it can see.** Interest rules decide which objects the server sends to each client. With no rules, every client receives every object.
 
-**Interest decides what a peer can see.** Visibility isn't global. What a given connection is allowed to see of a given object is resolved per object, per connection, through the interest system (`InterestManager`, `IInterestCondition` and their implementations). A NetworkSystem existing doesn't mean every peer receives it.
-
-## State does not arrive over a reliable channel
-
-Replication does not resend every member change until it lands, the way a reliable channel would, and the engine recovers what a peer misses on its own. If you're used to a reliable-by-default RPC layer, read the reliability and redundancy docs before assuming state "just arrives". Here, arriving is something the system has to actively account for, not a channel guarantee you get for free.
+Coming from FishNet? The [FishNet to Nucleus name map](../reference/fishnet-name-map.md) lists the Nucleus name for each FishNet type.

@@ -87,7 +87,7 @@ What `Release` and `Retain` actually do is covered where controller retention it
 
 Two other parts of the engine treat a group as a single unit rather than repeating this page's material:
 
-- Spawn pacing admits a group whole rather than splitting it across ticks, even past the per-tick spawn ceiling.
+- Object pacing never splits a group: it arrives as one object, even when it is wider than the per-tick budget, and a wide group can take more than one tick to arrive.
 - Interest resolution folds each member's despawn and stop votes across the whole group, so one member out of range or one member still wanted is enough to decide the fate of every member.
 
 ## INetworkSystemGroup
