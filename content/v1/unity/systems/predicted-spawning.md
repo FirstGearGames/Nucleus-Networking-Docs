@@ -4,23 +4,27 @@ title: "Client-predicted spawning in Unity"
 
 > **Driving the core API directly?** See [Predicted spawn and despawn requests](../../core-api/systems/predicted-spawn-requests.md).
 
-Predicted spawning is a Pro feature. It lets a client create a prefab instance the instant it decides to, instead of waiting a round trip for the server to spawn it. The server still decides whether the object survives: it can confirm the client's guess or reject it, and the client finds out which.
+Predicted spawning is a Pro feature. A client creates a prefab instance the moment it decides to, instead of waiting a round trip for the server. The server still decides whether the object survives, and the client finds out which. The server's side, including its validators and every refusal reason, is on [Predicted spawn and despawn requests](../../core-api/systems/predicted-spawn-requests.md).
 
-## Marking the prefab
+## Mark the prefab
 
-A `NetworkSystemObject` carries a **Predicted Spawn Policy** field: what a client may do to this object ahead of the server agreeing to it. The values are flags and can combine:
+Set **Predicted Spawn Policy** on the prefab's `NetworkSystemObject`. The values are flags and can combine:
 
-- `None` — the server alone creates and removes the object. This is the default.
-- `Spawn` — a client may create the object at once and ask the server for it afterwards.
-- `Despawn` — a client may remove the object at once and ask the server to remove it afterwards. Independent of `Spawn`: an object the server created can still be despawned predictively.
-- `SpawnAndDespawn` — both of the above.
-- `AllowUndeclaredComposition` — permits a predicted spawn whose component composition no call site in this build declares. Every composition a build can produce is normally named at some call site, so refusing an undeclared one is the safe default; this flag opts an object out of that check.
+- `None` (default): only the server creates and removes the object.
+- `Spawn`: a client may create the object at once and ask the server afterwards.
+- `Despawn`: a client may remove the object at once and ask the server afterwards, even an object the server created.
+- `SpawnAndDespawn`: both of the above.
+- `AllowUndeclaredComposition`: permits a predicted spawn whose component composition no call site in this build declares. Without it, such a spawn is refused.
 
-The policy is authored on the prefab, not passed in code, because it is never replicated. Every peer reads its own copy of the same prefab, so every peer answers the same question the same way. That matters most on the server: it judges a predicted request against its own copy of the object, never against what the asking client claims.
+Every peer reads the policy from its own copy of the prefab; it is never sent. The server judges a request against its own copy, never against what the client claims.
 
-## Asking for one
+## Ask for a predicted spawn
 
-The common case is renting and asking in one step, through the normal pool rent. For an object whose opening values matter (the shot's origin and velocity, for example), rent it unstarted, set those values, then ask:
+In the common case, the normal pool rent rents the object and asks in one step. When the object's opening values matter, ask in three steps:
+
+1. Rent the object's system unstarted (`canStartSystem: false`).
+2. Write everything the server needs to know about the object's birth, such as a shot's origin and velocity.
+3. Call `NetworkSystemObjectPool.EnsureStartPredicted`. It sends a snapshot of the object as it is at that moment.
 
 ```csharp
 GameObject projectileObject = Instantiate(_projectilePrefab, _muzzle.position, Quaternion.LookRotation(direction));
@@ -49,48 +53,34 @@ if (NetworkSystemObjectPool.EnsureStartPredicted(marker, projectileSystem, out P
 Destroy(projectileObject);
 ```
 
-`EnsureStartPredicted` sends the request carrying a snapshot of the object taken as it is called, so anything the server needs to know about the object's birth has to be written before this runs. A request travels only once `predictedNetworkSystem` was rented with `canStartSystem: false` (or a caller otherwise holds an unstarted, grouped system) and `networkSystemObject.PredictedSpawnPolicy` includes `Spawn`.
+A request is sent only when the system is unstarted and grouped, as a `canStartSystem: false` rent gives you, and the policy includes `Spawn`. A `false` return with a `PredictedSpawnRefusal` means this client declined before sending anything, for example because its lease of group identifiers from the server has run out. It is not the server's answer.
 
-A `false` return with a `PredictedSpawnRefusal` is this client's own framework declining before anything was sent — for example, its lease of group identifiers from the server has run dry. It is not the server's answer; nothing reached the server yet, and the object was never created.
+## Watch the outcome
 
-## Watching the outcome
+The server's answer arrives on the system the marker linked:
 
-The server's answer arrives later, on the system the marker linked:
-
-- `PredictedSpawnConfirmed` — raised when the server's snapshot for this object arrives, meaning the server agrees the object exists. It fires before the snapshot's own state is applied, so a handler still reads the values the client predicted.
-- `PredictedSpawnRejected(PredictedSpawnRejectReason reason)` — raised when the server refuses the object, immediately before the local copy is torn down. Subscribe here to play whatever stands in for the thing that did not happen.
-- `IsPredictedSpawnOrigin` — true on the client that created this object ahead of the server. It stays true after confirmation; it answers *which* peer predicted the object, not whether the prediction is still outstanding.
-- `IsPredictedSpawnPending` — true while a predicted spawn is still waiting on the server.
+- `PredictedSpawnConfirmed`: raised when the server's snapshot for the object arrives. It fires before that snapshot is applied, so a handler still reads the values the client predicted.
+- `PredictedSpawnRejected(PredictedSpawnRejectReason reason)`: raised when the server refuses the object, just before the local copy is torn down.
+- `IsPredictedSpawnOrigin`: true on the client that created the object. It stays true after confirmation.
+- `IsPredictedSpawnPending`: true while the spawn is still waiting on the server.
 
 ```csharp
 projectileSystem.PredictedSpawnConfirmed += OnShotConfirmed;
 projectileSystem.PredictedSpawnRejected += reason => OnShotRejected(projectileObject, reason);
 ```
 
-### When the server never answers
+A rejected object appears and then vanishes a round trip later. Handle `PredictedSpawnRejected` with a small effect, a sound or a HUD message so it does not just pop out of existence. The demo project's predicted-projectile gun destroys a shot rejected for firing too fast with a log line explaining why.
 
-The request is sent once, and the client's upstream redundancy (`ClientRedundancy`) resends it on the ticks after, so a single lost packet does not lose it. If no answer arrives at all, the client gives up and despawns its local copy, raising `PredictedSpawnRejected` with `NotPermitted` first, as for an ordinary refusal. It waits two round trips, but never less than half a second and never more than three seconds, so on a bad link an object nobody agreed to does not stay on screen for long.
+If no answer arrives, the client despawns its copy and raises `PredictedSpawnRejected` with `NotPermitted`. It waits two round trips, but never less than half a second or more than three seconds. A lost request is resent on the following ticks, so one lost packet does not lose it. If the server did admit the spawn and its answer arrives after the client gave up, the client receives the server's object as an ordinary spawn, so both peers still hold the same object.
 
-An answer can still arrive after the client gave up: the server admitted the spawn, but its confirmation was lost until after the timeout. The client then receives the server's object as an ordinary spawn, with the server's values, so both peers still end up holding the same object.
+## Predict a despawn
 
-## Predicted despawn
+With the `Despawn` flag, ask with `coreManager.SystemManager.EnsureStopPredictedSystem(networkSystemObject.System, out PredictedSpawnRefusal refusal)`.
 
-The same system exposes the mirror image for removal, gated by the `Despawn` flag:
+- `PredictedDespawnPending` is raised when the request goes out. The object is parked, not despawned: the GameObject is deactivated, so its renderers and colliders leave the world and its behaviours stop. Member writes from any script are ignored, and it sends no client state or remote calls. It keeps receiving the server's state.
+- `IsPredictedDespawnPending` is true until the server answers.
+- If the server agrees, it removes the object on the tick the request rode with, and the GameObject returns to the prefab pool like any despawned object.
+- `PredictedDespawnRejected(PredictedDespawnRejectReason reason)` is raised when the server refuses, after the same GameObject is reactivated where the server has it.
+- If the request is lost, the client brings the GameObject back after at most three seconds and raises `PredictedDespawnRejected` with `NotPermitted`.
 
-- `IsPredictedDespawnPending`: true between a client asking the server to remove the object and hearing back. The object is not despawned locally while this is set. It is parked instead: the GameObject is deactivated, so its renderers and colliders leave the world and its behaviours stop running, and the client can no longer change it (member writes from any script are ignored and it sends no client state or remote calls). It stays linked to a system that keeps receiving the server's state.
-- `PredictedDespawnPending`: raised when the client's removal request goes out, after the GameObject has been parked.
-- `PredictedDespawnRejected(PredictedDespawnRejectReason reason)`: raised when the server refuses the removal, after the GameObject has been reactivated. Its system kept receiving the server's values while it was parked, so it reappears where the server has it. This is the same instance throughout.
-
-Ask with `coreManager.SystemManager.EnsureStopPredictedSystem(networkSystemObject.System, out PredictedSpawnRefusal refusal)`. The request travels with your client's state for that tick, so the server removes the object when it processes that tick, and the GameObject is then returned to the prefab pool like any despawned object. If the request is lost on the way, the client brings the GameObject back after at most three seconds and raises `PredictedDespawnRejected` with `NotPermitted`.
-
-**Never destroy a networked GameObject on a client.** Asking is the only way a client removes one: a destroyed object cannot be brought back if the server refuses, and the stop its destruction triggers is refused on a client with an error, leaving the system registered with nothing linked to it.
-
-## What a refused prediction looks like
-
-A rejected spawn is visible for a moment and then gone: the object existed locally from the frame it was created, and it disappears a round trip later when `PredictedSpawnRejected` fires. Left unhandled, that reads as an object popping out of existence for no reason.
-
-Handle the rejection to make it legible instead of jarring: a small poof, a sound, a HUD counter ticking up, whatever suits the object. The demo project's predicted-projectile gun does this for a fire-rate limit — every shot appears immediately, and a shot the server rejects for firing too fast destroys itself with a log line explaining why, rather than just vanishing.
-
-## Authority side
-
-Confirming or rejecting a predicted spawn, granting the identifier lease it rides on, and choosing the refusal reason are all decided on the server. See [Predicted spawn and despawn requests](../../core-api/systems/predicted-spawn-requests.md) for the validators, the lease, and the full set of refusal reasons.
+**Never destroy a networked GameObject on a client.** A destroyed object cannot come back if the server refuses, and the stop its destruction triggers is refused on a client with an error, leaving the system registered with nothing linked to it.
