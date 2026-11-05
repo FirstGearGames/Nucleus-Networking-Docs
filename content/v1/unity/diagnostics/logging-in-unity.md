@@ -4,38 +4,24 @@ title: "Engine logging in the Unity console"
 
 > **Driving the core API directly?** See [Logging](../../core-api/diagnostics/logging.md).
 
-Every message the engine logs already shows up in the Unity console. There is nothing to wire up.
+Every engine log line already shows up in the Unity console, with nothing to set up. Nucleus routes information, warnings and errors to `Debug.Log`, `Debug.LogWarning` and `Debug.LogError`, so each line clicks through to its call site and carries Unity's own stack trace as your Stack Trace Logging settings allow (**Project Settings > Player > Other Settings**). Each line starts with `[Type::Method]`, naming the type and method that logged it.
 
-## How it gets there
+## Set the log level
 
-During initialization, `NucleusUnity` registers a Unity-specific logger with the engine's logging service:
+| `LoggerSetting` field | Applies to | Default |
+|---|---|---|
+| `Editor` | The editor | Information |
+| `DevelopmentBuilds` | Development players | Information |
+| `ReleaseBuilds` | Release players | Error |
 
-```csharp
-LoggingService.UseLogger(new Logging.Logger());
-```
+To change the levels, register your own logger (below) whose `GetLoggerSetting` returns the levels you want.
 
-`Nucleus.Integrations.Unity.Logging.Logger` implements `ILogger` and routes each level to the matching `UnityEngine.Debug` call: `LogInformation` to `Debug.Log`, `LogWarning` to `Debug.LogWarning`, `LogError` to `Debug.LogError`. Because these are the same calls Unity's own code uses, console lines from the engine click through to their call site like any other Unity log.
+## Replace the logger
 
-## Lines carry Unity's own stack trace
-
-The Unity `Logger` hands each message to `Debug` unchanged, and Unity attaches its own stack trace as the project's Stack Trace Logging settings allow (Project Settings > Player > Other Settings). It overrides `DisableUnconditionalDevelopmentStacktrace()` to return `true`, so the engine does not add a second trace on top.
-
-## Reading a line
-
-A line is prefixed with `[Type::Method]`, built from the calling type and a `CallerMemberName`-based method name - not a manager or subsystem category. The stack trace is appended to the message as plain text after a colon, not attached as one of Unity's own clickable console links, so the click-through you get is Unity's default per-line behavior, not something the stack trace text itself provides.
-
-## Setting the volume
-
-`LoggerSetting` declares three levels: `Editor`, `DevelopmentBuilds`, and `ReleaseBuilds`. The Unity logger's defaults are Information for the editor, Information for development builds, and Error for release builds.
-
-Which of the three applies is decided by the Unity application state the integration registers before the first scene loads: the editor uses `Editor`, a development player uses `DevelopmentBuilds`, and a release player uses `ReleaseBuilds`. The level is worked out again whenever the logger or the application state is set, so the order the two are registered in does not matter, and a release build logs only errors by default. To change the volume, register your own logger whose `GetLoggerSetting` returns the levels you want (below).
-
-## Replacing the sink
-
-If your project already logs somewhere else - a file, a remote service, a custom console - register your own `ILogger` in place of the Unity one:
+To send engine logs somewhere else, such as a file or a remote service, register your own `ILogger`:
 
 ```csharp
 LoggingService.UseLogger(new MyProjectLogger());
 ```
 
-Do this after `NucleusUnity` has registered its logger, so your call is the one that sticks. Your implementation controls `GetLoggerSetting()` and `DisableUnconditionalDevelopmentStacktrace()` as well as the three log methods. Giving up the Unity `Logger` means giving up its click-through-to-call-site behavior; your sink is responsible for its own way of pointing back at source, if you want one.
+Nucleus registers its Unity logger before the first scene loads, so a call from any scene script replaces it. Your logger implements `GetLoggerSetting()`, `DisableUnconditionalDevelopmentStacktrace()` and the three log methods. It loses the Unity logger's click-through to the call site unless it provides its own.

@@ -4,19 +4,11 @@ title: "Reading network statistics in Unity"
 
 > **Driving the core API directly?** See [Network statistics](../../core-api/diagnostics/network-statistics.md)
 
-## Getting to the counters
+The counters live on `TransportManager`, reached through `CoreManager.TransportManager`. Get the `CoreManager` from `NucleusUnity.BoundCoreManager` in any script, from the `CoreManager` property of `UnityCoreManager`, or from the `CoreManager` property a `NucleusBehaviour` already has.
 
-Every counter lives on `TransportManager`, off the process's `CoreManager`. Three ways to reach it from a Unity script:
+## Read a rate once a second
 
-- From a component that already sits next to `UnityCoreManager`: read its `CoreManager` property.
-- From any plain `MonoBehaviour`: `NucleusUnity.BoundCoreManager`, the CoreManager the integration bound at startup.
-- From a script deriving from `NucleusBehaviour` or `NucleusBehaviour<TComponent0>`: the behaviour already exposes a `CoreManager` property, resolved in `Awake`.
-
-Once you have a `CoreManager`, its `TransportManager` property holds the counters and connection lists this page covers.
-
-## A worked readout component
-
-`TransportManager.TotalBytesSent` and `TotalBytesReceived` are running totals, not rates - sample them once a second and diff against the previous sample:
+`TotalBytesSent` and `TotalBytesReceived` are running totals, so sample them once a second and subtract the previous sample:
 
 ```csharp
 using Nucleus.Connections;
@@ -80,24 +72,17 @@ public class NetworkStatsReadout : MonoBehaviour, INetworkLoopStepCallback
 }
 ```
 
-The readout is a plain `MonoBehaviour` that registers itself with the network loop while it is enabled, not a `NucleusBehaviour`: a `NucleusBehaviour` only receives loop steps while a networked system is linked to it, and a readout for the whole process has no system of its own. `PacketLossPercentage` already runs from 0 to 100, so it prints with `F1` rather than `P1`, which would multiply it by 100 again. A client reads its own link from `TryGetServerConnection` rather than `ActiveConnections`: on a client that collection holds stand-ins for the other players, which have no link of their own to measure.
+- The readout registers itself with the network loop as a plain `MonoBehaviour`. A `NucleusBehaviour` only receives loop steps while a networked system is linked to it, and a readout for the whole process has none.
+- `PacketLossPercentage` already runs from 0 to 100, so print it with `F1`, not `P1`.
+- A client reads its own link from `TryGetServerConnection`. On a client, `ActiveConnections` holds stand-ins for the other players, which carry no link figures.
+- `TransportManager.GetLocalConnections(Invoker.Server)` (or `Invoker.Client`) returns this peer's own connection for that role on each transport. On a client, the `Invoker.Server` entry is the same connection `TryGetServerConnection` returns.
 
 ## Sample on a loop step, not `Update`
 
-Take the reading from a network loop step (`LateVariableUpdate` above, or any other `NetworkLoopSteps` value) rather than Unity's `Update`. The network loop's own steps run serialization and deserialization at defined points in the tick; a plain `Update` callback has no guaranteed order relative to those steps and can read a counter mid-update. A loop-step callback only fires when the framework has finished the work for that step.
+Read the counters from a network loop step callback (`LateVariableUpdate` above, or any other `NetworkLoopSteps` value). `Update` has no fixed order relative to the loop's own work and can read a counter partway through an update.
 
-## The diagnostics HUD is sample code, not shipped API
+## The demo HUD is sample code
 
-`Nucleus.Integrations.Unity/Demos/Common/Scripts` ships a full diagnostics HUD - `NetworkDiagnosticsHud`, `NetworkStatisticProvider`, `RollingNetworkStatisticProvider`, and five concrete providers covering role, round-trip time, bandwidth, state-packet bandwidth, and object bandwidth. It is real, working code, worth reading for patterns.
+The demos include a full diagnostics HUD, `NetworkDiagnosticsHud`, with providers for role, round-trip time, bandwidth, state-packet bandwidth and per-object bandwidth. It is part of the demos, not the integration your project links against, so if you copy it into your project you maintain the copy.
 
-It compiles into the `Nucleus.Integrations.Unity.Demos` assembly, not the `Nucleus.Integrations.Unity` assembly your project actually links against - it is demo content that ships alongside the integration, not part of it. Copying `NetworkDiagnosticsHud` or a provider into your own project is forking that sample, not consuming a shipped API - you own the copy and its upkeep from that point on.
-
-## Totals are process-wide
-
-`TotalBytesSent` and `TotalBytesReceived` count every byte the process sends or receives, across every connection and every networked object. There is no per-object bandwidth counter. To estimate what one object costs, disable it (or the behaviour driving its state) and compare the rate before and after - the difference is the object's share, not something the engine reports directly. The shipped `NetworkObjectBandwidthStatisticProvider` uses this same divide-by-count approach, using `SystemManager.StartedSystemCount` as the denominator.
-
-## Other routes worth knowing
-
-- `TransportManager.ActiveConnections` lists every connected client on a server, for a per-connection round-trip time and loss readout like the one above. On a client it lists stand-ins for the other players, which carry no link figures.
-- `TransportManager.GetLocalConnections(Invoker.Server)` (or `Invoker.Client`) returns this peer's own connection for that role on each added transport. On a client, the `Invoker.Server` entry is the one holding the server link's round-trip time and loss, the same connection `TryGetServerConnection` returns.
-- `SystemManager.StartedSystemCount` is the started-object count the shipped per-object provider divides bandwidth by; use it for the same kind of estimate in your own readout.
+There is no per-object bandwidth counter. The demo's `NetworkObjectBandwidthStatisticProvider` estimates one by dividing bandwidth by `SystemManager.StartedSystemCount`, and you can do the same in your own readout.
