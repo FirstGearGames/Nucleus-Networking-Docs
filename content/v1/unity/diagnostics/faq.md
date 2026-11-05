@@ -2,44 +2,26 @@
 title: "Frequently asked questions"
 ---
 
-Short answers to the questions that come up before anyone has finished reading the rest of the docs. Each one links to the page with the full explanation.
+## Why did an object stop moving instead of disappearing
 
-## Visibility and spawning
+Interest stopped it rather than unspawning it. A stopped object stays on the receiver but is sent no more updates, so it looks frozen. An unspawned object is removed. See [Frozen or gone: what a stop does to the object](../interest/stopping-objects-in-unity.md).
 
-### Why did an object stop moving instead of disappearing
+## Why is nothing replicating at all
 
-Interest resolves to one of a few verdicts per connection, and "stopped" is not "unspawned." A stopped object is kept by the receiver and simply sent nothing further, which reads as frozen; an unspawned object is torn down. They are different outcomes of the same evaluation, not two names for one thing. See the interest and area-of-interest pages for what drives each verdict.
+Check that the Nucleus source generator runs as an analyzer, not just as a referenced assembly. Without it your networked types are never set up to replicate. See [Code Generation in Unity](../wire/code-generation-in-unity.md).
 
-### Why is nothing replicating at all
+## Why can I see my object but not drive it
 
-Check that the Nucleus source generator is wired into the project as an analyzer, not just referenced as an ordinary assembly. Without it your networked types are never set up to replicate, so there is nothing to send or read. See the source generator setup page.
+Observing and controlling are separate. Interest decides whether a connection is sent an object's state; the server separately assigns who controls it. Observing an object never makes you its controller. See [What control means](../control/the-control-model.md).
 
-## Control
+## Why does it work in host mode and break with two processes
 
-### Why can I see my object but not drive it
+Some bugs only show on a client in a separate process, never on a host's own client, so test with a second process. See [Diagnosing desync](./diagnosing-desync.md).
 
-Observing and controlling are separate questions. Interest decides whether a connection is sent an object's state at all; control is a separate assignment made by the server over who is allowed to drive it. Being registered as an observer never implies being the controller. See the control assignment page.
+## Why is my bandwidth number unchanged after I turned a feature off
 
-## Timing
+The transport's byte and bit counters are running totals since the connection started, with no per-object or per-feature breakdown. Sample them once a second and compare the rates before and after the change. See [Reading network statistics in Unity](./network-statistics-in-unity.md).
 
-### Why does it work in host mode and break with two processes
+## Why does this type not exist in my build
 
-A host's own client and its server share one process, and packets between them still go through the transport's loopback path. The receiving half never reads that loopback copy back: it discards the arriving packet unread rather than deserializing it, so nothing on the deserialize-and-apply path runs for a host talking to itself. Testing exclusively in host mode never exercises that path at all, which is why a bug there only shows up once a second process is involved. See the diagnosing-desync page for the isolation steps.
-
-## Host-mode surprises
-
-### Why does the host see my object differently than my client does
-
-The same loopback exemption above applies more broadly: a host's server half never goes through its own client's receive path, so anything gated behind deserialization, including any host-side reporting of what its own client would have received, has to be resolved separately rather than inferred from a packet the host never actually reads.
-
-## Bandwidth surprises
-
-### Why is my bandwidth number unchanged after I turned a feature off
-
-The transport's byte and bit counters are running totals, accumulated since the connection started, with no per-object or per-feature attribution. Turning a feature off changes the rate at which the totals climb, not the totals themselves, so a snapshot taken once won't show it. Sample the counters over time (per second) and compare rates before and after the change, rather than reading a single cumulative value.
-
-## Editions
-
-### Why does this type not exist in my build
-
-Free and Pro are not a runtime switch. A Pro-only type is left out of a Free build entirely, so referencing one is a compile error in a Free project, not something that fails or falls back at runtime. If your code references a type that isn't there, you're either building Free against Pro-only API, or your project is pulling in the wrong edition's files.
+Pro-only types are left out of a Free build entirely, so referencing one is a compile error, not a runtime failure. Either your code uses Pro-only API in a Free project, or the project has the wrong edition's files.
