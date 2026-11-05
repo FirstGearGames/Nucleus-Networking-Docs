@@ -4,11 +4,13 @@ title: "Distance interest conditions"
 
 > **Using Unity?** See [Limit what a client receives by distance](../../unity/interest/limit-replication-by-distance.md).
 
-## What you subclass
+Distance conditions are part of Nucleus Pro. A Free build has the interest system but not distance conditions.
 
-`DistanceInterestConditionBase` culls or stops a `NetworkSystem` by how far it is from a connection's controlled objects. It derives from `InterestPositionConditionBase`, which owns the shared measuring logic: how a source position is looked up and cached per tick, and how the nearest controlled object is found. The base declares `Capabilities => InterestEffect.Spawn | InterestEffect.Stop` because both resolutions come from the one distance measurement, not two separate passes.
+## Subclass DistanceInterestConditionBase
 
-To write your own condition, subclass `DistanceInterestConditionBase` and implement `TryReadSourcePosition(NetworkSystem networkSystem, out Vector3 position)`. That is the only method an integration owes: a raw position read for the system in front of you, world space. Everything else — memoizing the read per pass, walking a connection's controlled objects, picking the nearest, and branching the ladder — is handled for you.
+`DistanceInterestConditionBase` culls or stops a `NetworkSystem` by its distance from a connection's controlled objects. It derives from `InterestPositionConditionBase`, whose `TryGetNearestControlledDistance` finds the nearest controlled object. It declares `Capabilities => InterestEffect.Spawn | InterestEffect.Stop`, since both come from one measurement.
+
+To write your own, subclass it and implement `TryReadSourcePosition`, returning the system's world-space position. Caching, finding the connection's controlled objects and picking the nearest are handled for you.
 
 ```csharp
 protected abstract bool TryReadSourcePosition(NetworkSystem networkSystem, out Vector3 position);
@@ -16,32 +18,29 @@ protected abstract bool TryReadSourcePosition(NetworkSystem networkSystem, out V
 
 ## A ladder is built from a spawn cutoff and a stop cutoff
 
-Construct the condition with two cutoffs:
-
 ```csharp
 public DistanceInterestLadder(float stopDistance, float spawnDistance)
 ```
 
-`stopDistance` is the distance past which the system stops for the connection but keeps its spawned object. `spawnDistance` is the distance past which the system is despawned. `Resolve(float distance)` checks despawn before stop, so a distance past both cutoffs despawns rather than merely stopping — a nearer effect never masks a further, more restrictive one.
+- `stopDistance`: past this, the system stops for the connection but keeps its object.
+- `spawnDistance`: past this, the system is despawned.
 
-`DistanceInterestLadder.UnsetDistance` is `0f`. A cutoff set to it is disabled, not "zero range": leaving `stopDistance` or `spawnDistance` at `0` means that rung never restricts anything, regardless of measured distance.
+`Resolve(float distance)` checks despawn before stop, so a distance past both cutoffs despawns.
 
-## What the distance is from
+`DistanceInterestLadder.UnsetDistance` is `0f`. A cutoff left at `0` is disabled, not "zero range": it never restricts anything.
 
-The measurement is always from a connection's controlled objects to the system being evaluated, never from a fixed camera or observer point. `InterestPositionConditionBase.TryGetNearestControlledDistance` walks the connection's controlled `NetworkSystem`s, reads each one's position through the same `TryReadSourcePosition` hook, and keeps the nearest. Nearest wins across multiple controlled objects, so a system is interesting if it's near any of them — a player driving both a character and a vehicle stays covered.
+## Distance is measured from the connection's controlled objects
 
-How many controlled systems are measured is capped by `InterestManager.MaximumControlledInterestObjects`, defaulting to `DefaultMaximumControlledInterestObjects` (`1`). The cap counts NetworkSystems, not objects: a controlled prefab made of two systems takes two slots, and below the count the systems measured are arbitrary rather than the nearest, so size it to the total systems a player controls. Set it to `InterestManager.UnlimitedControlledInterestObjects` (`0`) to measure every controlled object instead.
+Distance is measured from each of the connection's controlled objects to the system being evaluated, and the nearest wins. A player driving both a character and a vehicle stays covered near either.
+
+`InterestManager.MaximumControlledInterestObjects` caps how many controlled systems are measured. It defaults to `DefaultMaximumControlledInterestObjects` (`1`). Set it to `InterestManager.UnlimitedControlledInterestObjects` (`0`) to measure every controlled object.
 
 ```csharp
 public uint MaximumControlledInterestObjects = DefaultMaximumControlledInterestObjects;
 ```
 
-**A ceiling below the controlled count keeps an arbitrary object, not the nearest one.** Controlled objects are held in a set, so a ceiling of one against a player driving three things measures whichever the set hands back first. Picking the nearest instead would mean measuring all of them — the exact cost the ceiling exists to avoid. Set the ceiling to the number of objects a player actually drives, or to `UnlimitedControlledInterestObjects`, and the question doesn't come up.
+**A cap below the controlled count measures arbitrary objects, not the nearest.** The cap counts `NetworkSystem`s, not objects, so a controlled prefab made of two systems takes two slots. Set the cap to the total number of systems a player controls, or to `UnlimitedControlledInterestObjects`.
 
 ## Unmeasurable pairs restrict nothing
 
-When a distance can't be measured (the connection controls nothing yet, or a controlled object's position can't be read), the condition answers unmeasurable and restricts nothing, rather than culling. This is what a system whose object has been destroyed or has not finished spawning looks like: `TryReadSourcePosition` returns `false`, the pair is skipped, and interest for it is left alone. Culling on an unknown distance would empty the world for a player whose character hasn't finished spawning.
-
-## Distance conditions ship only in Pro
-
-Distance conditions are part of Nucleus Pro. A Free build has the interest system but not distance conditions.
+When a distance cannot be measured, because the connection controls nothing yet or `TryReadSourcePosition` returns `false`, the condition restricts nothing. Return `false` for an object that has been destroyed or has not finished spawning. Culling on an unknown distance would empty the world for a player whose character has not finished spawning.
