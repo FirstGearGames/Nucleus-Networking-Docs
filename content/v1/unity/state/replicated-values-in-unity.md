@@ -6,7 +6,7 @@ title: "Replicating a value from a Unity script"
 
 ## Declare the component
 
-A networked component is a plain class, not a `MonoBehaviour`. It never goes on a GameObject itself.
+A networked component is a plain `partial` class, not a `MonoBehaviour`. Declare its values as `NetworkMember<T0>` fields; the source generator writes the rest, so never hand-write serialization.
 
 ```csharp
 public partial class HillTimerComponent : NetworkComponent
@@ -15,11 +15,9 @@ public partial class HillTimerComponent : NetworkComponent
 }
 ```
 
-`partial` matters: the source generator writes the rest of this class from the `NetworkMember<T0>` fields it finds. Add fields; don't hand-write serialization.
+## Attach it with NucleusBehaviour
 
-## Attach it through NucleusBehaviour
-
-Since the component itself can't sit on a GameObject, a `MonoBehaviour` adopts it by inheriting `NucleusBehaviour<TComponent0>`:
+A `MonoBehaviour` adopts the component by inheriting `NucleusBehaviour<TComponent0>`:
 
 ```csharp
 public class HillTimer : NucleusBehaviour<HillTimerComponent>
@@ -27,13 +25,16 @@ public class HillTimer : NucleusBehaviour<HillTimerComponent>
 }
 ```
 
-`NucleusBehaviour<TComponent0>.Awake` calls `NetworkSystemObjectPool.RequireSystem` for you, asking for a system that carries a `HillTimerComponent`. Once that system links, the base class hands it back through the `Component` property. Before linking, `Component` is null.
+The GameObject needs a `NetworkSystemObject`. Several `NucleusBehaviour` scripts on one GameObject, each with a different component, share that one `NetworkSystemObject` and link their systems into one `NetworkSystemGroup`.
 
-## Where to read and write
+## Use Component only once the system links
 
-`Component` is only safe to use from the lifecycle hooks `NucleusBehaviourBase` raises once a system is linked: `OnSystemLinked`, `OnServerStarted`, `OnClientStarted` (and their `OnServerStopped` / `OnClientStopped` / `OnSystemUnlinked` counterparts). A write attempted from `Awake`, or from any point before the system links, has nowhere to go — `Component` is still null, so it isn't a matter of the write being ignored, it's a `NullReferenceException` waiting to happen.
+`Component` is null until the system links, so writing to it from `Awake` throws a `NullReferenceException`. Use it from the hooks raised once a system is linked: `OnSystemLinked`, `OnServerStarted` and `OnClientStarted`, and their counterparts `OnSystemUnlinked`, `OnServerStopped` and `OnClientStopped`.
 
-`OnSystemLinked` fires once, when the system arrives, whether that happens before, after, or exactly as this peer's own role starts. `OnServerStarted` and `OnClientStarted` fire once each, whenever that peer's role comes up while a system is linked — including immediately, if the role was already up at link time. A component that arms itself on `OnSystemLinked` for the server alone still needs a role check, because every peer's copy of the behaviour links the system, not just the server's:
+- `OnSystemLinked` fires once, when the system arrives, on every peer.
+- `OnServerStarted` and `OnClientStarted` fire once each when that role comes up while a system is linked, immediately if the role was already up.
+
+Because every peer links the system, check the role before a server-only write:
 
 ```csharp
 protected override void OnSystemLinked()
@@ -45,11 +46,13 @@ protected override void OnSystemLinked()
 }
 ```
 
-## Guarding writes
+Reading a replicated value needs no guard: once linked, every peer's `Component` holds the latest value.
 
-`IsController(ControllerType)` reports whether this peer controls the linked system; `IsStarted(Invoker)` reports whether a named role (`Invoker.Server` or `Invoker.Client`) is up, for a behaviour whose system has linked. Both answer false while no system is linked, so they're safe to call anywhere, unlike reading `Component` directly.
+## Guard writes with IsController
 
-When a failed guard is a bug rather than an expected outcome, use the loud forms instead: `EnsureIsController(ControllerType)` and `EnsureIsStarted(Invoker)` return the same answer but also log a warning naming the calling member, once per calling member on each behaviour. Reach for the loud forms only where reaching the code without that control or role is a programming error, such as a server-only method that only other server code calls. Input handlers, RPC sends and per-tick writes like the one below run on peers that do not control the object as a matter of course, so a false answer there is normal; use the quiet form:
+`IsController(ControllerType)` reports whether this peer controls the linked system, and `IsStarted(Invoker)` whether `Invoker.Server` or `Invoker.Client` is up. Both return false while no system is linked, so they are safe to call anywhere.
+
+Input handlers, RPC sends and per-tick writes run on peers that do not control the object as a matter of course, so use these quiet forms there:
 
 ```csharp
 protected override void OnEarlyFixedUpdate(StepDelta stepDelta, SimulationContext simulationContext)
@@ -61,12 +64,6 @@ protected override void OnEarlyFixedUpdate(StepDelta stepDelta, SimulationContex
 }
 ```
 
-Reading a replicated value has no such guard: every peer's `Component` holds the latest replicated value, and reading it is always safe once a system is linked.
+Use `EnsureIsController(ControllerType)` and `EnsureIsStarted(Invoker)` only where reaching the code without that control or role is a bug, such as a server-only method called only by other server code. They return the same answer but also log a warning naming the calling member, once per calling member on each behaviour.
 
-## The GameObject side
-
-`NucleusBehaviourBase` carries `[RequireComponent(typeof(NetworkSystemObject))]`, so any `NucleusBehaviour<TComponent0>` needs a `NetworkSystemObject` marker on the same GameObject. That marker is `[DisallowMultipleComponent]` — one per GameObject — but it isn't limited to hosting a single system. Several `NucleusBehaviour` scripts on the same GameObject, each requiring a different component, link their systems together into one `NetworkSystemGroup`, so one marker can host a group of systems rather than just one.
-
-## Member surface
-
-`NetworkMember<T0>` has more surface than a plain getter/setter — previous-value access, interpolation, constructor options for how it replicates. See the API reference for `NetworkMember<T0>`.
+For previous-value access, interpolation and the constructor options that control how a member replicates, see [NetworkMember](../../core-api/state/network-member.md).
