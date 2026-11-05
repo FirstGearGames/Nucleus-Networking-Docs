@@ -6,9 +6,10 @@ title: "Bundle Ids for Unity Assemblies"
 
 ## Declare the bundle
 
-Every networked type is registered under a bundle id and a local id. Two separately compiled assemblies that both declare no bundle collide, because an assembly declaring nothing defaults to bundle zero and the local id numbering restarts inside it. If you build a content shard as its own asmdef, give that asmdef its own bundle id before you ship it alongside anything else.
+Two separately compiled assemblies that both declare no bundle collide, because both default to bundle zero and each numbers its own types from the start. If you build a content shard as its own asmdef, give it its own bundle id before you ship it alongside anything else:
 
-Put the attribute in a C# file inside the asmdef whose types you are numbering, at assembly scope:
+1. Add a C# file inside the shard's asmdef. It must be that asmdef, not a shared assembly the shard references, because the prefab collection takes its bundle id from the assembly it names. Putting the attribute in a shared assembly pulls every prefab in it into one bundle.
+2. Declare the bundle at assembly scope:
 
 ```csharp
 using Nucleus.Serializers;
@@ -16,7 +17,7 @@ using Nucleus.Serializers;
 [assembly: NetworkBundle(ContentBundleShard.BundleId)]
 ```
 
-The gated-prefabs content shard demo does exactly this. Its `ContentBundleShard` class exists only to carry a named constant for the id:
+The gated-prefabs content shard demo does this, with a class that only holds the id:
 
 ```csharp
 public static class ContentBundleShard
@@ -25,27 +26,19 @@ public static class ContentBundleShard
 }
 ```
 
-The assembly that carries the attribute has to be the asmdef whose types you're numbering, not a shared assembly the shard happens to reference. The editor resolves a prefab collection's bundle id by reflecting over the assembly the collection names, so folding the attribute into a shared demos assembly would pull every prefab in that assembly into the same bundle.
+Assign shard ids from 1 upward: 1, 2, 3.
 
-## Ids already taken
+## These bundle ids are already taken
 
-- `NetworkTypeRegistry.FrameworkBundleId` — the framework's own bundle, `ushort.MaxValue`.
-- The `Nucleus.Integrations.Unity` assembly takes `FrameworkBundleId - 1`, one below the framework so it can't collide with either the framework or a default user assembly.
-- `FrameworkBundleId - 2` is reserved by Nucleus as well.
-- A Unity assembly that declares no `[assembly: NetworkBundle(...)]` at all defaults to bundle zero.
+- `NetworkTypeRegistry.FrameworkBundleId` (`ushort.MaxValue`) is the framework's own.
+- `FrameworkBundleId - 1` is the `Nucleus.Integrations.Unity` assembly's.
+- `FrameworkBundleId - 2` is reserved by Nucleus.
+- Zero is the default for any Unity assembly that declares no `[assembly: NetworkBundle(...)]`.
 
-Pick an id outside this set for every shard you add.
+## The prefab collection's bundle id is filled in for you
 
-## A different bundle number on the same component
+`NetworkPrefabCollection` has its own `PrefabBundleId` and `BundleAssemblyName` fields. They feed `NetworkPrefabRegistry`, which resolves which prefab a spawn names, not `NetworkTypeRegistry`, which the `[assembly: NetworkBundle(...)]` attribute feeds. The editor fills them in from the collection's own assembly; do not set them yourself.
 
-`NetworkPrefabCollection` carries its own `PrefabBundleId` and `BundleAssemblyName` serialized fields. These drive `NetworkPrefabRegistry`, the separate registry that resolves which prefab a spawn names — not `NetworkTypeRegistry`, the registry the `[assembly: NetworkBundle(...)]` attribute feeds. The two numbers look alike and both call themselves a bundle id, but they govern different registries and are populated independently: `NetworkPrefabCollection`'s fields are filled in by the editor scan of the collection's own assembly, not by anything you set directly.
+## A collision logs an error and drops the type
 
-## What a collision looks like
-
-If two types land on the same `(bundleId, localId)` pair, `NetworkTypeRegistry` refuses the second registration outright and logs an error naming the bundle and local id involved. The type is not registered under the wrong class — it is simply absent from the registry, and any attempt to spawn or replicate it fails. If a component or system silently never spawns and the console has a registration error naming a bundle and local id, check for a missing or duplicated `[assembly: NetworkBundle(...)]` first.
-
-## Assigning ids
-
-Assign shard ids from the low end and keep going: 1, 2, 3. This isn't just convention: a low id costs less to send than one picked from the middle of the range, so there's no reason to pick an arbitrary or high id when the low end is open.
-
-See the core API page for `NetworkTypeRegistry` itself, and for declaring the same attribute in a csproj-built (non-Unity) assembly.
+If two types land on the same `(bundleId, localId)` pair, `NetworkTypeRegistry` refuses the second one and logs an error naming the bundle and local id. That type is missing from the registry, so spawning or replicating it fails. If a component or system never spawns and the console shows that error, check for a missing or duplicated `[assembly: NetworkBundle(...)]` first.

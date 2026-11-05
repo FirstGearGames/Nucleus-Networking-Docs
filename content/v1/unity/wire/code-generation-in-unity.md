@@ -4,45 +4,37 @@ title: "Code Generation in Unity"
 
 > **Driving the core API directly?** See [Wiring the Source Generator into a .NET Project](../../core-api/wire/source-generator-setup.md).
 
-## What has to be in Assets/Nucleus
+## Keep the four DLLs in Assets/Nucleus
 
-Generation happens inside the Unity compiler, driven by a Roslyn source generator that ships as a DLL. For it to run, `Assets/Nucleus` needs four files side by side:
+`Assets/Nucleus` needs these four files side by side:
 
-- `Nucleus.dll` - the engine
-- `CodeBoost.dll` - pooling and collection support the engine depends on
-- `SynapseSocket.dll` - the transport
-- `Nucleus.CodeAnalysis.SourceGenerators.dll` - the generator itself
+- `Nucleus.dll`, the engine
+- `CodeBoost.dll`, which the engine depends on
+- `SynapseSocket.dll`, the transport
+- `Nucleus.CodeAnalysis.SourceGenerators.dll`, the source generator
 
-Unity only treats a DLL as a source generator when its `.meta` file carries the `RoslynAnalyzer` label:
+Unity runs the generator only while its `.meta` file carries the `RoslynAnalyzer` label:
 
 ```yaml
 labels:
 - RoslynAnalyzer
 ```
 
-That label, and the asset GUID Unity uses to track the file, live in the `.meta`, not the DLL. When you update the generator, replace `Nucleus.CodeAnalysis.SourceGenerators.dll` and leave its `.meta` alone. Replacing the `.meta` too (or deleting and re-adding the DLL) drops the label, and Unity silently goes back to compiling without it - no error, just a generator that never runs.
+When you update the generator, replace the DLL and leave its `.meta` alone. Replacing the `.meta` too, or deleting and re-adding the DLL, drops the label, and Unity silently compiles without the generator.
 
-## Which assembly your component needs to be in
+## Reference Nucleus from your component's assembly
 
-The generator inspects each assembly Unity compiles and skips any assembly that doesn't reference `Nucleus.dll` - it has nothing to generate there. Whether that reference exists depends on where your `NetworkComponent` lives:
+The generator skips any assembly that does not reference `Nucleus.dll`.
 
-- **Scripts with no asmdef** compile into `Assembly-CSharp`, which references `Nucleus.dll` automatically. `Nucleus.Integrations.Unity.asmdef` is marked `autoReferenced: true`, so any assembly Unity auto-references picks it up without you adding anything.
-- **Scripts under your own `.asmdef`** need an explicit reference to `Nucleus.Integrations.Unity` (or another assembly that itself references `Nucleus.dll`) added to that asmdef's `references` array.
+- **Scripts with no asmdef** compile into `Assembly-CSharp`, which picks up the reference automatically.
+- **Scripts under your own `.asmdef`** need `Nucleus.Integrations.Unity` (or another assembly that references `Nucleus.dll`) in that asmdef's `references` array.
 
-## The C# 9 ceiling
+## Write C# 9 in Unity scripts
 
-Unity's generated project pins `LangVersion` to 9. Anything Unity compiles - your components, the integration source, generated partials - is limited to C# 9 syntax: namespaces need braces (no `namespace Foo;`), and there's no collection-expression syntax (`[1, 2, 3]`). This ceiling applies only to source Unity compiles. It doesn't touch the prebuilt DLLs in `Assets/Nucleus`, which are built against a newer language version outside Unity.
+Unity compiles with `LangVersion` 9, so your components and anything else Unity compiles are limited to C# 9: namespaces need braces (no `namespace Foo;`), and there are no collection expressions (`[1, 2, 3]`).
 
-## Symptom: a component that compiles but replicates nothing
+## If a component replicates nothing, check the generator
 
-If the generator didn't run against your assembly, a `partial` `NetworkComponent` still compiles - the class is valid C#, it just has no generated half, so the type is never registered and never replicates. Nothing throws. The component sits in the scene, does nothing on the wire, and the only sign is silence: no errors, no replicated state, no console warning pointing at the cause.
+If the generator did not run over your assembly, a `partial` `NetworkComponent` still compiles but is never registered and never replicates. There is no error or warning. Check that the generator's `.meta` still carries `RoslynAnalyzer`, and that the component's assembly references `Nucleus.dll`.
 
-Check first: is the DLL's `.meta` still carrying `RoslynAnalyzer`, and does the component's assembly reference `Nucleus.dll`?
-
-## Where generator errors surface
-
-Generator diagnostics appear in the Unity console, using the same diagnostic ids the .NET build reports for the same problems. See the diagnostics reference for what each id means.
-
-## See also
-
-For wiring the generator into a plain .NET project outside Unity, see [Wiring the Source Generator into a .NET Project](../../core-api/wire/source-generator-setup.md).
+Generator errors appear in the Unity console with the same ids the .NET build uses. See [Generator Errors and Warnings](./generator-diagnostics.md).
