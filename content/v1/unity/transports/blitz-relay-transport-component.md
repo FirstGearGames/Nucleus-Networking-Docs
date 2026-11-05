@@ -4,17 +4,15 @@ title: "Blitz Relay Transport component"
 
 > **Driving the core API directly?** See [The relay transport](../../core-api/transports/relay-transport.md).
 
-`BlitzRelayTransport` is a `NetworkTransport` component that carries a session through a relay, so two peers behind routers or NAT can reach each other without either one listening on a port. Add it to the `UnityCoreManager`'s GameObject; the `UnityTransportManager` adds it to the `CoreManager` with the inspector's settings applied.
+`BlitzRelayTransport` carries a session through a relay, so two peers behind routers or NAT can reach each other without either one listening on a port. Add it to the `UnityCoreManager`'s GameObject, and `UnityTransportManager` adds it to the `CoreManager` with the inspector's settings.
 
-The component and its custom editor compile only behind the `BLITZ_RELAY` scripting define. A project that has not added the define never loads anything relay-related.
+Before you use it:
 
-Blitz Relay needs Pro. Against a free `Nucleus.dll` the relay integration does not compile, whether or not Host Migration is on.
+- It needs Pro. The relay integration does not compile against a Free `Nucleus.dll`.
+- Add the `BLITZ_RELAY` scripting define. The component and its editor compile only behind it.
+- Run a Blitz Relay service at the address and port below, and a directory service too if Host Migration is on. This component dials them; it does not start them. See [Hosting and joining a relay session](./relay-sessions.md).
 
-## What must already be running
-
-This component does not start a relay. It dials one. Something else has to be running the Blitz Relay service at the address and port configured below, and, if host migration is on, a directory service too. See [Hosting and joining a relay session](./relay-sessions.md) for standing those up.
-
-## Relay
+## Point it at the relay
 
 | Field | Default | Purpose |
 |---|---|---|
@@ -22,28 +20,26 @@ This component does not start a relay. It dials one. Something else has to be ru
 | Port | `7770` (`RelayTransport.DefaultRelayPort`) | Port the relay listens on. |
 | Connection Key | empty | Key the relay admits peers with. Set by whoever runs the relay, never by a player. |
 
-## Room
+## Set up the room
 
 | Field | Default | Purpose |
 |---|---|---|
 | Room Code | empty | Room to join. Leave empty to host, or when joining by session id instead. |
-| Maximum Clients | `16` (`RelayTransport.DefaultMaximumClients`) | How many clients a room created by this peer will hold. The relay refuses a room without a real number, so this cannot mean unlimited. |
-| Transmission Unit | `1200` | Largest datagram to build before it is split. |
+| Maximum Clients | `16` (`RelayTransport.DefaultMaximumClients`) | How many clients a room created by this peer holds. The relay refuses a room without a real number, so this cannot mean unlimited. |
+| Transmission Unit | `1200` | Largest datagram to build before it is split. Nucleus already leaves room for the relay's routing, so it needs no adjustment for the relay. |
 
-The relay needs some room in every datagram to route it to the right room. Nucleus accounts for that automatically, so the Transmission Unit needs no adjustment for it.
-
-## Surviving a lost host
+## Survive losing the host
 
 | Field | Default | Purpose |
 |---|---|---|
-| Host Migration | `true` | Register the session with a directory so it survives losing whoever is hosting it. |
+| Host Migration | `true` | Registers the session with a directory so it survives losing whoever is hosting it. |
 | Directory Address | `127.0.0.1` | Address of the directory the session registers with. Shown only while Host Migration is on. |
 | Directory Port | `47778` | Port the directory listens on. Shown only while Host Migration is on. |
 
-Turning Host Migration on sets `ClientManager.DisconnectResetMode` to `RetainReceivedWorld`, so a client keeps its received world across the moment its link drops instead of being reset to an empty one.
+Turning Host Migration on sets `ClientManager.DisconnectResetMode` to `RetainReceivedWorld`, so a client keeps its received world when its link drops instead of being reset to an empty one.
 
-This is the relay-and-directory handover this component ships: a client can keep its world across a host loss, and a peer can rejoin a moved session by session id instead of a room code. It is not a separate, broader engine-level host migration feature — nothing beyond what is described on this page and on [Hosting and joining a relay session](./relay-sessions.md) exists yet.
+This is the only host migration Nucleus has: a client keeps its world across a host loss, and a peer can rejoin a moved session by session id instead of a room code. Nothing beyond this page and [Hosting and joining a relay session](./relay-sessions.md) exists yet.
 
-## Live fields
+## Read the room and session while playing
 
-Two read-only fields appear while the game is playing: **Current Room**, the room this peer is hosting or has joined, and **Session Id**, shown in hex once a session has registered with a directory. Both are blank until play starts, and Session Id stays blank unless Host Migration is on and a session has actually opened.
+While the game plays, the inspector shows two read-only fields: **Current Room**, the room this peer is hosting or has joined, and **Session Id**, in hex. Session Id stays blank unless Host Migration is on and a session has registered with a directory.

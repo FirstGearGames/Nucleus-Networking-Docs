@@ -2,9 +2,17 @@
 title: "What a system is"
 ---
 
-## The replicated unit
+> **Driving the core API directly?** See [What a system is](../../core-api/systems/what-is-a-system.md) and the [NetworkSystem reference](../../core-api/systems/network-system.md), which list a system's identifiers, states and role reads.
 
-A `NetworkSystem` is the thing Nucleus replicates. It is not a data container itself; the data lives in the `NetworkComponent` instances attached to it. A system can hold up to 31 components (`NetworkSystem.MaximumComponentCount`), and you read them back with `TryGetComponent<T0>` or check how many are attached with `ComponentCount`.
+A `NetworkSystem` is what Nucleus replicates. The system is the identity and lifecycle; the replicated data lives in the `NetworkComponent` instances attached to it, up to 31 per system (`NetworkSystem.MaximumComponentCount`).
+
+## A GameObject links to its systems through NetworkSystemObject
+
+In Unity, the [NetworkSystemObject](./network-system-object.md) component links a GameObject to its systems. It is a bridge, not the system itself. One GameObject can link several systems, each with its own `Id` and lifecycle. A system does not need a GameObject: a purely logical system, such as matchmaking state or a game rule tracker, can start, replicate and stop without one.
+
+## Read a system's components
+
+`TryGetComponent<T0>` returns the first component of a type, and `ComponentCount` says how many are attached:
 
 ```csharp
 if (system.TryGetComponent<TransformComponent>(out TransformComponent transform))
@@ -15,9 +23,7 @@ if (system.TryGetComponent<TransformComponent>(out TransformComponent transform)
 int attached = system.ComponentCount;
 ```
 
-Think of the system as the identity and lifecycle; the components hold the data that replicates.
-
-Each component also has a component Id: the order it was added in, starting at zero. Every peer builds the system's components in the same order, so an Id names the same component everywhere. `TryGetComponent<T0>(out T0)` returns the first component of a type, which is all you need while each type appears once. A system can carry one type several times, though (a `NetworkTransform` replicating several parts does exactly that), and then you reach each instance by its Id:
+Each component has a component Id: the order it was added in, starting at zero, and the same on every peer. When a system carries one type several times, as a `NetworkTransform` replicating several parts does, reach each instance by its Id:
 
 ```csharp
 for (byte componentId = 0; componentId < system.ComponentCount; componentId++)
@@ -29,17 +35,9 @@ for (byte componentId = 0; componentId < system.ComponentCount; componentId++)
 }
 ```
 
+## Check the state before reading data
 
-## Lifecycle
-
-Every system moves through the same four states, exposed as `NetworkSystemState`:
-
-- `Starting` — accepted but not yet live.
-- `Started` — networked and usable.
-- `Stopping` — a stop has been accepted but the tick has not ended yet.
-- `Stopped` — not networked.
-
-Read the current state through `NetworkSystem.State`, or use the shortcut `IsStarted`, which is true only while `State` is `Started`.
+`IsStarted` is true only while `NetworkSystem.State` is `Started`. A start accepted late in a tick stays `Starting`, with its `Id` unset, until the next tick.
 
 ```csharp
 if (system.IsStarted)
@@ -48,30 +46,4 @@ if (system.IsStarted)
 }
 ```
 
-A start accepted after the tick's state flush stays at `Starting` until the next tick begins; during that window `Id` is still unset.
-
-## Identifiers
-
-A system carries several identifiers, and each answers a different question:
-
-- **`Id`** — the network identity: which system this is, unique across the network. `UnsetId` is 0, and a system reads this as unset until it actually starts.
-- **`PlatformId`** — which prefab, or which scene object, this system is linked to on the running platform. `UnsetPlatformId` is 0, which is also what a system with no engine object carries — a plain system never sets this.
-- **`PrefabBundleId`** — the content bundle that owns the prefab named by `PlatformId`. Only meaningful for a dynamically spawned prefab; a scene object doesn't use it.
-- **`GroupId`** — the `NetworkSystemGroup` this system belongs to, or unset if it isn't grouped.
-- **`ParentId`** — the `Id` of the system this one is parented to (a crate riding a vehicle, a weapon in a hand), or `UnsetParentId` if it sits at the root of its scene.
-- **`SceneHandle`** — the live scene instance the system belongs to, or `UnsetSceneHandle` if it belongs to whatever scene the peer booted into rather than one the server opened.
-- **`IsSceneObject`** — true when `PlatformId` identifies a scene object that already exists on every peer, rather than a prefab a receiver must instantiate.
-
-## Role reads
-
-Every system carries three reads for what role the local peer is playing: `IsServerStarted`, `IsClientStarted`, and `IsHostStarted`. These answer "is the server/client/host running here", not "do I control this object" — for control questions, use `IsController(ControllerType)` instead.
-
-## Systems and engine objects
-
-A `NetworkSystem` does not need an engine object at all — a purely logical system (matchmaking state, a game rule tracker) can start, replicate, and stop without ever touching a GameObject or any other engine construct.
-
-In an engine integration, one engine object can link to several systems at once, each with its own `Id` and lifecycle, all driven by the same underlying object.
-
-## Vocabulary
-
-A `NetworkSystem` is a system, not a "networked GameObject." In the Unity integration, the marker component that links an engine object to its system is a separate thing — a small bridge, not the system itself.
+`IsServerStarted`, `IsClientStarted` and `IsHostStarted` answer whether the server, client or host is running on this peer, not whether this peer controls the object. For control, use `IsController(ControllerType)`.
