@@ -6,6 +6,7 @@ These pages are for looking things up: type and component references, configurat
 
 - [API type reference](./api-type-reference.md)
 - [Compatibility](./compatibility.md)
+- [How the benchmarks are run](./benchmarks.md)
 - [Component Index](./component-index.md)
 - [Configuration reference](./configuration-reference.md)
 - [Editor menus and authoring tools](./editor-menus-and-tools.md)
