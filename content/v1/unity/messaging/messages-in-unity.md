@@ -4,30 +4,23 @@ title: "Typed Messages in Unity"
 
 > **Driving the core API directly?** See [Typed Messages](../../core-api/messaging/typed-messages.md).
 
-## The manager
+## Reach the message manager
 
-`UnityCoreManager` adds a `UnityMessageManager` to its own GameObject, alongside the rest of the Unity managers, when there is not one already, so one is present whenever a `UnityCoreManager` bootstraps a session. It exposes one thing, `NucleusMessageManager`, which is the core `MessageManager` this component drives. `UnityMessageManager` has no inspector settings, so there is nothing to configure on it.
-
-## Resolving the manager
-
-From a script sitting on the manager GameObject (or a child of it), get the component directly:
-
-```csharp
-UnityMessageManager unityMessageManager = GetComponent<UnityMessageManager>();
-MessageManager messageManager = unityMessageManager.NucleusMessageManager;
-```
-
-From anywhere else, go through the bound CoreManager instead:
+`UnityMessageManager` has no inspector settings. Its `NucleusMessageManager` property is the core `MessageManager`. From any script, reach it through the bound session:
 
 ```csharp
 MessageManager messageManager = NucleusUnity.BoundCoreManager.MessageManager;
 ```
 
-`NucleusUnity.BoundCoreManager` is the CoreManager the Unity integration bound at startup; it is set once `UnityCoreManager.Awake` calls `NucleusUnity.Initialize` and cleared on teardown.
+From a script on the manager's GameObject or a child of it, you can also get the component:
 
-## Registering and unregistering a handler
+```csharp
+MessageManager messageManager = GetComponent<UnityMessageManager>().NucleusMessageManager;
+```
 
-`MessageManager.RegisterMessageHandler<T0>` and `UnregisterMessageHandler<T0>` take a `MessageReceivedHandler<T0>` delegate. Registration is not scoped to any GameObject or component — nothing despawns it, nothing tears it down when the object that registered it goes away. Pair the two calls by hand:
+## Register and unregister a handler
+
+A message handler is not tied to any GameObject. Nothing removes it when the object that registered it is destroyed, and a handler left registered keeps firing against a destroyed component. Pair `RegisterMessageHandler<T0>` with `UnregisterMessageHandler<T0>` yourself:
 
 ```csharp
 public class DamageAlertListener : MonoBehaviour
@@ -52,19 +45,19 @@ public class DamageAlertListener : MonoBehaviour
 }
 ```
 
-A handler left registered after its component is destroyed keeps firing against a `this` Unity has already torn down. The `MessageManager` reference is cached in `Start` rather than resolved fresh in `OnDestroy`, since destruction order across objects is not guaranteed and `NucleusUnity.BoundCoreManager` may already be null by then.
+Cache the `MessageManager` in `Start` rather than resolving it in `OnDestroy`, because `NucleusUnity.BoundCoreManager` may already be null by then.
 
-## Getting a Connection to send to
+## Send to the server from a client
 
-`SendMessage<T0>` is a member of `Connection`, so sending needs a `Connection` to call it on. From a client script, the connection to the server comes from `TransportManager.TryGetServerConnection`:
+`SendMessage<T0>` is a method on `Connection`. From a client, get the server connection with `TransportManager.TryGetServerConnection`:
 
 ```csharp
 if (NucleusUnity.BoundCoreManager.TransportManager.TryGetServerConnection(out Connection serverConnection))
     serverConnection.SendMessage(Channel.Reliable, new DamageAlertMessage());
 ```
 
-On the server side, sending to one or many clients uses the server-side connection helpers covered in [Sending a Message to Many Peers](../../core-api/messaging/server-message-fanout.md).
+To send from the server to one or many clients, see [Sending a Message to Many Peers](../../core-api/messaging/server-message-fanout.md).
 
-## The generator prerequisite
+## Keep the source generator running
 
-A struct used as an `IMessage` payload needs the Nucleus source generator to see it, the same requirement as any call payload. In a Unity project this means `Nucleus.CodeAnalysis.SourceGenerators.dll` must be marked as a Roslyn analyzer (the `RoslynAnalyzer` label on its `.meta`) in every assembly that declares or sends the message type. Without it, the project still compiles, but the message silently never sends.
+A message type needs the Nucleus source generator to run over every assembly that declares or sends it, like any call payload. If `Nucleus.CodeAnalysis.SourceGenerators.dll` loses its `RoslynAnalyzer` label, the project still compiles but the message never sends. See [Code Generation in Unity](../wire/code-generation-in-unity.md).
