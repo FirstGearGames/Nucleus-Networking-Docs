@@ -15,12 +15,18 @@ Every scene that uses Nucleus needs one `UnityCoreManager`. The Nucleus window a
 
 ## Choose how the session starts
 
-In the **Session** section of the Setup tab, set **Start On Play** to **Auto**. The first editor to press Play becomes the host, which runs a server and a client together so you can play too. A second editor finds the host already running and joins it as a client.
+1. In the **Session** section of the Setup tab, set **Start On Play** to **Auto**.
+2. Leave **Tick Rate** at 30.
 
-Leave **Tick Rate** at 30. It is how many times per second Nucleus sends updates, and 30 suits most games.
+The first editor to press Play becomes the host, which runs a server and a client together so you can play too. A second editor finds the host already running and joins it as a client.
+
+**Tick Rate** is how many times per second Nucleus sends updates, and 30 suits most games.
 
 ## Press Play to check it
 
-Press Play and select the **Traffic** tab of the Nucleus window. It shows **Stop Server** and **Stop Client** buttons, which means both halves of the host are running.
+1. Press Play.
+2. Select the **Traffic** tab of the Nucleus window.
+
+**Expected result:** The tab shows **Stop Server** and **Stop Client** buttons, which means both halves of the host are running.
 
 The session uses port 7777 on this computer. To play across computers, see [Synapse Transport component](../unity/transports/synapse-transport-component.md).

@@ -25,7 +25,9 @@ The behaviours live in the `Nucleus.Integrations.Unity.Prediction` namespace:
 | `ValidatedAnimator` | Up to 16 float, 16 int, 64 bool and 16 trigger parameters, 8 layer weights and the speed. | The server checks them, so use it when a parameter decides gameplay. Set parameters on the animator as usual and fire triggers through `ValidatedAnimator.SetTrigger`. Use it instead of `ReconciledAnimator` or `NetworkAnimator`, not beside them. |
 | `ValidatedAnimatorRootMotion` | The base layer's playback. | It needs a `ReconciledAnimator` or a `ValidatedAnimator`. Use it when root motion decides where a character goes. It is the only one that declares no system of its own: list `ValidatedAnimatorRootMotionComponent` in the composition of the behaviour that sets the animator's parameters. It costs a full animator step for every replayed tick. |
 
-Add only one of `ValidatedTransform`, `ValidatedRigidbody` or `ValidatedCharacterController` to an object. The body and controller versions already keep the transform's values. Never put a validated behaviour on an object that also has a `NetworkRigidbody` or a `NetworkTransform`, because both would write the same body.
+Add only one of `ValidatedTransform`, `ValidatedRigidbody` or `ValidatedCharacterController` to an object. The body and controller versions already keep the transform's values.
+
+Never put a validated behaviour on an object that also has a `NetworkRigidbody` or a `NetworkTransform`, because both would write the same body.
 
 ## A replay steps the whole physics world once for each replayed tick.
 
@@ -135,7 +137,10 @@ Follow the same rules as any predicted step:
 - **Read only members, the body and constants.** The step must compute the same thing on the client and the server for the same tick.
 - **Play sounds and effects only on `SimulationType.Forward`.** A replay runs the step again for every tick since the one that went wrong.
 
-Give the client control of the object, for example with `NetworkPlayerSpawner`, and test with a dedicated server and a separate client. A host is the server, so its own ball is never corrected.
+1. Give the client control of the object, for example with `NetworkPlayerSpawner`.
+2. Test with a dedicated server and a separate client.
+
+A host is the server, so its own ball is never corrected.
 
 ## Send Interval sets how often the results are sent.
 
@@ -145,19 +150,34 @@ Every validated behaviour has a **Send Interval** field:
 - **Short** sends less often, saving bandwidth and CPU at the cost of slightly more corrections.
 - **Long** sends least often, for casual or large-scale games.
 
-A paced interval still sends on the tick the object's client state changes, because the behaviour follows every other system on the object. Short and Long only pace in Pro. The field is read when the behaviour links, so set it before play.
+A paced interval still sends on the tick the object's client state changes, because the behaviour follows every other system on the object.
+
+- Short and Long only pace in Pro.
+- The field is read when the behaviour links, so set it before play.
 
 ## Ignored Behaviours lists scripts that never move the body.
 
-When another script on the object has client state that does not move the body, such as a weapon's fire button, list it under **Ignored Behaviours**. Its client state changes then no longer send the body's results early. This only matters at a Short or Long interval.
+When another script on the object has client state that does not move the body, such as a weapon's fire button, list it under **Ignored Behaviours**.
+
+Its client state changes then no longer send the body's results early. This only matters at a Short or Long interval.
 
 ## Predicted By Observers lets other clients predict the body too.
 
-Tick **Predicted By Observers** on the object's `NetworkSystemObject` and observing clients predict it as its controller does, the validated system included. This matters for bodies that players collide with or push. It also works for a server-owned body nobody controls, such as a ball every player can hit. The simulation must call `TryGetLastState` when `stepDelta.IsClientStateMissing` is true, since an observer never has the controller's client state in time. See [Prediction settings on the Unity manager](../control/prediction-settings-in-unity.md).
+Tick **Predicted By Observers** on the object's `NetworkSystemObject`.
+
+Observing clients predict it as its controller does, the validated system included. This matters for bodies that players collide with or push. It also works for a server-owned body nobody controls, such as a ball every player can hit.
+
+The simulation must call `TryGetLastState` when `stepDelta.IsClientStateMissing` is true, since an observer never has the controller's client state in time. See [Prediction settings on the Unity manager](../control/prediction-settings-in-unity.md).
 
 ## Draw the body through a GraphicalSmoother.
 
-The body moves once per tick, and a correction moves it again. Put the renderer on a child, add a `GraphicalSmoother` to the body and assign the child as its **Child Graphic**, so the drawn ball glides between ticks and across corrections while the body and its colliders stay exact. See [Smoothing a predicted object with GraphicalSmoother](../control/graphical-smoother.md).
+The body moves once per tick, and a correction moves it again.
+
+1. Put the renderer on a child.
+2. Add a `GraphicalSmoother` to the body.
+3. Assign the child as its **Child Graphic**.
+
+**Expected result:** The drawn ball glides between ticks and across corrections while the body and its colliders stay exact. See [Smoothing a predicted object with GraphicalSmoother](../control/graphical-smoother.md).
 
 ## A rare correction is healthy.
 

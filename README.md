@@ -17,6 +17,8 @@ content and software apart means doc edits and pull requests never touch the sof
 Edit Markdown under `content/` and open a pull request. CI runs the content-scan and renderer
 security checks (from ZeroDocs) on every PR; a merge triggers a redeploy.
 
+For readability edits, follow the [authoring guide and preservation checklist](CONTRIBUTING.md).
+
 ## Build locally
 
 ```bash

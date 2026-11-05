@@ -44,11 +44,20 @@ namespace MyGame
 }
 ```
 
-The validator runs on the server once per Predict member for every client tick it takes: accept the value, decline it to keep what the member holds, or write the member and decline to keep your own, as the direction clamp does. A validator that throws declines. A press that must not repeat across a lost tick is declared with `isCarriedForward: false` (see below).
+The validator runs on the server once per Predict member for every client tick it takes, with three possible actions:
+
+- Accept the value.
+- Decline it to keep what the member holds.
+- Write the member and decline to keep your own, as the direction clamp does.
+
+A validator that throws declines. A press that must not repeat across a lost tick is declared with `isCarriedForward: false` (see below).
 
 ## Read the device in Update, write it on the tick
 
-Read the keys from Unity's `Update`, into a field: a held key is a property of the frame, so it has to be read every rendered frame. Then copy that field into the Predict member inside `OnEarlyFixedUpdate`, on the controller's live tick only. That tick is `SimulationType.Forward`; a replay reads each past tick's value from the member's history and must never overwrite it.
+1. Read the keys from Unity's `Update` into a field.
+2. Copy that field into the Predict member inside `OnEarlyFixedUpdate`, on the controller's live tick only.
+
+A held key is a property of the frame, so it has to be read every rendered frame. The controller's live tick is `SimulationType.Forward`; a replay reads each past tick's value from the member's history and must never overwrite it.
 
 ```csharp
 using Nucleus.Connections;
@@ -114,13 +123,26 @@ namespace MyGame
 }
 ```
 
-Do not put a `NetworkTransform` on the same object; this script replicates the position itself. Step by the fixed tick (`1f / CoreManager.NetworkLoopManager.TickRate`), never `Time.deltaTime`, so every peer integrates identically.
+- Do not put a `NetworkTransform` on the same object; this script replicates the position itself.
+- Step by the fixed tick (`1f / CoreManager.NetworkLoopManager.TickRate`), never `Time.deltaTime`, so every peer integrates identically.
 
 ## What the server does with it
 
-A pure client sends its Predict members to the server every tick. The server takes one of the client's ticks per server tick, through **State Interpolation**, runs the validator, then runs the object's fixed updates with the members holding that tick's values. On a host playing its own object the host writes the members and steps with them in the same tick, so nothing travels upstream, but each value still goes through the same validator.
+A pure client sends its Predict members to the server every tick. The server:
 
-The object is stepped on every server tick, even when that tick's client state never arrived. On that step `stepDelta.IsClientStateMissing` is true and the Predict members read their defaults until the component's `TryGetLastState(isEveryMemberCarried)` carries the previous tick's. Declare a press as a bool with `isCarriedForward: false` so `TryGetLastState(false)` leaves it at its default; a press lost with its packet is simply lost, and the server corrects the jump the client showed. The overload `TryGetLastState(isEveryMemberCarried, out SimulationContext lastStateSimulationContext)` also reports which tick the carried state came from: on the server its `RemoteTick` is the client tick that state was written on, so `simulationContext.RemoteTick - lastStateSimulationContext.RemoteTick` is how many ticks it has been carried, for example to stop a character walking once the client has been silent too long. Late and dropped ticks are counted on the controller's `Connection` as `ClientStateLateCount` and `ClientStateDroppedCount`.
+1. Takes one of the client's ticks per server tick, through **State Interpolation**.
+2. Runs the validator.
+3. Runs the object's fixed updates with the members holding that tick's values.
+
+On a host playing its own object the host writes the members and steps with them in the same tick, so nothing travels upstream, but each value still goes through the same validator.
+
+**Missing client state.** The object is stepped on every server tick, even when that tick's client state never arrived. On that step `stepDelta.IsClientStateMissing` is true and the Predict members read their defaults until the component's `TryGetLastState(isEveryMemberCarried)` carries the previous tick's.
+
+**One-shot presses.** Declare a press as a bool with `isCarriedForward: false` so `TryGetLastState(false)` leaves it at its default; a press lost with its packet is simply lost, and the server corrects the jump the client showed.
+
+**Age of carried state.** The overload `TryGetLastState(isEveryMemberCarried, out SimulationContext lastStateSimulationContext)` also reports which tick the carried state came from: on the server its `RemoteTick` is the client tick that state was written on, so `simulationContext.RemoteTick - lastStateSimulationContext.RemoteTick` is how many ticks it has been carried, for example to stop a character walking once the client has been silent too long.
+
+**Diagnostics.** Late and dropped ticks are counted on the controller's `Connection` as `ClientStateLateCount` and `ClientStateDroppedCount`.
 
 The server's step runs on the server's own tick (`stepDelta.Tick`). `simulationContext.RemoteTick` names the client's tick it is simulating, for logging and pairing only: never time a cooldown by it, since a client picks its own tick numbers.
 
@@ -131,6 +153,8 @@ The server forwards the values it kept, after validation and its own writes, to 
 - `MemberChangeDirection.Read` on the server when a client's changed value is taken (`TryGetWritingClient` names the sender), and on an observer receiving a changed value. Drive presentation such as footsteps or animation from it.
 - `MemberChangeDirection.Correction` on the controller when the server's value for one of its past ticks differs from its own, as when the validator clamped it. The server's value is already in the member's history at that tick.
 
+Put this override in `MoverComponent`:
+
 ```csharp
 public override void OnMembersChanged(ulong memberFlags, MemberChangeDirection memberChangeDirection)
 {
@@ -139,7 +163,7 @@ public override void OnMembersChanged(ulong memberFlags, MemberChangeDirection m
 }
 ```
 
-Put this override in `MoverComponent`. The simulation reads the members every tick anyway; use the callback for presentation or to react to a correction.
+The simulation reads the members every tick anyway; use the callback for presentation or to react to a correction.
 
 ## Predict the result as well
 

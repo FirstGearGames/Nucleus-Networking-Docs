@@ -6,13 +6,17 @@ title: "Add a player"
 
 This page gives every player a capsule that they move with WASD. Everyone else sees it move.
 
+The script reads the keyboard through Unity's Input System package, which new Unity 6 projects include.
+
 ## Make the player prefab
 
 1. Choose **GameObject > 3D Object > Capsule** and name it Player.
 2. Add the `NetworkSystemObject` component. It marks the object as networked.
 3. Add the `NetworkTransform` component. It sends the object's position and rotation to everyone else.
-4. Create a script named `PlayerMover` with the code below, and add it to Player.
-5. Drag Player into the Project window to make it a prefab, then delete it from the scene.
+4. Create a script named `PlayerMover` with the code below.
+5. Add the script to Player.
+6. Drag Player into the Project window to make it a prefab.
+7. Delete Player from the scene.
 
 ```csharp
 using Nucleus.Integrations.Unity.Systems;
@@ -54,8 +58,6 @@ public class PlayerMover : NucleusBehaviour
 
 `NucleusBehaviour` is the base class for scripts on a networked object. `IsController(ControllerType.Client)` is true only on the computer of the player who controls this capsule, so each player moves only their own.
 
-The script reads the keyboard through Unity's Input System package, which new Unity 6 projects include.
-
 ## Spawn a player for everyone who joins
 
 1. Create an empty GameObject named Player Spawner.
@@ -66,10 +68,13 @@ The spawner creates one Player for each player who joins, and gives that player 
 
 ## Register the prefab
 
-Choose **Tools > Nucleus**, select the **Build** tab, and click **Rebuild** next to **Rebuild Network Prefab Collection**.
+1. Choose **Tools > Nucleus** and select the **Build** tab.
+2. Click **Rebuild** next to **Rebuild Network Prefab Collection**.
 
 A prefab cannot be spawned over the network until you do this. Do it again whenever you add, remove or duplicate a networked prefab.
 
 ## Press Play to check it
 
-Press Play. A capsule appears, and WASD moves it.
+Press Play.
+
+**Expected result:** A capsule appears, and WASD moves it.
