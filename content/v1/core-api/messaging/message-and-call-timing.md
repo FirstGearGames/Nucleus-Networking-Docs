@@ -4,26 +4,27 @@ title: "When a Message or Call Reaches Its Handler"
 
 ## Outbound messages and calls leave once per frame
 
-Messages and calls sent by your code do not go on the wire the instant you call the send method. They queue, and the engine sends the queue once per frame, on every frame, at `NetworkLoopSteps.LateSerialize`'s place in the order. On a frame that ticks, the send happens after the `LateSerialize` callbacks, so a message or call sent from a `LateSerialize` callback or any earlier step still leaves this frame. One sent from a `TickAdvance` or `LateVariableUpdate` callback leaves on the next frame. Messages and calls go out in the same send, so a message and a call sent in the same frame leave together.
+Sends queue, and the queue goes out once per frame at the `NetworkLoopSteps.LateSerialize` step, after its callbacks.
 
-## Inbound calls: LateStateUpdate, after messages
+- Sent from a `LateSerialize` callback or any earlier step: leaves this frame.
+- Sent from a `TickAdvance` or `LateVariableUpdate` callback: leaves next frame.
 
-Inbound calls are dispatched on `NetworkLoopSteps.LateStateUpdate`, after the tick's state has applied, which is later than inbound messages. State, including a spawn that arrived this same tick, has already landed by then, so a call addressed to an object that spawned in the same frame finds a system that already exists.
+Messages and calls sent in the same frame leave together.
 
-## Send order holds across types
+## Inbound calls run after the tick's state applies
 
-A peer's messages reach their handlers in the order they were sent, regardless of how many different message types are mixed in. This isn't per-type ordering: sends are delivered in the order they happened, not grouped by type.
+Inbound calls are dispatched on `NetworkLoopSteps.LateStateUpdate`, later than inbound messages. A call addressed to an object that spawned in the same frame finds the system already there.
 
-## Host loopback: Immediate, and only Immediate
+## Send order holds across message types
 
-A host is one `CoreManager` holding both the server and client roles. When one half addresses a message or call to the other, `TransportManager.HostLoopbackDelivery` decides when that delivery runs. Only `HostLoopbackDelivery.Immediate` is settable from game code: the receiving half's handlers run at the send site, before the send call returns, on whatever loop step the sender happened to be on.
+A peer's messages reach their handlers in the order they were sent, whatever mix of types they are.
 
-`HostLoopbackDelivery.Deferred` exists in the enum but is refused with a logged reason when a game tries to set it; it is not available to game code. A call is always dispatched at the send site on a host, because its delivery has to run the server's own admission (resolve the system, check the sender's permission, decide relay) inline.
+## A host delivers to itself immediately
 
-## Re-entrancy
+When a host's server half and client half send to each other, the receiving half's handlers run at the send site, before the send call returns. This is `TransportManager.HostLoopbackDelivery` set to `HostLoopbackDelivery.Immediate`, the only value game code may set. Setting `HostLoopbackDelivery.Deferred` is refused with a logged reason. Calls always run at the send site on a host.
 
-Because `Immediate` runs a handler at the send site, a handler that sends something back re-enters the same pass that sent the original message or call. The engine supports this. The one consequence worth knowing: if a handler reached this way starts a spawn, and the sending step is `LateSerialize` or `TickAdvance`, after the tick's state was sent, that spawn is deferred until the tick advances. That is the same deferral any other late spawn gets, not a special case for loopback.
+A handler that sends something back runs inside the original send, which is supported. One effect: if such a handler starts a spawn while the sending step is `LateSerialize` or `TickAdvance`, the spawn is deferred until the tick advances, like any other late spawn.
 
-## A handler throw costs only its own payload
+## A handler that throws loses only its own payload
 
-Both `MessageManager` and `RpcManager` wrap each individual message or call dispatch in its own `try`/`catch`, not the whole batch. A handler that throws is logged and the payload is dropped; every other message or call in the same drain — from the same sender, in the same frame — still reaches its own handler. A batch-wide guard would have cost a client everything the server sent that frame over one bad payload; the per-payload boundary is why it doesn't.
+The exception is logged and that one message or call is dropped. A payload that fails to decode is dropped the same way. Every other message and call in the same frame still reaches its handler.
