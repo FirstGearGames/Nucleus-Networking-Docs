@@ -2,9 +2,11 @@
 title: "The manager map"
 ---
 
-## The eleven managers
+> **Using Unity?** See [The manager map](../../unity/core/manager-map.md) for the Unity component that fronts each manager.
 
-`CoreManager` owns eleven managers as public fields, constructed once and held for the life of the session. Each one is documented in full on its own pages elsewhere; this page only says which manager owns which concern and how to reach it.
+## Each concern has one manager
+
+`CoreManager` holds eleven managers as public fields, for the life of the session. Reach each one as a field, such as `coreManager.TransportManager`.
 
 | Manager | Owns |
 |---|---|
@@ -20,38 +22,15 @@ title: "The manager map"
 | `RpcManager` | Remote procedure calls. |
 | `ViolationManager` | Detecting and acting on protocol violations. |
 
-## The two Pro-only managers
+A Pro build adds two more fields. In a Free build they are absent, not null.
 
-`BundleManager` and `WorldPersistenceManager` are not part of the base `CoreManager`. They exist only in a Pro build. In a Free build, `CoreManager` has no `BundleManager` or `WorldPersistenceManager` field at all: the fields are absent, not null.
-
-`BundleManager` owns content delivered from outside the build (Addressables, a patcher, a CDN). `WorldPersistenceManager` owns writing a world to disk and building it back.
-
-## Reaching a manager
-
-**From C#**, every manager is a public field directly on `CoreManager`: `coreManager.TransportManager`, `coreManager.SystemManager`, and so on, including the two Pro fields when they're present.
-
-**From Unity**, nine of the eleven have a matching `Unity*Manager` component with a `Nucleus*Manager` property that returns the same instance:
-
-| Component | Property |
+| Manager | Owns |
 |---|---|
-| `UnityNetworkLoopManager` | `NucleusNetworkLoopManager` |
-| `UnityTransportManager` | `NucleusTransportManager` |
-| `UnityServerManager` | `NucleusServerManager` |
-| `UnityClientManager` | `NucleusClientManager` |
-| `UnitySystemManager` | `NucleusSystemManager` |
-| `UnityInterestManager` | `NucleusInterestManager` |
-| `UnitySceneManager` | `NucleusSceneManager` |
-| `UnityPacketManager` | `NucleusPacketManager` |
-| `UnityMessageManager` | `NucleusMessageManager` |
-
-Two exceptions have no Unity-side component of their own: `RpcManager` and `ViolationManager`. Reach either one through `UnityCoreManager.CoreManager` (the component that owns the session's `CoreManager`) or through `NucleusUnity.BoundCoreManager`, then take the field as in C#.
-
-The tenth Unity component that `UnityCoreManager` adds when it is missing, `UnityPhysicsManager`, is the odd one out in the other direction: it fronts no core manager at all. It's an inspector-side seat for physics execution settings that a physics coordinator reads directly, not a wrapper around one of the eleven fields above.
+| `BundleManager` | Content delivered from outside the build (Addressables, a patcher, a CDN). |
+| `WorldPersistenceManager` | Writing a world to disk and building it back. |
 
 ## Every setting lives on the manager that owns it
 
-There is no single settings type for a Nucleus session. Every knob - tick rate, a transport's connection settings, interest rules, scene load behavior - is a field on the manager that owns that concern. To change something, find its manager first.
+There is no single settings type. Tick rate, a transport's connection settings, interest rules and scene load behavior are each fields on the manager that owns them, so to change something, find its manager first.
 
-## Managers are instance-scoped
-
-None of the eleven (or thirteen, with Pro) managers are static. Each belongs to one `CoreManager`, and a `CoreManager` is just an object - a process can construct more than one, each with its own independent set of managers. This is what lets a single process host a server and a client in the same run, or run several test peers side by side, without their state colliding.
+None of the managers are static. Each belongs to one `CoreManager`, and a process can construct several `CoreManager`s, each with its own managers, such as a server and a client in one run or several test peers side by side.
