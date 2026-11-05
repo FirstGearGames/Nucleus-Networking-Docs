@@ -2,22 +2,22 @@
 title: "Writing a Custom Serializer"
 ---
 
-## When to write one
+## Write one only when you need a specific encoding
 
-Every networked type the generator can reach is serialized for you. Write your own when you want a specific wire shape for a type instead: a packed encoding, a custom precision trade-off, or a type the generator cannot reach at all. A hand-written serializer always wins over a generated one for the same type.
+Every networked type the generator can reach is serialized for you. Write your own serializer for a packed encoding, a custom precision trade-off, or a type the generator cannot reach. A hand-written serializer always wins over a generated one for the same type, whichever is registered first.
 
-There are two ways to register a serializer: the attribute route, resolved at compile time by the source generator, and the runtime route, called directly against the generic handler classes. Both end up calling the same `UseWriteHandler` / `UseReadHandler` methods; the attribute route calls them for you.
+If the type only needs to be visible to the generator, use a marker struct instead; see [Reaching Types You Cannot Annotate](./external-network-types.md).
 
-## The attribute route
+## Register with attributes
 
-Mark a static method with one of four attributes:
+Mark static extension methods with these attributes from `Nucleus.Serializers`:
 
-- `[DefaultWriter]` - the full writer for a type.
-- `[DefaultReader]` - the full reader for a type.
-- `[DefaultDeltaWriter]` - the delta writer for a type.
-- `[DefaultDeltaReader]` - the delta reader for a type.
-
-All four live in `Nucleus.Serializers` and target methods only. The generator checks each attributed method against a fixed signature shape: an extension method on `Writer` (writers) or `Reader` (readers), so the first parameter is `this Writer writer` or `this Reader reader`. A full writer takes the value and a `CompressionLevel`; a full reader returns the value and takes a `CompressionLevel`. A delta writer takes a previous value, a next value and a `DeltaCheckMode`, and returns `bool`; a delta reader takes a previous value and returns the next value.
+| Attribute | Method shape |
+|---|---|
+| `[DefaultWriter]` | Extends `Writer`; takes the value and a `CompressionLevel`. |
+| `[DefaultReader]` | Extends `Reader`; takes a `CompressionLevel` and returns the value. |
+| `[DefaultDeltaWriter]` | Extends `Writer`; takes a previous value, a next value and a `DeltaCheckMode`, and returns `bool`. |
+| `[DefaultDeltaReader]` | Extends `Reader`; takes a previous value and returns the next value. |
 
 ```csharp
 [DefaultWriter]
@@ -45,20 +45,18 @@ public static MyType ReadDeltaMyType(this Reader reader, MyType previousValue)
 }
 ```
 
-Methods marked this way are registered as custom serializers for their type, through `GenericFullWriter<T0>.UseWriteHandler`, `GenericFullReader<T0>.UseReadHandler`, `GenericDeltaWriter<T0>.UseWriteHandler` and `GenericDeltaReader<T0>.UseReadHandler`. A generated serializer for the same type never replaces a hand-written one, whichever is registered first.
+The generator checks each method's signature and registers it for you.
 
-## The runtime route
+## Register at runtime
 
-The four attributes are convenience over the same generic classes you can call yourself:
+The attributes call these methods, which you can also call yourself, for example from a plugin or code that runs early:
 
 - `GenericFullWriter<T0>.UseWriteHandler(WriteHandler, bool isSerializerCustom)`
 - `GenericFullReader<T0>.UseReadHandler(ReadHandler, bool isSerializerCustom)`
 - `GenericDeltaWriter<T0>.UseWriteHandler(WriteHandler, bool isSerializerCustom)`
 - `GenericDeltaReader<T0>.UseReadHandler(ReadHandler, bool isSerializerCustom)`
 
-Each also has an accuracy-aware overload (`WriteWithAccuracyHandler` / `ReadWithAccuracyHandler`, adding a `float accuracy` parameter) for types whose encoding takes a precision hint; a type that does not need one only registers the plain overload.
-
-The delegate shapes:
+Each also has an overload taking `WriteWithAccuracyHandler` or `ReadWithAccuracyHandler`, which add a `float accuracy` parameter, for types whose encoding takes a precision hint.
 
 ```csharp
 // Nucleus.Serializers.GenericFullWriter<T0>
@@ -78,7 +76,7 @@ public delegate T0 ReadHandler(Reader reader, T0 previousValue);
 public delegate T0 ReadWithAccuracyHandler(Reader reader, T0 previousValue, float accuracy);
 ```
 
-`isSerializerCustom` is what decides precedence. Register your handler with `isSerializerCustom: true` and it always wins: once it is registered, nothing replaces it, neither a generated serializer for the same type nor a later registration of your own, so register each of a type's custom handlers only once. Calling `UseWriteHandler` directly is the same operation the attribute route performs, so a plugin, a test, or code that runs early can install a handler exactly the same way:
+Pass `isSerializerCustom: true`. Once registered, the handler is never replaced, neither by a generated serializer nor by a later registration of your own, so register each handler once.
 
 ```csharp
 GenericFullWriter<MyType>.UseWriteHandler(WriteMyType, isSerializerCustom: true);
@@ -87,29 +85,27 @@ GenericDeltaWriter<MyType>.UseWriteHandler(TryWriteDeltaMyType, isSerializerCust
 GenericDeltaReader<MyType>.UseReadHandler(ReadDeltaMyType, isSerializerCustom: true);
 ```
 
-## Why the delta pair has to agree
+## Make the delta reader mirror the delta writer
 
-A delta writer returns `bool`: it may write nothing at all when `DeltaCheckMode.Checked` finds no change to report. The reader has no independent way to know whether a value was written - it only knows what the writer decided. If the reader does not mirror the writer's decision exactly (reading when the writer wrote, and not reading when it didn't), the stream desynchronizes: every read from that point on pulls bits meant for something else, and the corruption goes undetected until values obviously stop making sense.
+A delta writer may write nothing when `DeltaCheckMode.Checked` finds no change. The reader must read exactly when the writer wrote and skip exactly when it did not. If they disagree, every later read in the stream returns wrong values, with no error.
 
-This is also why testing a delta serializer as a symmetric pair, not writer and reader in isolation, matters more here than almost anywhere else in the engine. "The writer doesn't throw" and "the reader doesn't throw" both pass for a reader that silently reads the wrong value.
+## Nullable types need no extra serializer
 
-## Composing inside Nullable<T>
+A member typed `MyType?` uses your serializer for `MyType`. `Writer.WriteNullable<T0>` and `TryWriteNullable<T0>` wrap the underlying type's registered handler for any `struct`. `NullableEncapsulatedChecker<T0>.GetIsNullable()` and `GetUnderlyingType()` tell you whether `T0` is `Nullable<>` and, if so, its underlying type.
 
-A member typed `MyType?` needs your full serializer to work under the engine's nullable handling rather than around it. `NullableEncapsulatedChecker<T0>` detects a `Nullable<>`-encapsulated type: `GetIsNullable()` and `GetUnderlyingType()` return whether `T0` is `Nullable<>` and, if so, the underlying type.
+## Reuse the built-in helpers
 
-`Writer` exposes `WriteNullable<T0>` and `TryWriteNullable<T0>` for the full and delta paths on any `struct`. Write your full and delta writer/reader for the underlying value type as usual; `WriteNullable` / `TryWriteNullable` wrap it and dispatch to your registered handler for the underlying type. You do not write a separate serializer for the `Nullable<T0>` form - the underlying type's serializer is what composes.
+- **`ByteArrayDifferenceSerializer`**: `TryWrite(Writer, byte[] previousValue, byte[] nextValue)` and `Read(Reader, byte[] previousValue, byte[] result)` write and read the difference between two same-length byte arrays. The length is not sent, so both peers must already know it. Use it inside a delta writer for any type that is a fixed-length byte buffer.
+- **`DecimalPacked`**: a compact `decimal`. Build it with `DecimalPacked(decimal value, float accuracy)` and convert back with `AsDecimal(float accuracy)`.
 
-## Helpers to lean on
+## Some types have no delta serializer by design
 
-Two building blocks exist so you don't hand-roll the same encoding twice:
+`Matrix4x4` (`Writer.TryWriteMatrix4X4`, `Reader.ReadDeltaMatrix4X4`), `Channel` (`Writer.TryWriteDeltaChannel`, `Reader.ReadDeltaChannel`), `NetworkSystemGroup` (`Writer.TryWriteDeltaNetworkSystemGroup`, `Reader.ReadDeltaNetworkSystemGroup`) and arrays through `Writer.TryWriteDeltaArrayAndCount<T0>` all throw. If your own type has no meaningful difference to send, throwing from its delta writer is correct.
 
-- **`ByteArrayDifferenceSerializer`** - `TryWrite(Writer, byte[] previousValue, byte[] nextValue)` and `Read(Reader, byte[] previousValue, byte[] result)` write and read the difference between two same-length byte arrays. Both peers must already know the array length out of band; length is not part of the encoding. Reach for this inside a delta writer for any type that boils down to a fixed-length byte buffer.
-- **`DecimalPacked`** - a compact form of a `decimal`, taking an accuracy hint via its `DecimalPacked(decimal value, float accuracy)` constructor and converting back with `AsDecimal(float accuracy)`. Use it wherever a type you're serializing embeds a `decimal` and you want it sent compactly rather than writing the four raw ints.
+## Test it as a round trip
 
-## Known by-design refusals
+1. Write through a real `Writer`, initialized with `Initialize(coreManager: null)`.
+2. Read back through a real `Reader` initialized from `writer.ToPackedBytes()`.
+3. For a delta pair, write a run of values on one `Writer` and read the same run back on one `Reader`, checking each value in order. A single write and read will not catch a reader that falls out of step.
 
-Some framework types intentionally have no delta serializer. `Matrix4x4` (`Writer.TryWriteMatrix4X4`, `Reader.ReadDeltaMatrix4X4`), `Channel` (`Writer.TryWriteDeltaChannel`, `Reader.ReadDeltaChannel`), `NetworkSystemGroup` (`Writer.TryWriteDeltaNetworkSystemGroup`, `Reader.ReadDeltaNetworkSystemGroup`), and arrays through `Writer.TryWriteDeltaArrayAndCount<T0>` all throw rather than attempt an encoding. If your own type is in the same position - rarely sent, or without a meaningful "difference" - throwing from your delta writer is the correct behavior, not a gap to fill in.
-
-## Verifying it
-
-Test a custom serializer as a round trip. Write through a real `Writer`, initialized with `Initialize(coreManager: null)`, and read back through a real `Reader` initialized from `writer.ToPackedBytes()` - never assert against the writer's return value alone, since "wrote successfully" and "wrote the right bytes" are different claims. For a delta pair, write a run of values across a single `Writer` and read the same run back across a single `Reader`, asserting each value in sequence; a bug that only desynchronizes the stream after the first mismatch will not show up on a single write/read pair.
+Never check only the writer's return value; writing successfully is not the same as writing the right bytes.
