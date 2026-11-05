@@ -254,7 +254,7 @@ public struct AsteroidRandom
 
 ## Bandwidth is counted by a relay on the client's machine
 
-Measuring starts 5 seconds after the 200 objects spawn and lasts 30 seconds. Positions and rotations are replicated to an accuracy of 0.001. The server runs on an AWS c7i.large, about 195 ms from the client. A relay on the client's machine counts every byte and packet the server sends. The bytes counted are divided by the 30 seconds, the 200 objects and the 30 ticks a second, which gives bytes per object, per tick.
+Measuring starts 5 seconds after the 200 objects spawn and lasts 30 seconds. Positions and rotations are replicated at a precision of 0.001 and accurate to the tick. The server runs on an AWS c7i.large, about 195 ms from the client. A relay on the client's machine counts every byte and packet the server sends. The bytes counted are divided by the 30 seconds, the 200 objects and the 30 ticks a second, which gives bytes per object, per tick.
 
 ## Server CPU is measured by a monitor in the server process
 
