@@ -2,22 +2,18 @@
 title: "Versioning, upgrading and release notes"
 ---
 
-## Checking your build
+## Check which build you are running
 
-Every Unity release names itself in two places. `Assets/Nucleus/VERSION.txt` reads `Nucleus <version>`, so you can check what a project has installed without building anything, and a running player writes `Thank you for using Nucleus Networking <version>.` to its log at launch, so you can check what a built player is running.
+- In a project, `Assets/Nucleus/VERSION.txt` reads `Nucleus <version>`.
+- A running player writes `Thank you for using Nucleus Networking <version>.` to its log at launch.
 
-The DLLs themselves carry no version number. There is no protocol-version handshake between peers at connect time either, so the version a peer runs is something you check, not something the connection checks for you.
+The DLLs carry no version number.
 
-## What this page will become
+## Run the same build on every peer
 
-As releases accumulate, this page holds two things:
+Peers do not exchange a protocol version when they connect, so nothing checks that both ends match. A client and server on different builds misread each other's packets or silently disagree about what a message means. If you see corruption or unexplained desync, confirm both ends run the same build first.
 
-- **Release notes** — one entry per build, describing what changed.
-- **API change register** — a table of deliberate breaking changes, each row keyed to the build it landed in and naming the direct replacement for whatever it removed.
-
-Until then, the section below is the closest thing to that register: the breaking changes a current beta tester is likely to hit.
-
-## Changes to know about right now
+## Replace removed members
 
 | Removed | Replacement |
 |---|---|
@@ -25,12 +21,4 @@ Until then, the section below is the closest thing to that register: the breakin
 | `IsHostOwnClient` | removed, no direct replacement |
 | `IsHostOwnServer` | removed, no direct replacement |
 
-Separately, a framework-wide naming audit renamed roughly 1,300 members in one pass. If a member you remember by name no longer resolves and isn't in the table above, it's almost certainly a casualty of that audit rather than a removal — search the current API for a similarly-named member before assuming it's gone.
-
-## Mixed builds are not supported
-
-Both peers in a connection must run the same build. Nothing checks this, so a client and server on different builds will not fail cleanly — they'll either misread each other's packets or silently disagree about what a message means. There is no handshake to catch this for you. If you see corruption or unexplained desync, confirm both ends are on the same build before looking anywhere else.
-
-## Can't find where something moved?
-
-If a member you're looking for isn't in the table above and you can't locate its replacement, see the support page.
+A naming pass also renamed roughly 1,300 members. If a member you remember is not in the table and no longer resolves, search the current API for a similarly named member before assuming it is gone. If you still cannot find it, see the support page.
