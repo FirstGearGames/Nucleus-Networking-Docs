@@ -2,90 +2,62 @@
 title: "Common errors and what causes them"
 ---
 
-Paste the text of a log line into this page's index to find what produced it and what to change. Every line below is quoted verbatim from the engine.
+Search this page for the text of a log line to find what produced it and what to change. Every line below is quoted verbatim from the engine.
 
-## Index
-
-- ["ran on thread [X] while a network loop step is executing on thread [Y]..."](#off-loop-writer-work) — off-loop writer work
-- ["touched the loop-owned collection [...] on thread [X] while a network loop step is executing on thread [Y]..."](#off-loop-collection-access) — off-loop collection access
-- ["Step [X] was turned away on thread [...] because this manager is already executing a step on thread [...]..."](#second-driver) — a second driver stepping the loop
-- ["Violation [X] from Connection [...]"](#violation-lines) — a violation raised against a peer
-- ["A Recovery entry from Connection [...] references unknown NetworkSystem Id [...]; that entry is skipped."](#recovery-and-retention) — recovery named a system the local world no longer has
-- ["...acknowledges [an impossible tick]..." (InvalidStateAckViolation)](#recovery-and-retention) — an ack above the local tick
-- ["...retention window was exceeded..." (RetentionExceededViolation)](#recovery-and-retention) — acked tick fell out of the retention window
-- ["A StatePacket subpacket from Connection [...] declares [X] body bits but only [Y] remain; discarding the rest of the tick."](#serializer-and-framing-faults) — declared-body-bits mismatch
-- ["State subpacket [X] from Connection [...] left the reader at [...] bits but its framed boundary was [...]..."](#serializer-and-framing-faults) — framed-boundary mismatch
-- ["Connection [...] sent unrecognised PacketType [X]; the packet is discarded."](#version-skew) — version skew, not a kick
-
-## Off-loop writer work
+## A message was written off the loop thread
 
 `"[Caller<MessageType>] ran on thread [X] while a network loop step is executing on thread [Y]. This work must not run concurrently with the loop; it races the outbound WriterPool and can corrupt sent packets."`
 
-**Cause.** Something serialized or accumulated a message from a thread other than the one currently running a network loop step. Messages must be written on the loop thread; writing one from another thread at the same time can corrupt sent packets.
+**Cause.** A message was written from a thread other than the one running the network loop.
 
-**Fix.** Move the work onto the loop. If it's resuming after an `await`, route it through the loop rather than sending inline from wherever the continuation happened to land.
+**Fix.** Move the work onto the loop. If it resumes after an `await`, route it through the loop rather than sending from wherever the continuation landed.
 
-This guard is compiled only in `DEBUG`. A Release build has no such check and fails silently: the race still happens, it just never gets a log line naming it. Reproduce and diagnose the fault in Debug, then confirm the fix in Release.
+This check exists only in `DEBUG` builds. A Release build still has the race but never logs it, so diagnose in Debug and confirm the fix in Release.
 
-## Off-loop collection access
+## Loop-owned state was touched off the loop thread
 
 `"[Caller] touched the loop-owned collection [Name] on thread [X] while a network loop step is executing on thread [Y]. This work must run on the network loop thread; touching the collection off the loop races the loop and can silently corrupt it."`
 
-**Cause.** An async continuation resumed off the loop thread and then touched state the loop owns. Touching it from another thread while a step runs can corrupt it or drop an entry.
+**Cause.** An async continuation resumed off the loop thread and touched state the loop owns.
 
-**Fix.** Switch back onto the loop before touching loop-owned state, rather than acting from wherever the continuation resumed.
+**Fix.** Switch back onto the loop before touching loop-owned state.
 
-Also `DEBUG`-only. Same consequence in Release: the guard disappears, the race doesn't.
+This check is also `DEBUG`-only. In Release the race still happens, silently.
 
 ## Two threads are driving one manager
 
 `"Step [X] was turned away on thread [...] because this manager is already executing a step on thread [...]. One loop must drive one manager, and a second driver races every collection the loop owns. A manager whose owner never supplied a step provider, leaving the default one driving the loop from the thread pool, is the usual cause. At least [N] steps have been turned away since the previous report."`
 
-**Cause.** Two threads are stepping the same manager's loop. The usual case is an owner that never supplied its own `INetworkLoopStepProvider`, so the default background-timer provider is driving the loop from the thread pool at the same time as whatever else is stepping it.
+**Cause.** Two threads are stepping the same manager's loop, usually because the owner never supplied its own `INetworkLoopStepProvider`, so the default provider steps the loop from the thread pool alongside whatever else steps it.
 
-**Fix.** Make sure exactly one driver steps the manager — supply the owner's own step provider (a Unity integration's loop provider, a test harness driving ticks by hand) rather than letting two sources call in.
+**Fix.** Make sure exactly one driver steps the manager by supplying the owner's own step provider (a Unity integration's loop provider, or a test harness driving ticks by hand).
 
-This line is throttled to at most once per minute per manager, because the incident it was built for produced hundreds of thousands of identical lines in minutes. Every turned-away step is still counted even when not logged, and the reported count (`At least [N] steps have been turned away`) is what tells you the real severity — a report you see once with a count of 1 is very different from one with a count in the thousands, even though the line text looks the same either way.
+The line is logged at most once per minute per manager. The count in `At least [N] steps have been turned away` includes every step turned away since the last report, so it tells you how severe the problem is.
 
-## Violation lines
+## A violation was logged
 
 `"Violation [TypeName] from Connection [...]"`, sometimes followed by `"...settled on a kick, but this peer is not a server; the kick is not enforced."` or `"Disconnecting Connection [...] for violation [TypeName]."`
 
-A violation writes one of these lines only when its settled action is `Log` or `Kick`. Most types default to `Ignore` and write nothing, so register an `IViolationObserver` to see those. Look up `TypeName` in the violation reference for the payload fields it carries and what triggered it:
+A violation writes one of these lines only when its `ViolationContext<T0>.Log` is set or it kicks. Most types default to `Ignore` and write nothing, so register an `IViolationObserver` to see them. Look up `TypeName` in the [Violation reference](./violation-reference.md) for its payload, its default action and what to check first.
 
-- `EmptyCollectionDeltaViolation` — a collection member delta declaring no operations; a compliant sender can't produce one.
-- `InvalidStateAckViolation` — a Connection acknowledged a state tick above the local tick.
-- `MalformedDataViolation`: reading data a client sent threw on the server; kicks in a release build, logs the exception in a debug build.
-- `PredictedMemberChangeViolation`: a controller sent a value for a member that should only ride upstream as client state.
-- `RecoveryUnconfirmedViolation` — a served recovery went unconfirmed for the full patience window and had to be re-served.
-- `RetentionExceededViolation` — an acked tick fell beyond the retention window, forcing a full-world recovery.
-- `RpcFloodViolation` — more remote calls arrived in one drain than the receiver admits.
-- `RpcSendPermissionViolation` — a remote call was sent without permission (often a well-behaved client racing a permission revocation).
-- `UnauthorizedSpawnViolation` — a client sent state for a system Id the server doesn't hold.
-- `UnauthorizedMemberChangeViolation`: a Connection set members of a system it doesn't control.
-- `UnexpectedBundleRequestViolation` / `UnexpectedSceneRequestViolation` — a client sent a request only the server ever sends.
-- `UnsolicitedBundleReportViolation` / `UnsolicitedSceneReportViolation` — a client reported a load or unload it was never asked to make.
-
-Each violation has a default `ViolationAction` (`Ignore` or `Kick`) and a registered handler can override it per Connection. The action only governs the Connection consequence; the offending operation itself is always rejected regardless of what the action does. Logging is separate: it rides on `ViolationContext<T0>.Log`, which the raise site or the handler can set.
-
-## Recovery and retention
+## A recovery named a system this peer no longer has
 
 `"A Recovery entry from Connection [...] references unknown NetworkSystem Id [X]; that entry is skipped."`
 
-The sender believed the peer still held a system that the local world no longer has. The entry is skipped and the rest of the recovery continues.
+The sender believed this peer still held a system it no longer has. The entry is skipped and the rest of the recovery continues.
 
-`InvalidStateAckViolation`, `RetentionExceededViolation`, and `RecoveryUnconfirmedViolation` (see the violation index above) round out recovery diagnosis. All three default to `Ignore` rather than a kick: a single raise of any of them is ordinary behavior for a peer on a bad link — heavy loss, a retention window that's too short for the peer's latency, or a recovery that got lost along with everything else. What separates a lossy link from an actual bug is repetition: an occasional raise is the cost of an imperfect network, while raises that keep recurring for the same Connection mean its latency genuinely exceeds the retention window, or something is wrong with how it acknowledges.
+`InvalidStateAckViolation`, `RetentionExceededViolation` and `RecoveryUnconfirmedViolation` default to `Ignore`, because a peer on a bad link raises them now and then. Raises that keep recurring for the same Connection mean its latency exceeds the retention window, or it is not acknowledging correctly.
 
-## Serializer and framing faults
+## A peer's state could not be read
 
 `"A StatePacket subpacket from Connection [...] declares [X] body bits but only [Y] remain; discarding the rest of the tick."`
 
 `"State subpacket [Type] from Connection [...] left the reader at [...] bits but its framed boundary was [...] (declared [X] body bits, off by [Y]). The stream is misaligned; discarding the rest of the tick."`
 
-Both mean the receiver could not read a peer's state the way it was written. This is a serializer question, not a gameplay one: it points at a reader and writer that disagree about a type's shape, not at anything the game did wrong. The rest of the tick is discarded rather than read as garbage.
+The receiver could not read a peer's state the way it was written, so the rest of the tick is discarded. A reader and writer disagree about a type's shape: look at the type's serializer, not at game logic.
 
-## Version skew
+## A peer sent an unknown packet type
 
 `"Connection [...] sent unrecognised PacketType [X]; the packet is discarded."`
 
-Nothing on this side knows how to interpret that `PacketType`. This is what version skew between peers looks like: an older or newer build sent a packet type the receiver has never heard of. The packet is silently discarded rather than treated as a violation — an unrecognised type on its own isn't proof of a hostile peer, only of a version mismatch, so it's not a kick.
+The peer is running an older or newer build that sends a packet type this build does not know. The packet is discarded and the peer is not kicked.
