@@ -4,71 +4,58 @@ title: "Interest level of detail"
 
 > **Using Unity?** See [Level of detail in Unity](../../unity/interest/level-of-detail-in-unity.md)
 
-## Level of detail is a measurement, not a behaviour
+Level of detail tells the game how far an object is from a peer, in three bands instead of a raw distance. The engine never acts on a band: it does not cull an object, change what a system sends, or touch the per-member send interval. What the game does with the band is up to the game. Level of detail is part of Nucleus Pro.
 
-Level of detail is a measurement, not a behavior. Nothing in the engine acts on a band: it does not cull an object, it does not change what a system sends, and it does not touch the per-member send interval, which is configured separately. A band tells the game how far an object is from a peer, in three steps instead of a raw distance. What the game does with that reading is up to the game.
+## Set up level of detail
 
-## Building a ladder
+1. Build a ladder with `InterestLevelOfDetailLadder.TryCreate` and install it with `InterestManager.SetLevelOfDetail`:
 
-`InterestLevelOfDetailLadder.TryCreate` validates two ascending rungs and builds the ladder they describe:
+   ```csharp
+   if (InterestLevelOfDetailLadder.TryCreate(nearDistance: 20f, farDistance: 60f, hysteresis: InterestLevelOfDetailLadder.DefaultHysteresis, out InterestLevelOfDetailLadder ladder))
+   {
+       interestManager.SetLevelOfDetail(ladder);
+   }
+   ```
 
-```csharp
-if (InterestLevelOfDetailLadder.TryCreate(nearDistance: 20f, farDistance: 60f, hysteresis: InterestLevelOfDetailLadder.DefaultHysteresis, out InterestLevelOfDetailLadder ladder))
-{
-    interestManager.SetLevelOfDetail(ladder);
-}
-```
+2. Opt each system in. Only opted-in systems are measured:
 
-`TryCreate` refuses:
+   ```csharp
+   networkSystem.SetLevelOfDetailEnabled(true);
+   ```
 
-- Either rung being non-finite, zero, or negative.
-- `nearDistance` greater than or equal to `farDistance` — equal rungs would describe a band no distance can land in.
-- A `hysteresis` that is `NaN`, negative, or greater than or equal to `InterestLevelOfDetailLadder.MaximumHysteresis` (`1f`).
+3. Read the band for a connection:
 
-`InterestLevelOfDetailLadder.DefaultHysteresis` is `0.1f`. On failure, `TryCreate` writes an unconfigured ladder to the `out` parameter and returns `false`.
+   ```csharp
+   InterestLevelOfDetail band = networkSystem.GetInterestLevelOfDetail(connection);
+   ```
 
-## Configuring the world
+Level of detail reads positions through the world's position reader. Without one, it logs an error once and every pair reads as `Near`. See [Supplying positions to the interest system](./supplying-interest-positions.md).
 
-`InterestManager.SetLevelOfDetail` installs the ladder:
+## TryCreate refuses an invalid ladder
 
-```csharp
-interestManager.SetLevelOfDetail(ladder);
-```
+`TryCreate` returns `false`, and writes an unconfigured ladder to the `out` parameter, when:
 
-The current ladder reads back from `InterestManager.LevelOfDetail`. Its `IsConfigured` property reports whether it holds two valid rungs, and `WidestDistance` is the far rung, unsquared, in metres. Passing an unconfigured ladder turns level of detail off: every pair then resolves to `InterestLevelOfDetail.Near`.
+- Either rung is non-finite, zero or negative.
+- `nearDistance` is greater than or equal to `farDistance`.
+- `hysteresis` is `NaN`, negative, or greater than or equal to `InterestLevelOfDetailLadder.MaximumHysteresis` (`1f`).
 
-`InterestManager.LevelOfDetailCadenceTicks` sets how many ticks pass between one resolution of a system's band and the next; it defaults to `InterestManager.DefaultLevelOfDetailCadenceTicks` (`10`).
+`InterestLevelOfDetailLadder.DefaultHysteresis` is `0.1f`.
 
-## Opting a system in
+## Read back and tune the ladder
 
-A `NetworkSystem` is measured only if it opts in:
-
-```csharp
-networkSystem.SetLevelOfDetailEnabled(true);
-```
-
-`NetworkSystem.IsLevelOfDetailEnabled` reports the current opt-in state. Turning it off drops any band already held for that system, so a later read answers `Near` rather than the last value measured before tracking stopped.
-
-Read the resolved band for a specific connection with `GetInterestLevelOfDetail`:
-
-```csharp
-InterestLevelOfDetail band = networkSystem.GetInterestLevelOfDetail(connection);
-```
+- `InterestManager.LevelOfDetail` reads back the installed ladder. Its `IsConfigured` reports whether it holds two valid rungs, and `WidestDistance` is the far rung in metres.
+- Installing an unconfigured ladder turns level of detail off. Every pair then reads `Near`.
+- `InterestManager.LevelOfDetailCadenceTicks` sets how many ticks pass between measurements of a system's band. It defaults to `InterestManager.DefaultLevelOfDetailCadenceTicks` (`10`).
+- `NetworkSystem.IsLevelOfDetailEnabled` reports a system's opt-in. Turning it off drops the band held for that system, so a later read answers `Near`.
 
 ## There are three bands, and Near means no level of detail at all
 
-`InterestLevelOfDetail` has three values: `Near` (0), `Medium` (1), and `Far` (2). `Near` is not the finest level of detail — it is the absence of level of detail entirely. An unconfigured ladder, a position that cannot currently be measured, and a peer's own controlled object all resolve to `Near`, on the same footing as an object nobody ever measures.
+`InterestLevelOfDetail` has three values: `Near` (0), `Medium` (1) and `Far` (2). `Near` is not the finest level of detail. It means no level of detail: an unconfigured ladder, a position that cannot be measured, and a peer's own controlled object all read `Near`, the same as an object nobody measures.
 
-## Hysteresis at a boundary
+## Hysteresis stops an object flapping between bands
 
-Each rung's release boundary is precomputed from `1 - hysteresis` at ladder construction, not tested against the raw rung distance every time. A rung is tested at its release boundary only while the object already sits in that band or a coarser one, so coarsening happens at the rung itself and refining happens a dead band inside it.
+An object moves to a coarser band at the rung itself, but moves back only once it is `hysteresis` inside the rung. Without that gap, an object sitting on a rung would flip between two bands on every measurement. With the default 10%, a 40-metre rung moves an object back at 36 metres.
 
-Without that dead band, an object sitting exactly on a rung — or a player walking back and forth across one — would flap between two bands on every resolution, and anything reading the band would see a stream of changes describing jitter rather than movement. With the default 10% hysteresis, a 40-metre rung holds a 4-metre release band: comfortably wider than the distance an ordinary walking speed covers between resolutions.
+## Force a re-measure after a jump
 
-## Level of detail ships only in Pro
-
-Level of detail is part of Nucleus Pro.
-
-## Forcing a re-measure
-
-`RefreshInterest` takes an `isLevelOfDetailRemeasured` argument to force a system's band to be re-resolved off its cadence slot, for a system that moved discontinuously and cannot wait out its stagger.
+`InterestManager.RefreshInterest(networkSystem, isLevelOfDetailRemeasured: true)` re-measures a system's band before its next cadence slot, for a system that moved suddenly, such as by teleport.

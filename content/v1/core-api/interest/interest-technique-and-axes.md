@@ -2,9 +2,9 @@
 title: "How distances are measured: pairwise and the spatial grid"
 ---
 
-## Choosing a technique
+## Choose a technique
 
-`InterestManager.SetInterestTechnique(InterestTechnique interestTechnique, GridInterestAxes gridInterestAxes = GridInterestAxes.Xyz)` sets how every distance condition in a world resolves distance. It is one setting on the manager, not a flag per prefab, because the two techniques are built to reach identical verdicts: the difference is cost, never behavior.
+`InterestManager.SetInterestTechnique(InterestTechnique interestTechnique, GridInterestAxes gridInterestAxes = GridInterestAxes.Xyz)` sets how every distance condition in a world measures distance. Both techniques reach identical verdicts; only the cost differs.
 
 ```csharp
 interestManager.SetInterestTechnique(InterestTechnique.SpatialGrid, GridInterestAxes.Xz);
@@ -12,36 +12,27 @@ interestManager.SetInterestTechnique(InterestTechnique.SpatialGrid, GridInterest
 
 The current choice reads back from `Technique` and `InterestAxes`.
 
-`InterestTechnique.Pairwise` is the default. It measures each connection's nearest controlled object directly, with no index in front of it. It is the right answer where most objects are in range of most players anyway, which is most worlds at demo and mid scale.
-
-`InterestTechnique.SpatialGrid` narrows candidates through the shared `SpatialInterestGrid` first, then measures the survivors exactly against the same cutoffs and the same ladder. Because the exact measurement is identical either way, the grid can never produce a different verdict from pairwise — it only changes what gets measured.
-
-## When the grid pays off
-
-The grid buys narrowing, and narrowing is only worth its own cost where the cutoff genuinely excludes most pairs. In a world much wider than its cutoff, the grid is faster than pairwise. In a world small enough that everything is in range of everything, it is slower, because the radius query buys no narrowing and the exact measurement still has to happen.
+- `InterestTechnique.Pairwise` (the default) measures each connection's nearest controlled object directly. Use it where most objects are in range of most players, which is most small and mid-sized worlds.
+- `InterestTechnique.SpatialGrid` narrows candidates through the shared `SpatialInterestGrid`, then measures the survivors exactly against the same cutoffs. Use it in a world much wider than its cutoff. In a world where everything is in range of everything, it is slower than pairwise.
 
 Pick the technique from the world's geometry, not from player count.
 
-## Restricting the axes
+## Restrict the axes for a flat world
 
-`GridInterestAxes` chooses which axes a distance is measured across: `Xyz` (the full volume, and the default), `Xy`, `Xz`, or `Yz`. It applies to both techniques, not just the grid, so a world that plays out on a surface — top-down or side-on — can measure only in that surface and stop treating a tower directly overhead as a step away.
+`GridInterestAxes` chooses which axes a distance is measured across: `Xyz` (the default), `Xy`, `Xz` or `Yz`. It applies to both techniques. A top-down or side-on world can measure only in its plane, so a tower directly overhead no longer counts as a step away.
 
 ## The technique is locked once a distance condition registers
 
-`SetInterestTechnique` is refused, with a logged error, once any distance condition has registered in the world. A single pass cannot measure in two planes at once, and which one won would become an accident of evaluation order rather than a decision anyone made. Set the technique and the axes during setup, before anything carrying a distance rule spawns.
+`SetInterestTechnique` is refused, with a logged error, once any distance condition has registered in the world. Set the technique and the axes during setup, before anything with a distance rule spawns.
 
-## SpatialInterestGrid
+## Query SpatialInterestGrid directly
 
-`SpatialInterestGrid` is the engine-free index `InterestTechnique.SpatialGrid` narrows through. It knows nothing about transforms; it answers "which of these points lie within this radius of this point."
+`SpatialInterestGrid` is the index `InterestTechnique.SpatialGrid` uses. It knows nothing about transforms. It answers "which of these points lie within this radius of this point".
 
-- `TryBeginPass(uint pass)` opens a pass, clearing the grid when the pass has moved on. It returns `true` when the caller must re-insert this pass's points, so several callers can share one grid within a pass and only the first pays to build it.
-- `Insert(uint id, Vector3 position)` files one identified point for the current pass. A non-finite position is dropped rather than filed.
-- `CollectWithin(Vector3 center, float radius, HashSet<uint> results)` adds the identifiers of every inserted point within `radius` of `center`. Candidates are tested exactly before being added, so a result is genuinely in range and not merely in a probed cell.
-- `IsIndexed(uint id)` reports whether an identifier filed any point at all this pass, which is how a caller tells "indexed and out of range" apart from "never indexed."
-- `ConfigureAxes(GridInterestAxes gridInterestAxes)` chooses the plane, taking effect at the next rebuild rather than mid-pass.
+- `TryBeginPass(uint pass)` opens a pass. It returns `true` when the caller must insert this pass's points, so several callers can share one grid in a pass and only the first builds it.
+- `Insert(uint id, Vector3 position)` adds one point for the current pass. A non-finite position is dropped.
+- `CollectWithin(Vector3 center, float radius, HashSet<uint> results)` adds the id of every inserted point within `radius` of `center`. Results are exact.
+- `IsIndexed(uint id)` reports whether an id added any point this pass, which tells "indexed and out of range" apart from "never indexed".
+- `ConfigureAxes(GridInterestAxes gridInterestAxes)` chooses the plane, from the next rebuild.
 
-`CellSize` is a public read-back with a private setter, not a fixed constant. `DefaultCellSize` (32 units) is a floor: each `TryBeginPass` that rebuilds widens the cell size to the widest radius any query asked about in the previous pass. Correctness never depends on the cell size — a query probes every cell its bounding box touches and tests each candidate exactly — so a mis-sized cell only costs more probes or more candidates, never a wrong answer.
-
-## Scale caveat
-
-Resolution is O(systems × connections), cadenced and staggered across systems. That is honest for demo and mid scale. A world of thousands of systems and peers wants a true spatial broadphase feeding candidate pairs directly; this pass does not fake one, and that remains future work.
+`CellSize` reads the current cell size, which is never below `DefaultCellSize` (32 units).
