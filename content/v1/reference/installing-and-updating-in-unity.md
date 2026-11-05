@@ -4,40 +4,44 @@ title: "Installing and updating Nucleus in Unity"
 
 > **Driving the core API directly?** See [Adding Nucleus to a .NET project](../start-here/adding-nucleus-to-a-dotnet-project.md).
 
-## What's in the package
+## Install the package
 
-Nucleus for Unity ships as prebuilt DLLs plus source for its integration layer. The distributed build unpacks into an `Assets/Nucleus` folder:
+Import the release's `.unitypackage` (**Assets > Import Package > Custom Package**), or copy its whole `Assets/Nucleus` folder into your project. These are the only supported methods: there is no UPM package, Asset Store listing or git-URL install.
 
-- `Nucleus.dll`, `CodeBoost.dll`, `SynapseSocket.dll` — each with a `.pdb` alongside it for debuggable stack traces.
-- `Nucleus.CodeAnalysis.SourceGenerators.dll` — the Roslyn source generator that makes networked types compile. No `.pdb` ships for it.
-- `Nucleus.xml` and `SynapseSocket.xml` beside their DLLs: the XML documentation for the public API, so your IDE shows hover docs for every engine type and member you can use.
-- `LICENSE.txt`, and `VERSION.txt`, which names the release (see [Identifying what you're running](#identifying-what-youre-running)).
-- An `Integrations` folder holding four source trees, each its own assembly definition: `Unity`, `Blitz Relay`, `Newfarm Client`, `Newfarm Migration`.
+The folder holds:
 
-Install it either by importing the release's `.unitypackage` (**Assets > Import Package > Custom Package**) or by copying the whole `Assets/Nucleus` folder into your project. Those are the two supported methods: there is no UPM package, no Asset Store listing, and no git-URL install.
+- `Nucleus.dll`, `CodeBoost.dll` and `SynapseSocket.dll`, each with a `.pdb` for debuggable stack traces.
+- `Nucleus.CodeAnalysis.SourceGenerators.dll`, the source generator that makes networked types compile. It has no `.pdb`.
+- `Nucleus.xml` and `SynapseSocket.xml`, which give your IDE hover docs for the public API.
+- `LICENSE.txt`, and `VERSION.txt`, which names the release.
+- An `Integrations` folder with four source trees, each its own assembly definition: `Unity`, `Blitz Relay`, `Newfarm Client` and `Newfarm Migration`.
 
-## The one rule that decides whether it works
+The integration needs **Unity 6.5 (6000.5) or newer** and does not compile on older editors. An update never lowers that requirement.
 
-Replace the files. Never replace the `.meta` files.
+## Update without touching the .meta files
 
-A project that already has this folder has its own Unity-generated `.meta` for every path in it, and those `.meta`s carry state Unity needs: asset GUIDs, and — for the source generator — the label that makes it run at all. `Nucleus.CodeAnalysis.SourceGenerators.dll.meta` carries:
+1. Leave Play mode. Replacing files during play reloads scripts and resets play mode.
+2. Replace all four DLLs together with their `.pdb` and `.xml` files, plus `LICENSE.txt`, `VERSION.txt` and the `Integrations` source trees.
+3. Keep every existing `.meta` file in the project.
+
+**Never replace the `.meta` files.** `Nucleus.CodeAnalysis.SourceGenerators.dll.meta` carries the label that makes Unity run the generator:
 
 ```yaml
 labels:
 - RoslynAnalyzer
 ```
 
-That label is what tells Unity to run the DLL as a Roslyn source generator instead of referencing it as a normal plugin. Overwrite that `.meta` with the one from the new build — or delete it and let Unity regenerate a plain one — and the generator stops running. Nothing shows an error for this. The project compiles, the components look fine, and nothing replicates, because the generated networking code was never produced. If replication silently stops after an update, check this first: open `Nucleus.CodeAnalysis.SourceGenerators.dll.meta` and confirm `RoslynAnalyzer` is still listed under `labels`.
+If that `.meta` is overwritten or regenerated without the label, the project still compiles with no error, but nothing replicates. If replication silently stops after an update, open that `.meta` and confirm `RoslynAnalyzer` is listed under `labels`. The other `.meta` files keep asset GUIDs stable.
 
-## All four DLLs come from one build
+**Take all four DLLs from one build.** A mismatched set, such as a new `Nucleus.dll` beside an old `CodeBoost.dll`, still compiles but throws `MissingMethodException` when the mismatched call runs.
 
-`Nucleus.dll`, `CodeBoost.dll`, `SynapseSocket.dll`, and `Nucleus.CodeAnalysis.SourceGenerators.dll` must all be from the same build output. Mixing them — a fresh `Nucleus.dll` next to a stale `CodeBoost.dll`, for example — does not fail to compile. The two DLLs disagree about what's inside each other at runtime, and that surfaces as a `MissingMethodException` when the mismatched call actually runs, not as a build error. When updating, replace all four together.
+## Optional pieces switch on with scripting defines
 
-## Unity floor and assembly layout
+- `NUCLEUS_ADDRESSABLES` is set automatically when `com.unity.addressables` 1.19 or newer is installed.
+- `NUCLEUS_NAVMESH` is set automatically while Unity's AI module, `com.unity.modules.ai`, is enabled, as it is in a new project. Without it, `NetworkNavMeshAgent` is left out and the rest still compiles.
+- `BLITZ_RELAY` must be set in your project to compile the Blitz Relay transport.
 
-The integration supports **Unity 6.5 (6000.5) and newer**. It uses Unity APIs that older editors lack, so it does not compile on them. Check your editor version before updating, since an update never lowers that floor.
-
-Every integration file is also gated behind:
+The main integration assembly is `Nucleus.Integrations.Unity.asmdef`, with its editor code in `Nucleus.Integrations.Unity.Editor.asmdef`. Every integration file is wrapped in:
 
 ```csharp
 #if UNITY_EDITOR || UNITY_6000_5_OR_NEWER
@@ -45,26 +49,8 @@ Every integration file is also gated behind:
 #endif
 ```
 
-It tells a Unity build apart from a plain .NET one, so the same sources can sit in a non-Unity project without pulling in `UnityEngine`.
-
-`Nucleus.Integrations.Unity.asmdef` is the main integration assembly, and its editor code compiles into a sibling assembly, `Nucleus.Integrations.Unity.Editor.asmdef`.
-
-Three scripting defines control optional pieces:
-
-- `NUCLEUS_ADDRESSABLES` — a `versionDefines` entry keyed to `com.unity.addressables` version `1.19` and up. Set automatically once that package is present at a matching version; nothing to do by hand.
-- `NUCLEUS_NAVMESH` — a `versionDefines` entry keyed to `com.unity.modules.ai`, Unity's AI module. Set automatically while the module is enabled, as it is in a new project. With the module disabled, `NetworkNavMeshAgent` is left out and the rest of the integration still compiles.
-- `BLITZ_RELAY` — a `defineConstraints` gate on the Blitz Relay assembly itself. The relay transport only compiles when this define is set in your project; the main Unity integration assembly references it unconditionally but the relay code stays out until you opt in.
-
-## Updating
-
-Replace the four DLLs and their `.pdb` and `.xml` files, `LICENSE.txt`, `VERSION.txt`, and the `Integrations` source trees with the new build's copies. Leave every `.meta` file in the project untouched; they're already there from your first install, and they're what keeps the source generator running and the asset GUIDs stable.
-
-If the editor is in Play mode when you replace the files, Unity reimports and triggers a domain reload mid-play. Expect play mode to reset; don't replace files while relying on play-mode state you haven't saved.
+so the same sources can sit in a non-Unity project without pulling in `UnityEngine`.
 
 ## Identifying what you're running
 
-`Assets/Nucleus/VERSION.txt` names the installed release (it reads `Nucleus <version>`), and a built player writes `Thank you for using Nucleus Networking <version>.` to its log at launch. The DLLs carry no version number of their own. See [Versioning, upgrading and release notes](./versioning-and-upgrading.md).
-
-## Not using Unity?
-
-For a dedicated server or any other non-Unity host, see [Adding Nucleus to a .NET project](../start-here/adding-nucleus-to-a-dotnet-project.md).
+`Assets/Nucleus/VERSION.txt` names the installed release. To check a built player, see [Versioning, upgrading and release notes](./versioning-and-upgrading.md).
