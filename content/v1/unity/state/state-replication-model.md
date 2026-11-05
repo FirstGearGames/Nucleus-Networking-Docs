@@ -2,8 +2,6 @@
 title: "How replicated state works"
 ---
 
-See [Start Here / How replication works](../../start-here/how-replication-works.md) for the pipeline overview. This page covers only the member-and-component contract every other page in this section assumes.
-
 ## Containment
 
 A `NetworkSystem` holds `NetworkComponent`s, up to 64 per system. A `NetworkComponent` holds `NetworkMember`s, at most 64, one for each bit of the `ulong` `memberFlags` that `OnMembersChanged` reports. The generator does not check that limit on a component, so one that declares more still builds but does not replicate correctly. `Constants.MaximumNetworkMemberCount` (63) is a separate limit, on the structs and classes a member's value is made of: the generator reports `SERIALIZERS000` once such a type has 63 serialized fields and properties, so 62 is the most one can hold.

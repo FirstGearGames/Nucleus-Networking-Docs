@@ -1,86 +1,26 @@
 ---
-title: "Your first networked scene"
+title: "Set up a networked scene"
 ---
 
-> **Driving the core API directly?** See [Your first .NET host](./your-first-dotnet-host.md).
+> **Using plain .NET?** See [Your first .NET host](./your-first-dotnet-host.md).
 
-Every Unity scene that uses Nucleus needs exactly one `UnityCoreManager`. Everything else in this tutorial follows from that single component.
+Every scene that uses Nucleus needs one `UnityCoreManager`. The Nucleus window adds it for you.
 
 ## Add the core manager
 
-Create an empty GameObject at the root of your scene and add `UnityCoreManager` to it. That is the only component you have to add: when the scene starts, it adds whichever of the other Unity manager components are missing. You can also add any of them to the same GameObject yourself, and that is how you set their Inspector fields, such as the tick rate and start mode below, before pressing Play. Keep them on that GameObject or on a child of it: `UnityCoreManager` looks at both, inactive children included, before adding its own. A manager on an inactive child is never set up, though it still stops `UnityCoreManager` adding one, so keep any child that holds a manager active.
+1. Open your scene and save it.
+2. Choose **Tools > Nucleus** and select the **Setup** tab.
+3. Next to **A UnityCoreManager is in the scene**, click **Create**. This adds a GameObject named Nucleus that holds everything a session needs.
+4. Click the button on every other row that shows a warning, until every row shows a tick.
 
-`UnityCoreManager` is marked `[DisallowMultipleComponent]`, so a scene can only ever have one on a given GameObject, and `[DefaultExecutionOrder(-10000)]`, so its `Awake` runs before every other script's. That ordering matters: other components resolve a ready `CoreManager` from their own `Awake`, and that only works if `UnityCoreManager` has already built one.
+## Choose how the session starts
 
-In its `Awake`, `UnityCoreManager`:
+In the **Session** section of the Setup tab, set **Start On Play** to **Auto**. The first editor to press Play becomes the host, which runs a server and a client together so you can play too. A second editor finds the host already running and joins it as a client.
 
-1. Sets the network loop to run from Unity's own update loop, instead of the engine's default background timer.
-2. Constructs the `CoreManager` from the tick rate, driven by that update loop.
-3. Adds any of the following components that is not already on the GameObject or one of its children:
-   - `UnityNetworkLoopManager`
-   - `UnityTransportManager`
-   - `UnityServerManager`
-   - `UnityClientManager`
-   - `UnitySystemManager`
-   - `UnityInterestManager`
-   - `UnityPacketManager`
-   - `UnityMessageManager`
-   - `UnitySceneManager`
-   - `UnityPhysicsManager`
+Leave **Tick Rate** at 30. It is how many times per second Nucleus sends updates, and 30 suits most games.
 
-You author one component and end up with ten, each mirroring a manager on the core `CoreManager`. You never choose how the network loop is driven; `UnityCoreManager` sets that up before it constructs the `CoreManager`.
+## Press Play to check it
 
-## Set the tick rate
+Press Play and select the **Traffic** tab of the Nucleus window. It shows **Stop Server** and **Stop Client** buttons, which means both halves of the host are running.
 
-`UnityNetworkLoopManager` exposes a **Tick Rate** field in the Inspector. `UnityCoreManager.Awake` reads it before constructing the `CoreManager`, because the `CoreManager` bakes every rate-derived value in at construction and exposes no setter afterward. Set it before you press Play; changing it during play has no effect on the running session.
-
-If no `UnityNetworkLoopManager` exists yet when `UnityCoreManager` wakes, the `CoreManager` falls back to the engine's default tick rate.
-
-## Choose how the connection starts
-
-`UnityTransportManager` has an **Automatic Start Mode** field, backed by:
-
-```csharp
-public enum NetworkStartMode
-{
-    None,
-    Server,
-    Client,
-    Host,
-}
-```
-
-It defaults to `None`, so nothing connects on its own — you choose Server, Client, or Host in the Inspector, and `UnityTransportManager.Start` calls the matching method for you when play begins.
-
-To start the connection from your own code instead, call one of:
-
-```csharp
-await unityTransportManager.StartServerAsync();
-await unityTransportManager.StartClientAsync();
-await unityTransportManager.StartHostAsync();
-```
-
-Each of these ensures a transport is added to the core manager first, then connects it in the matching role. `StartHostAsync` connects both a server and a client on the same transport, in the same process.
-
-## The default transport
-
-`UnityTransportManager` needs at least one `NetworkTransport` component to connect. If you haven't added one yourself, it adds a `SynapseTransport` to the GameObject the first time a transport is needed, so the manager always has something to work with. Its defaults:
-
-| Field | Default |
-|---|---|
-| Port | `7777` |
-| Remote Host | `127.0.0.1` |
-| Maximum Transmission Unit | `1200` |
-| Idle Timeout Seconds | `15` |
-| Connecting Timeout Seconds | `10` |
-| Host Pairing | `Local` |
-
-Host Pairing controls how a host reaches its own client half. `Local` pairs the two in process instead of routing that traffic over the socket, so a host's own connection comes up immediately.
-
-## Tearing down
-
-When the `UnityCoreManager` GameObject is destroyed — including on leaving Play mode — its `OnDestroy` unwinds the integration binding first, then deinitializes the `CoreManager`. This runs before Unity finishes destroying the rest of the scene's GameObjects, so nothing is left driving objects that no longer exist.
-
-## Next steps
-
-At this point you have a scene that can start a server, a client, or a host, and see the connection come up. Building a dedicated server with no Unity in the process at all works differently — see [Your first .NET host](./your-first-dotnet-host.md).
+The session uses port 7777 on this computer. To play across computers, see [Synapse Transport component](../unity/transports/synapse-transport-component.md).

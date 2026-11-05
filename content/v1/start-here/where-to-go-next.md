@@ -2,40 +2,29 @@
 title: "Where to go next"
 ---
 
-A quickstart gets one object moving between two peers. It does not tell you which of the thirty other pages matter for the game you're actually building. This page does.
+Pick the page for what you want to build next.
 
-## If you're building on Unity
+## If you use Unity
 
-- **A player-controlled character.** Start with control and `NucleusBehaviour`: how a system decides who may drive it, and `IsController` as the check your scripts gate client state and movement on. `NetworkPlayerSpawner` hands each authenticated connection its own object automatically; you still write what a script does with it once `IsController` says this peer drives it.
-- **A world with more objects than one peer can hold.** Read interest next: how `InterestManager` decides which spawns, despawns, and state updates a connection actually receives.
-- **A game with several rooms or matches.** Read up on scenes and per-room worlds — each room opening its own copy of a scene, and how a system finds the copy it belongs to rather than the first one loaded.
-- **A dedicated server.** Read the server/headless setup page, then control — a dedicated server is the clearest case of a peer that drives everything and controls nothing itself.
+- To replicate your own values, read [Replicating a value from a Unity script](../unity/state/replicated-values-in-unity.md).
+- To call a method on other peers, read [Sending a remote call from a component](../unity/messaging/remote-calls-from-a-component.md).
+- To spawn objects other than players, read [Spawning and despawning objects](../unity/systems/spawning-objects.md).
+- To decide who drives an object, read [Control in a Unity script](../unity/control/control-in-unity-scripts.md).
+- To send each player only what is near them, read [What area of interest is](../unity/interest/area-of-interest.md).
+- To load levels or run several matches, read [Networked scenes in Unity](../unity/scenes/networked-scenes-in-unity.md).
+- To build a dedicated server, read [Building a headless Unity server](../unity/transports/headless-server-build.md).
 
-## If you're building against the core library
+The Unity package also includes three tutorial games in `Assets/Nucleus/Integrations/Unity/Demos/Tutorials`. Each folder has a `README.html` that builds the game step by step.
 
-- **A player-controlled character.** Read control at the `NetworkSystem` level — `IsController(ControllerType)`, without the Unity component layer (`NucleusBehaviour`, `EnsureIsController`) on top.
-- **A world with more objects than one peer can hold.** Same interest page as above; `InterestManager` is core, not Unity-specific.
-- **A game with several rooms or matches.** Read the scene management page for how a server opens and closes per-room scene instances and how systems get scoped to one.
-- **A dedicated server.** Read the transport and connection setup pages for running a `CoreManager` headless, then control.
+## If you use plain .NET
 
-## What everyone needs by week two
+- To learn every option on a replicated value, read [NetworkMember](../core-api/state/network-member.md).
+- To send messages, read [Typed messages](../core-api/messaging/typed-messages.md).
+- To send remote calls, read [Choosing who receives a call](../core-api/messaging/rpc-targets.md).
+- To decide who drives an object, read [Reading who controls a system](../core-api/control/controlling-a-system.md).
+- To create and remove objects, read [Starting and stopping systems](../core-api/systems/spawning-systems.md).
+- To run a dedicated server, read [Running a dedicated .NET server](../core-api/transports/dedicated-server-host.md).
 
-Regardless of route, three pages stop being optional once you're past a single moving cube:
+## If something goes wrong
 
-- **Control** — who may write what, and why a write from the wrong peer is silently wrong rather than an error.
-- **Interest** — why a connection sees some objects and not others, and what changes that.
-- **Diagnostics** — when an object exists on one peer and never appears on another, this is the page that walks the checklist: is it in the sender's interest set, did the spawn actually replicate, is the receiving system still waiting on a handshake step. Read it before assuming the bug is yours.
-
-## The two guided tutorials
-
-If you'd rather build one whole small game than read features in isolation, work through both tutorials in order. Each is a sequence of small, working steps rather than a single walkthrough.
-
-**Courier Run** starts from a bare connecting world and adds, step by step: a per-player controlled object, prefab claiming, keeping a claim honest against a race, carrying and scoring an item, replacing `Instantiate` with pooled spawning, measuring what each kind of object costs to replicate, and moving the whole arena into a scene of its own that every player joins. By the end it also covers a scoreboard that reaches every player regardless of which scene they're standing in.
-
-**Lobby and Worlds** starts from an empty lobby and builds up room membership: taking a name, creating and listing a room, joining with its four refusal cases, leaving and host handoff, kicking, and ready-checks. It then opens a scene per room — the trap of placing an object before that scene is the one you're in, and how a system finds the copy it was just opened into — and finishes with per-room physics and a per-room win message.
-
-Neither tutorial is a substitute for the reference pages above; each explains a feature only as far as that game needs it.
-
-## When a page doesn't answer it
-
-If you've read the relevant reference page and the tutorial chapter that covers the same feature and you're still stuck, that's worth asking about directly rather than guessing from partial documentation — file the question against the Nucleus repository rather than assuming the gap is intentional.
+Read [Common errors and what causes them](../unity/diagnostics/common-errors.md), or [report a bug](../reference/reporting-a-bug.md).

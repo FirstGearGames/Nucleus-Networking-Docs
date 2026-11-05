@@ -1,102 +1,75 @@
 ---
-title: "Replicating your first object"
+title: "Add a player"
 ---
 
-> **Driving the core API directly?** See [Replicating your first system](./replicating-your-first-system.md).
+> **Using plain .NET?** See [Replicate a value](./replicating-your-first-system.md).
 
-## The marker component
+This page gives every player a capsule that they move with WASD. Everyone else sees it move.
 
-`NetworkSystemObject` is the single point of correlation between a GameObject and a `NetworkSystem`. Every networked prefab and every networked scene object needs exactly one, at its root, and it carries the identifiers that tell the two peers they're talking about the same object:
+## Make the player prefab
 
-- `PrefabId` — the prefab's identifier within its content shard, or zero when unset.
-- `PrefabBundleId` — the identifier of the content shard that owns the prefab.
-- `SceneObjectId` — the identifier of a scene object, or zero when this isn't one.
-
-All three are stamped by the editor; nothing sets them from script. `NetworkSystemObject` carries `[DisallowMultipleComponent]`, so a GameObject can only ever have one.
-
-Start every networked object the same way: create the prefab, add `NetworkSystemObject` to its root, and stop there for this step — the identifier isn't stamped yet.
-
-## Giving the prefab an id
-
-A prefab with no `PrefabId` can't spawn over the network. Run **Tools > Nucleus > Build > Rebuild Network Prefab Collection** after adding a new networked prefab, and again any time you add or remove one. It scans the project for prefabs carrying a `NetworkSystemObject`, stamps each with a prefab id and its bundle's id, and writes the shard's prefab collection asset.
-
-The id lives on the prefab asset itself, which is where the trap comes from: duplicate a networked prefab in the Project window and the copy carries the same stamped `PrefabId` as the original, because duplication copies the serialized data verbatim. Until you rebuild, both prefabs claim the same identifier and the wrong one can end up resolved on the receiving end, and a player build fails with the clash listed. Rebuilding gives the copy a fresh identifier and leaves the original's alone: the rebuild keeps an identifier on the prefab the collection already lists, and on a base over its own variant, so you don't need to clear anything by hand.
-
-## Adding NetworkTransform
-
-Add `NetworkTransform` to the same GameObject and the object's position, rotation, and scale replicate with no code: the controller writes the transform each frame, and every other peer applies it smoothly, a little behind. It belongs to the nearest `NetworkSystemObject` at or above it, so on this object it uses the root's marker.
-
-Two fields are worth knowing on day one:
-
-- **Transform Space** (a `TransformSpace`) — `Local` by default, replicating the offset the object holds inside its parent, which is what lets a carried object (one riding a moving platform, say) cost nothing while it rides. Switch to `World` for an object that may hang from something unreplicated; a `World` object's pose is unaffected by reparenting.
-- **Send Interval** (a `SendInterval`) — defaults to `Normal`. Only applies under the `Interval` transmission mode; the default transmission mode isn't paced by this field.
-
-The inspector also exposes **Interpolate Scale Enabled**, **Kinematic Management Enabled**, **Transmission Mode**, and **Extrapolation Enabled**. They exist and are worth knowing about later; the two above are the ones that matter for getting an object moving today.
-
-## Writing the first script
-
-A script that needs the networked object inherits `NucleusBehaviour<TComponent0>` rather than plain `MonoBehaviour`. `TComponent0` names the one `NetworkComponent` type this script's system must carry:
+1. Choose **GameObject > 3D Object > Capsule** and name it Player.
+2. Add the `NetworkSystemObject` component. It marks the object as networked.
+3. Add the `NetworkTransform` component. It sends the object's position and rotation to everyone else.
+4. Create a script named `PlayerMover` with the code below, and add it to Player.
+5. Drag Player into the Project window to make it a prefab, then delete it from the scene.
 
 ```csharp
-using Nucleus.Components;
-
-public partial class FirstObjectComponent : NetworkComponent
-{
-    public readonly NetworkMember<bool> IsActive = new();
-}
-```
-
-```csharp
-using Nucleus.Connections;
 using Nucleus.Integrations.Unity.Systems;
 using Nucleus.Systems;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
-public class FirstObjectController : NucleusBehaviour<FirstObjectComponent>
+public class PlayerMover : NucleusBehaviour
 {
-    protected override void OnSystemLinked()
-    {
-        Debug.Log($"[{gameObject.name}] linked. CoreManager: {CoreManager}, NetworkSystem: {NetworkSystem}");
-    }
-
-    protected override void OnServerStarted()
-    {
-        Debug.Log($"[{gameObject.name}] server role is up.");
-    }
-
-    protected override void OnClientStarted()
-    {
-        if (IsController(ControllerType.Client))
-            Debug.Log($"[{gameObject.name}] this peer controls the object.");
-    }
-
-    protected override void OnControllerChanged(Connection previousControllerConnection, Connection currentControllerConnection)
-    {
-        Debug.Log($"[{gameObject.name}] controller changed from {previousControllerConnection} to {currentControllerConnection}.");
-    }
+    [SerializeField]
+    private float _speed = 5f;
 
     private void Update()
     {
-        if (!IsController(ControllerType.Client) || !IsStarted(Invoker.Client))
+        // Only the player who controls this capsule moves it.
+        if (!IsController(ControllerType.Client))
             return;
 
-        // Safe to act on the object here: this peer controls it and the client role is up.
+        Keyboard keyboard = Keyboard.current;
+
+        if (keyboard == null)
+            return;
+
+        Vector3 direction = Vector3.zero;
+
+        if (keyboard.wKey.isPressed)
+            direction.z += 1f;
+        if (keyboard.sKey.isPressed)
+            direction.z -= 1f;
+        if (keyboard.dKey.isPressed)
+            direction.x += 1f;
+        if (keyboard.aKey.isPressed)
+            direction.x -= 1f;
+
+        transform.position += direction.normalized * (_speed * Time.deltaTime);
     }
 }
 ```
 
-`NucleusBehaviour<TComponent0>.Awake` calls `NetworkSystemObjectPool.RequireSystem<NetworkSystem, TComponent0>` for you, so there's no manual rent to write. From `NucleusBehaviourBase` you inherit:
+`NucleusBehaviour` is the base class for scripts on a networked object. `IsController(ControllerType.Client)` is true only on the computer of the player who controls this capsule, so each player moves only their own.
 
-- `NetworkSystem` — the linked system, null until it links.
-- `CoreManager` — resolved in `Awake`.
-- `IsController(ControllerType controllerType)` — false until a system is linked, otherwise the system's own answer.
-- `IsStarted(Invoker invoker)` — whether this peer's server or client role is started, meaningful only once a system is linked.
-- `EnsureIsController(ControllerType controllerType)` and `EnsureIsStarted(Invoker invoker)`: the same checks, but instead of failing silently they log a warning naming the calling member, once per calling member on each behaviour. `Update()` above uses the plain forms deliberately: it runs every frame, and a non-controlling or not-yet-started peer failing the check there is the normal case, not a bug, so even that one warning would be noise. Reach for the loud forms in one-off code, such as a button handler or an RPC, where a failure means something is actually wrong.
+The script reads the keyboard through Unity's Input System package, which new Unity 6 projects include.
 
-## The lifecycle hooks
+## Spawn a player for everyone who joins
 
-A first script overrides four things: `OnSystemLinked`, `OnServerStarted`, `OnClientStarted`, and `OnControllerChanged`. Each has a stopped counterpart (`OnSystemUnlinked`, `OnServerStopped`, `OnClientStopped`) for symmetry, but those aren't needed to get an object moving.
+1. Create an empty GameObject named Player Spawner.
+2. Add the `NetworkPlayerSpawner` component.
+3. Drag the Player prefab into its **Player Prefab** field.
 
-Linking doesn't wait for a role to start — it adopts whatever's already running. A scene object's `Awake` runs on every peer regardless of which one has a server or client up yet, so when the system links, the behaviour immediately checks whether the server and client roles are already started and calls `OnServerStarted`/`OnClientStarted` right then if they are, rather than waiting for a state-change edge that a role already running will never raise again. A role that starts later still raises the matching hook when it does.
+The spawner creates one Player for each player who joins, and gives that player control of it.
 
-For an object placed in the scene before anyone connects, this means `OnSystemLinked` fires first (from `Awake`, on every peer), and `OnServerStarted`/`OnClientStarted` fire immediately after it on whichever peer already has that role up — on a host, both fire back to back.
+## Register the prefab
+
+Choose **Tools > Nucleus**, select the **Build** tab, and click **Rebuild** next to **Rebuild Network Prefab Collection**.
+
+A prefab cannot be spawned over the network until you do this. Do it again whenever you add, remove or duplicate a networked prefab.
+
+## Press Play to check it
+
+Press Play. A capsule appears, and WASD moves it.

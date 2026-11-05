@@ -5,43 +5,20 @@ components: "UnityCoreManager"
 
 > **Driving the core API directly?** See [Creating a CoreManager](../../core-api/core/core-manager.md).
 
-`UnityCoreManager` is the one component a scene needs to bring up a Nucleus session. Drop it on a root GameObject and its `Awake` builds the `CoreManager`, wires the Unity integration to it, and fills in every other manager component the session needs.
+Every scene that uses Nucleus needs one `UnityCoreManager`. When the scene starts, it creates the session and adds any other Nucleus manager component the session needs.
 
-## Adding it to a scene
+## Add it from the Nucleus window
 
-Add `UnityCoreManager` to a single GameObject. Its `Awake` constructs the session's `CoreManager` and exposes it as the `CoreManager` property. Nothing else in the scene has to wire anything by hand.
+Choose **Tools > Nucleus**, select the **Setup** tab, and click **Create** next to **A UnityCoreManager is in the scene**. You can also add the component to a GameObject yourself.
 
-## What Awake builds
+## Change manager settings before you press Play
 
-Its `Awake` builds the session's `CoreManager` and adds any of these manager components that are missing, so the inspector always shows the full set:
+To change a manager's settings, add that manager component to the same GameObject, or to a child of it, and set its fields before you press Play. The tick rate on `UnityNetworkLoopManager` cannot change during play. The [Unity manager components](./unity-manager-components.md) page lists every manager.
 
-- `UnityNetworkLoopManager`
-- `UnityTransportManager`
-- `UnityServerManager`
-- `UnityClientManager`
-- `UnitySystemManager`
-- `UnityInterestManager`
-- `UnityPacketManager`
-- `UnityMessageManager`
-- `UnitySceneManager`
-- `UnityPhysicsManager`
+## Reach the session from a script
 
-A manager component you placed yourself, on this GameObject or on a child, is used as it is, and no default copy is added beside it. Once every manager exists, each `UnityManager` receives `ManagersInstantiated`, as described in [Unity manager components](./unity-manager-components.md).
+The component's `CoreManager` property holds the session. A script anywhere in the scene can also reach it through `NucleusUnity.BoundCoreManager`. Every manager exists by the time your scripts' `Start` runs.
 
-## Execution order
+## Destroying it ends the session
 
-`UnityCoreManager` carries `[DefaultExecutionOrder(-10000)]` and `[DisallowMultipleComponent]`. The execution order runs it before every other script in the scene, so a context-aware rent made from another script's `Awake` always finds a ready `CoreManager` instead of racing its construction. `DisallowMultipleComponent` keeps a GameObject from ending up with two, which would mean two `CoreManager` instances competing for the same manager components.
-
-## When the managers are ready
-
-Every manager exists once the `UnityCoreManager`'s `Awake` has run. Configure them from `Start`, or from a `ManagersInstantiated` override on your own `UnityManager`.
-
-The tick rate is read from the `UnityNetworkLoopManager` once, when the session is built, so set it in the inspector before entering play mode. A scene without a `UnityNetworkLoopManager` uses `NetworkLoopManager.DefaultTickRate`. The network loop runs from Unity's own update and stays idle until the session starts.
-
-## Reaching the session from elsewhere
-
-`NucleusUnity.Initialize` binds the integration to the `CoreManager` that was just built. A script that is not on the `UnityCoreManager`'s own GameObject reaches the session through `NucleusUnity.BoundCoreManager`, a public property set by `Initialize`.
-
-## Teardown
-
-`OnDestroy` unwinds `Awake` in reverse: it calls `NucleusUnity.Deinitialize(CoreManager)` first, then `CoreManager.Deinitialize()`. Deinitializing releases the integration's bindings before the manager graph underneath them is torn down. Calling `CoreManager.Deinitialize()` a second time is safe; it is idempotent, so a `CoreManager` that another teardown path already deinitialized simply absorbs the call.
+When the GameObject is destroyed, including when you leave Play mode, the session shuts down.
