@@ -4,46 +4,40 @@ title: "What the server trusts"
 
 ## Observation gates everything
 
-Every access check the engine makes, for setting a member or for a remote call, starts with the same test: is the sending connection an observer of the system being addressed. That test runs first, before the access value and before whether the sender controls the object. A connection that does not observe a system is rejected outright, regardless of `MemberWriteAccess` or `RpcSendAccess`.
+Every member write and every remote call is first checked for whether the sending connection observes the system. A connection that does not observe it is rejected, whatever `MemberWriteAccess` or `RpcSendAccess` says, so a client cannot reach a system by guessing its id.
 
-This means a client cannot reach a system by guessing its id. An identifier that names something the client was never told about, or has since lost interest in, resolves to nothing on the server. Access - `Controller` or `AnyClient` - only decides what an observer may do once it has cleared this gate. It never substitutes for being told about the object in the first place.
+Next, the system's controller may always write to it or call it. Any other observer is admitted only when the access in force is `AnyClient`.
 
-The controller is checked next: a system's controller may always write to it or call it, under any access. An observer that is not the controller is admitted only when the access in force is `AnyClient`.
+## Access values are hints, not grants
 
-## Nothing travels as a grant
+The server re-checks every incoming write and call against its own copy of the access. What a client is told about access only saves an honest client from sending something the server would refuse. Forging or ignoring it gains nothing.
 
-The server tells each observer two things about a system: the access value in force, and a hint of whether that observer personally may act. Neither is a permission a client can spend on its own. The server re-checks every incoming write and every incoming call against its own copy of the access, on every packet, so a client that forges or replays a favorable-looking declaration gains nothing - the check that matters runs on the receiving side, not the sending side.
+## The sender is the connection, not the payload
 
-The capability hint exists only so a well-behaved client avoids sending something the server is going to refuse anyway. A client that ignores the hint and sends regardless is met with the same enforcement as one that never saw it.
-
-## Who actually sent it
-
-An identifier a client places in a payload is a claim about itself, nothing more. What a handler is handed as the sender is the `Connection` the transport resolved for that packet - `RpcContext.SenderConnection` for a call, the equivalent resolved connection for a member value it sets. That resolution happens below any code the client controls, so there is no field a client can set to speak as someone else.
-
-For a call the server relays on to other observers, the relayed copy still carries the original sender's connection id, so attribution survives the hop; a client that receives a relayed call is being told who actually said it, not who forwarded it. Only the authority writes that original-sender id. A call arriving from a client is attributed to the client that sent it, whatever originator id its packet names, so a client cannot dress a call up as coming from another client to fool a handler, the relay's sender exclusion, or `RpcContext.SenderConnection`.
+An id a client writes into a payload is only a claim. The sender a handler is given is the `Connection` the transport resolved for that packet, such as `RpcContext.SenderConnection` for a call. A call the server relays to other observers still names its original sender, and a call arriving from a client is always attributed to that client, so a client cannot pose as another client.
 
 ## Connections are not players
 
-A `Connection`'s `RemoteAddress` is where it connected from, observed by the server rather than asserted by the client, which is what makes it usable as part of an identity check - but it names a location, not a player, since multiple clients behind the same NAT share one address.
+`Connection.RemoteAddress` is observed by the server, so it can be part of an identity check, but several clients behind one NAT share an address.
 
-A `Connection.Id` is assigned per session and reused once a connection is gone; nothing about it survives a disconnect. Anything that needs to recognize the same player across a reconnect keys on `Connection.Identity` instead - the value an authenticator stamps in on approval, meant to persist across sessions. Correlating a returning `Identity` with what it previously owned is game code's job; the engine holds no player-to-object mapping of its own.
+`Connection.Id` is assigned per session and reused once a connection is gone. To recognize a player across reconnects, key on `Connection.Identity`, which your authenticator sets on approval. Matching a returning `Identity` to what it owned before is up to your game.
 
 ## Arbitration is not a security boundary
 
-`MemberWriteAccess.AnyClient` (Pro) lets every observer, not just the controller, set a system's members. A Free build has no `MemberWriteAccess` at all: only a system's controller may set its members, so there is never a contested write to arbitrate.
+In Pro, `MemberWriteAccess.AnyClient` lets every observer set a system's members, and arbitration picks which of several simultaneous writes wins. The pick is arbitrary but stable, and a client that keeps reconnecting to change its connection id can farm a favorable result. Arbitration does not decide whether a write should have been allowed. Where winning matters, put your own arbiter in game code on top of the access check.
 
-Contested multi-writer arbitration - resolving which of several observers' simultaneous writes to a system wins - is a Pro feature. Where it exists, the resolution is not adversarially safe: it is arbitrary but stable, and a client that keeps reconnecting to change its own connection id can farm a favorable outcome under it. Arbitration decides whose write is shown when two are equally legitimate; it does not decide whether a write should have been allowed, and it is not a defense against a client trying to win by gaming the mechanism. Anything where that matters needs its own arbiter in game code, sitting on top of the access check, not the arbitration itself.
+A Free build has no `MemberWriteAccess`. Only the controller may set a system's members, so there is nothing to arbitrate.
 
-## What Nucleus does not do
+## Nucleus does not encrypt traffic
 
-Nucleus does not encrypt transport traffic. That is not built in, and adding encryption on top is game code's responsibility.
-
-If you need to protect the bytes themselves - encryption, compression, obfuscation, or a custom integrity check - the one seam for it is the packet-transform layer, `TransportManager.PacketTransform` (Pro-only): it rewrites every packet's payload on its way to and from the transport, on both peers, before anything else in the engine sees it. That layer is not otherwise documented on this page.
+To encrypt, compress, obfuscate or integrity-check packets, use the Pro packet transform, `TransportManager.PacketTransform`. See [Packet transforms](../transports/packet-transforms.md).
 
 ## A shooter's view is bounded, not trusted
 
-Lag compensation (Pro) judges a client's shot against the moment the client says its screen was showing. That view is the client's claim, so the server bounds it: a view older than `MaximumRewindMilliseconds`, or newer than anything the server has recorded, is clamped into range, still judged, and raises `LagCompensationViewClampedViolation`, ignored by default. Within the window a client can still name any moment, so the window itself is the limit on how far a shooter is favored. The ray is the client's claim too: clip it at walls on the server against the present-time scene, and the queries test it only against the hitboxes the server's own history holds, never against anything the client reports about a target. See [The rewind window and the view clamp](../lag-compensation/the-rewind-window.md).
+Lag compensation (Pro) judges a shot against the moment the client says its screen was showing. A view older than `MaximumRewindMilliseconds`, or newer than anything the server has recorded, is clamped into range, still judged, and raises `LagCompensationViewClampedViolation` (ignored by default). Within the window a client can name any moment, so the window is the limit on how far a shooter is favored.
+
+The ray is the client's claim too. Clip it at walls on the server against the present-time scene. The queries test it only against hitboxes from the server's own history. See [The rewind window and the view clamp](../lag-compensation/the-rewind-window.md).
 
 ## Enforcement only happens on the server
 
-Every check above - observation, controller status, access, arbitration - runs on the server's copy of the system. A client build can run the same code and reach the same verdict locally for prediction or UI purposes, but that verdict changes nothing on the wire. A kick decided by a client, or a write a client's own code declines to send, is not enforcement; the server never asked for that answer and does not use it. The only check that matters is the one the server performs when the packet arrives.
+Every check above runs on the server's copy of the system. A client can run the same check for prediction or UI, but a verdict reached on a client, such as a kick or a write it declines to send, enforces nothing.
