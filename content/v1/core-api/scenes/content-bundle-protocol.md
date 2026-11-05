@@ -4,12 +4,9 @@ title: "The content bundle protocol"
 
 > **Using Unity?** See [Content bundles in Unity](../../unity/scenes/content-bundles-in-unity.md).
 
-A content bundle is a `ushort` identifier for a shard of content that is not in the base build: a set of prefabs a client
-might not have installed yet. Nucleus carries the identifier and the load/unload protocol between the peers; it ships no
-loader of its own. `Connection.BaseBuildBundleId` (0) means the content shipped in the build, and is always considered
-loaded.
+A content bundle is a `ushort` id for content that is not in the base build, such as prefabs a client may not have installed yet. Nucleus carries the id and the load protocol between peers; your loader does the loading. `Connection.BaseBuildBundleId` (0) is the content shipped in the build and is always loaded.
 
-## Registering a loader
+## Register a loader
 
 Implement `IBundleLoader`:
 
@@ -21,28 +18,24 @@ public interface IBundleLoader
 }
 ```
 
-`LoadBundleAsync` must register the bundle's prefabs before the task completes, since a completion tells the server it may
-spawn into the content immediately. `UnloadBundleAsync` releases it. Both may complete asynchronously, on any thread; the
-outcome is queued back onto the network loop, so a loader may safely complete off-thread.
+- `LoadBundleAsync` must register the bundle's prefabs before its task completes, because completion tells the server it may spawn from the bundle at once.
+- `UnloadBundleAsync` releases the bundle.
 
-Register the loader with `BundleManager.SetBundleLoader`:
+Both may complete on any thread. Mapping a bundle id to an asset bundle, an Addressables entry or a download is up to you.
+
+Each peer has one loader:
 
 ```csharp
 coreManager.BundleManager.SetBundleLoader(myLoader);
 ```
 
-The engine consults exactly one loader per peer. Core ships no implementation; mapping a bundle identifier to an asset
-bundle, an addressable catalog entry, or a download is entirely the game's concern.
+## Gate spawns on content
 
-## Gating spawns on content
+`NetworkSystem.RequiredBundleId` is the bundle a spawn needs. It defaults to the bundle the prefab was built into (`PrefabBundleId`). Override it with `SetRequiredBundleId(ushort bundleId)`, and clear the override with `UnsetRequiredBundleId` (`ushort.MaxValue`).
 
-`NetworkSystem.RequiredBundleId` is the bundle a spawn needs. It defaults to the bundle the prefab itself was built into
-(`PrefabBundleId`), but can be overridden with `SetRequiredBundleId(ushort bundleId)`. The sentinel `UnsetRequiredBundleId`
-(`ushort.MaxValue`) clears an override and falls back to the prefab's own bundle.
+`BundleManager.SpawnGate`, a `BundleInterestCondition`, withholds a spawn from a client that does not yet hold `RequiredBundleId`. The object spawns normally once the client confirms the bundle. Without the gate, a spawn for content a client lacks arrives anyway and fails at instantiation.
 
-`BundleManager.SpawnGate` is a `BundleInterestCondition` (`Capabilities => InterestEffect.Spawn`) that withholds a
-system's spawn from a Connection that does not yet hold `RequiredBundleId`. It is not registered for you; attach it at
-whatever scope fits:
+The gate is not registered for you. It is stateless, so add it globally or to any number of systems:
 
 ```csharp
 // Globally, for a world where most content hotloads:
@@ -52,51 +45,34 @@ coreManager.InterestManager.AddCondition(coreManager.BundleManager.SpawnGate);
 networkSystem.AddInterestCondition(coreManager.BundleManager.SpawnGate);
 ```
 
-The condition is stateless and safe to register against any number of systems. Without it, a spawn for content a client
-lacks arrives anyway and fails at instantiation; with it, the object simply does not exist for that client until the
-bundle is confirmed, and then spawns normally.
+## Get the bundle loaded
 
-## Getting the bundle loaded
+With `BundleManager.AutomaticRequestOnBlockedSpawnEnabled` (default `true`), a spawn the gate blocks also asks that client to load the bundle, and the object appears once the client confirms. Set it to `false` to drive every load from your code; the gate still withholds spawns.
 
-With `BundleManager.AutomaticRequestOnBlockedSpawnEnabled` (true by default), a spawn the gate blocks also asks that
-client to load the missing bundle, so content hotloads on demand and the object appears the moment the client confirms.
-Clear the flag to drive every load from game code instead; the gate still withholds spawns but never asks on its own.
-
-To ask explicitly:
+To ask a client yourself, on the server:
 
 ```csharp
 coreManager.BundleManager.RequestBundleLoad(connection, bundleId);
 ```
 
-This is server-side, and dedupes per Connection and bundle — a repeat while a request is outstanding is dropped.
+A repeat while a request for that client and bundle is outstanding is dropped.
 
-A peer can also load or release a bundle on itself, independent of any request from the other side:
+To load or release a bundle on this peer itself, for example a server loading a zone before spawning from it, or a client preloading:
 
 ```csharp
 bool loaded = await coreManager.BundleManager.LoadBundleAsync(bundleId);
 bool unloaded = await coreManager.BundleManager.UnloadBundleAsync(bundleId);
 ```
 
-This is the route for content a peer decides it needs on its own — a server hotloading a zone it is about to spawn
-from, or a client preloading ahead of a gate. It runs through the registered `IBundleLoader`. On a client it is only a
-preload: the load is reported to the server only if the server has already asked for that bundle and is still waiting on
-the answer. Otherwise the content loads locally and nothing is sent, and the server still asks for the bundle when a
-spawn needs it; the client's answer to that request is what the server records. This is also the call a bundle-backed
-scene load makes to bring its content in.
+This runs through your `IBundleLoader`. On a client it is only a preload: the load is reported only if the server is already waiting on that bundle. Otherwise the server still asks when a spawn needs the bundle, and records the client's answer to that request. A bundle-backed scene load uses this call too.
 
-## Reporting outcomes
+## Report outcomes from your own loading code
 
-`BundleManager.NotifyBundleLoaded(ushort bundleId)` and `NotifyBundleUnloaded(ushort bundleId)` report an outcome to the
-server. `LoadBundleAsync`/`UnloadBundleAsync` call these automatically; call them directly only when a game drives
-loading itself outside an `IBundleLoader`. Either way, a load report is sent only in answer to a request the server made,
-and an unload report only for a bundle the client has already told the server it holds; anything else stays on the client.
+`LoadBundleAsync` and `UnloadBundleAsync` report to the server for you. Call `BundleManager.NotifyBundleLoaded(ushort bundleId)` and `NotifyBundleUnloaded(ushort bundleId)` only if your game loads outside an `IBundleLoader`. A load report is sent only in answer to a server request, and an unload report only for a bundle the server records the client holding.
 
-On the server, `Connection.IsBundleLoaded(ushort bundleId)` (Pro) reports whether a client holds a bundle.
-`Connection.BaseBuildBundleId` (0) is always loaded, since it shipped inside the build.
+On the server, `Connection.IsBundleLoaded(ushort bundleId)` reports whether a client holds a bundle.
 
-## Watching the protocol
-
-Two events on `BundleManager`:
+## Watch the protocol
 
 ```csharp
 coreManager.BundleManager.BundleLoadRequested += OnBundleLoadRequested;      // client: server asked for a bundle
@@ -113,23 +89,15 @@ public interface IBundleObserver
 }
 ```
 
-`OnBundleLoadStateChanged` fires only on an actual change, after the Connection's held set and interest have already
-been updated, so a handler reading `Connection.IsBundleLoaded` inside it sees the new state. This side is mostly a
-server concern: the server is the side that tracks what each client holds.
+`OnBundleLoadStateChanged` fires only on an actual change, after the client's held bundles and interest are updated, so `Connection.IsBundleLoaded` inside it returns the new state. It mostly matters on the server, which tracks what each client holds.
 
-## Violations
+## Two violations catch a client acting on its own
 
-The server drives every load: it asks, then awaits the answer. Two violations catch a client that does not play by that:
-
-- `UnsolicitedBundleReportViolation` — a load report for a bundle the server never asked for, or an unload report for a
-  bundle the server does not record the client holding. This is how a spoofed load report is caught.
-- `UnexpectedBundleRequestViolation` — a bundle load *request*, a message only the server ever sends, arriving at the
-  server instead.
+- `UnsolicitedBundleReportViolation`: a load report for a bundle the server never asked for, or an unload report for one the server does not record the client holding. This catches a spoofed load report.
+- `UnexpectedBundleRequestViolation`: a bundle load request, which only the server sends, arriving at the server.
 
 Both default to a kick.
 
-## Pro and Free
+## Most of the bundle API is Pro
 
-`BundleManager` is Pro. In a Free build, `CoreManager` has no `BundleManager` member at all. `IBundleLoader`,
-`IBundleObserver`, `BundleInterestCondition` and `Connection.IsBundleLoaded` are Pro as well. The two violation types,
-`Connection.BaseBuildBundleId`, and `NetworkSystem.RequiredBundleId` with `SetRequiredBundleId` are usable in either edition.
+`BundleManager`, `IBundleLoader`, `IBundleObserver`, `BundleInterestCondition` and `Connection.IsBundleLoaded` are Pro. In Free, `CoreManager` has no `BundleManager` member. The two violation types, `Connection.BaseBuildBundleId`, and `NetworkSystem.RequiredBundleId` with `SetRequiredBundleId` work in both editions.
