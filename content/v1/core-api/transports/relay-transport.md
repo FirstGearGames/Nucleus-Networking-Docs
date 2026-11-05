@@ -4,83 +4,79 @@ title: "The relay transport"
 
 > **Using Unity?** See [Blitz Relay Transport component](../../unity/transports/blitz-relay-transport-component.md).
 
-## RelayTransport
+`RelayTransport` connects peers through a Blitz Relay server. Neither peer listens: both connect out to the relay, one opens and holds a room, and the rest join with the room's code. No peer needs an inbound port, a public IP or a NAT hole.
 
-`RelayTransport` is a `SocketPairTransport<RelayServerSocket, RelayClientSocket>`: like every socket-pair transport it has a server socket and a client socket, but neither one listens. Both peers are outbound clients of a Blitz Relay server. One of them opens a room and holds it; the rest dial in with the room's name. That is what removes the port-forwarding problem — nobody needs an inbound port, a public IP, or a NAT hole, because nothing on either peer ever accepts a connection.
+`RelayTransport` and `RelaySessionHost` live in the `Nucleus.Integrations.BlitzRelay` assembly. The relay server and the newfarm directory server are separate services that you run or choose.
+
+## Configure it
 
 | Member | Purpose |
 |---|---|
-| `RelayEndPoint` | The relay to carry this session. Defaults to loopback on `DefaultRelayPort` (7770). |
-| `ConnectionKey` | The key the relay admits peers with. This is the relay operator's key, not a player's. |
-| `RoomCode` | The room to join, and once the server connects, the room the relay named for it. Set it before connecting a client (a joining peer reads it); read it after connecting a server (the server's side writes it once the relay assigns a room). |
-| `HostedRoomCode` | The room this peer is itself hosting, or empty when its own hosting side isn't up. Distinct from `RoomCode`, which for a peer that only joined answers with the room it was told to join, not one it hosts. |
-| `MaximumClients` | How many clients the room this peer creates will hold. Defaults to `DefaultMaximumClients` (16). Used only when `ServerConfiguration.MaximumConnections` hasn't been set — a relayed room has to be given a real size when it's made, unlike a listening transport where "unset" can mean no limit. |
-| `RelayHandshakeTimeoutMilliseconds` | How long to wait for the relay to answer a handshake before giving up. Defaults to 10000. |
+| `RelayEndPoint` | The relay to use. Defaults to loopback on `DefaultRelayPort` (7770). |
+| `ConnectionKey` | The relay operator's key the relay admits peers with, not a player's key. |
+| `RoomCode` | Set it before connecting a client, to name the room to join. Read it after connecting a server, to get the room the relay assigned. |
+| `HostedRoomCode` | The room this peer is hosting, or empty when its hosting side is not up. For a peer that only joined, `RoomCode` is the joined room and this is empty. |
+| `MaximumClients` | How many clients a room this peer creates holds. Defaults to `DefaultMaximumClients` (16). Used only when `ServerConfiguration.MaximumConnections` is not set, because a room must be given a size when it is made. |
+| `RelayHandshakeTimeoutMilliseconds` | How long to wait for the relay to answer a handshake. Defaults to 10000. |
 
-## DatagramOverheadBytes
-
-`RelayTransport.DatagramOverheadBytes` is the relay's own header plus the overhead the socket library beneath the relay adds to every datagram. The engine reserves this before building a packet, so it comes straight off your usable transmission unit compared to a transport that talks to the wire directly — a relayed session pays for the relay's framing in addition to the socket layer's.
+`RelayTransport.DatagramOverheadBytes` includes the relay's own header, so a relayed session carries less per packet than a direct one.
 
 ## When the relay closes the room
 
-If the relay closes the hosting peer's link, for example because the relay shut down or dropped the room, that peer's server stops on its own. On the next poll every client is disconnected and the server's local state walks down to stopped, the same as if you'd stopped it yourself, so the usual server-stopped and client-disconnected callbacks fire. You don't need to watch for a dead room. To keep playing, stand up a new room, or let `NewfarmHostMigration` do it.
+If the relay closes the host's link, for example because the relay shut down or dropped the room, the host's server stops on the next poll and disconnects every client. The usual server-stopped and client-disconnected callbacks fire, so you need no extra handling. To keep playing, open a new room or let `NewfarmHostMigration` do it.
 
-## Why the room needs a session-host seam
+## Survive a lost host with NewfarmHostMigration
 
-A relayed room belongs to whichever peer made it, and it dies with that peer. Every other peer's link to the room dies with it too. That means a handover isn't a reconnect — it's a brand-new room, under a name nobody could have known in advance, with no channel left between the survivors to learn it. `RelayTransport` alone has no way to solve that; it only knows how to open, join, and leave a room it's told about.
-
-## ISessionHost
-
-`ISessionHost` is the seam a session-carrying service implements so `NewfarmHostMigration` can drive it without knowing what the service actually is:
-
-| Member | Role |
-|---|---|
-| `AdapterTag` | Names the service, filed with the directory alongside every credential this publishes, so a peer receiving a credential knows whether it can use it. |
-| `HostedCredential` | What another peer needs to reach the session this peer is hosting, or empty when this peer isn't hosting one. |
-| `IsHostingLinkUp` | Whether this peer's own hosting side is up. |
-| `IsJoinedLinkUp` | Whether this peer's link to whoever is hosting the session is up. Independent of `IsHostingLinkUp`: a freshly promoted peer has one up and the other down. |
-| `Poll()` | Drives whatever the service needs driving, once per `NewfarmHostMigration.Poll`. |
-| `StartHostingAsync(uint timeoutMilliseconds)` | Stands the session up on this peer, returning a `SessionHostResult`. |
-| `JoinAsync(string credential, uint timeoutMilliseconds)` | Joins the session at the given credential. |
-| `StopHostingAsync()` | Stops hosting, leaving `HostedCredential` empty and `IsHostingLinkUp` false. |
-| `LeaveAsync()` | Leaves a session this peer had joined, leaving `IsJoinedLinkUp` false. |
-
-`RelaySessionHost` is `RelayTransport`'s implementation of this: its `AdapterTag` is `"blitzrelay"`, `HostedCredential` reads `RelayTransport.HostedRoomCode`, and `StartHostingAsync`/`JoinAsync`/`StopHostingAsync`/`LeaveAsync` connect and disconnect the transport's server and client sockets. `SessionHostResult` is a two-way distinction, not a bool: `Success`, `CredentialUnreachable` (the service answered and the room isn't there or won't have this peer — the signal a directory acts on), and `LocalFailure` (this peer's own side couldn't try, which is never reported to the directory).
-
-## NewfarmHostMigration
-
-`NewfarmHostMigration` is the coordinator that keeps a session alive across a lost host: it registers the session with a newfarm directory, notices the host going, and either takes the session over itself or rejoins wherever the directory says it moved. It's constructed with a `CoreManager`, an `ISessionHost`, and a directory endpoint.
+A room dies with the peer that made it, and its replacement gets a name nobody knew in advance. `NewfarmHostMigration` solves this with a newfarm directory: it registers the session, notices the host going, and either takes the session over or rejoins wherever the directory says it moved. This is the relay's own handover, not engine-level host migration.
 
 ```csharp
 NewfarmHostMigration hostMigration = new(coreManager, sessionHost, directoryIpEndPoint);
 ```
 
-Driving it:
+Call it:
 
-- `StartHostingAsync(uint timeoutMilliseconds = DefaultTimeoutMilliseconds)` — opens a session with the directory and stands it up on this peer.
-- `JoinAsync(ulong sessionId, uint timeoutMilliseconds = DefaultTimeoutMilliseconds)` — finds a session by id and joins wherever it currently lives. A join can end with this peer elected to host it, which still reports success.
-- `TrySurrenderHosting()` gives the session up to whoever the directory elects next, while this peer stays in the session as an ordinary client afterward.
-- `CloseSession()` — ends the session for everybody, rather than handing it on.
-- `Poll()` — call once a frame or once a tick. Drives the directory link, the `ISessionHost`, and watches for the current host going quiet.
+- `StartHostingAsync(uint timeoutMilliseconds = DefaultTimeoutMilliseconds)`: opens a session with the directory and hosts it on this peer.
+- `JoinAsync(ulong sessionId, uint timeoutMilliseconds = DefaultTimeoutMilliseconds)`: finds a session by id and joins wherever it is. A join can end with this peer elected to host, which still reports success.
+- `TrySurrenderHosting()`: hands the session to whoever the directory elects next; this peer stays as a client.
+- `CloseSession()`: ends the session for everybody.
+- `Poll()`: call once a frame or once a tick. It drives the directory link and the `ISessionHost`, and watches for the host going quiet.
 
-State and identity:
+Read:
 
-- `State` — a `NewfarmMigrationState` describing what this peer is currently doing about the session.
-- `SessionId` — the id the directory issued for this session; what a host distributes to its clients so they can find their way back.
+- `State`: a `NewfarmMigrationState` describing what this peer is doing about the session.
+- `SessionId`: the id the directory issued. The host gives it to clients so they can find their way back.
 
-Events:
+Handle:
 
-- `Promoting` — raised on the peer told to take the session over, before it does. The session is not hosted again until this returns.
-- `Promoted(string credential)` — raised once this peer is hosting the session, carrying the credential the service named.
-- `Rejoined(string credential)` — raised on a surviving peer once it has rejoined the session where it moved.
-- `Abandoned(string reason)` — raised when the session could not be carried on, whether the directory refused it or no peer would host it.
+- `Promoting`: raised on the peer chosen to take over, before it does. The session is not hosted again until the handler returns.
+- `Promoted(string credential)`: this peer is now hosting, at the credential the service named.
+- `Rejoined(string credential)`: a surviving peer has rejoined the session where it moved.
+- `Abandoned(string reason)`: the session could not continue, because the directory refused it or no peer would host it.
 
-The half that makes a handover mean anything, carrying the game world across it rather than starting the new host empty, is Pro: a client kept with `DisconnectResetMode.RetainReceivedWorld` retains the world it had when its link dropped, and the newly promoted server adopts that retained world as its own to serve. `NewfarmHostMigration` itself needs Pro as well: when it promotes a peer it calls `ServerManager.TryAdoptRetainedWorld`, which a free build does not have. The `Nucleus.Integrations.Newfarm` assembly therefore does not compile against a free `Nucleus.dll`, and neither does `Nucleus.Integrations.BlitzRelay`, which references it.
+### NewfarmHostMigration needs Pro
 
-## Assembly boundary
+A client kept with `DisconnectResetMode.RetainReceivedWorld` retains the world it had when its link dropped, and the promoted server adopts that world through `ServerManager.TryAdoptRetainedWorld`, which only Pro has. So `Nucleus.Integrations.Newfarm`, and `Nucleus.Integrations.BlitzRelay`, which references it, do not compile against a free `Nucleus.dll`.
 
-`RelayTransport` and `RelaySessionHost` live in their own assembly, `Nucleus.Integrations.BlitzRelay`, the one assembly outside the engine that may build a `Transport` (see [The Transport contract](./transport-contract.md)). Nothing in the engine itself names a relay, references one, or knows one exists. The relay server and the newfarm directory server are separate services; `RelayTransport` talks to the relay, `NewfarmHostMigration` talks to the directory, and neither runs as part of the other.
+## Implement ISessionHost for another service
 
-## This handover is the relay's own, not an engine-wide feature
+`NewfarmHostMigration` drives any session service through `ISessionHost`:
 
-This is the relay-plus-directory handover this transport ships: a room that moves and a coordinator that finds the new one. It is not a general engine-level host migration feature — no such feature exists yet outside this relay/directory pairing.
+| Member | Role |
+|---|---|
+| `AdapterTag` | Names the service. It is filed with every credential this publishes, so a receiving peer knows whether it can use it. |
+| `HostedCredential` | What another peer needs to reach the session this peer hosts, or empty when not hosting. |
+| `IsHostingLinkUp` | Whether this peer's hosting side is up. |
+| `IsJoinedLinkUp` | Whether this peer's link to the current host is up. Independent of `IsHostingLinkUp`: a freshly promoted peer has one up and the other down. |
+| `Poll()` | Drives the service, once per `NewfarmHostMigration.Poll`. |
+| `StartHostingAsync(uint timeoutMilliseconds)` | Hosts the session on this peer, returning a `SessionHostResult`. |
+| `JoinAsync(string credential, uint timeoutMilliseconds)` | Joins the session at the credential. |
+| `StopHostingAsync()` | Stops hosting; `HostedCredential` becomes empty and `IsHostingLinkUp` false. |
+| `LeaveAsync()` | Leaves a joined session; `IsJoinedLinkUp` becomes false. |
+
+`SessionHostResult` values:
+
+- `Success`.
+- `CredentialUnreachable`: the service answered but the room is not there or will not take this peer. The directory acts on this.
+- `LocalFailure`: this peer could not try. It is never reported to the directory.
+
+`RelaySessionHost` is the relay's implementation. Its `AdapterTag` is `"blitzrelay"`, `HostedCredential` reads `RelayTransport.HostedRoomCode`, and the four async calls connect and disconnect the transport's server and client sockets.
