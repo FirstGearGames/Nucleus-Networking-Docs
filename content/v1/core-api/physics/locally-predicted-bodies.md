@@ -4,44 +4,38 @@ title: "Locally predicted bodies"
 
 > **Using Unity?** See [Driving a predicted body](../../unity/physics/driving-a-predicted-body.md).
 
-A body this peer is driving does not have to trail the server like a proxy does. Setting `IsLocallyPredicted` on that body's `PhysicsConvergence` switches it from following to reconciling: it keeps responding to local client state instantly, and only trims the small gap that opens up against the server's snapshot.
+Set `IsLocallyPredicted` on the `PhysicsConvergence` of a body this peer drives. The body then responds to local client state instantly and only trims the gap that opens against the server's snapshot, instead of trailing the server like a proxy.
 
 ## What IsLocallyPredicted changes
 
-It is easy to assume a predicted body keeps the velocity the local simulation produced. It does not. `PhysicsConvergence.Step` sets `physicsBody.LinearVelocity` from the projected snapshot every step, the same as for a proxy, so a velocity your own code set before `Step` does not survive it.
+`PhysicsConvergence.Step` still sets `physicsBody.LinearVelocity` from the projected snapshot every step, as for a proxy, so a velocity your code set before `Step` does not survive it. Three things differ:
 
-Three things are different for a predicted body:
+| | Proxy | Predicted body |
+|---|---|---|
+| Projection cap | `Settings.MaximumProjectionSeconds` | `PredictionMaximumProjectionSeconds`, larger by default; must cover a full round trip. |
+| Teleport past `Settings.TeleportDistance` | Yes | Never. Any gap closes smoothly. |
+| Correction | Past `Settings.PositionThreshold`, blends at `BlendPerTick` per `ConvergenceBlendMode`. | Only past `Settings.PositionThreshold` or `Settings.RotationThreshold`, closed through the body's motion at `PredictionCorrectionRate`. |
 
-- **Projection cap.** A proxy's snapshot is projected forward by at most `Settings.MaximumProjectionSeconds`. A predicted body uses `PredictionMaximumProjectionSeconds` instead, which is larger by default and must cover a full round trip.
-- **No distance teleport.** A proxy that diverges past `Settings.TeleportDistance` snaps its whole pose onto the target at once. A predicted body is exempt, and any gap closes smoothly through the correction below instead.
-- **Correction.** Past `Settings.PositionThreshold`, a proxy blends toward the target at `BlendPerTick`, moving the body or correcting through its motion depending on `ConvergenceBlendMode`. A predicted body instead closes the gap through its motion at `PredictionCorrectionRate`, and only once it is past `Settings.PositionThreshold` or `Settings.RotationThreshold`, never before.
+## Tune the correction with PredictionCorrectionRate
 
-## PredictionCorrectionRate
+`PredictionCorrectionRate` (default `0.1f`) is the fraction of the position or rotation gap removed per tick once past threshold. A body that stays inside the thresholds is never nudged. Higher values pull the body back to the server harder and sooner; lower values correct more gently.
 
-`PredictionCorrectionRate` (default `0.1f`) is the fraction of the position or rotation gap the correction takes off per tick, once past threshold. It scales the same way as a proxy's `BlendPerTick`, but applies only past `PositionThreshold` and `RotationThreshold` rather than continuously, so a well-predicted body that stays inside those thresholds is never nudged at all.
+`0` disables correction. Since a predicted body never teleports either, nothing then pulls it back onto the server. Use `0` only to isolate prediction drift while debugging.
 
-Setting it to `0` disables the correction entirely. The body becomes pure prediction: it no longer reconciles a genuine divergence, and since a predicted body is also exempt from the distance teleport, nothing ever pulls it back onto the server. This is rarely what you want — use it only to isolate prediction drift while debugging, not as a running configuration.
+## Cover the round trip with PredictionMaximumProjectionSeconds
 
-Higher values snap the body back to the server harder and sooner; lower values let the prediction ride looser and correct gently.
+`PredictionMaximumProjectionSeconds` (default `1f`) must be at least the longest round trip you expect. If it is shorter, the target lands short of where the body was predicted to be, and the correction drags the body backward.
 
-## PredictionMaximumProjectionSeconds
+## Base ticksToProject on the round trip
 
-`PredictionMaximumProjectionSeconds` (default `1f`) is the predicted counterpart to `Settings.MaximumProjectionSeconds`. Set it to at least the longest round trip you expect. If it is shorter, the target lands short of where the body has been predicted to, and the correction drags the body backward.
-
-## Choosing ticksToProject
-
-`Step` takes `ticksToProject` as a parameter, not a constant. For a predicted body, base it on the measured round trip rather than a fixed tick count: `Connection.RoundTripTimeMilliseconds` gives that peer's current estimate. Project less than a full round trip and the body responds less instantly to its own client state.
+For a predicted body, compute the `ticksToProject` argument of `Step` from `Connection.RoundTripTimeMilliseconds`, that peer's current round-trip estimate, rather than a fixed tick count. Projecting less than a full round trip makes the body respond less instantly to its own client state.
 
 ```csharp
 public uint RoundTripTimeMilliseconds { get; private set; }
 ```
 
-## Clearing IsLocallyPredicted
+## Clear IsLocallyPredicted when control leaves
 
-Flip `IsLocallyPredicted` back to `false` the moment control leaves the body. Left set, the body keeps skipping the teleport and the proxy blend it needs once it goes back to following the server.
+Set `IsLocallyPredicted` back to `false` as soon as control leaves the body. Otherwise it keeps skipping the teleport and proxy blend it needs once it follows the server again. `PhysicsConvergence.Reset()` also clears it.
 
-`Reset()` clears `TargetError`, `HasTeleportedThisStep`, and `IsLocallyPredicted` together, for pool reuse or respawn.
-
-## Out of scope
-
-Client state, the reconcile against confirmed server state, and the replay window that produces `ticksToProject`'s upper bound are a separate subject, covered on the control and prediction pages.
+Client state, reconciling against confirmed server state and the replay window are covered on the control and prediction pages.

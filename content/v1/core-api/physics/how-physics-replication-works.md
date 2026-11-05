@@ -2,44 +2,20 @@
 title: "How physics replication works"
 ---
 
-## The loop
+## The controller captures and every other peer follows
 
-Every physics body Nucleus replicates follows the same loop, regardless of which engine drives it.
+The peer that controls a body simulates it normally and, once per tick, captures its world position, world rotation and condition flags into ordinary members of a [NetworkPhysicsComponent](./network-physics-component.md), along with the tick of the capture. A resting body sends no new updates.
 
-The controlling peer simulates the body normally and, once per tick, captures the stepped result: world position, world rotation, and a set of condition flags. That capture replicates as ordinary members, along with the tick it was captured at.
+Every other peer keeps simulating its own copy of the body through the same physics engine. Each physics step, a [PhysicsConvergence](./physics-convergence.md) steers that copy toward the server's state. Because every peer really simulates the body, contacts, stacks and collisions stay real everywhere.
 
-Every other peer holds a proxy for that body. Each physics step, the proxy rebuilds the latest server snapshot from those members, projects it forward by however many ticks old it is, and converges its own simulated body onto the projected result. The proxy is never teleported onto the raw received pose; it is steered toward a moving target that accounts for the snapshot's age.
+Position and rotation use Divine or Interval transmission like any other member. Divine is Pro: a free build accepts `Divine` and replicates the member as `Interval` does.
 
-## Velocity is derived, not sent
+## The core never sees an engine type
 
-Linear and angular velocity are not replicated. Each side derives them from the motion it sees: the change in position and rotation across the last two committed ticks, divided by the time between those ticks.
+The replicated members and snapshots use `System.Numerics` `Vector3` and `Quaternion`, so the core depends on no physics engine. An integration reads its engine's body into that shape and writes the result back; see [Adapting your engine](./adapting-your-engine.md). Nucleus ships a Unity integration that does this for Unity's physics.
 
-A resting body sends no new updates, since an unchanged capture doesn't restamp its tick.
+## Some things are not built in
 
-## A proxy keeps simulating
-
-A proxy body is never written directly onto the received pose. It keeps stepping through the same physics engine as the controller, with its velocity steered toward the projected target and its pose blended or corrected against divergence. Contacts, stacks, and collisions involving a proxy stay real on every peer, because every peer is still actually simulating it — not just moving a transform to match a number that arrived.
-
-## What replicates, and what doesn't
-
-Three things replicate: world position, world rotation, and a small set of condition flags (whether the body is sleeping, whether it's kinematic, and whether it has been captured at all). A capture tick replicates with them so a receiver can anchor its projection to the snapshot's exact age.
-
-No engine type ever crosses that boundary. The replicated members and the snapshot they rebuild are expressed in `System.Numerics` — `Vector3` and `Quaternion` — never an engine-specific vector, quaternion, or rigidbody handle. The core has no dependency on any particular physics engine; an integration is responsible for reading its engine's body into that shape and writing the projected result back onto it.
-
-Position and rotation use Divine or Interval transmission like any other member; the choice is per-member, not physics-specific. Divine can go quiet for stretches where Interval would still send every tick. Divine projection is Pro: a free build accepts `Divine` and replicates the member as `Interval` does.
-
-## What isn't built
-
-This model does not include:
-
-- Replay-correct collision callbacks
-
-A converged body is never rewound. An integration can still step its physics world on each replayed tick through `SystemManager.ReplayEarlyFixedUpdated`; the Unity integration does, and rewinds only the bodies its validated behaviours predict (see [Predicting a body with a validated behaviour](../../unity/physics/predicting-a-body-with-a-validated-behaviour.md)).
-
-Judging a shot against where targets were is a separate feature that does not touch physics bodies at all: [lag compensation](../lag-compensation/how-lag-compensation-works.md) (Pro) keeps its own hitbox history and its own geometry. Catching a freshly spawned projectile up through the latency it lost is [spawn compensation](../systems/spawn-compensation.md) (Pro).
-
-## Where core ends and integration begins
-
-Everything above lives in the core engine, engine-agnostic and expressed in `System.Numerics`. Turning it into motion on an actual rigidbody — reading a body's state each tick, applying a projected target, wiring up sleep and kinematic flags — is an integration's job. Nucleus ships a Unity integration that does this for Unity's physics.
-
-The core-side member and convergence types are the entry point for a custom or unsupported engine. The Unity-side components are the entry point for Unity.
+- **Replay-correct collision callbacks** are not provided. A converged body is never rewound. An integration can still step its physics world on each replayed tick through `SystemManager.ReplayEarlyFixedUpdated`; the Unity integration does, and rewinds only the bodies its validated behaviours predict (see [Predicting a body with a validated behaviour](../../unity/physics/predicting-a-body-with-a-validated-behaviour.md)).
+- **Judging a shot against where targets were** is [lag compensation](../lag-compensation/how-lag-compensation-works.md) (Pro), which keeps its own hitbox history and does not touch physics bodies.
+- **Catching a freshly spawned projectile up through the latency it lost** is [spawn compensation](../systems/spawn-compensation.md) (Pro).

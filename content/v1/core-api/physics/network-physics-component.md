@@ -2,28 +2,20 @@
 title: "NetworkPhysicsComponent"
 ---
 
-## This component replicates a body through ordinary member replication
+`NetworkPhysicsComponent` replicates a physics body's position, rotation and condition flags through ordinary members. The controlling peer captures its body into the members each tick, and every other peer rebuilds a `PhysicsSnapshot` from them to follow. See [Replicate a physics body](./replicate-a-body.md) for the full setup.
 
-`NetworkPhysicsComponent` replicates a physics body's kinematic state through ordinary member replication. The server captures its body into typed members each tick; proxies rebuild the latest server `PhysicsSnapshot` from those members as the projection source. Velocity is not replicated: linear and angular velocity are derived from the per-tick change in position and rotation when a snapshot is built.
-
-## Replicated members
+## The component replicates four members
 
 | Member | Type | Settings |
 |---|---|---|
 | `WorldPosition` | `NetworkMember<Vector3>` | `CompressionLevel.Aggressive`, `TransmissionModeDefaults.Motion` |
 | `WorldRotation` | `NetworkMember<Quaternion>` | `TransmissionModeDefaults.Motion` |
-| `BodyFlags` | `NetworkMember<int>` | default |
+| `BodyFlags` | `NetworkMember<int>` | default; holds a `PhysicsBodyFlags` value |
 | `CaptureTick` | `NetworkMember<int>` | default |
 
-`WorldPosition` and `WorldRotation` are built at `TransmissionModeDefaults.Motion`, so they divinely project wherever that mode is available.
+`CaptureTick` is the tick of the capture, on the capturing peer's own tick counter: the server's for a server-controlled body, the controlling client's for a client-controlled one. It holds `NetworkLoopManager.UnsetTick` until a ticked capture runs.
 
-`BodyFlags` holds a `PhysicsBodyFlags` value as an int member.
-
-`CaptureTick` is the tick the replicated state was captured at, counted on the capturing peer's own tick counter: the server's for a body the server controls, the controlling client's for a body a client controls. It lets receivers anchor reconciles and projections to the snapshot's exact age instead of estimating it. It holds `NetworkLoopManager.UnsetTick` until a ticked capture runs, and it is only re-stamped when the captured state actually changed, so a resting body sends no updates instead of changing the member every tick.
-
-## PhysicsBodyFlags
-
-Replicated body condition flags held in `BodyFlags`.
+## BodyFlags holds PhysicsBodyFlags
 
 | Flag | Value | Meaning |
 |---|---|---|
@@ -32,9 +24,7 @@ Replicated body condition flags held in `BodyFlags`.
 | `Kinematic` | `1 << 1` | The body is kinematic and does not respond to forces. |
 | `Captured` | `1 << 4` | The flags were written by a real body capture. |
 
-`Captured` is never set on an unprimed member, so it doubles as the proof that real state has arrived — proxies read it as `HasReceivedState` rather than relying on the rotation member, which reads as identity when unset and cannot be distinguished from a genuinely captured identity rotation.
-
-## Derived reads
+## Read the flags through properties
 
 | Property | Reads |
 |---|---|
@@ -43,29 +33,31 @@ Replicated body condition flags held in `BodyFlags`.
 | `HasReceivedState` | `BodyFlags` has `PhysicsBodyFlags.Captured` set. |
 | `HasAdoptedState` | True once `TryAdoptInitialState` has placed a proxy body onto the first received state. |
 
-## Methods you can call
+Use `HasReceivedState` to tell whether real state has arrived. Do not check the rotation: an unset rotation reads as identity, which looks the same as a captured identity rotation.
+
+## Capture, rebuild and adopt the body
 
 ```csharp
 public void CaptureBody(IPhysicsBody physicsBody, uint tick = Managers.NetworkLoop.NetworkLoopManager.UnsetTick)
 ```
 
-Called once per tick, before the tick's state is sent, by the peer that controls the body (the server, unless a client controls it), to capture the body's current state into the replicated members. `CaptureTick` is only re-stamped when the captured position or rotation changed by more than that member's accuracy, so float jitter that no receiver could observe does not count as a change. This is what keeps a resting body from sending updates.
+The controlling peer (the server, unless a client controls the body) calls this once per tick, before the tick's state is sent. It writes the body's state into the replicated members. A resting body sends no updates.
 
 ```csharp
 public PhysicsSnapshot BuildSnapshot()
 ```
 
-Rebuilds the latest server snapshot from the replicated members, called by proxies as the projection source. Linear and angular velocity are not replicated: they are derived from the change in `WorldPosition` and `WorldRotation` across their last two committed ticks, so the projection carries the small error of a one-tick-old average velocity.
+Proxies call this to rebuild the latest server snapshot. A sleeping body, or one that has just appeared, has zero velocity in the snapshot.
 
 ```csharp
 public bool TryAdoptInitialState(IPhysicsBody physicsBody)
 ```
 
-Applies the first received state directly onto the body, once. A wire-spawned proxy instantiates at the prefab pose, and there is no local trajectory worth preserving before the first fact from the server — converging from the prefab pose would visibly glide the body toward its real position instead of starting it there. Call this each proxy step before convergence; the step that adopts should skip its convergence. Returns `false` once `HasAdoptedState` is already true, or until `HasReceivedState` is true.
+Places the body directly onto the first received state, once, so a newly spawned proxy starts at its real position instead of gliding there from the prefab pose. Call it each proxy step before convergence, and skip convergence on the step it returns `true`. It returns `false` until `HasReceivedState` is true, and after `HasAdoptedState` is true.
 
-## PhysicsSnapshot
+## PhysicsSnapshot carries one body state
 
-The value every method above trades in — remote server state, local body state, and projected targets are all expressed as this one type.
+Remote state, local body state and projected targets all use this type.
 
 | Field | Type | Meaning |
 |---|---|---|
@@ -74,12 +66,3 @@ The value every method above trades in — remote server state, local body state
 | `LinearVelocity` | `Vector3` | The linear velocity of the body. |
 | `AngularVelocity` | `Vector3` | The angular velocity of the body, as an axis scaled by radians per second. |
 | `IsSleeping` | `bool` | True when the body is sleeping; a sleeping snapshot projects to itself. |
-
-## Velocity is derived, not replicated
-
-Neither linear nor angular velocity is a replicated member. Both are computed from the per-tick change of `WorldPosition` and `WorldRotation`:
-
-- Linear velocity is `(WorldPosition.Value - previousPosition) / seconds`, using the last two committed position samples and the tick gap between them.
-- Angular velocity is the rotation vector carrying the previous rotation onto the current one, divided by the same elapsed seconds.
-
-A sleeping body, or one that does not yet have two committed samples, derives zero velocity in both cases.
