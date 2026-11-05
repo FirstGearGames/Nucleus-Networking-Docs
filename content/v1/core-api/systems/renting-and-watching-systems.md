@@ -4,9 +4,9 @@ title: "Renting and finding systems in code"
 
 > **Using Unity?** See [NucleusBehaviour: the script base class](../../unity/systems/nucleus-behaviour.md).
 
-## Renting a system
+## Rent a system
 
-`NetworkSystemPool.TryRent<TSystem, TComponent0...>(coreManager, out networkSystem, canStartSystem)` gets you a `NetworkSystem` with no engine object behind it at all. The generated overloads run from zero components up to thirty-one (`TComponent0` through `TComponent30`), and each one rents `TSystem`, attaches every named component, and starts the system unless you pass `canStartSystem: false`. It returns `true` with the system in `networkSystem`, typed as `TSystem`. It returns `false` when no `CoreManager` could be found or the start was refused, and it logs the reason.
+`NetworkSystemPool.TryRent<TSystem, TComponent0...>(coreManager, out networkSystem, canStartSystem)` gives you a `NetworkSystem` with no engine object behind it. Overloads take zero to thirty-one components (`TComponent0` through `TComponent30`). Each rents `TSystem`, attaches the named components, and starts the system unless you pass `canStartSystem: false`. It returns `false`, and logs the reason, when no `CoreManager` could be found or the start was refused.
 
 ```csharp
 if (!NetworkSystemPool.TryRent<NetworkSystem, MatchClockComponent>(coreManager, out NetworkSystem networkSystem, canStartSystem: true))
@@ -19,11 +19,11 @@ if (networkSystem.TryGetComponent(out MatchClockComponent matchClockComponent))
 }
 ```
 
-`TSystem` is nearly always the plain `NetworkSystem` type itself; what distinguishes one rent from another is the component list, not the system type.
+`TSystem` is nearly always plain `NetworkSystem`; the component list is what tells one rent from another.
 
-### Renting a count decided at runtime
+### Rent a count decided at runtime
 
-The generated overloads fix the component list when your code compiles. When the number comes from data instead (one component per seat in a vehicle the level designer configured, say), rent one component type a runtime number of times:
+When the number of components comes from data, such as one per seat in a vehicle, rent one component type a runtime number of times:
 
 ```csharp
 public partial class SeatComponent : NetworkComponent
@@ -45,24 +45,22 @@ for (byte componentId = 0; componentId < seatCount; componentId++)
 }
 ```
 
-The components take the Ids `0` to `seatCount - 1` in the order they were added, and every peer builds them in that same order, so component Id 2 is the same seat on every peer. A count of zero, or more than `NetworkSystem.MaximumComponentCount` (31), is refused and logged.
+The components take Ids `0` to `seatCount - 1`, the same on every peer. A count of zero, or more than `NetworkSystem.MaximumComponentCount` (31), is refused and logged.
 
-### Returning one
+### Return a rented system
 
-A rented system is pooled, not `new`'d, so give it back rather than letting it fall out of scope:
+Give a rented system back rather than letting it fall out of scope:
 
-- `NetworkSystemPool.Return<TSystem>(networkSystem)` returns it to `ResettableObjectPool<TSystem>`.
-- `NetworkSystemPool.ReturnAndNullifyReference<TSystem>(ref networkSystem)` does the same and clears your reference to null.
+- `NetworkSystemPool.Return<TSystem>(networkSystem)` returns it to the pool.
+- `NetworkSystemPool.ReturnAndNullifyReference<TSystem>(ref networkSystem)` does the same and sets your reference to null.
 
-A started system does not go through either of these directly — stop it through `SystemManager.EnsureStopSystem(networkSystem, isPoolReturnRequestedOnDespawn: true)`, and the pool return happens as the despawn completes. A receiver's copy, built by the framework from the wire, returns to its own pool automatically once its despawn is applied; you never call `Return` on that one.
+Do not call either on a started system. Stop it with `SystemManager.EnsureStopSystem(networkSystem, isPoolReturnRequestedOnDespawn: true)`, and it returns to the pool when the despawn completes. A receiver's copy returns to its pool automatically; never call `Return` on it.
 
-## The problem: nothing to find it by
+## Watch for a composition to find it on other peers
 
-A system rented this way carries `NetworkSystem.UnsetPlatformId`. `INetworkSystemSpawnHandler` is only consulted for a spawn whose `PlatformId` is set, so a pure-code system never reaches it — there is no `TryBindSceneObject` call and no `OnDynamicSystemSpawned` call to hang a reference off. On the peer that rented it you already have the reference the rent call returned. On every other peer, the system just starts; nothing tells that peer's code it exists, and there is no identifier it could have known in advance to look one up by.
+A rented system has `NetworkSystem.UnsetPlatformId`, so `INetworkSystemSpawnHandler` never sees it: there is no `TryBindSceneObject` or `OnDynamicSystemSpawned` call. Other peers have no identifier to look it up by.
 
-## The answer: watching for a composition
-
-`NetworkSystemPool.Watch<TSystem, TComponent0...>(coreManager, acquired, released)` registers a standing subscription for every system of a given type and component composition, on whichever peer registers it — the one that rents the system, the one that receives it over the wire, or both. It returns a `NetworkSystemWatch`; hand that back to `NetworkSystemPool.Unwatch(watch)` when you're done.
+Register a watch instead. `NetworkSystemPool.Watch<TSystem, TComponent0...>(coreManager, acquired, released)` subscribes to every system of that type and component composition on the peer that registers it, whether the system started there or arrived from the network. It returns a `NetworkSystemWatch`; pass it to `NetworkSystemPool.Unwatch(watch)` when you are done.
 
 ```csharp
 private NetworkSystemWatch _matchWatch;
@@ -87,80 +85,11 @@ public void Stop()
 }
 ```
 
-`NetworkSystemAcquiredHandler` fires for every system that satisfies the watch, whether it started here or arrived off the wire. `NetworkSystemReleasedHandler` fires as an acquired system stops. Drop whatever you took in `acquired` there and keep no reference after the handler returns, since a reference kept past it can end up naming a different spawn entirely.
+- `NetworkSystemAcquiredHandler` fires for every matching system.
+- `NetworkSystemReleasedHandler` fires as an acquired system stops. Drop your reference there; a reference kept after the handler returns can end up naming a different spawn.
+- Matching is by composition, not type, so name the components that set this system apart.
+- Registering a watch replays it against every system already started, so it works before or after the system exists.
 
-Matching is by **composition, not type**. Nearly every rent asks for a plain `NetworkSystem` and differs only in the components attached, so naming the right components in the watch is what tells it apart from every other system in the world. Registering a watch also replays it against every system already started, so it works whether it is set up before or after the system exists.
+## Use SystemManager.SystemStarted to see every system
 
-## A worked sample
-
-The server rents and starts a match clock with no engine object:
-
-```csharp
-public class MatchClock : INetworkLoopStepCallback
-{
-    public NetworkSystem NetworkSystem { get; private set; }
-
-    private readonly CoreManager _coreManager;
-    private float _secondsPerTick;
-
-    public MatchClock(CoreManager coreManager) => _coreManager = coreManager;
-
-    public NetworkLoopSteps GetNetworkLoopSteps() => NetworkLoopSteps.EarlyFixedUpdate;
-
-    public bool TryStart()
-    {
-        if (!NetworkSystemPool.TryRent<NetworkSystem, MatchClockComponent>(_coreManager, out NetworkSystem rentedNetworkSystem, canStartSystem: true))
-            return false;
-
-        NetworkSystem = rentedNetworkSystem;
-
-        _secondsPerTick = 1f / _coreManager.NetworkLoopManager.TickRate;
-
-        if (NetworkSystem.TryGetComponent(out MatchClockComponent matchClockComponent))
-        {
-            matchClockComponent.Round.Value = 1;
-            matchClockComponent.SecondsRemaining.Value = 10f;
-        }
-
-        _coreManager.NetworkLoopManager.RegisterNetworkLoopStepCallbacks(this);
-
-        return true;
-    }
-
-    public void OnNetworkLoopStep(NetworkLoopSteps networkLoopStep, StepDelta stepDelta)
-    {
-        if (NetworkSystem is null || !NetworkSystem.TryGetComponent(out MatchClockComponent matchClockComponent))
-            return;
-
-        matchClockComponent.SecondsRemaining.Value -= _secondsPerTick;
-    }
-}
-```
-
-The receiver watches for the same composition and is handed that exact system, whether it registered before the rent happened (via the replay) or the spawn arrives afterward:
-
-```csharp
-public class MatchReadout
-{
-    public NetworkSystem MatchSystem { get; private set; }
-
-    private NetworkSystemWatch _matchWatch;
-
-    public void Start(CoreManager coreManager)
-        => _matchWatch = NetworkSystemPool.Watch<NetworkSystem, MatchClockComponent>(coreManager, OnMatchAcquired, OnMatchReleased);
-
-    private void OnMatchAcquired(NetworkSystem networkSystem) => MatchSystem = networkSystem;
-
-    private void OnMatchReleased(NetworkSystem networkSystem)
-    {
-        if (MatchSystem == networkSystem)
-            MatchSystem = null;
-    }
-}
-```
-
-Both sides drive the same real loop: the server's `MatchClock` ticks `SecondsRemaining` down every `EarlyFixedUpdate`, and `MatchReadout.MatchSystem` reads the replicated value off the very system the watch handed it, on whichever peer it runs on. Neither side special-cases which peer it is.
-
-## When to use SystemManager.SystemStarted instead
-
-`SystemManager.SystemStarted` and `SystemManager.SystemStopped` are the broad half of the discovery surface: they raise for *every* system that starts or stops on this peer, regardless of composition. Reach for them instead of a watch when you genuinely want everything and will sort it out yourself — logging, bookkeeping across arbitrary system types, or a single subscriber that dispatches by type. A subscriber that wants only systems of a known composition should register a `NetworkSystemWatch` instead and be handed just those.
+`SystemManager.SystemStarted` and `SystemManager.SystemStopped` raise for every system that starts or stops on this peer, whatever its composition. Use them for logging, bookkeeping across all system types, or one subscriber that dispatches by type. For systems of a known composition, use a watch.
