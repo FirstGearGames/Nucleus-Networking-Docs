@@ -5,22 +5,21 @@ components: "UnityTransportManager"
 
 > **Driving the core API directly?** See [TransportManager](../../core-api/transports/transport-manager.md).
 
-`UnityTransportManager` is the Inspector-side driver for the core transport manager. On `ManagersInstantiated` it grabs the core `TransportManager` off the `CoreManager` and applies its `Default Channel` field to it. If you have not added a `UnityTransportManager` yourself, `UnityCoreManager` adds one for you.
+`UnityTransportManager` adds your transport components to the core `TransportManager` and starts them. `UnityCoreManager` adds one if you have not.
 
-## Inspector fields
+## Set the fields
 
-| Field | Type | Default | Description |
-|---|---|---|---|
-| Default Channel | `Channel` | `Channel.Unreliable` | The channel a send takes when it names none. |
-| Automatic Start Mode | `NetworkStartMode` | `None` | What to start as when play begins: `None`, `Server`, `Client`, or `Host`. There is no core-manager equivalent of this field; it exists only on the Unity component. |
+| Field | Default | Description |
+|---|---|---|
+| Default Channel | `Channel.Unreliable` | The channel a send takes when it names none. |
+| Automatic Start Mode | `None` | What to start as when play begins: `None`, `Server`, `Client`, `Host` or `Auto`. `Auto` starts as a client in a ParrelSync clone or when another process already holds the server port, and as a host otherwise. The core manager has no equivalent. |
+| Simulated Network Conditions | off | Latency, jitter and loss to simulate on every transport. See [Simulating a bad connection in the editor](./simulating-bad-connections-unity.md). |
 
-## Transport discovery
+## Transport components are found for you
 
-`UnityTransportManager` does not configure transports itself. It looks for `NetworkTransport` components on its own GameObject and its children, in the order Unity finds them, and adds each one to the core manager. If it finds none, it adds a `SynapseTransport` component so the object always has a usable transport.
+`UnityTransportManager` adds every `NetworkTransport` component on its GameObject and its children to the core manager, in the order Unity finds them. If there are none, it adds a `SynapseTransport`. Each `NetworkTransport` is an inspector wrapper that adds and configures one core `Transport`.
 
-Each `NetworkTransport` is an Inspector-configurable wrapper around a pure-code `Transport`; it is responsible for adding and configuring that underlying transport when asked.
-
-## Driving it from a script
+## Start and stop from a script
 
 ```csharp
 UnityTransportManager transportManager = GetComponent<UnityTransportManager>();
@@ -39,8 +38,6 @@ transportManager.ShutdownAll();
 IReadOnlyList<Transport> transports = transportManager.Transports;
 ```
 
-`EnsureAddedAsync` only adds transports once; later calls return immediately if the core manager already has transports. `ShutdownAll` also runs automatically from `OnDestroy`, unless the core manager has already torn itself down.
+`EnsureAddedAsync` adds transports only once; later calls return at once. `ShutdownAll` also runs when the component is destroyed.
 
-## The core manager
-
-`UnityTransportManager.NucleusTransportManager` is the underlying `Nucleus.Managers.Transports.TransportManager`. Anything this component does not expose — settings and behavior beyond the default channel and the transport list — is on that core manager instead.
+For anything else, use the core manager through `NucleusTransportManager`.
