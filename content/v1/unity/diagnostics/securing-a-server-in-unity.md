@@ -4,21 +4,19 @@ title: "Securing a server in Unity"
 
 > **Driving the core API directly?** See [Securing a server](../../core-api/diagnostics/securing-a-server.md)
 
-This guide covers what you can do in a Unity project to protect a Nucleus server from clients that misbehave, whether through a bug, a modified build or a deliberate attack. It names every security setting you can reach from an inspector, shows where the rest are set from a script, and ends with a checklist for shipping.
-
-The full explanation of what the server already rejects on its own, and why most violations are silent by default, is in [Securing a server](../../core-api/diagnostics/securing-a-server.md#the-server-already-rejects-a-lot-on-its-own). Everything there applies to a Unity project unchanged. [What the server trusts](./what-the-server-trusts.md) and [Handling violations in Unity](./handling-violations-in-unity.md) sit beside this page.
+[Securing a server](../../core-api/diagnostics/securing-a-server.md#the-server-already-rejects-a-lot-on-its-own) lists what the server already rejects on its own, and applies to Unity unchanged. This page covers the settings you reach from an inspector or a Unity script. See also [What the server trusts](./what-the-server-trusts.md) and [Handling violations in Unity](./handling-violations-in-unity.md).
 
 ## Only a check on the server counts
 
-Every check in this guide runs on the server. A client build can run the same code to predict an answer or grey out a button, but a modified client can skip any check it holds. When this guide says "validate", it means validate in code that runs on the server, such as behind a check of `IsStarted(Invoker.Server)` on a `NucleusBehaviour`.
+A modified client can skip any check it holds, so every check here must run on the server, for example behind `IsStarted(Invoker.Server)` on a `NucleusBehaviour`. A client may run the same code only to predict an answer or grey out a button.
 
 ## Limit how much each client can send
 
-Nucleus offers two layers of limits on what clients send. **Configure limits on the transport first wherever the transport supports them, and use the Unity Server Manager's limits as the fallback for transports that do not.** The transport sees each datagram the moment it arrives, before the engine has copied, read or dispatched anything, so dropping traffic there is earlier and cheaper. It also protects the transport's own receive buffers, which no engine-side check can reach.
+Set limits on the transport wherever it supports them, and use the Unity Server Manager's limits for transports that do not. The transport drops traffic before the engine reads anything, which is cheaper and also protects the transport's own receive buffers.
 
 ### Set the client limits on the Synapse Transport component
 
-The **Client Limits** section of the `SynapseTransport` inspector holds the socket's own limits. **They are enabled by default.** They apply only while the peer runs a server; a client never holds its server to them. A change is applied at the next server start.
+The **Client Limits** section of the `SynapseTransport` inspector is **enabled by default**. The limits apply only while the peer runs a server, and a change takes effect at the next server start.
 
 | Inspector field | Default | What it guards against |
 |---|---|---|
@@ -30,17 +28,17 @@ The **Client Limits** section of the `SynapseTransport` inspector holds the sock
 | Maximum Segments | `0` (the protocol's limit of 255) | A packet split into too many pieces. A packet over it is dropped. It also caps what the server sends. |
 | Maximum Concurrent Assemblies Per Connection | `16` | A client opening many split packets at once. One more evicts or drops a piece. |
 
-Zero turns a single limit off. The limits are drawn only while Client Limits Enabled is ticked.
+Zero turns a single limit off. The fields show only while Client Limits Enabled is ticked.
 
-The packet rate is the tighter of the two rates by default. If an honest client loses input under load, for example because it controls many objects or the server runs a high tick rate, raise Maximum Packets Per Second first. Dropped datagrams show up as lost client state rather than as a kick.
+The packet rate is the tighter of the two rates by default. If an honest client loses input under load, for example because it controls many objects or the server runs a high tick rate, raise Maximum Packets Per Second first. Dropped datagrams show up as lost client state, not as a kick.
 
-The **Hosting** section holds **Maximum Connections**, which defaults to `0` and accepts any number of clients. Set it to what your server can carry.
+In the **Hosting** section, **Maximum Connections** defaults to `0`, which accepts any number of clients. Set it to what your server can carry.
 
-To see what the socket refused, subscribe to `ViolationObserved` on the `Synapse` transport the component built. It reports rate limits, oversized packets and security kicks as well as timeouts. See [Synapse](../../core-api/transports/synapse-transport.md#finding-out-why-a-connection-dropped) and [SynapseTransport component](../transports/synapse-transport-component.md).
+To see what the socket refused, subscribe to `ViolationObserved` on the `Synapse` transport the component built. It reports rate limits, oversized packets, security kicks and timeouts. See [Synapse](../../core-api/transports/synapse-transport.md#finding-out-why-a-connection-dropped) and [SynapseTransport component](../transports/synapse-transport-component.md).
 
 ### Turn on the Unity Server Manager's limits for transports without their own
 
-The **Client Limits** section of the `UnityServerManager` inspector holds the engine's limits, which are checked on every packet a client sends whatever the transport is. **They are disabled by default.** Turn them on when your transport has no limits of its own, such as `BlitzRelayTransport`, or as a second line behind Synapse's.
+The **Client Limits** section of the `UnityServerManager` inspector is **disabled by default**. These limits are checked on every packet a client sends, whatever the transport. Turn them on for a transport with no limits of its own, such as `BlitzRelayTransport`, or as a second line behind Synapse's.
 
 | Inspector field | Default | What it guards against |
 |---|---|---|
@@ -49,13 +47,13 @@ The **Client Limits** section of the `UnityServerManager` inspector holds the en
 | Maximum Packets Per Second | `500` | A client sending too many packets in one second. |
 | Maximum Bytes Per Second | `2097152` (2 MiB) | A client sending too many bytes in one second. |
 
-A packet past a limit is discarded unread and raises `ClientLimitViolation`, which **kicks by default**. A host's own client is exempt. The limits are drawn only while Client Limits Enabled is ticked.
+A packet past a limit is discarded unread and raises `ClientLimitViolation`, which **kicks by default**. A host's own client is exempt. The fields show only while Client Limits Enabled is ticked.
 
-To change the limits from a script, set `UnityServerManager.ClientLimits`. It is accepted at any time, and once the managers are built it reaches the engine straight away.
+To change the limits from a script, set `UnityServerManager.ClientLimits` at any time. Once the managers are built, the change applies straight away.
 
 ## Set the rest of the server's defences from a script
 
-Several security settings have no inspector field. Set them from a script once the managers exist, through `NucleusUnity.BoundCoreManager`. Do it from `Start`, not `Awake`, since `UnityCoreManager` builds the managers in its own `Awake` (see [Handling violations in Unity](./handling-violations-in-unity.md#registering-at-the-right-time)).
+These settings have no inspector field. Set them through `NucleusUnity.BoundCoreManager` from `Start`, not `Awake` (see [Handling violations in Unity](./handling-violations-in-unity.md#registering-at-the-right-time)):
 
 ```csharp
 public class ServerSecurity : MonoBehaviour
@@ -84,22 +82,22 @@ public class ServerSecurity : MonoBehaviour
 | `RpcManager.MaximumInboundRpcsPerConnectionPerDrain` | `64` | A client packing many remote calls together to cost the server work. | [Who may send a call, and how many](../../core-api/messaging/rpc-send-access.md#capping-calls-per-drain) |
 | `SystemManager.PredictedSpawnValidator` (Pro) | none, so every predicted spawn is refused | A client creating objects it should not. | [Client-predicted spawning in Unity](../systems/predicted-spawning.md) |
 
-The **Scene Load Timeout (s)** field on the `UnitySceneManager` inspector (180 by default) is the one related setting that does have an inspector field. It gives up on a scene load a client never answers, so a client cannot stall a load forever.
+The one related setting with an inspector field is **Scene Load Timeout (s)** on the `UnitySceneManager` (180 by default). It gives up on a scene load a client never answers.
 
 ## Lock down who may set members and send calls
 
-Every networked object's `NetworkSystem` carries two access values, and both default to the safest setting: only the server and the controlling client may set its members (`MemberWriteAccess.Controller`) or send it remote calls (`RpcSendAccess.Controller`). Neither has an inspector field. Only the server can widen them, from a `NucleusBehaviour` through its `NetworkSystem` property:
+By default only the server and the controlling client may set a `NetworkSystem`'s members (`MemberWriteAccess.Controller`) or send it remote calls (`RpcSendAccess.Controller`). Neither has an inspector field. Only the server can widen them, from a `NucleusBehaviour` through its `NetworkSystem` property:
 
 ```csharp
 if (IsStarted(Invoker.Server))
     NetworkSystem.TrySetRpcAccess(RpcSendAccess.AnyClient);
 ```
 
-**Widen access only where every nearby player genuinely needs it,** such as a door anyone may open. `MemberWriteAccess.AnyClient` and `TrySetWriteAccess` are Pro. See [Letting clients set members](../../core-api/state/state-write-access.md) and [Who may send a call, and how many](../../core-api/messaging/rpc-send-access.md).
+**Widen access only where every nearby player needs it,** such as a door anyone may open. `MemberWriteAccess.AnyClient` and `TrySetWriteAccess` are Pro. See [Letting clients set members](../../core-api/state/state-write-access.md) and [Who may send a call, and how many](../../core-api/messaging/rpc-send-access.md).
 
 ### Validate every value a client is allowed to write
 
-Access decides whether a client may write at all, not whether the value makes sense. Implement `IMemberWriteValidator<T0>` on the `NetworkComponent` that owns the member, and return `MemberWriteAction.Decline` for anything the game should not take. It runs on the server only, and a validator that throws declines the write. This includes the per-tick input a controlling client sends, which a modified client can fake as easily as anything else. See [Using prediction](../control/using-prediction.md) for an input example and [Judging and arbitrating client writes](../../core-api/state/validating-client-writes.md) for the full contract.
+Access decides whether a client may write, not whether the value makes sense. Implement `IMemberWriteValidator<T0>` on the `NetworkComponent` that owns the member and return `MemberWriteAction.Decline` for anything the game should not accept. It runs on the server only, and a validator that throws declines the write. This includes the per-tick input a controlling client sends. See [Using prediction](../control/using-prediction.md) for an input example and [Judging and arbitrating client writes](../../core-api/state/validating-client-writes.md) for the full contract.
 
 ### Check the sender and arguments of every remote call
 
@@ -107,13 +105,17 @@ A server handler can trust `RpcContext.SenderConnection`, which the transport re
 
 ## Decide what each violation costs the client
 
-Most violations are rejected silently and never kick. Register a deciding handler to kick for the faults an honest client cannot produce, count raises per connection before kicking for the ones it can reach through ordinary loss or a race, and register an `IViolationObserver` to log everything. Register handlers on the build that runs the server, since a kick decided on a client-only peer is never enforced. See [Decide what each violation costs the client](../../core-api/diagnostics/securing-a-server.md#decide-what-each-violation-costs-the-client) for worked handlers, [Handling violations in Unity](./handling-violations-in-unity.md) for Unity timing and cleanup, and the [Violation reference](./violation-reference.md) for each type.
+Most violations are rejected silently and never kick. On the build that runs the server:
+
+1. Register a deciding handler that kicks for the faults an honest client cannot produce.
+2. For faults an honest client can reach through loss or a race, count raises per connection before kicking.
+3. Register an `IViolationObserver` that logs everything.
+
+See [Decide what each violation costs the client](../../core-api/diagnostics/securing-a-server.md#decide-what-each-violation-costs-the-client) for worked handlers and the [Violation reference](./violation-reference.md) for each type.
 
 ## Leave server-only code out of client builds
 
-Unity defines the `UNITY_SERVER` scripting symbol when it builds for the Dedicated Server platform. Code wrapped in it is compiled into the server build and left out of every client build, so a player cannot read your validation rules, cheat thresholds or loot tables out of the game files. This hides how your checks work; it does not make them stronger, because a check on the server holds whether or not the client carries a copy of it.
-
-Wrap the server-only logic, such as a call handler and its registration:
+Unity defines `UNITY_SERVER` when it builds for the Dedicated Server platform. Code wrapped in it is left out of client builds, so players cannot read your validation rules, cheat thresholds or loot tables from the game files. This hides your checks; it does not make them stronger. Wrap the server-only logic, such as a call handler and its registration:
 
 ```csharp
 public class ScoreBoard : NucleusBehaviour<ScoreComponent>
@@ -139,19 +141,19 @@ public class ScoreBoard : NucleusBehaviour<ScoreComponent>
 }
 ```
 
-- **Keep everything networked the same in both builds.** Never wrap a `NucleusBehaviour` or `NetworkComponent` class, a member, or a `[NetworkType]` type, including a call or message that only the server handles. The client still sends that call, and both builds must agree on every networked type. A build that differs reads to the other side as a forged packet and raises `MalformedDataViolation`, as the [Violation reference](./violation-reference.md) explains.
-- **Add `UNITY_EDITOR` to the condition.** It keeps the server code in the editor, where you play-test as the server whichever build platform is selected.
-- **Use it only when every server is a dedicated server.** A build without the server code cannot act as the server, so a game whose players host needs the code in every build that can host.
+- **Keep everything networked the same in both builds.** Never wrap a `NucleusBehaviour` or `NetworkComponent` class, a member, or a `[NetworkType]` type, including a call or message only the server handles. Both builds must agree on every networked type, or the server reads the client's data as a forged packet and raises `MalformedDataViolation`.
+- **Add `UNITY_EDITOR` to the condition** so the server code stays in the editor, where you play-test as the server whatever the build platform.
+- **Use it only when every server is a dedicated server.** A build without the server code cannot host, so a game whose players host needs the code in every build that can host.
 
 ## Check this list before you ship a server
 
-- **The Synapse Transport's client limits are on.** Client Limits Enabled is ticked and the rates suit your game.
-- **The Unity Server Manager's client limits cover any transport without its own.** Client Limits Enabled is ticked there for such a transport, with Maximum Packet Bytes set.
-- **The server has a connection cap.** Maximum Connections on the transport is above zero.
-- **Your own authenticator is installed from a script.** `AddressClientAuthenticator` is replaced, and `AuthenticationTimeoutSeconds` is above zero.
-- **Only the login message skips authentication.** Every other message type keeps `IsAuthenticationRequired` at `true`.
-- **Access is widened only where it is needed.** Every object on `AnyClient` access is there on purpose.
-- **Every value a client can write is validated.** Each component with members a client can write, input included, implements `IMemberWriteValidator<T0>`.
-- **Every server call handler checks its sender and arguments.** Handlers that relay between clients return `Cancel` for anything you would not show other players.
-- **The violations you care about kick, and all of them are logged.** Deciding handlers and an `IViolationObserver` are registered on the server build.
-- **The server runs a release build of Nucleus.** A debug build ignores `MalformedDataViolation` instead of kicking for it.
+- The Synapse Transport's Client Limits Enabled is ticked, with rates that suit your game.
+- Any transport without its own limits is covered by the Unity Server Manager's client limits, with Maximum Packet Bytes set.
+- Maximum Connections on the transport is above zero.
+- Your own authenticator replaces `AddressClientAuthenticator`, and `AuthenticationTimeoutSeconds` is above zero.
+- Only the login message sets `IsAuthenticationRequired` to `false`.
+- Every object on `AnyClient` access is there on purpose.
+- Every component with members a client can write, input included, implements `IMemberWriteValidator<T0>`.
+- Every server call handler that relays between clients returns `Cancel` for anything you would not show other players.
+- Deciding handlers and an `IViolationObserver` are registered on the server build.
+- The server runs a release build of Nucleus. A debug build ignores `MalformedDataViolation` instead of kicking for it.
