@@ -2,102 +2,75 @@
 title: "NetworkSystem reference"
 ---
 
-## Identity
-
-A `NetworkSystem` carries two kinds of identity: the network Id every peer agrees on, and the platform Id that ties it to an engine object.
+## Identify a system
 
 | Member | Type | Meaning |
 |---|---|---|
-| `Id` | `uint` | The Id unique to the network for this instance. `UnsetId` (`0`) until the system is started. |
-| `PlatformId` | `uint` | The Id of the object for the running platform this system belongs to: a scene object's identifier within its scene, or a dynamic prefab's local identifier within its shard. `UnsetPlatformId` (`0`) until assigned. |
-| `PrefabBundleId` | `ushort` | The content bundle owning this system's prefab, pairing with `PlatformId`. Meaningful only for a dynamically spawned prefab; zero is the base build's default shard. |
-| `RequiredBundleId` | `ushort` | The bundle a client must hold before this system may spawn for it. Falls back to `PrefabBundleId` when no override is set. |
-| `SetRequiredBundleId(ushort)` | method | Overrides `RequiredBundleId` without touching `PrefabBundleId`, so the prefab's identity is unaffected. |
-| `UnsetRequiredBundleId` | `const ushort` | `ushort.MaxValue`, **not** `0` like the other Unset constants — zero is a valid requirement, naming the base build. |
-| `IsSceneObject` | `bool` | True when `PlatformId` identifies a scene object rather than a dynamically spawned prefab. |
-| `SceneHandle` | `uint` | The live scene instance this system belongs to. `UnsetSceneHandle` (`0`) when it belongs to no server-opened scene. |
-| `GroupId` | `uint` | The Id of the `NetworkSystemGroup` this system belongs to. `UnsetGroupId` (`0`) when ungrouped. |
-| `ParentId` | `uint` | The `Id` of the system this one is parented to. `UnsetParentId` (an alias of `UnsetId`) when parented to nothing. |
+| `Id` | `uint` | The network identity, unique across the network. `UnsetId` (`0`) until the system starts. |
+| `PlatformId` | `uint` | The engine object this system links to: a scene object's identifier within its scene, or a dynamic prefab's local identifier within its shard. `UnsetPlatformId` (`0`) until assigned, and always for a system with no engine object. |
+| `PrefabBundleId` | `ushort` | The content bundle owning this system's prefab. Meaningful only for a dynamically spawned prefab; zero is the base build. |
+| `RequiredBundleId` | `ushort` | The bundle a client must hold before this system may spawn for it. Falls back to `PrefabBundleId` when no override is set. Server-side only; clients never receive it. |
+| `SetRequiredBundleId(ushort)` | method | Overrides `RequiredBundleId` without changing `PrefabBundleId`. |
+| `UnsetRequiredBundleId` | `const ushort` | `ushort.MaxValue`, **not** `0` like the other Unset constants, because zero is a valid requirement naming the base build. |
+| `IsSceneObject` | `bool` | True when `PlatformId` names a scene object that already exists on every peer, rather than a prefab a receiver must instantiate. |
+| `SceneHandle` | `uint` | The live scene instance this system belongs to. `UnsetSceneHandle` (`0`) when it belongs to the scene the peer booted into rather than one the server opened. |
+| `GroupId` | `uint` | The `NetworkSystemGroup` this system belongs to. `UnsetGroupId` (`0`) when ungrouped. |
+| `ParentId` | `uint` | The `Id` of the system this one is parented to, such as a crate riding a vehicle. `UnsetParentId` (an alias of `UnsetId`) at the root of its scene. |
 
-```csharp
-if (system.RequiredBundleId != NetworkSystem.UnsetRequiredBundleId)
-{
-    // An explicit override is in effect, distinct from PrefabBundleId.
-}
-```
+## Track its lifecycle
 
-`RequiredBundleId` is server-side only: it feeds interest resolution and is never replicated, so reading or setting it costs no bandwidth.
-
-## Lifecycle
-
-`State` is a `NetworkSystemState`:
+`State` is a `NetworkSystemState`. `IsStarted` is true only while `State` is `Started`.
 
 | Value | Meaning |
 |---|---|
-| `Starting` | Accepted but not yet live. Normally transient; a start too late for the current tick's state flush holds here until the next tick increments. |
+| `Starting` | Accepted but not yet live. A start accepted late in a tick stays here until the next tick. |
 | `Started` | Live and networked. |
-| `Stopping` | A stop has been accepted; the actual stop happens at the end of the tick. |
+| `Stopping` | A stop was accepted; it takes effect at the end of the tick. |
 | `Stopped` | Not networked. |
 
-`IsStarted` is `State is NetworkSystemState.Started`.
+What the identity members hold during a transition:
 
-What each identity read is worth during a transition:
+- **Starting**: if the start was deferred to the next tick, `Id` is still `UnsetId` and `PlatformId`, `GroupId` and `SceneHandle` are not yet assigned. All are set together when the system reaches `Started`.
+- **Stopping**: `Id`, `PlatformId`, `GroupId`, `SceneHandle` and `ParentId` keep their last live values until the end of the tick.
 
-- **Starting**: `IsStarted` is false. If the start was deferred past the tick's state flush, `Id` is still `UnsetId` and the rest of the identity (`PlatformId`, `GroupId`, `SceneHandle`) is not yet assigned — all of it is stamped together when the system reaches `Started`.
-- **Stopping**: `IsStarted` is false, but `Id`, `PlatformId`, `GroupId`, `SceneHandle` and `ParentId` still hold their last live values. Nothing clears them until the despawn completes at the end of the tick.
+## Check the local peer's role
 
-## Role reads
-
-| Member | Meaning |
-|---|---|
-| `IsServerStarted` | Whether the local peer runs the server. |
-| `IsClientStarted` | Whether the local peer runs an authenticated client. |
-| `IsHostStarted` | Whether the local peer runs as a host (a started server alongside an authenticated local client). |
-| `CoreManager` | The `CoreManager` managing this system. Every other manager (transport, interest, RPC, systems) is reached from here. |
-
-In host mode, `IsServerStarted` and `IsClientStarted` are both true at once.
-
-```csharp
-if (system.IsServerStarted)
-{
-    // Authority-only logic.
-}
-```
-
-## Composition
+These answer "is the server, client or host running here", not "do I control this object". For control, use `IsController(ControllerType)`.
 
 | Member | Meaning |
 |---|---|
-| `ComponentCount` | The number of `NetworkComponent`s attached to this system. |
-| `TryGetComponent<T0>(out T0 component)` | Retrieves a contained `NetworkComponent` of type `T0`, such as a transform component. Returns false when none is attached. When the system carries the type more than once, this is the first. |
-| `TryGetComponent<T0>(byte componentId, out T0 component)` | Retrieves the component at a component Id when it is of type `T0`. The Id is the order the component was added in, the same on every peer, so this reaches every instance of a repeated type. |
+| `IsServerStarted` | The local peer runs the server. |
+| `IsClientStarted` | The local peer runs an authenticated client. |
+| `IsHostStarted` | The local peer runs a server and an authenticated local client. Both `IsServerStarted` and `IsClientStarted` are then true. |
+| `CoreManager` | The `CoreManager` managing this system, which reaches every other manager. |
+
+## Read its components
+
+| Member | Meaning |
+|---|---|
+| `ComponentCount` | The number of `NetworkComponent`s attached. |
+| `TryGetComponent<T0>(out T0 component)` | The first attached component of type `T0`. Returns false when none is attached. |
+| `TryGetComponent<T0>(byte componentId, out T0 component)` | The component at a component Id, when it is of type `T0`. The Id is the order the component was added in, the same on every peer. |
 | `MaximumComponentCount` | The most components one system can hold: 31. |
-| `GroupMemberCount` | The number of members this system's group currently holds. Zero for an ungrouped system. On the server this is the live group count; on a receiver it is the count received with the group's first member to arrive. |
+| `GroupMemberCount` | The number of members in this system's group, or zero when ungrouped. On a client it is the count received when the group arrived. |
 
-```csharp
-if (system.TryGetComponent(out MyTransformComponent transform))
-{
-    // Read or write members on the component the system rented.
-}
-```
+[What a system is](./what-is-a-system.md) shows how to walk every component of a repeated type.
 
-## Diagnostics
+## Log a system
 
-`NetworkSystemExtensions.AsString(this NetworkSystem)` builds a human-readable one-liner for logging: state, platform id, group id, and id. It returns `"IsNull"` when called on a null reference, so it is safe to log without a null check.
+`NetworkSystemExtensions.AsString(this NetworkSystem)` returns a one-line summary of state, platform id, group id and id. It returns `"IsNull"` for a null reference, so it needs no null check.
 
 ```csharp
 Logger<MyType>.LogInformation($"System: [{system.AsString()}]");
 ```
 
-## Where the rest lives
-
-This page indexes identity, lifecycle, role and composition. The rest of `NetworkSystem`'s surface is documented in its own category:
+## Find the rest of its surface
 
 | Category | Covers |
 |---|---|
 | Control | `ControllerConnectionId` and who drives the system. |
 | Write access | `MemberWriteAccess` and per-member write permissions. |
 | Interest | Observer registration and what a connection is served. |
-| RPCs | `IRpcScope`, `RpcSendAccess`, and remote procedure calls scoped to a system. |
-| Client state | `MemberRole.Predict` members, sent upstream by the controlling client every tick. |
+| RPCs | `IRpcScope`, `RpcSendAccess`, and remote calls scoped to a system. |
+| Client state | `MemberRole.Predict` members, sent by the controlling client every tick. |
 | Reconcile | `ReconcileRequired`, `ResultMismatched`, the simulation callbacks and correcting predicted state. |
