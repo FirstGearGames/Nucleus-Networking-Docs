@@ -2,46 +2,33 @@
 title: "Unity Interest Manager"
 ---
 
-## This component is the inspector-side driver for the core InterestManager
+`UnityInterestManager` holds the world-wide interest rules and settings for the core `InterestManager`. Its settings are applied when the session starts, so changing them during play has no effect.
 
-`UnityInterestManager` is the inspector-side driver for the core `InterestManager`. It carries the world-wide interest rules this peer is authored with, controls how often interest is re-resolved, and, in Pro, how distance is measured. Its settings take effect as the session starts, so changing either host switch in the inspector during a session changes nothing.
+In a free build the inspector shows only **World Rules**, **Evaluation Cadence Ticks** and the two host switches. The **Distance Measurement** and **Level Of Detail** sections are Pro.
 
-## World Rules
+## World Rules apply to every object
 
-A `[SerializeReference]` list of `AuthoredInterestCondition` entries. Each one registers against every `NetworkSystem` that starts, for the whole world — not one object. On `Reset`, the list is seeded with a single entry: the Scene rule (`AuthoredSceneInterestCondition`).
+Each rule in this list applies to every `NetworkSystem` that starts, across the whole world. A new component starts with the Scene rule (`AuthoredSceneInterestCondition`).
 
-Conditions can only restrict. Anything registered here narrows what would otherwise replicate to everybody. If no entry in the list gates scenes, the inspector raises a warning: a client will receive objects from scenes it never loaded, several open instances of one scene cannot be told apart by distance, and nothing at runtime reports the fault — it just lands objects in the wrong scene.
+Keep the Scene rule unless a rule of your own decides scene membership. Without one, the inspector warns, and a client receives objects from scenes it never loaded. They land in the wrong scene with no error, and several open copies of one scene cannot be told apart by distance.
 
-## Evaluation Cadence Ticks
+## Set the cadence and the host switches
 
-Default: `5` (`InterestManager.DefaultEvaluationCadenceTicks`).
+| Setting | Default | What it does |
+| --- | --- | --- |
+| **Evaluation Cadence Ticks** | `5` | Ticks between interest evaluations of any one object. A joining client and a newly started object are resolved at once, off the cadence. |
+| **Host Interest Enabled** | off | Resolves the host's own client against the rules, so the host learns which objects its client half would not have been sent. It costs the host one ordinary condition pass per evaluated pair, and culls nothing by itself. |
+| **Host Visibility Enabled** | on | Hides an object on the host while that report says its client half would not hold it. Because this is already on, setting **Host Interest Enabled** is all it takes to turn hiding on. Clear it to keep the report and act on it yourself, for example through `NetworkSystem.HostInterestChanged`. |
 
-How many ticks pass between one interest evaluation pass and the next for any one system. A joining client and a newly started system are always resolved immediately, off the cadence. Systems are staggered by Id, so a given tick evaluates roughly one cadence-th of the world rather than all of it at once.
+When hiding is on, a `NetworkHostVisibility` component is added to each networked object on a host only. See [Making a host see what its players see](./host-visibility-in-unity.md).
 
-## Host Interest Enabled / Host Visibility Enabled
+## Distance Measurement sets how distance is measured (Pro)
 
-- **Host Interest Enabled**: resolves this peer's own client against the interest rules too, so a host can be told which objects its client half would not have been sent. Off by default: the pass costs the host connection an ordinary condition pass per evaluated pair, and a world that never reads the answer would be paying for nothing. Nothing is culled from a host by this switch alone.
-- **Host Visibility Enabled**: hides an object while the report above says the host's own client half would not have been holding it. On by default. Setting **Host Interest Enabled** is the whole of turning host hiding on, since this switch is already set (see [Making a host see what its players see](./host-visibility-in-unity.md)). Clearing it keeps the report without acting on it, letting a world hide more than renderers, dim instead, or drive its own behavior from `NetworkSystem.HostInterestChanged`.
+- **Interest Technique**: how every distance in the world is measured, pairwise or through a spatial grid.
+- **Interest Axes**: which axes distances are measured across, the full volume or a plane that drops one axis.
 
-When enabled, a `NetworkHostVisibility` component is put on each networked object as it links, only once the peer turns out to be a host.
+Set both before anything carrying a distance rule spawns. A change after a distance rule has registered is refused with a logged error. See [Limit what a client receives by distance](./limit-replication-by-distance.md).
 
-## A free build draws only some of these fields
+## Level Of Detail bands objects by distance (Pro)
 
-In a free build the inspector draws only **World Rules**, **Evaluation Cadence Ticks**, and the two host switches. The entire **Distance Measurement** and **Level Of Detail** sections are Pro-only. Those fields do not exist in a free build, so the editor skips drawing them rather than disabling them.
-
-## Distance Measurement (Pro)
-
-- **Interest Technique**: how every distance in this world is measured (pairwise comparison, or a spatial grid).
-- **Interest Axes**: which axes distances are measured across (full volume, or height dropped for surface play).
-
-Both fields must be settled before anything carrying a distance rule spawns. Changing either after a distance condition has registered is refused, and the engine logs an error.
-
-## Level Of Detail (Pro)
-
-- **Level Of Detail Enabled**: measures each opted-in object's distance from each player into a Near, Medium or Far band your game can read. It changes nothing about what is sent or how often, and nothing is culled by it.
-- **Near Distance**: inside this distance an object reads as Near (no level of detail).
-- **Far Distance**: past this distance an object reads as Far, the coarsest band.
-- **Hysteresis**: how far inside a rung an object must travel before it returns to the nearer band, as a fraction of that rung; stops an object sitting on a boundary from switching band every pass.
-- **Cadence Ticks**: how many ticks pass between one distance measurement of an object and the next.
-
-The rungs must be positive and strictly ascending (far greater than near). If they are equal or zero, the inspector shows an error: nothing is banded until this is fixed.
+These fields band each opted-in object's distance from each player into Near, Medium or Far for your game to read. See [Level of detail in Unity](./level-of-detail-in-unity.md).

@@ -2,62 +2,46 @@
 title: "What scales and what does not"
 ---
 
-## The four levers
+> **Driving the core API directly?** See [What scales and what does not](../../core-api/interest/what-scales.md).
 
-There are four ways to spend less on replication, and they save different amounts because they cut at different points in the pipeline.
+## Four ways to send less
 
-**Don't send it at all.** `InterestEffect.Spawn` governs whether a Connection is ever made an observer of a system in the first place. A condition that vetoes spawn keeps a peer from ever holding an object it has no reason to see. This is the cheapest lever there is: nothing is sent at all.
+From the largest saving to the smallest:
 
-**Stop sending it.** `InterestEffect.Stop` pauses replication to a peer that already holds the object without reclaiming it client-side. Cheaper than a fresh spawn later, but the object still exists on the peer and still occupies whatever bookkeeping a held object costs.
+1. **Don't send it.** A condition that vetoes `InterestEffect.Spawn` means the client never holds the object, so nothing is sent at all.
+2. **Stop sending it.** `InterestEffect.Stop` pauses updates to a client that keeps the object. It is cheaper than a fresh spawn later, but the object still exists on that client.
+3. **Send it less often.** `SendInterval.Normal` sends on every tick the value changed; a wider `SendInterval` collects changes and sends at most once per interval. This applies only under `TransmissionMode.Interval`; a member on `TransmissionMode.Divine` sets its own rate. A spawn, resync, recovery or reconcile always carries the current value, whatever the interval.
+4. **Send it smaller.** `TransmissionMode` and per-value compression make each send smaller without removing any.
 
-**Send it less often.** `SendInterval` paces how often a member is sent: `SendInterval.Normal` sends on every tick the value changed, and a wider interval collects changes and sends at most once per interval. This only applies under `TransmissionMode.Interval`; a member on `TransmissionMode.Divine` governs its own rate instead. A spawn, resync, recovery or reconcile always carries the current value regardless of the interval, so this lever never affects the moments that matter most.
+## Find which cost is too high
 
-**Send it smaller.** `TransmissionMode` and per-value compression level shrink each individual write without changing how often it happens. This is the smallest saving of the four, because it doesn't remove a send, a tick, or a peer's membership — it just makes the send that was already happening cost less.
+"Replication is too expensive" is usually one of three problems, and fixing the wrong one does nothing.
 
-## Three different bottlenecks
+| Cost | What it is | What lowers it |
+| --- | --- | --- |
+| Per-client egress | Bytes one client's connection sends per second, all the time. | Spawn and stop culling first, then interval and compression. Pacing does not help. |
+| Burst size | How much lands in one tick on a join, a scene load, a bundle release, or a client walking back into range. A large tick is costly to lose. | `ServerManager.MaximumObjectKilobytesPerTick` (default 50) spreads new objects over several ticks. It lowers neither the join's total cost nor steady egress, and a join that fits the budget never touches it. |
+| Interest evaluation | Server CPU spent deciding who sees what. It grows with the number of objects, clients and rules. | **Evaluation Cadence Ticks** is the only setting. |
 
-"Replication is too expensive" is not one problem. It's usually one of three, and each has its own fix.
+## Read the cost before you change anything
 
-**Per-client egress.** How many bytes one peer's connection pushes per second. This is what `TotalBytesSent` and the per-object/state-only bandwidth stat providers measure. The fix is fewer or smaller sends to that peer: spawn/stop culling first, interval and compression second.
+Use the bandwidth counters (`TotalBytesSent`, `TotalBytesReceived`, `TotalStatePacketPayloadBitsSent`, `TotalStatePacketPayloadBitsReceived`) and the per-object and state-only statistic rows. Every counter covers a whole peer's traffic, not one object's. A per-object figure is that total divided by the object count; the per-object statistic row does the division for you.
 
-**Per-tick burst size.** How much of that egress lands in a single tick rather than spread across several. A join, a scene load, a bundle release, or a peer walking back into range can put the starting state of every system it reaches into one tick. A large tick is costly to lose, and redundancy (`GlobalRedundancy`) adds to its cost. `ServerManager.MaximumObjectKilobytesPerTick` (default 50) is the lever here. It caps how many kilobytes of new objects one peer is sent in a single tick, so a large join arrives over a few ticks instead of all at once. It does not lower what the join costs in total, and it does nothing for steady-state egress; a join that fits inside the budget never touches it.
+## Don't plan around what Nucleus does not have
 
-**The O(systems × connections) resolution pass.** How much work the server itself does deciding who sees what, independent of what gets sent. Every registered `IInterestCondition` is evaluated per (system, Connection) pair on `InterestManager.EvaluationCadenceTicks`, and that cost scales with systems times connections regardless of how few of those pairs end up replicating. A world with no condition registered skips evaluation entirely and replicates broadcast-to-everyone. A world with conditions pays the evaluation cost even for pairs that resolve to "don't spawn." This is a CPU-time bottleneck, not a bandwidth one, and cadence/staggering is the only lever the engine currently has for it.
+- No cap on ordinary traffic. Only new objects are paced, and nothing decides what is sent first when a client is behind.
+- No per-object send priority. Every eligible object is served the same way.
 
-Fixing the wrong one does nothing: pacing spawns doesn't lower steady-state egress, and making each send smaller doesn't stop a burst from landing in one tick.
+## Pro and free differ
 
-## Reading the cost you have
+Distance and spatial grid culling, level of detail and object pacing (`MaximumObjectKilobytesPerTick`) are Pro. Pro also compresses values more tightly than free. Compression is fixed by the edition that built the peer, and cannot change per world.
 
-The bandwidth counters (`TotalBytesSent`, `TotalBytesReceived`, `TotalStatePacketPayloadBitsSent`, `TotalStatePacketPayloadBitsReceived`) and the per-object/state-only stat provider rows are how you read what a world is actually costing, before deciding which lever to pull. Every one of these figures covers the whole peer — total traffic for that connection, not a single object's line item — so a per-object number is a derived average, not something the engine counts directly. Divide by object count yourself, or use the shipped per-object stat provider row, which already does it. How those counters are wired up and sampled is covered under Diagnostics; this page is about which lever their numbers point you toward.
+## Work out the cost of a small world
 
-## Burst versus steady state
+Take 50 objects, each with one `NetworkMember` sending a full-precision value every tick at `SendInterval.Normal`, and 20 clients.
 
-A spike on a join and a steady per-tick overspend are different failures with different fixes. A join spike is bounded and temporary: it costs frames and, if unpaced, risks losing a large tick; the fix is `MaximumObjectKilobytesPerTick`, and it doesn't touch what the world costs once everyone has finished joining. A steady overspend is what egress and resolution-pass measurements are for, and its fix is spawn/stop culling or interval/compression tuning, not pacing.
+- **Egress:** each client receives its own 50-object slice every tick, 1,000 sends per tick across all clients. Per-client egress grows with how many objects that client can see.
+- **Evaluation:** at a cadence of 10, a client can see a change in range up to 10 ticks late.
+- **Join burst:** a joining client is owed all 50 objects' starting state in one tick. That is far under 50 kB, so pacing never engages.
 
-Redundancy makes a burst worse than it looks. A higher `GlobalRedundancy` buys better tolerance of packet loss at the cost of extra bandwidth, and a burst pays that extra on its whole size, on top of the ordinary traffic running alongside it. This is the concrete reason pacing a burst is worth doing even though it doesn't move the steady-state number: a wide, unpaced tick multiplies its own cost, a paced one doesn't.
-
-## What the engine does not have
-
-Don't design a world around any of these — none of them exist:
-
-- **No bandwidth cap on ordinary traffic.** Object pacing caps the kilobytes of new objects a peer is sent per tick, but nothing caps the rest of a connection's traffic, and no priority or staleness scheduling decides what gets sent first when a peer is behind. The spatial grid and per-connection object pacing exist; a general bandwidth cap does not.
-- **No per-object send priority.** Nothing lets you mark one object as more urgent than another when a peer is bandwidth-constrained. Every eligible object is served the same way.
-- **No broadphase seam for interest.** There's no hook letting an integration hand the interest pass a pre-narrowed candidate set; evaluation is the O(systems × connections) pass described above for every world.
-
-## Edition effects on the budget
-
-Several of the levers above only exist in Pro: distance and spatial-grid interest culling (the conditions that drive `InterestEffect.Spawn`/`Stop`), level-of-detail interest, and per-connection object pacing (`MaximumObjectKilobytesPerTick`) are all Pro-only. Free still has the four-lever framework and the broadcast-to-everyone default, but the conditions that make spawn/stop culling and burst pacing possible are Pro.
-
-Compression is the other edition split. Pro compresses values more tightly than Free. It is fixed by which edition built the peer, so it is not something you can toggle per world.
-
-## A worked budget for a small world
-
-Say a world has 50 objects, each with one `NetworkMember` sending a full-precision value every tick at `SendInterval.Normal`, replicated to 20 connections.
-
-Steady-state egress, ignoring redundancy: 50 objects × 20 connections = 1,000 per-peer-per-tick sends. If each send costs roughly the same regardless of which peer receives it, the total is 20 connections' worth of "50 objects' updates per tick" — the per-connection egress is what scales with object count, not the total across all connections, because each connection only ever carries its own 50-object slice.
-
-Resolution-pass cost, if you add one distance condition: 50 systems × 20 connections = 1,000 pair evaluations every `EvaluationCadenceTicks` ticks. At a cadence of 1 that's 1,000 evaluations/tick; staggering it across a cadence of, say, 10 spreads that to roughly 100 evaluations on any given tick, at the cost of resolving each pair up to 10 ticks stale.
-
-Burst size on a join: a joining peer is registered against every started system at once, so the starting state of all 50 objects is owed in one tick. At the default `MaximumObjectKilobytesPerTick` of 50, fifty objects this small fit inside one tick's budget; the burst is whatever 50 objects' starting state costs, in one tick, with no pacing needed. The budget only starts mattering once the starting state one joining peer is owed adds up to more than 50 kB, and this world is nowhere close.
-
-The arithmetic is the budget: egress scales with objects × connections that can see them, the resolution pass scales with objects × connections regardless of visibility, and burst size scales with how much new-object data a joining peer is owed, against the pacing budget. Three different multiplications, three different levers, and a 50-object/20-connection world doesn't need any of them pulled yet.
+This world needs none of the levers yet.
