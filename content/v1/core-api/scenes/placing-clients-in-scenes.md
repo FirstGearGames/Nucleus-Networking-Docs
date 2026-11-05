@@ -4,60 +4,57 @@ title: "Placing clients in scenes"
 
 > **Using Unity?** See [UnitySceneManager component](../../unity/scenes/unity-scene-manager.md).
 
-Placing a client in a scene instance is what entitles it to see the objects inside. `SceneManager` drives every load and unload; the client never decides on its own.
+A client sees the objects in a scene instance only once it is placed in it. Only the server places clients.
 
-## Loading a connection into a scene
+## Load a client into a scene
 
-`TryRequestSceneLoad(Connection connection, uint sceneHandle, SceneReplaceMode sceneReplaceMode = SceneReplaceMode.None, uint systemId = NetworkSystem.UnsetId)` asks one client to load a live scene instance. It is deduped per connection and scene: a scene the client already holds, or has already reported it cannot load, is not asked for again. It returns `true` only when a request was actually sent.
+`TryRequestSceneLoad(Connection connection, uint sceneHandle, SceneReplaceMode sceneReplaceMode = SceneReplaceMode.None, uint systemId = NetworkSystem.UnsetId)` asks one client to load a scene instance. It returns `true` only when a request was sent: a scene the client already holds, or has already reported it cannot load, is not asked for again.
 
 ```csharp
 coreManager.SceneManager.TryRequestSceneLoad(connection, sceneHandle);
 ```
 
-There is also an overload for several clients at once:
+To place several clients, use `TryRequestSceneLoad(IReadOnlyList<Connection> connections, uint sceneHandle, SceneReplaceMode sceneReplaceMode = SceneReplaceMode.None)`. Each client is placed on its own, so one refused by a validator, already in the scene, or holding a recorded failure does not stop the rest. It returns how many requests were sent, which tells you when it did less than you asked.
 
 ```csharp
 uint requestedCount = coreManager.SceneManager.TryRequestSceneLoad(connections, sceneHandle, SceneReplaceMode.None);
 ```
 
-`TryRequestSceneLoad(IReadOnlyList<Connection> connections, uint sceneHandle, SceneReplaceMode sceneReplaceMode = SceneReplaceMode.None)` places each client independently: one refused by a validator, already in the scene, or holding a recorded failure does not stop the rest. It returns how many clients a request was actually sent to, which tells you when the placement did less than you asked.
+## Remove a client from a scene
 
-## Removing a connection from a scene
+`RequestSceneUnload(Connection connection, uint sceneHandle)` asks a client to release a scene instance it holds or is loading. The client stops receiving that scene's objects at once, not when it confirms.
 
-`RequestSceneUnload(Connection connection, uint sceneHandle)` asks a client to release a scene instance it holds, or is on its way into. The scene a client booted into (`NetworkSystem.UnsetSceneHandle`) cannot be released this way; every peer is considered to be in it and none can report leaving it.
+The boot scene (`NetworkSystem.UnsetSceneHandle`) cannot be released this way.
 
-The client stops being served that scene's objects immediately, not when it confirms the release. `RequestSceneUnload` marks the client as leaving and drops it as an observer of that scene's systems before the unload message even goes out, so the interest gate withholds anything new for that scene right away, and existing observers are torn down as part of the call rather than left standing until the client answers.
+## Replace what a client holds
 
-## Replacing what a connection holds
+`SceneReplaceMode` sets what a load does to the scenes a client already holds:
 
-`SceneReplaceMode` controls what a load does to the scenes a client already holds:
+- `None` (default): keeps everything and adds this scene.
+- `AllScenes`: releases every server-opened scene the client holds or is loading, then loads this one. The target is validated first, so a refusal leaves the client where it was.
+- `AllScenesAfterLoad`: loads this scene first, and releases the others only once the client confirms it and acknowledges the state sent with that confirmation. Use it when an object must move with the client: releasing first would destroy the client's copy of the old scene before the move reaches it.
 
-- **`None`** (the default) - keeps everything the client holds and adds this scene to it.
-- **`AllScenes`** - releases every server-opened scene the client holds or is loading, then loads this one. The target is validated before anything is released, so a refusal leaves the client where it was.
-- **`AllScenesAfterLoad`** - loads this scene first, and only releases the client's other scenes once it confirms this one and acknowledges the state that went out with the confirmation. This is what to use when an object needs to move with the client rather than be rebuilt: releasing first would destroy the client's copy of everything in the scene it's leaving before the move can reach it.
+Use `AllScenes` or `AllScenesAfterLoad` rather than finding and unloading every other scene yourself.
 
-The replace form exists because the removal half is easy to forget: passing `SceneReplaceMode.None` and manually calling `RequestSceneUnload` for every other scene the client holds means finding all of them yourself and getting the ordering right. `AllScenes` and `AllScenesAfterLoad` fold that bookkeeping into the load call itself.
+## Choose where a new client lands
 
-## Where a newly authenticated client lands
+`SceneManager.JoinPlacement` (a `JoinScenePlacement`) decides what a client is placed into when it authenticates:
 
-`SceneManager.JoinPlacement` (type `JoinScenePlacement`) decides what a client is placed into the moment it authenticates, before the game asks for anything:
+- `EveryOpenScene` (default): every open instance, whatever its scope. A `SceneScope.Connections` arena still gets every new client.
+- `GlobalScenes`: only `SceneScope.Global` instances. Use this once your world uses private instances.
+- `None`: nothing. The game places every client with `TryRequestSceneLoad`.
 
-- **`EveryOpenScene`** (the default) - every live scene instance the server has open, whatever it was opened for. This overrides `SceneScope`, so a `SceneScope.Connections` arena still gets every new client while this is set.
-- **`GlobalScenes`** - every `SceneScope.Global` instance, and nothing else. This is the answer once a world starts instancing: shared scenes opened `Global` still place everyone, but `Connections` instances place nobody.
-- **`None`** - nothing. The game places every client itself, entirely through `TryRequestSceneLoad`.
+## Check who is in a scene
 
-## Reading occupancy
+- `Connection.IsSceneLoaded(uint sceneHandle)`: whether one client has confirmed holding the scene. Always `true` for `NetworkSystem.UnsetSceneHandle`.
+- `SceneManager.CollectConnectionsInScene(uint sceneHandle, List<Connection> connections)`: adds every client that has confirmed the load to the list. Clients still loading, or whose load failed, are not added. For `NetworkSystem.UnsetSceneHandle` it adds every connected client.
 
-`Connection.IsSceneLoaded(uint sceneHandle)` answers the question for one client: it returns `true` for `NetworkSystem.UnsetSceneHandle` (the scene every peer booted into) and otherwise reports whether that client has confirmed holding the scene.
+## Time out unanswered loads
 
-`SceneManager.CollectConnectionsInScene(uint sceneHandle, List<Connection> connections)` answers it for a whole scene, adding every client that has confirmed the load to the supplied list. A client that has been asked and hasn't answered yet is not counted, and neither is one whose load failed. Asked about `NetworkSystem.UnsetSceneHandle` it adds every connected client.
+`SceneManager.LoadRequestTimeoutSeconds` (default 180) is how long the server waits for a client to answer a load request. It catches a loader that never finishes: a stuck fetch, a hung load, or a client that stopped answering. Zero or less waits forever.
 
-## Load requests that go unanswered
+When it expires, the request is cancelled and recorded as a failure, the same as a failure the client reports. A late answer is ignored.
 
-`SceneManager.LoadRequestTimeoutSeconds` (default 180, three minutes) bounds how long the server waits for a client to answer a load request. The request itself is sent reliably, so it always arrives; the timeout is for a client whose loader never finishes - a scene stuck fetching, a hung load, a client that stopped answering.
+## Leave automatic placement off
 
-Setting it to zero or less turns the timeout off and the server waits indefinitely. When it expires, the request is cancelled and latched as a failure exactly as a client-reported failure is, and an answer that arrives afterward is discarded rather than acted on.
-
-## Placing a client from a blocked spawn
-
-`SceneManager.AutomaticRequestOnBlockedSpawnEnabled` defaults to `false`. When `true`, a client would be placed in a scene the moment a spawn is withheld for want of it. It's off by default here, unlike the equivalent flag on the bundle manager (which defaults to `true`), because being in a scene is what *entitles* a client to its objects in the first place - inferring placement from a withheld spawn would pull every connected client into every open scene. Leave placement to a deliberate `TryRequestSceneLoad` call unless every client genuinely belongs in every scene you open.
+`SceneManager.AutomaticRequestOnBlockedSpawnEnabled` (default `false`): when `true`, a client is asked into a scene as soon as a spawn is withheld because the client is not in it. That pulls every client into every open scene, so leave it off unless every client belongs in every scene, and place clients with `TryRequestSceneLoad`. The bundle manager's flag of the same name defaults to `true`.
