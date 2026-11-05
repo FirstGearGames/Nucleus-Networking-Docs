@@ -17,7 +17,7 @@ This is a Pro feature. The Free edition does no pacing and ignores the setting b
 - `ServerManager.ObjectPacingEnabled` switches pacing off and on, and is on by default. Off, every whole object is sent on the tick it is owed. Objects still waiting when it is switched off are sent on the next tick.
 - `DefaultMaximumObjectKilobytesPerTick` is `50`.
 - `MinimumObjectKilobytesPerTick` is `1`. A value below it is read as `1`.
-- The setting is a `byte`, so the widest budget it can hold is `255` kilobytes.
+- The widest budget is `255` kilobytes.
 
 The budget is per connection, because what it bounds is one peer's tick.
 
