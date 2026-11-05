@@ -2,48 +2,45 @@
 title: "How networked scenes work"
 ---
 
-## Three identifiers, never conflated
+## Three numbers identify a scene and its objects
 
-A networked scene involves three different numbers, and mixing them up is the most common source of confusion:
+Keep these apart. Mixing them up is the most common source of confusion.
 
-- **Scene id** (`ushort`) — which scene asset. The same id always resolves to the same content, through whatever `ISceneLoader` is registered.
-- **Scene handle** (`uint`) — which live instance of that asset. Opening the same scene id twice gives two handles and two independent worlds.
-- **Scene object id** (`uint`) — which object inside a scene file. It is stamped by editor tooling and is only unique within that one scene asset.
+- **Scene id** (`ushort`): which scene asset. The registered `ISceneLoader` turns an id into content on each peer. Nucleus never names a scene by a path or a name.
+- **Scene handle** (`uint`): which live instance of that asset. Opening the same scene id twice gives two handles and two independent worlds.
+- **Scene object id** (`uint`): which object inside a scene file. Editor tooling stamps it, and it is unique only within that one scene asset.
 
-None of these substitutes for another. The id tells you what to load, the handle tells you which loaded copy you mean, and the object id only makes sense once you already know which instance it lives in.
+## A scene object is named by its handle and its object id
 
-## SceneObjectKey
+`SceneObjectKey` pairs the scene handle with the scene object id. A `SceneObjectId` alone is ambiguous once two instances of the same scene asset are open, because both instances carry the same ids.
 
-An object authored into a scene is identified by the pair of scene handle and scene object id together, `SceneObjectKey`. A `SceneObjectId` alone is ambiguous the moment two live instances of the same scene asset are open, since both instances stamped their objects from the same file and both objects carry the same id. Pairing it with the handle is what lets a peer holding several scene instances at once bind a spawn to the right one.
+`NetworkSystem.SceneHandle` reports which instance an object belongs to. `NetworkSystem.UnsetSceneHandle` (zero) means it belongs to no server-opened scene: it is in the scene the peer booted into.
 
-`NetworkSystem.SceneHandle` reports which instance an object belongs to. Its unset value is `NetworkSystem.UnsetSceneHandle` (zero), which means the object belongs to no server-opened scene — the scene a peer booted into, rather than one `SceneManager` opened and tracks.
+## The server opens, places and closes
 
-## The server drives everything
+A client never decides. It loads a scene only when asked, releases one only when asked, and reports only what it was asked to report.
 
-`SceneManager` opens instances, places and removes clients, and closes instances. A client never decides any of this for itself: it loads a scene only when asked, releases one only when asked, and reports back only what it was asked to report. That is what makes the server's record of who holds what trustworthy enough to serve objects from — a client cannot inflate what the server believes it holds by loading or reporting on its own initiative.
+- Open instances: `SceneManager.TryOpenScene` and `OpenSceneAsync`.
+- Place and remove clients: `TryRequestSceneLoad` and `RequestSceneUnload`.
+- Close instances: `EnsureCloseScene` and `CloseSceneAsync`.
 
-`SceneManager.TryOpenScene` and `OpenSceneAsync` open instances. `TryRequestSceneLoad` and `RequestSceneUnload` place and remove clients. `EnsureCloseScene` and `CloseSceneAsync` close instances. See [Opening and closing scene instances](./opening-scene-instances.md) and [Placing clients in scenes](./placing-clients-in-scenes.md) for the full API.
+See [Opening and closing scene instances](./opening-scene-instances.md) and [Placing clients in scenes](./placing-clients-in-scenes.md).
 
-## Every instance coexists, nothing is replaced
+## Instances of one scene coexist
 
-Open scene instances are tracked by handle in a table the server owns, and closing one only ever removes that one entry. Nothing about opening a scene id again reuses or merges state with an instance already open for that id. Handles are handed out from a counter that only climbs and is never recycled, so a handle you have seen always names the same instance for as long as anything remembers it, and a later instance can never be confused with an earlier, closed one.
+Opening a scene id again never reuses or merges state with an instance already open, and closing an instance removes only that one. Handles are never recycled, so a handle always names the same instance.
 
-This is what makes scene stacking possible: opening one asset several times gives you several coexisting instances, each with its own handle, and the handle is the only thing that tells them apart — they still share the same world coordinates. The shipped Unity scene loader (`UnitySceneLoader`) implements this by loading each instance additively (`LoadSceneMode.Additive`), so several copies of one Unity scene can be open in the same process at once. That is the loader's choice of how to realize the model, not a rule the model itself imposes.
+This is scene stacking: several instances of one asset open at once, sharing the same world coordinates and told apart only by handle. `UnitySceneLoader` loads each instance additively, so several copies of one Unity scene can be open in one process.
 
-## SceneScope: who an instance is for
+## SceneScope sets who an instance is for
 
-`SceneScope` is decided once, when the instance is opened, and cannot change afterward:
+Scope is chosen when the instance opens and cannot change:
 
-- `SceneScope.Connections` — nobody is placed until `TryRequestSceneLoad` asks for it. The instancing case: an arena, a dungeon, a match.
-- `SceneScope.Global` — every connected client is placed immediately, and every client that authenticates afterward is placed as it arrives. The single-world or lobby case.
+- `SceneScope.Connections`: nobody is placed until `TryRequestSceneLoad` asks. Use it for an arena, a dungeon or a match.
+- `SceneScope.Global`: every connected client is placed at once, and every client that authenticates later is placed as it arrives. Use it for a single shared world or a lobby.
 
-Because scope is per instance rather than per asset, one scene asset can run as a shared `Global` lobby while a dozen other instances of a different (or the same) asset run as private `Connections` matches, all open at once.
+Scope is per instance, so one asset can run as a `Global` lobby while other instances run as private `Connections` matches.
 
-## Scenes are named by number
+## Set it up in Unity
 
-Nucleus never identifies a scene by a path or a name, only by its scene id or scene handle, and the registered `ISceneLoader` is what turns an id into actual content on each peer.
-
-## Where to go next
-
-- [UnitySceneLoader component](../../unity/scenes/unity-scene-loader.md) and [UnitySceneManager component](../../unity/scenes/unity-scene-manager.md) for the Unity setup.
-- [Opening and closing scene instances](./opening-scene-instances.md) and [Placing clients in scenes](./placing-clients-in-scenes.md) for the API.
+See [UnitySceneLoader component](../../unity/scenes/unity-scene-loader.md) and [UnitySceneManager component](../../unity/scenes/unity-scene-manager.md).
