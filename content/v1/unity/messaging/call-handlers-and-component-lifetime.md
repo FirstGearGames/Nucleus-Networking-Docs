@@ -4,14 +4,37 @@ title: "Registering Call Handlers Across a Component's Lifetime"
 
 > **Driving the core API directly?** See [Handler Registration and Scope](../../core-api/messaging/rpc-handler-registration.md).
 
-## The marker's link events
+Register call handlers through `NetworkSystem.RegisterRpcHandler<T0>`, not `RpcManager`, so a handler runs only for calls addressed to that system. The system then unregisters the handler when it despawns, registers it again if it respawns, and drops it when the instance returns to the pool, so `OnDestroy` never needs `UnregisterRpcHandler`.
 
-`NetworkSystemObject` is the component that correlates a GameObject with its networked system. It raises two pairs of events as that correlation forms and breaks:
+## Register in OnSystemLinked
 
-- `SystemLinked` / `SystemUnlinked` fire for each individual system as it links or unlinks. A `NetworkSystemGroup` can put several systems on one GameObject, and these fire once per member.
-- `SystemsLinked` / `SystemsUnlinked` fire once for the object's whole set: an ungrouped object is a batch of one and fires on its first link, a grouped object fires when its linked count reaches the group's replicated member count.
+In a script deriving from `NucleusBehaviour<TComponent0>`, register in `OnSystemLinked`:
 
-For a component that wants to act on the object as a whole, rather than on one member of a group, `SystemsLinked` and `SystemsUnlinked` are the pair to use. There's a further reason `SystemsLinked` in particular is the safer subscription: if you subscribe after the object has already finished linking its systems, your handler runs right away. A component that wakes after the object has already linked doesn't miss the event. `SystemsUnlinked` does not do this, so a subscriber that joins after the object has already unlinked hears nothing until the next unlink.
+```csharp
+public class Beacon : NucleusBehaviour<BeaconComponent>
+{
+    protected override void OnSystemLinked()
+    {
+        NetworkSystem.RegisterRpcHandler<BeaconStrikeRpc>(OnBeaconStruck);
+    }
+
+    protected override void OnSystemUnlinked()
+    {
+        // Reset per-life state.
+    }
+}
+```
+
+Do not register in `Awake`. `NetworkSystem` is null until the system links, and a pooled instance is reactivated without running `Awake` again. `OnSystemLinked` runs on the first spawn and on every respawn after a pool return.
+
+## Or subscribe to the marker's link events
+
+A script that does not derive from `NucleusBehaviour` subscribes to the `NetworkSystemObject`'s events instead:
+
+- `SystemsLinked` and `SystemsUnlinked` fire once for the object's whole set of systems. An ungrouped object fires on its first link; a grouped object fires when its linked count reaches the group's replicated member count. Use these for object-wide work.
+- `SystemLinked` and `SystemUnlinked` fire once for each system as it links or unlinks, so several times on a `NetworkSystemGroup`.
+
+If you subscribe to `SystemsLinked` after the object has already linked, your handler runs immediately. `SystemsUnlinked` does not do this: a late subscriber hears nothing until the next unlink.
 
 ```csharp
 private void Awake()
@@ -46,46 +69,13 @@ private void OnDestroy()
 }
 ```
 
-`TryGetFirstSystem` resolves the object's primary system, the canonical member to scope object-wide work against, which is why it's the call a `SystemsLinked` handler reaches for.
+`TryGetFirstSystem` returns the object's primary system, the one to scope object-wide work against.
 
-## The NucleusBehaviourBase alternative
+Unsubscribe from the marker events in `OnDestroy`, as above. This matters most for a component on a different GameObject that can outlive the marker.
 
-A script deriving from `NucleusBehaviour<TComponent0>` (which itself derives from `NucleusBehaviourBase`) doesn't subscribe to the marker's events by hand. It requires its system on `Awake`, and the base class calls `OnSystemLinked` and `OnSystemUnlinked` for it as that system links and unlinks:
+## Reach the manager from a plain MonoBehaviour
 
-```csharp
-public class Beacon : NucleusBehaviour<BeaconComponent>
-{
-    protected override void OnSystemLinked()
-    {
-        NetworkSystem.RegisterRpcHandler<BeaconStrikeRpc>(OnBeaconStruck);
-    }
-
-    protected override void OnSystemUnlinked()
-    {
-        // Reset per-life state.
-    }
-}
-```
-
-A call handler belongs in `OnSystemLinked`, not `Awake`. `Awake` runs once per GameObject instantiation, but a pooled instance is reactivated without a second `Awake` running at all, its next life begins from `OnEnable`. `OnSystemLinked`, by contrast, fires every time this behaviour's system links, on the first spawn and on every respawn after a pool return. Registering there is also naturally scoped to a live `NetworkSystem`: `NetworkSystem` is null before the system links, so a handler registered in `Awake` would have nothing to register against yet on the very first life.
-
-## Why NetworkSystem.RegisterRpcHandler, not the RpcManager overload
-
-Both the marker-event and the `NucleusBehaviourBase` examples above register through `NetworkSystem.RegisterRpcHandler<T0>`, not through `RpcManager` directly. `NetworkSystem.RegisterRpcHandler` scopes the handler to that one system: it's invoked only for calls addressed to this system, never for another object's calls of the same type. A handler registered this way skips the branch every unscoped handler otherwise has to open with, checking which object a call was actually meant for. The scope rule itself, and what an unscoped handler on `RpcManager` looks like, is covered on the core API counterpart page linked above.
-
-## What the system already handles for you
-
-Once a handler is registered through `NetworkSystem.RegisterRpcHandler`, the system tracks it and takes care of its whole lifecycle from there:
-
-- It deregisters the handler from the manager when the system despawns.
-- It re-registers the handler when the system spawns again (a respawn on a pooled instance, or the handler was registered before the system had ever spawned at all).
-- It's dropped from tracking only when the instance returns to the pool.
-
-This means `OnDestroy` needs no call to `UnregisterRpcHandler`. The only thing left to unhook in `OnDestroy` is the marker event subscription itself, `SystemsLinked` / `SystemsUnlinked` (or `SystemLinked` / `SystemUnlinked`), when a component subscribed to those by hand instead of deriving from `NucleusBehaviourBase`. A destroyed marker also clears its own events as part of `OnDestroy`, but a component on a separate GameObject that can outlive the marker still owns its own unsubscribe.
-
-## Resolving the manager from a plain MonoBehaviour
-
-A script that isn't a `NucleusBehaviourBase` subclass, one that only needs to reach the marker's events, resolves the manager through `NucleusUnity.BoundCoreManager`:
+A script that is not a `NucleusBehaviour` gets the session through `NucleusUnity.BoundCoreManager`:
 
 ```csharp
 CoreManager coreManager = NucleusUnity.BoundCoreManager;
@@ -98,4 +88,4 @@ if (coreManager is null)
 }
 ```
 
-`NucleusUnity.BoundCoreManager` is `null` until `UnityCoreManager` binds the session, and it is cleared when the session ends. It never carries a previous play session's manager into the next one, even with domain reload disabled.
+It is `null` until the session starts and is cleared when it ends. It never carries a previous play session's manager into the next one, even with domain reload disabled.
