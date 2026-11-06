@@ -28,7 +28,7 @@ Each `NetworkLoopManager` has its own callback registrations. Two `CoreManager`s
 
 ## Debug builds catch cross-thread access
 
-A Debug build of `Nucleus.dll` logs an error when outgoing message sends or the loop's own collections are touched while a step is running on a different thread. Release builds do not check, so a threading mistake can go unnoticed there. If you are chasing a corrupted collection or a torn write, run the reproduction in Debug and check the log for these errors.
+A Debug build of `Nucleus.dll` logs an error when Nucleus is called from the wrong thread while a step is running. Release builds do not check, so a threading mistake can go unnoticed there. If you are chasing a corrupted collection or a torn write, run the reproduction in Debug and check the log for these errors.
 
 ## Loaders may complete on any thread
 

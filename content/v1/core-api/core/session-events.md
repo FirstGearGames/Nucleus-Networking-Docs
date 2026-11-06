@@ -25,8 +25,7 @@ Raised on the server from inside `ApproveClient`. The connection is already mark
 
 - The client has not been told it was accepted yet, so nothing sent from here reaches it ahead of its own identity.
 - Other clients have not been told about this connection yet.
-- Per-player setup done here is tick-aligned with the roster: the roster add this connection is owed and the one announcing it to everyone else go out on the same tick.
-- Interest may not have registered the connection as an observer yet. A connection whose `Connection.CanReceiveState` is already true, typically a host's own client, is registered at once. A fresh remote client is registered about one round trip later, once its round-trip time is known.
+- Interest may not have registered the connection as an observer yet. A connection whose `Connection.CanReceiveState` is already true, typically a host's own client, is registered at once. A remote client is registered shortly after it connects.
 
 ## ClientDisconnecting fires while a dropped client's objects are still readable
 

@@ -2,7 +2,7 @@
 title: "Kick and refusal notices"
 ---
 
-The engine attaches no reason to a kick or a refusal. To tell the client why, the server passes a notice, an ordinary message type of your own, to the kick or refusal, and the engine sends it on the reliable channel ahead of the disconnect.
+The engine attaches no reason to a kick or a refusal. To tell the client why, the server passes a notice, an ordinary message type of your own, to the kick or refusal, and the client receives it before it is disconnected.
 
 ## Define one notice type per reason
 
@@ -34,7 +34,7 @@ coreManager.ServerManager.DenyClient(connection, new ServerFullNotice { Text = "
 connection.Kick(new KickedNotice { Text = "Idle for too long." });
 ```
 
-Both send the notice before marking the kick, which is the only order that works, because a kick blocks every message queued after it. The plain `DenyClient(connection)` and `Kick()` send nothing. See [Kicking and disconnecting a client](./kicking-and-disconnecting.md) for the policy and timeout, and [Authenticating clients](./authentication.md) for when to refuse.
+The plain `DenyClient(connection)` and `Kick()` send nothing. See [Kicking and disconnecting a client](./kicking-and-disconnecting.md) for the policy and timeout, and [Authenticating clients](./authentication.md) for when to refuse.
 
 ## Register the handlers on the client before connecting
 
