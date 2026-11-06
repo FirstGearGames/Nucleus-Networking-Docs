@@ -25,7 +25,7 @@ See [Stopping versus culling](./stopping-versus-culling.md).
 
 ## Conditions are evaluated on a staggered cadence
 
-`InterestManager.EvaluationCadenceTicks` sets how many ticks pass between evaluations of any one system's conditions. The default is 5, and 1 evaluates every system every tick. Systems are staggered across the cadence by their `Id`, so each tick evaluates roughly one cadence-th of the world.
+`InterestManager.EvaluationCadenceTicks` sets how many ticks pass between evaluations of any one system's conditions. The default is 5, and 1 evaluates every system every tick. The work is spread across those ticks rather than done all at once.
 
 Two cases skip the cadence and are evaluated on the tick they happen: a connection that just authenticated is evaluated against every started system, and a system that just started is evaluated against every authenticated connection.
 
