@@ -260,6 +260,10 @@ Measuring starts 5 seconds after the 200 objects spawn and lasts 30 seconds. Pos
 
 Measuring starts 5 seconds after the objects spawn and lasts 20 seconds. The server runs on an AWS c7i.large, with 200 objects and again with 2,000. The monitor below measures the CPU time of the whole server process and divides it by the frames the server ran. Each framework runs three times, and the chart shows the middle result.
 
+:::hint type="info"
+Thank you to Kreyg for providing this CPU logger script.
+:::
+
 ```csharp
 using System;
 using System.Diagnostics;
