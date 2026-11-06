@@ -33,7 +33,7 @@ NetworkConditions networkConditions = new()
 ## Apply the conditions
 
 1. Add the transport.
-2. Set the conditions, **before** `ConnectAsync`. `Synapse` decides whether to simulate anything when it connects: one that connected with conditions takes new values at once, but one that connected with none ignores them until it next connects. To change conditions mid-session, start with something small, such as 1 ms of latency.
+2. Set the conditions. `Synapse` applies them at once, even on a link that is already connected, so you can also turn them on, change them or turn them off mid-session.
 3. Connect.
 
 ```csharp

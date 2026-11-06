@@ -20,7 +20,7 @@ Synapse sends its connection setup packets without simulated delay or loss, so a
 
 `SetNetworkConditions` on `UnityTransportManager` sets every transport, and `SetNetworkConditions<Synapse>` sets only the Synapse ones. Pass null to go back to a clean connection. Conditions set from code replace the inspector's.
 
-The transports must exist before they take conditions, and Synapse decides whether to simulate at all when it connects. So:
+The transports must exist before they take conditions. To have the conditions from the first packet:
 
 1. Set **Automatic Start Mode** on `UnityTransportManager` to `None`.
 2. Add the transports with `EnsureAddedAsync`.
@@ -59,7 +59,7 @@ To read what is set, call `GetNetworkConditions<Synapse>()`, or `GetNetworkCondi
 
 ## Change the conditions while playing
 
-A Synapse transport that connected with conditions takes new values straight away. One that connected with none ignores them until it next connects. If you plan to change them while playing, start with a small condition, such as 1 ms of latency, so the simulation runs from the start.
+A Synapse transport applies new values at once, even on a link that is already connected, so you can turn conditions on, change them or turn them off while playing.
 
 ## Each editor sets its own conditions
 
