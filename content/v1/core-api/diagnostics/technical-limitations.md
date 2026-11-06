@@ -9,8 +9,6 @@ Do not design a game that depends on either of these.
 - **Send rate does not change with distance.** No shipped interest type slows an object's sends because it is far from a peer. Per-member send interval and transmission mode exist, but neither is driven by distance.
 - **A replay does not roll back the whole physics world.** A reconcile's replay rewinds only the bodies a validated behaviour predicts and holds every other body still. See [Predicting a body with a validated behaviour](../../unity/physics/predicting-a-body-with-a-validated-behaviour.md).
 
-There is no browser or WebGL transport, and one is not currently planned.
-
 ## These features are planned but not built yet
 
 - **Network profiler window:** an editor window attributing traffic to messages, objects and members. The counters it would read already exist.

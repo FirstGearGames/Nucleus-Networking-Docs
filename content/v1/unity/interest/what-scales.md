@@ -34,7 +34,7 @@ Use the bandwidth counters (`TotalBytesSent`, `TotalBytesReceived`, `TotalStateP
 
 ## Pro and free differ
 
-Distance and spatial grid culling, level of detail and object pacing (`MaximumObjectKilobytesPerTick`) are Pro. Pro also compresses values more tightly than free. Compression is fixed by the edition that built the peer, and cannot change per world.
+Distance and spatial grid culling and object pacing (`MaximumObjectKilobytesPerTick`) are Pro. Pro also compresses values more tightly than free. Compression is fixed by the edition that built the peer, and cannot change per world.
 
 ## Work out the cost of a small world
 

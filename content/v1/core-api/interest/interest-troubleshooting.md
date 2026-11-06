@@ -12,7 +12,7 @@ An ungated spawn raises no error. It lands in the wrong scene on the client. The
 
 A distance condition reads positions through its own `TryReadSourcePosition` (the Unity conditions read the linked GameObject's transform), not through the reader set with `InterestManager.SetPositionReader`. A pair it cannot measure is never restricted. That happens when the connection controls nothing yet, or when `TryReadSourcePosition` returns `false` for the object or for every object the connection controls.
 
-**Fix:** make sure each player controls the object it plays through, and that `TryReadSourcePosition` answers for both the evaluated object and the controlled ones. The world reader is used only by level of detail. Without one, level of detail logs an error once and every pair reads as Near, but culling is unaffected.
+**Fix:** make sure each player controls the object it plays through, and that `TryReadSourcePosition` answers for both the evaluated object and the controlled ones.
 
 ## An object disappears at range when it should only freeze, or the reverse
 
@@ -24,7 +24,7 @@ On a grouped object (several systems sharing one `NetworkSystemGroup`), the obje
 
 ## Objects flicker in and out at a cull boundary
 
-A distance cull has no hysteresis, so a player moving back and forth across a cutoff flips the verdict each evaluation. Distance is re-measured only every `EvaluationCadenceTicks`, so flicker only happens when a player can cross from just inside to just past the cutoff within one cadence. The level-of-detail hysteresis does not help, because level of detail never changes what is sent or whether an object spawns, stops or despawns.
+A distance cull has no hysteresis, so a player moving back and forth across a cutoff flips the verdict each evaluation. Distance is re-measured only every `EvaluationCadenceTicks`, so flicker only happens when a player can cross from just inside to just past the cutoff within one cadence.
 
 **Fix:** widen the gap between the cutoff and how far a player can move in one `EvaluationCadenceTicks`, by raising the cutoff, lowering the cadence, or both. There is no setting to smooth the boundary itself.
 
@@ -60,4 +60,4 @@ The inspector-authored Unity rule (`AuthoredDistanceInterestCondition`) only exp
 
 ## Every distance lever on this page is Pro-only
 
-Distance conditions, the spatial grid, level of detail and object pacing are Pro-only, as are `AuthoredDistanceInterestCondition` and `DistanceInterestCondition` in Unity. The scene rule and the base interest system ship in Free. If one of these settings seems not to apply, check whether the build is Free.
+Distance conditions, the spatial grid and object pacing are Pro-only, as are `AuthoredDistanceInterestCondition` and `DistanceInterestCondition` in Unity. The scene rule and the base interest system ship in Free. If one of these settings seems not to apply, check whether the build is Free.

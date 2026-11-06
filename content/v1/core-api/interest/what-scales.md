@@ -33,7 +33,7 @@ Do not design a world around any of these:
 
 ## Most levers are Pro-only
 
-Distance and spatial-grid culling, level-of-detail interest and object pacing (`MaximumObjectKilobytesPerTick`) are Pro-only. Free has the broadcast-to-everyone default and the interest system without those conditions.
+Distance and spatial-grid culling and object pacing (`MaximumObjectKilobytesPerTick`) are Pro-only. Free has the broadcast-to-everyone default and the interest system without those conditions.
 
 Pro also compresses values more tightly than Free. This is fixed by the edition that built the peer and cannot be toggled per world.
 

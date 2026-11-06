@@ -64,13 +64,11 @@ inventorySystem.AddInterestCondition(controllerOnlyInterestCondition);
 
 Conditions are evaluated every `InterestManager.EvaluationCadenceTicks` ticks (5 by default). See [What area of interest is](./area-of-interest.md#conditions-are-evaluated-on-a-staggered-cadence). Ordinary movement needs nothing more.
 
-For a move the cadence cannot anticipate, such as a teleport, a scene change or a reparent, call `RefreshInterest(NetworkSystem, isLevelOfDetailRemeasured)`. It re-resolves that system against every Connection at the start of the next pass:
+For a move the cadence cannot anticipate, such as a teleport, a scene change or a reparent, call `RefreshInterest(NetworkSystem)`. It re-resolves that system against every Connection at the start of the next pass:
 
 ```csharp
-coreManager.InterestManager.RefreshInterest(networkSystem, isLevelOfDetailRemeasured: true);
+coreManager.InterestManager.RefreshInterest(networkSystem);
 ```
-
-`isLevelOfDetailRemeasured` defaults to `true`. Leave it set unless the object did not move.
 
 For a change on the player's side, such as a teleported character, a newly controlled object or a scene move, call `RefreshInterest(Connection)`. It re-resolves that connection against every evaluated system:
 

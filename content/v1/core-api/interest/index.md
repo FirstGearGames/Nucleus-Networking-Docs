@@ -12,6 +12,5 @@ Pages in this category:
 - [Stopping versus culling](./stopping-versus-culling.md)
 - [What scales and what does not](./what-scales.md)
 - [How distances are measured: pairwise and the spatial grid](./interest-technique-and-axes.md)
-- [Interest level of detail](./interest-level-of-detail.md)
 - [Supplying positions to the interest system](./supplying-interest-positions.md)
 - [The host interest report](./host-interest-report.md)

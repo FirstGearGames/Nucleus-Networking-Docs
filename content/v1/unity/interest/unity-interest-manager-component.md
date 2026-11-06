@@ -4,7 +4,7 @@ title: "Unity Interest Manager"
 
 `UnityInterestManager` holds the world-wide interest rules and settings for the core `InterestManager`. Its settings are applied when the session starts, so changing them during play has no effect.
 
-In a free build the inspector shows only **World Rules**, **Evaluation Cadence Ticks** and the two host switches. The **Distance Measurement** and **Level Of Detail** sections are Pro.
+In a free build the inspector shows only **World Rules**, **Evaluation Cadence Ticks** and the two host switches. The **Distance Measurement** section is Pro.
 
 ## World Rules apply to every object
 
@@ -28,7 +28,3 @@ When hiding is on, a `NetworkHostVisibility` component is added to each networke
 - **Interest Axes**: which axes distances are measured across, the full volume or a plane that drops one axis.
 
 Set both before anything carrying a distance rule spawns. A change after a distance rule has registered is refused with a logged error. See [Limit what a client receives by distance](./limit-replication-by-distance.md).
-
-## Level Of Detail bands objects by distance (Pro)
-
-These fields band each opted-in object's distance from each player into Near, Medium or Far for your game to read. See [Level of detail in Unity](./level-of-detail-in-unity.md).

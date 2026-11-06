@@ -4,7 +4,7 @@ title: "Supplying positions to the interest system"
 
 > **Using Unity?** The Unity integration registers a position reader for you. See [Limit what a client receives by distance](../../unity/interest/limit-replication-by-distance.md) to configure the distance conditions.
 
-Level of detail reads object positions through a position reader registered on the `InterestManager`. Core has no way to know where an object is, so a bare `CoreManager` registers none: level of detail then logs an error once and every pair reads as Near. Scene-based interest and distance conditions do not use this reader. A distance condition reads positions through its own `TryReadSourcePosition` (see [Distance interest conditions](./distance-interest-conditions.md)).
+The [replay hold radius](../control/reconciliation.md#holding-only-the-systems-near-a-replay) (`SystemManager.ReplayHoldRadius`) reads object positions through a position reader registered on the `InterestManager`. Core has no way to know where an object is, so a bare `CoreManager` registers none, and a replay then holds every system it cannot measure. Scene-based interest and distance conditions do not use this reader. A distance condition reads positions through its own `TryReadSourcePosition` (see [Distance interest conditions](./distance-interest-conditions.md)).
 
 ## Implement IInterestPositionReader
 

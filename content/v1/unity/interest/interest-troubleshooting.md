@@ -6,7 +6,7 @@ title: "An object is missing, or will not go away"
 
 To see what interest resolved, add a `NetworkInterestOverlay` to the player object, switch it on, and select the object on the server or host while playing. A line goes to every other networked object, colored by whether the player is streamed it, stopped for it, or does not have it at all. See [Developer tools in the editor](../diagnostics/developer-tools-in-unity.md#seeing-what-an-objects-controller-is-sent).
 
-Distance rules, the spatial grid, level of detail and object pacing are Pro. The Scene rule and the base interest system ship in free. If a setting below seems not to apply, check whether the build is free.
+Distance rules, the spatial grid and object pacing are Pro. The Scene rule and the base interest system ship in free. If a setting below seems not to apply, check whether the build is free.
 
 ## A client receives objects from a scene it never loaded
 
@@ -36,7 +36,7 @@ Fix: to despawn by distance, construct a `DistanceInterestCondition` in code, wh
 
 ## Objects flicker in and out at a cull boundary
 
-A distance cutoff has no hysteresis, so a player moving back and forth across it flips the verdict each evaluation. Only **Evaluation Cadence Ticks** limits this, because distance is measured once per that many ticks. The level of detail **Hysteresis** setting does not help, since a band never changes what is sent.
+A distance cutoff has no hysteresis, so a player moving back and forth across it flips the verdict each evaluation. Only **Evaluation Cadence Ticks** limits this, because distance is measured once per that many ticks.
 
 Fix: widen the gap between the cutoff and how far a player can move in one evaluation cadence, by raising the cutoff, lowering the cadence, or both. No setting smooths the boundary itself.
 

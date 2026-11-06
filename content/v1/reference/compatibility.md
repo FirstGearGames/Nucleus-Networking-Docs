@@ -28,11 +28,6 @@ Each of these compiles in only when its define is set. Without the package, the 
 
 The demos need the Input System, uGUI 2.0 or newer (for TextMeshPro), AI Navigation, and the Vehicles and Terrain modules. Without them the demos are skipped, the project still compiles, and the editor warns once per session naming the packages to install. The demo materials use the Universal Render Pipeline (URP), so they draw pink on any other pipeline; the same warning says so.
 
-## Some platforms are not supported
+## Platform support depends on the transport
 
-These are closed, not pending:
-
-- No WebSocket or WebGL transport, and so no browser target.
-- No Steam, EOS or console transport ships.
-
-Whether a platform works depends on the transport, since the core is platform-agnostic.
+The core is platform-agnostic, so whether a platform works depends on the transport you use.
