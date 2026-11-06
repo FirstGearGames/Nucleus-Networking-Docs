@@ -4,9 +4,9 @@ title: "Unity Types and System.Numerics"
 
 ## Declare members in System.Numerics, not UnityEngine
 
-The engine core replicates `System.Numerics` types. A networked member is declared as `NetworkMember<System.Numerics.Vector3>`, never `NetworkMember<UnityEngine.Vector3>`. Nucleus registers its vector and rotation handling, such as interpolation and Divine projection, for the `System.Numerics` types only. A member declared with a UnityEngine type still builds and replicates, but it is treated like any struct of your own, so none of that handling applies, and a `UnityEngine.Quaternion` member sends more than it needs to.
+Declare a networked member as `NetworkMember<System.Numerics.Vector3>`, never `NetworkMember<UnityEngine.Vector3>`. Nucleus applies its vector and rotation handling, such as interpolation and Divine projection, only to the `System.Numerics` types. A UnityEngine member still builds and replicates without any diagnostic, but as a plain struct with none of that handling, and a `UnityEngine.Quaternion` member sends more than it needs to.
 
-The shipped `UnityNavMeshAgentComponent` follows this exactly:
+Alias the `System.Numerics` type at the top of the file to avoid clashing with `UnityEngine.Vector3`, as the shipped `UnityNavMeshAgentComponent` does:
 
 ```csharp
 using NumericsVector3 = System.Numerics.Vector3;
@@ -18,13 +18,9 @@ public partial class UnityNavMeshAgentComponent : NetworkComponent
 }
 ```
 
-The `NumericsVector3` alias is just a using directive disambiguating from `UnityEngine.Vector3` in the same file. It's the pattern to copy: alias `System.Numerics` types at the top of a Unity-facing script rather than writing the fully qualified name at every member declaration.
-
 ## Convert at the Unity boundary
 
-`UnityConversionExtensions` converts between the native type a member stores and the Unity type a `Transform` (or other Unity API) expects: `ToUnity()` for native to Unity, `ToNative()` for Unity to native. It covers every type both libraries define: `Vector2`, `Vector3`, `Vector4`, `Quaternion`, `Plane`, and `Matrix4x4`.
-
-Call them at the moment you read a member into a `Transform` or write a `Transform` into a member, not before. `UnityNavMeshAgentComponent` does exactly this in its Unity-facing properties:
+`UnityConversionExtensions` converts with `ToUnity()` (native to Unity) and `ToNative()` (Unity to native), for `Vector2`, `Vector3`, `Vector4`, `Quaternion`, `Plane` and `Matrix4x4`. Convert only where you read a member into a `Transform` or other Unity API, or write one back:
 
 ```csharp
 public Vector3 ReplicatedNextPoint
@@ -34,22 +30,14 @@ public Vector3 ReplicatedNextPoint
 }
 ```
 
-Everything above that boundary — the `NetworkComponent`, its `NetworkMember<T0>` fields — stays native. Everything below it — the `MonoBehaviour`, the `Transform`, `NavMeshAgent` — stays Unity. Nothing in between sees both.
+Keep the `NetworkComponent` and its `NetworkMember<T0>` fields native, and the `MonoBehaviour`, `Transform` and other Unity APIs in Unity types.
 
-## Types with generated serializers already available
+## These types need no attribute
 
-Besides the `System.Numerics` vectors (`Vector2`, `Vector3`, `Vector4`), these CodeBoost types already have generated serializers and can be used in a `NetworkMember<T>` from Unity code without any attribute of your own: `Vector2Int`, `Vector3Int32`, `Vector4Int`, and `UnifiedColor`.
+These already have serializers and work in a `NetworkMember<T>` with no attribute of your own:
 
-All seven are reached through `ExternalNetworkTypes`, a marker struct in `Nucleus.Serializers` carrying `[NetworkType]` on behalf of types declared in assemblies nobody here can annotate.
+- The `System.Numerics` vectors `Vector2`, `Vector3` and `Vector4`
+- The CodeBoost types `Vector2Int`, `Vector3Int32`, `Vector4Int` and `UnifiedColor`
+- Any struct you declare made entirely of serializable fields, as long as a `NetworkMember<T>` reaches it
 
-## Your own structs need no attribute
-
-A struct you declare yourself, made entirely of natively-serializable fields, needs no `[NetworkType]` attribute at all as long as a `NetworkMember<T>` somewhere reaches it. The generator discovers it through that member, the same way it discovers any other networked type.
-
-## The error you get instead of a crash
-
-An unserializable member type is caught at build time, not at runtime. The generator reports a `SERIALIZERS`-series diagnostic (`SERIALIZERS000` as an error, `SERIALIZERS001` as a warning) naming the member. A member declared as `NetworkMember<UnityEngine.Vector3>` is not caught this way: it builds without a diagnostic and replicates as a plain struct, as described above.
-
-## Adding a type you can't annotate
-
-For a third-party type you don't own and can't put `[NetworkType]` on, see the `ExternalNetworkTypes` reference for how to add a marker for it.
+A member type with no serializer is reported at build time as `SERIALIZERS000` or `SERIALIZERS001` (see [Generator Errors and Warnings](./generator-diagnostics.md)). For a third-party type you cannot put `[NetworkType]` on, see [Reaching Types You Cannot Annotate](../../core-api/wire/external-network-types.md).

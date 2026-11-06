@@ -2,43 +2,36 @@
 title: "How replicated state works"
 ---
 
-## Containment
+> **Driving the core API directly?** See [How replicated state works](../../core-api/state/state-replication-model.md).
 
-A `NetworkSystem` holds `NetworkComponent`s, up to 64 per system. A `NetworkComponent` holds `NetworkMember`s, at most 64, one for each bit of the `ulong` `memberFlags` that `OnMembersChanged` reports. The generator does not check that limit on a component, so one that declares more still builds but does not replicate correctly. `Constants.MaximumNetworkMemberCount` (63) is a separate limit, on the structs and classes a member's value is made of: the generator reports `SERIALIZERS000` once such a type has 63 serialized fields and properties, so 62 is the most one can hold.
+## Systems hold components, and components hold members
 
-Data lives in components, not in the `NetworkSystem` subclass itself. `NetworkSystem` tracks identity, lifecycle, and observers; the values that actually replicate are declared on the `NetworkComponent`s attached to it.
+- A `NetworkSystem` is the networked entity. It holds up to 31 `NetworkComponent`s (`NetworkSystem.MaximumComponentCount`).
+- A `NetworkComponent` holds the values that replicate, as `NetworkMember`s: at most 64, one for each bit of the `memberFlags` that `OnMembersChanged` reports. The generator does not check this limit, so a component that declares more still builds but does not replicate correctly.
+- A struct or class used as a member's value can hold at most 62 serialized fields and properties. At 63 (`Constants.MaximumNetworkMemberCount`) the generator reports `SERIALIZERS000`.
 
 ## Late joiners need nothing extra
 
-A member simply carries the value as of the last write. There is no separate late-joiner payload to author: when a new observer starts watching a system, it receives every member's current value. A member's author never writes two versions of anything.
+A member holds the value as of the last write. When a new observer starts watching a system, it receives every member's current value, so you never write a separate late-joiner payload.
 
-## One write pass, one read pass, per tick
+## OnMembersChanged reports writes and reads
 
-Each tick raises `NetworkComponent.OnMembersChanged(ulong memberFlags, MemberChangeDirection memberChangeDirection)` up to twice per component: once for what this peer is sending, once for what it received.
+Each tick, `NetworkComponent.OnMembersChanged(ulong memberFlags, MemberChangeDirection memberChangeDirection)` is raised up to twice per component: `Write` for what this peer changed, `Read` for what it received. A host raises both for its own change, so code that only cares about a remote change, including anything calling `NetworkMemberBase.TryGetWritingClient`, must check for `Read`. See [Reacting to a replicated change in Unity](./reacting-to-changes-in-unity.md).
 
-- `MemberChangeDirection.Write` fires before any of the tick's writing runs, on the peer that made the change. It reports that the members were committed to the outbound pass, not that bytes left the process - a system with no observers, or one withheld from an observer, still raises this.
-- `MemberChangeDirection.Read` fires once everything received for the tick has been applied, before reconciliation. A full apply (spawn, resync, reconcile, whole-component recovery) reports every member changed; a member-granular recovery reports only the members it repaired.
+## Only the controller writes by default
 
-A host raises both directions in the same frame, write first, without waiting for its own packet to come back. Code that only cares about a remote change - anything calling `NetworkMemberBase.TryGetWritingClient` - must check for `MemberChangeDirection.Read`; that claim only resolves under a read.
+`MemberWriteAccess.Controller`, the default, lets the server or the single controlling client set a system's members. Letting other observers write too (`MemberWriteAccess.AnyClient`) is a Pro option; see [Letting clients set members](../../core-api/state/state-write-access.md). A Free build has no `MemberWriteAccess` type, and only the controller writes.
 
-## Who may write
+## Four settings decide what a change costs
 
-By default, `MemberWriteAccess.Controller` (the enum's `0` value): the server, or the single controlling client, may set a system's members. Letting other observers write as well (`MemberWriteAccess.AnyClient`) is a Pro opt-in, covered on its own page. A free build has no `MemberWriteAccess` type, so there only the controller writes.
+- **Accuracy**: how precisely a change is compared and sent.
+- **Compression level**: how tightly the value is compressed.
+- **Transmission mode**: how changes are sent across ticks, such as `Interval` or `Divine`.
+- **Send interval**: how often a changed member may send. See [How often a member is sent](../../core-api/state/send-pacing.md).
 
-## What a change costs
+## Use Nucleus terms
 
-Four independent axes decide the price of a member changing, each covered on its own page:
-
-- **Accuracy** - how precisely a value's change is compared and sent.
-- **Compression level** - how tightly the value is compressed when it is sent.
-- **Transmission mode** - how the value's changes are sent across ticks, such as `Interval` or `Divine` projection.
-- **Send interval** - how often a changed member is actually allowed to send.
-
-## Vocabulary
-
-Nucleus has its own terms; do not substitute names from another engine's netcode.
-
-- **System**, not object: `NetworkSystem` is the networked entity.
-- **Component**, not behaviour: `NetworkComponent` is a container of members within a system.
-- **Member**, not variable: `NetworkMemberBase` is the individual replicated value.
+- **System**, not object: `NetworkSystem`.
+- **Component**, not behaviour: `NetworkComponent`.
+- **Member**, not variable: `NetworkMemberBase`.
 - **Controller**, not owner: the client permitted to set a system's members by default.

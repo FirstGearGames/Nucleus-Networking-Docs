@@ -4,24 +4,20 @@ title: "Predicted spawn and despawn requests"
 
 > **Using Unity?** See [Client-predicted spawning in Unity](../../unity/systems/predicted-spawning.md).
 
-Predicted spawning lets a client create or remove an object immediately, ahead of the server agreeing, instead of waiting a round trip to find out whether it may. It is a Pro feature.
+Predicted spawning lets a client create or remove an object at once, without waiting a round trip for the server to agree. It is a Pro feature.
 
-## Deny by default
+## Turn it on for an object type
 
-Nothing is predictable until two things are both true:
+Nothing is predictable until both of these are true:
 
-- The object's type declares a `PredictedSpawnPolicy` other than `None` — `Spawn`, `Despawn`, `SpawnAndDespawn`, or `AllowUndeclaredComposition` layered on top of one of those. The policy lives on `NetworkSystem.PredictedSpawnPolicy` and defaults to `None`, so an object nobody has authored an opinion for predicts nothing.
-- The server has registered a `SystemManager.PredictedSpawnValidator` (for spawns) or `SystemManager.PredictedDespawnValidator` (for despawns). Every predicted spawn is refused while `PredictedSpawnValidator` is `null`, and every predicted despawn is refused while `PredictedDespawnValidator` is `null`.
+1. The object's `NetworkSystem.PredictedSpawnPolicy` is not `None` (the default). Use `Spawn`, `Despawn` or `SpawnAndDespawn`, optionally combined with `AllowUndeclaredComposition`.
+2. The server has set `SystemManager.PredictedSpawnValidator` (for spawns) or `SystemManager.PredictedDespawnValidator` (for despawns). While either is `null`, every request of that kind is refused. Setting `PredictedSpawnValidator` also starts serving identifier leases to every authenticated client, now and later.
 
-Setting `PredictedSpawnValidator` is also what turns on lease serving: a session that never registers one can never admit a predicted spawn, so there's no point leasing identifiers to its clients. Registering a validator serves the lease to every client already authenticated and to everyone who authenticates afterwards.
+`PredictedSpawnPolicy` is not replicated; each peer reads its own copy. A prefab's policy is authored on the prefab, so it is the same everywhere. For a code-only object it is whatever that peer's code set. The server judges a despawn by its own copy, not the client's.
 
-`PredictedSpawnPolicy` is not replicated. Each peer reads its own copy — for a prefab, that's authored on the prefab and so the same everywhere; for a pure-code object, it's whatever that peer's own code set. The server judging a predicted despawn reads its own object's policy rather than trusting the asking client's account of it.
+`AllowUndeclaredComposition` lets a client describe an object whose component composition no call site in this build declares. Without it, such a request is refused, because that is what a client fabricating its own systems looks like.
 
-`AllowUndeclaredComposition` is a separate concern from `Spawn`/`Despawn`: it permits a client to describe an object whose component composition no call site in this build declares. Without it, an undeclared composition is refused outright, because it's the shape of a client fabricating systems and components of its own.
-
-## Asking
-
-On a client, `SystemManager` exposes two methods:
+## Ask from the client
 
 ```csharp
 public bool EnsureStartPredictedSystem(NetworkSystem networkSystem, uint platformId, ushort prefabBundleId, uint sceneHandle, out PredictedSpawnRefusal predictedSpawnRefusal);
@@ -29,88 +25,101 @@ public bool EnsureStartPredictedSystem(NetworkSystem networkSystem, uint platfor
 public bool EnsureStopPredictedSystem(NetworkSystem networkSystem, out PredictedSpawnRefusal predictedSpawnRefusal);
 ```
 
-`EnsureStartPredictedSystem` creates the object locally right away and sends the server a request describing it. Set the object's opening values before calling it, not after: the request carries a snapshot of the object's components taken during the call, and anything written afterward only reaches the server if the object is also replicating it. `platformId` is the prefab's identifier within its shard (or `NetworkSystem.UnsetPlatformId` for an object with no engine prefab behind it), `prefabBundleId` is the content shard the prefab was registered from, and `sceneHandle` is the live scene instance the object belongs to (or `NetworkSystem.UnsetSceneHandle`).
+Both are on `SystemManager`. Both return `false` when the client's own framework refuses before anything is created, removed or sent (a host, an empty lease, a policy that does not allow it), report why in `predictedSpawnRefusal`, and raise `SystemManager.PredictedSpawnRefused`. This is separate from the server refusing a request it received.
 
-`EnsureStopPredictedSystem` doesn't remove anything. It parks the object, tells the spawn handler to park its engine object, marks it as going away (`NetworkSystem.IsPredictedDespawnPending` becomes true and `PredictedDespawnPending` fires) and queues the request. The system stays started, routed and replicating in the meantime, and the server's state still applies to it, but the client can no longer change it: writes to its members are ignored, `TrySendRpc` returns false, no client state is sent for it, and it is not simulated. Parking is the integration's job: `INetworkSystemSpawnHandler.OnPredictedDespawnPendingChanged(networkSystem, isPredictedDespawnPending)` is called with `true` as the client asks and with `false` if the server refuses. It has an empty default body; the Unity integration deactivates the GameObject.
+### Spawn
 
-The server handles the request when it processes the tick the call was made on, and removes the object at the end of that tick, so everything the client did up to the call ran with the object still there. The client then removes the object the same way any despawn removes it. If the server refuses, the object is brought back, the pending flag clears and `PredictedDespawnRejected` fires on the same instance. If every copy of the request or of the refusal is lost, nothing answers it, so after two round trips (never less than half a second, never more than three seconds) the client brings the object back itself and raises `PredictedDespawnRejected` with `NotPermitted`: the server either never saw the request or refused it, and still has the object. A refused predicted spawn is answered the same way, and a spawn whose refusal is lost is torn down by the same timeout.
+`EnsureStartPredictedSystem` creates the object locally and sends the server a request describing it.
 
-`EnsureStopPredictedSystem` is the only way a client removes a networked object. A client cannot stop a replicated system itself, and destroying its engine object leaves nothing for a refusal to bring back.
+- Set the object's opening values **before** the call. The request captures the components during the call; later writes reach the server only if the object also replicates them.
+- `platformId` is the prefab's identifier within its bundle, or `NetworkSystem.UnsetPlatformId` for an object with no prefab.
+- `prefabBundleId` is the content bundle the prefab was registered from.
+- `sceneHandle` is the live scene instance, or `NetworkSystem.UnsetSceneHandle`.
 
-Both methods return `false` on a local refusal and report why through the `out PredictedSpawnRefusal` parameter, which is also raised as `SystemManager.PredictedSpawnRefused`. This is refusal by the client's own framework, before anything was created, removed, or sent — a host predicting nothing, an empty lease, a policy that doesn't admit what was asked, and so on. It's distinct from the server refusing a request that actually reached it.
+### Despawn
 
-## Judging
+`EnsureStopPredictedSystem` is the only way a client removes a networked object. A client cannot stop a replicated system, and destroying its engine object leaves nothing to bring back on a refusal.
 
-On the server, a spawn request is judged by a delegate:
+The call parks the object rather than removing it:
+
+- `NetworkSystem.IsPredictedDespawnPending` becomes true and `PredictedDespawnPending` fires.
+- `INetworkSystemSpawnHandler.OnPredictedDespawnPendingChanged(networkSystem, isPredictedDespawnPending)` is called with `true`, and with `false` if the server refuses. Its default body is empty; the Unity integration deactivates the GameObject.
+- The system stays started and the server's state still applies, but the client cannot change it: member writes are ignored, `TrySendRpc` returns false, no client state is sent, and it is not simulated.
+
+The server removes the object on the tick the client asked, so everything the client did before the call ran with the object present. If the server refuses, the object comes back, the pending flag clears, and `PredictedDespawnRejected` fires on the same instance.
+
+### When the server never answers
+
+A single lost packet does not lose a request. If no answer arrives within two round trips (at least half a second, at most three seconds), the client gives up:
+
+- A spawn is torn down, after `PredictedSpawnRejected` fires with `NotPermitted`.
+- A despawn is undone, and `PredictedDespawnRejected` fires with `NotPermitted`.
+
+If the server did admit a spawn but its answer arrived after the timeout, the client receives the server's object as an ordinary spawn, so both peers still hold the same object.
+
+## Judge requests on the server
+
+A spawn request is judged by a delegate:
 
 ```csharp
 public delegate PredictedSpawnDecision PredictedSpawnValidatorHandler(in PredictedSpawnRequestContext predictedSpawnRequestContext);
 ```
 
-`PredictedSpawnRequestContext` carries the whole of what the client is asking for, without anything having been constructed to produce it: `Connection`, `SystemType` (resolved against this build's own registry, not trusted from the wire), `Components` (a `PredictedSpawnComponents` view over the declared composition), `SystemId`, `GroupId`, `PlatformId`, `SceneHandle`, `PrefabBundleId`, `SystemBundleId`, `SystemLocalId`, `IsDeclaredComposition`, and `HasPrefab`. When `PredictedSpawnStateInspectionEnabled` is on, `PredictedSystem` is the actual object built with its opening state already applied, so the validator can judge real values instead of only shape.
+`PredictedSpawnRequestContext` describes the request without building anything: `Connection`, `SystemType` (resolved against this build's own registry), `Components` (a `PredictedSpawnComponents` view of the declared composition), `SystemId`, `GroupId`, `PlatformId`, `SceneHandle`, `PrefabBundleId`, `SystemBundleId`, `SystemLocalId`, `IsDeclaredComposition` and `HasPrefab`.
 
-The validator returns a `PredictedSpawnDecision`:
+Return a `PredictedSpawnDecision`:
 
 ```csharp
 public static PredictedSpawnDecision Permit(bool isRequesterController = false);
 public static PredictedSpawnDecision Refuse();
 ```
 
-`Permit` optionally hands the requesting client control of the object once it's built; the default is off, since the common predicted spawn is a projectile the server simulates and nobody controls. Refusal is the default, including when no validator is registered at all.
+`Permit(true)` gives the requesting client control of the object. The default is off, since the common predicted spawn is a projectile nobody controls.
 
-A despawn request is judged the same shape, with less to check because the server already holds the object:
+A despawn request is judged the same way:
 
 ```csharp
 public delegate PredictedDespawnDecision PredictedDespawnValidatorHandler(in PredictedDespawnRequestContext predictedDespawnRequestContext);
 ```
 
-`PredictedDespawnRequestContext` carries `Connection` and `System` — the server's own live copy of the object, readable directly rather than described. The validator returns a `PredictedDespawnDecision` via `Permit()` or `Refuse()`, refusing by default.
+`PredictedDespawnRequestContext` carries `Connection` and `System`, the server's own live object. Return `PredictedDespawnDecision.Permit()` or `Refuse()`.
 
-## The lease
+### Inspect opening values before deciding
 
-A client can't spend an identifier it doesn't already have, so the server leases it a batch ahead of time. Four settings on `SystemManager` control the lease, and two report its current state.
+Turn on `PredictedSpawnStateInspectionEnabled` to have the server build the object with its opening state before the validator runs. `PredictedSpawnRequestContext.PredictedSystem` is then that object, so the validator can check real values such as a projectile's speed or a spawn position. It is off by default. A permitted spawn starts the instance that was inspected, so only a refused request costs an extra build.
 
-| Member | What it controls |
+## Size the identifier lease
+
+A client spends identifiers the server leased to it ahead of time. These are on `SystemManager`:
+
+| Member | Meaning |
 |---|---|
-| `PredictedSpawnLeaseSize` | How many spawns a client is kept holding — the burst it can predict in one round trip before waiting on the server. Default 8. |
-| `PredictedSpawnSystemIdsPerSpawn` | How many `NetworkSystem` identifiers each leased spawn carries — the most systems one predicted object can be built from. Default 8. An object needing more is refused as `PredictedSpawnRefusal.LeaseExhausted`. |
-| `PredictedSpawnSystemLeaseSize` | `PredictedSpawnLeaseSize * PredictedSpawnSystemIdsPerSpawn` — the total system identifiers a client is kept holding. Read-only; it's the product, not a separate knob. |
-| `PredictedSpawnsPerSecond` | How fast a client earns replacement spawns, in spawns per second, or zero to leave the top-up cadence as the only limit. Default 30. |
-| `PredictedSpawnLeaseCount` | On a client, how many more objects it can predict right now. Zero on the server. |
-| `PredictedSpawnSystemLeaseCount` | On a client, how many more `NetworkSystem` identifiers it's holding. Zero on the server. |
+| `PredictedSpawnLeaseSize` | How many objects a client can predict in a burst before waiting on the server. Default 8. |
+| `PredictedSpawnSystemIdsPerSpawn` | How many `NetworkSystem` identifiers each leased spawn carries, so the most systems one predicted object can have. Default 8. An object needing more is refused as `PredictedSpawnRefusal.LeaseExhausted`. |
+| `PredictedSpawnSystemLeaseSize` | Read-only: `PredictedSpawnLeaseSize * PredictedSpawnSystemIdsPerSpawn`. |
+| `PredictedSpawnsPerSecond` | The sustained rate a client earns replacement spawns, or zero for no limit beyond the top-up cadence. Default 30. |
+| `PredictedSpawnLeaseCount` | On a client, how many more objects it can predict now. Zero on the server. |
+| `PredictedSpawnSystemLeaseCount` | On a client, how many more `NetworkSystem` identifiers it holds. Zero on the server. |
 
-`PredictedSpawnLeaseSize` and `PredictedSpawnSystemIdsPerSpawn` count different things and it's easy to conflate them: the lease size is a quota on *objects* (one grouped prefab of five systems still draws one, the same as a single ungrouped system), while the per-spawn identifier count is the *supply* each of those objects draws from. Raise the lease size for a weapon that fires in real bursts; raise the per-spawn count for a prefab built from more systems.
+- The lease size counts objects: a grouped prefab of five systems draws one, like a single system. Raise it for a weapon that fires in bursts. Raise `PredictedSpawnSystemIdsPerSpawn` for a prefab built from more systems.
+- Spent spawns are replaced at most every 0.3 seconds, or once per round trip on a slower link. That alone allows about 26 spawns a second at the default lease of 8. `PredictedSpawnsPerSecond` holds a larger lease to a sustained rate; at the default of 30 it starts limiting once the lease is above about 9, so raising the lease raises the burst, not the rate. Lower it for objects that are expensive to build.
+- An empty lease refuses locally with `PredictedSpawnRefusal.LeaseExhausted`, without contacting the server.
 
-Spent identifiers come back as top-ups. The server tops a client up at most once every 0.3 seconds, and never sends a second top-up before the client has acknowledged the first, so on a link slower than that a client is topped up once per round trip. Each top-up replaces everything the client has spent, so the cadence alone allows a whole lease every 0.3 seconds: about twenty-six spawns a second at the default lease of eight, and more for a larger lease. `PredictedSpawnsPerSecond` is what holds a larger lease to a sustained rate. At the default of 30 it binds once the lease is above about nine, so raising the lease raises the burst without raising the rate. Lower it for objects that are expensive to build. It counts spawns, like the lease size, however many systems each object is made of.
+## Handle the outcome on the client
 
-A lease that's run dry answers `PredictedSpawnRefusal.LeaseExhausted` locally, without a request ever reaching the server.
+`NetworkSystem` raises these on the predicting client:
 
-## Outcomes and events
+- `PredictedSpawnConfirmed`: the server agrees the object exists. Raised before the server's state is applied.
+- `PredictedSpawnRejected(PredictedSpawnRejectReason)`: the server refused the object. Raised just before the local copy is torn down.
+- `PredictedDespawnPending`: the client asked to remove this object and is waiting.
+- `PredictedDespawnRejected(PredictedDespawnRejectReason)`: the server refused the removal; the object comes back where the server has it.
 
-On the predicting client, `NetworkSystem` raises:
+| Enum | Values |
+|---|---|
+| `PredictedSpawnRejectReason` | `NotPermitted` (the validator refused), `UnleasedId`, `UnknownType`, `SceneNotEntered`, `GroupMismatch`, `Malformed`, `NotPermittedByPolicy`, `UndeclaredComposition` |
+| `PredictedDespawnRejectReason` | `NotPermitted`, `NotPermittedByPolicy`, `UnknownSystem`, `NotObserved` |
 
-- `PredictedSpawnConfirmed` — the server's snapshot arrived, meaning it agrees the object exists. Raised before the snapshot's own state is applied.
-- `PredictedSpawnRejected(PredictedSpawnRejectReason)` — the server refused the object, raised immediately before the local copy is torn down.
-- `PredictedDespawnPending` — the client has asked the server to remove this object and is waiting.
-- `PredictedDespawnRejected(PredictedDespawnRejectReason)`: the server refused the removal. The object was never removed, so it is brought back where the server has it and carries on.
+`NetworkSystem.PredictedSpawnConfirmMode` sets what happens to the predicted state on confirmation:
 
-`PredictedSpawnRejectReason` has eight values: `NotPermitted` (the ordinary refusal — the validator said no), `UnleasedId`, `UnknownType`, `SceneNotEntered`, `GroupMismatch`, `Malformed`, `NotPermittedByPolicy`, and `UndeclaredComposition`. `PredictedDespawnRejectReason` has four: `NotPermitted`, `NotPermittedByPolicy`, `UnknownSystem`, `NotObserved`.
-
-On the client's `SystemManager`, `PredictedSpawnRefused` fires for a refusal the local framework made on its own, before anything reached the server — see Asking above.
-
-What happens to a predicted object's simulated state once the server confirms it is controlled by `NetworkSystem.PredictedSpawnConfirmMode`:
-
-- `ApplyAuthoritativeState` (default) — the confirming snapshot applies in full, so the object lands exactly where the server built it. Any divergence between what the client predicted and what the server built is shown, not hidden.
-- `KeepPredictedState` — the snapshot is still read, but its member values are discarded; the object keeps the path the client already simulated, adopting only identity, controller and placement from the confirmation. Use this for an object whose local path must not visibly jump, typically a projectile the player is already watching.
-
-### When the server never answers
-
-The request is sent once, and the client's upstream redundancy (`ClientRedundancy`) resends it on the ticks after, so a single lost packet does not lose it. If no answer arrives at all, the client gives up and despawns its local copy, raising `PredictedSpawnRejected` with `NotPermitted` first, as for an ordinary refusal. It waits two round trips, but never less than half a second and never more than three seconds, so on a bad link an object nobody agreed to does not stay on screen for long.
-
-An answer can still arrive after the client gave up: the server admitted the spawn, but its confirmation was lost until after the timeout. The client then receives the server's object as an ordinary spawn, with the server's values, so both peers still end up holding the same object.
-
-## Inspecting state before deciding
-
-`PredictedSpawnStateInspectionEnabled` builds the predicted object and reads its opening state before the validator runs, so the validator can judge actual values — a projectile's speed, a spawn position — rather than only the object's declared shape and type. It's off by default, because most validators don't need it: a composition and a prefab identity answer most questions.
-
-The cost lands only on a refused request. With inspection on, the instance built for the look is the same one started if the validator permits the spawn, so the approved path pays nothing extra; only a refusal pays for a construction it didn't end up using.
+- `ApplyAuthoritativeState` (default): the server's values apply in full, so the object lands where the server built it, and any difference shows.
+- `KeepPredictedState`: the server's member values are discarded and the object keeps the path the client simulated, taking only identity, controller and placement. Use it for an object that must not visibly jump, such as a projectile the player is watching.

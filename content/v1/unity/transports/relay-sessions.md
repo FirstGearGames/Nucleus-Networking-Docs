@@ -4,75 +4,59 @@ title: "Hosting and joining a relay session"
 
 > **Driving the core API directly?** See [The relay transport](../../core-api/transports/relay-transport.md).
 
-## Hosting a session
+## Run the relay and the directory
 
-Add `BlitzRelayTransport` to the `UnityCoreManager`'s GameObject and call `StartHostingSessionAsync()`. It opens a session, hosts it, and registers the room the relay names.
+Nucleus does not include either service, so run both yourself:
+
+- **The relay**, listening on UDP 7770, with a connection key that matches **Connection Key** on `BlitzRelayTransport`.
+- **The newfarm directory**, listening on UDP 47778, which resolves session ids and elections.
+
+Their addresses and ports are fields on `BlitzRelayTransport`, defaulting to `127.0.0.1` and the ports above.
+
+## Host a session
+
+1. Add `BlitzRelayTransport` to the `UnityCoreManager`'s GameObject.
+2. Call `StartHostingSessionAsync()`. It opens a session, hosts it and registers the room the relay names.
+3. When it returns `true`, give joining players the `RoomCode` or the `SessionId`.
 
 ```csharp
 bool isHosting = await blitzRelayTransport.StartHostingSessionAsync();
-```
 
-Once that returns `true`, read `RoomCode` and hand it to the players who will join directly:
-
-```csharp
 string roomCode = blitzRelayTransport.RoomCode;
+ulong sessionId = blitzRelayTransport.SessionId;
 ```
 
-`RoomCode` reads through to `RelayTransport.HostedRoomCode` on the underlying core transport once one exists, and falls back to the inspector-configured room otherwise. Either way, it is a room, not a session: see below for why that distinction matters past the first host.
+`RoomCode` reads `RelayTransport.HostedRoomCode` on the core transport once one exists, and the inspector's **Room Code** otherwise. `SessionId` reads `SessionDirectoryUnset` (`0`) when this peer holds no session, which is the case while `IsHostMigrationEnabled` is off or before hosting starts.
 
-## Joining a session
+## Join a session
 
-A joining peer can go one of two ways.
-
-**By room code.** Set `RoomCode` before connecting, the same field a host leaves empty. This puts the joining peer straight into that room and nothing else.
-
-**By session id.** Call `JoinSessionAsync(sessionId)`. It finds the session by its identifier and joins whatever room it currently lives in, wherever that is.
+- **By room code:** set `RoomCode` before connecting. The peer joins that room and nothing else.
+- **By session id:** call `JoinSessionAsync(sessionId)`. It finds the session and joins whatever room it is in now.
 
 ```csharp
 bool isJoined = await blitzRelayTransport.JoinSessionAsync(sessionId);
 ```
 
-`SessionId` gives you the id to distribute in the first place:
+## Hand out a session id if the host can change
 
-```csharp
-ulong sessionId = blitzRelayTransport.SessionId;
-```
+A room code names one room on the relay. Every handover moves the session to a new room, so a room code goes stale when the host changes. A session id is registered with the newfarm directory and survives a handover, because a rejoining peer asks the directory, not the relay.
 
-It reads `SessionDirectoryUnset` (`0`) when this peer holds no session, which is the case whenever `IsHostMigrationEnabled` is off or hosting hasn't been started yet.
+Give players a room code only for a session that will never change host. Otherwise give them the session id.
 
-## Room code vs. session id
+## Hand hosting to another peer
 
-The room code names one room on the relay. Every handover moves the session to a new room, so a room code a player was handed goes stale the moment the host changes. The session id is a bearer token registered with the newfarm directory: it survives a handover because the directory, not the relay, is what a rejoining peer asks.
-
-Give players a room code for a session that will never change host. Give them a session id for anything that might.
-
-## Handing the room on
-
-A host that means to leave without ending the match calls `TrySurrenderHostingSession()`:
+To stop hosting without ending the match, call `TrySurrenderHostingSession()`. The session passes to whoever the directory elects next, and play does not stop.
 
 ```csharp
 bool isSurrendered = blitzRelayTransport.TrySurrenderHostingSession();
 ```
 
-This gives the session up to whoever the directory elects next, without leaving it and without stopping play. The component owns the coordinator that does this work, exposed as `Migration` (a `NewfarmHostMigration`). It drives the directory from the component's own `Update`, so nothing beyond starting a hosting session or joining one is required of the game; election, adoption and finding the session's new location all follow from that.
+The component runs the handover itself through `Migration`, a `NewfarmHostMigration` it drives from its own `Update`. Once your game starts hosting or joins, election, adoption and finding the session's new location need nothing more from it. The elected peer adopts the world it was receiving and hosts it. Other peers rejoin the new host's room through the session id, the same way they joined.
 
-A surviving peer that is elected next adopts the world it had been receiving as its own and starts hosting it. A peer that only rejoins picks up the new host's room the same way it joined originally, through the session id.
+## Keep Host Migration on
 
-## What the host-migration toggle does
+`IsHostMigrationEnabled` (on by default) is what creates `Migration`. With it off, `StartHostingSessionAsync`, `JoinSessionAsync` and `TrySurrenderHostingSession` fail and log an error telling you to drive the `CoreManager` directly.
 
-`IsHostMigrationEnabled` (on by default) is what makes `Migration` exist at all; without it, `StartHostingSessionAsync`, `JoinSessionAsync` and `TrySurrenderHostingSession` all fail and log an error telling you to drive the CoreManager directly instead.
+Turning it on also sets `ClientManager.DisconnectResetMode` to `RetainReceivedWorld`, so a client keeps the world it received when its link to the server drops. The elected peer needs that world to adopt it. `RetainReceivedWorld` can be set in a Free build, but adopting the retained world needs Pro, so the Blitz Relay and Newfarm Migration assemblies do not compile against a Free `Nucleus.dll`.
 
-Turning it on also sets `ClientManager.DisconnectResetMode` to `RetainReceivedWorld` for you. That's a client-side setting: it decides, at the moment this peer's link to the server drops, whether the world it received is thrown away or kept. Migration needs it kept, because the peer that gets elected next has to adopt what it was already receiving rather than starting from nothing.
-
-`RetainReceivedWorld` is settable in a free build, but adopting the retained world is Pro-only, and so is this component: the coordinator adopts the retained world when it promotes a peer, so the Blitz Relay and Newfarm Migration assemblies do not compile against a free `Nucleus.dll`.
-
-Watch `SystemManager.RespawnWorldOnReconnectEnabled` too. It changes only what happens when a client reconnects: the world is still kept when the link drops, and a peer elected to host still adopts it, but a peer that rejoins drops what it kept and rebuilds it from the new server's own account instead of being relinked to it. That costs a spawn per object, in exchange for never keeping anything the new server never heard of.
-
-## Services you have to run yourself
-
-Neither ships in this repository:
-
-- **The relay**, listening on UDP 7770, which needs a connection key (`BlitzRelayTransport`'s `_connectionKey` field/inspector setting) matching whatever the relay was configured with.
-- **The newfarm directory**, listening on UDP 47778, which is what session ids and elections are resolved against.
-
-Both addresses and ports are inspector fields on `BlitzRelayTransport` (`_relayAddress`/`_relayPort` and `_directoryAddress`/`_directoryPort`), defaulting to `127.0.0.1` and the ports above.
+`SystemManager.RespawnWorldOnReconnectEnabled` changes only what happens when a client reconnects. The world is still kept when the link drops, and an elected peer still adopts it, but a peer that rejoins drops what it kept and rebuilds it from the new server instead of being relinked to it. That costs a spawn per object, and never keeps anything the new server does not know about.

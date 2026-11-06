@@ -2,67 +2,62 @@
 title: "An object is missing, or will not go away"
 ---
 
-Before working through the cases below, it helps to see what interest resolved. Add a `NetworkInterestOverlay` to the player object, switch it on, and select the object on the server or host while playing: a line goes to every other networked object, colored by whether the player is streamed it, stopped for it, or does not have it at all (see [Developer tools in the editor](../diagnostics/developer-tools-in-unity.md#seeing-what-an-objects-controller-is-sent)).
+> **Driving the core API directly?** See [An object is missing, or will not go away](../../core-api/interest/interest-troubleshooting.md).
+
+To see what interest resolved, add a `NetworkInterestOverlay` to the player object, switch it on, and select the object on the server or host while playing. A line goes to every other networked object, colored by whether the player is streamed it, stopped for it, or does not have it at all. See [Developer tools in the editor](../diagnostics/developer-tools-in-unity.md#seeing-what-an-objects-controller-is-sent).
+
+Distance rules, the spatial grid and object pacing are Pro. The Scene rule and the base interest system ship in free. If a setting below seems not to apply, check whether the build is free.
 
 ## A client receives objects from a scene it never loaded
 
-No rule gates scenes by default in a way you can see failing: an ungated spawn is not an error anywhere on the server, it simply lands in the wrong scene on the client. The Unity inspector for `UnityInterestManager` warns about exactly this when its rule list has no scene rule registered: "No rule gates scenes. A client will receive objects from scenes it never loaded, which puts them in the wrong scene rather than raising an error, and several open instances of one scene cannot be told apart by distance."
+No rule gates scenes, so the objects land in the wrong scene with no error anywhere. The Unity Interest Manager inspector warns "No rule gates scenes" in this case.
 
-Fix: add the scene rule to the world's interest conditions unless you are arbitrating scene membership with a rule of your own.
+Fix: add the Scene rule to **World Rules** on the Unity Interest Manager, unless a rule of your own decides scene membership.
 
 ## Nothing is ever culled, however large the stop distance is
 
-A distance condition reads positions through its own `TryReadSourcePosition` (the Unity integration's conditions read the linked GameObject's transform), not through the world reader registered with `InterestManager.SetPositionReader`. When it cannot measure a pair it answers unmeasurable, and an unmeasured pair is never allowed to restrict anything, so no cutoff culls or stops it. That happens when the connection controls nothing yet, so there is no point to measure from, or when `TryReadSourcePosition` returns `false` for the object or for every object the connection controls.
+A distance rule that cannot measure a pair never restricts it. Unity's distance rules read the linked GameObject's transform through `TryReadSourcePosition`. A pair cannot be measured when the client controls nothing yet, or when `TryReadSourcePosition` returns `false` for the object or for every object the client controls.
 
-Fix: make sure each player controls the object it plays through, and that the condition's `TryReadSourcePosition` answers for both the evaluated object and the controlled ones. The world reader is used only by level of detail: without one, level of detail logs an error once and every pair reads as Near, but culling is unaffected.
+Fix: make sure each player controls the object it plays through. In a condition of your own, make sure `TryReadSourcePosition` answers for both the evaluated object and the controlled ones.
 
 ## An object disappears at range when it should only freeze, or the reverse
 
-`DistanceInterestLadder.Resolve` returns an unmet spawn past the despawn cutoff and only an unmet stop past the stop cutoff — despawn always outranks stop from the same measured distance. Whether an unmet stop actually removes the object is `NetworkSystem.DespawnWhenStoppedEnabled`: off, the object freezes in place and keeps its last state; on, it is treated as culled once stopped.
+Past the despawn distance the object is despawned. Past only the stop distance it stops, and despawn wins when both apply. Whether a stop removes the object is `NetworkSystem.DespawnWhenStoppedEnabled`: off, the object freezes with its last state; on, it is removed once stopped.
 
-On a grouped object (several systems sharing one `NetworkSystemGroup`), a stop is a vote, not a unilateral despawn: a member votes only when its stop is unmet *and* its `DespawnWhenStoppedEnabled` is set, and the object leaves only once every member votes to. A member that freezes instead of voting holds the object in place by abstaining, so one system in the group with `DespawnWhenStoppedEnabled` off is enough to keep a "should have despawned" object sitting there. An ungrouped system has no sibling to defer to, so its own unmet stop with the flag on despawns it directly.
+On an object with several systems sharing one `NetworkSystemGroup`, the object leaves only once every member has stopped with `DespawnWhenStoppedEnabled` set. One member with it off keeps the object in place. A system with no group despawns on its own stop.
 
-Fix: check `DespawnWhenStoppedEnabled` on every system in the group, not just the one you're staring at.
+Fix: check `DespawnWhenStoppedEnabled` on every system in the group, not just one.
+
+## A distance rule only stops, and never despawns
+
+The inspector's Distance rule (`AuthoredDistanceInterestCondition`) has only a **Stop Distance** and no despawn distance, so it never despawns by distance.
+
+Fix: to despawn by distance, construct a `DistanceInterestCondition` in code, which takes a `stopDistance` and a `spawnDistance` separately, and register it globally or per system.
 
 ## Objects flicker in and out at a cull boundary
 
-There is no hysteresis on a distance cull. `Resolve` is two bare distance-versus-cutoff comparisons with nothing damping the boundary, so a player oscillating around a cutoff between evaluations flips the verdict every pass. The only thing standing between a player's movement and a flicker is `EvaluationCadenceTicks`: distance is only re-measured once per that many ticks, so as long as a player cannot close the gap between "just inside" and "just past" the cutoff within one cadence, the flicker never has a chance to fire.
+A distance cutoff has no hysteresis, so a player moving back and forth across it flips the verdict each evaluation. Only **Evaluation Cadence Ticks** limits this, because distance is measured once per that many ticks.
 
-Hysteresis does exist in this codebase, but only on the level-of-detail ladder (a fraction-of-a-rung band a distance has to re-cross before it switches back). It cannot fix this: a level-of-detail band is only a reading for the game. It never changes what is sent or how often, nor whether an object spawns, stops, or despawns, so it has no bearing on a cull boundary.
-
-Fix: widen the gap between the stop/despawn cutoff and how far a player can move in one `EvaluationCadenceTicks`, either by raising the cutoff, lowering the cadence, or both. There is no setting to smooth the boundary itself.
+Fix: widen the gap between the cutoff and how far a player can move in one evaluation cadence, by raising the cutoff, lowering the cadence, or both. No setting smooths the boundary itself.
 
 ## A new client sees nothing for a second or two
 
-Registration as an observer waits for more than authentication. A connection authenticates before its round trip time is known, and it is held back from every started system until `Connection.CanReceiveState` is true — which happens once its link is measured, typically one round trip later, or immediately for a host's own client. A client stuck in this window is authenticated but registered against nothing, so it appears to see no objects at all for a moment.
-
-This is expected and self-resolving; there is nothing to configure. If the gap never closes, check that the transport is actually completing a round trip for that connection.
+A client is not sent any object until its link is measured (`Connection.CanReceiveState`), typically one round trip after it authenticates, or at once for a host's own client. This is expected and resolves itself. If it never resolves, check that the transport completes a round trip for that connection.
 
 ## A join or scene load arrives as one huge tick and drops
 
-Object pacing exists to prevent exactly this. `ServerManager.MaximumObjectKilobytesPerTick` is the most kilobytes (1 kB is 1,024 bytes) of new objects one client is sent on a single tick, 50 by default, and whatever does not fit is sent on the ticks after. Objects a client is sent again after packet loss share the same budget. Pacing cannot be switched off, so a join that still lands as one tick too large to arrive means the budget is set wider than that client's link can take: lower it. In Unity it is the **Maximum Object Kilobytes Per Tick** slider under the **Object Pacing** header on the Unity Server Manager component. One object wider than the whole budget is still sent, alone on its tick, so no budget makes a tick smaller than the widest single object.
+Object pacing limits how much of a join lands in one tick. Set it with the **Maximum Object Kilobytes Per Tick** slider under **Object Pacing** on the Unity Server Manager (`ServerManager.MaximumObjectKilobytesPerTick`). It is the most kilobytes (1 kB is 1,024 bytes) of new objects one client is sent per tick, 50 by default. What does not fit is sent on later ticks, and objects resent after packet loss share the same budget. Pacing cannot be switched off, so a join that still lands as one tick too large to arrive means the budget is wider than that client's link can take: lower it. One object wider than the whole budget is still sent, alone on its tick.
 
-To check whether the budget is holding spawns back, read:
-- `InterestManager.TotalSpawnsDeferred` counts the spawns that have had to wait so far. A world that never fills the budget keeps it near zero.
+To check whether the budget is holding spawns back:
+
+- `InterestManager.TotalSpawnsDeferred` counts spawns that have had to wait. A world that never fills the budget keeps it near zero.
 - `Connection.SystemsAwaitingSpawnAdmissionCount` is how many spawns one connection is still owed.
-- A `LogWarning` fires once a connection has been owed spawns for `InterestManager.SpawnAdmissionStallWarningTicks` (90) ticks without receiving one, naming the connection and the current `MaximumObjectKilobytesPerTick`.
+- A warning is logged once a connection has been owed spawns for `InterestManager.SpawnAdmissionStallWarningTicks` (90) ticks without receiving one, naming the connection and the current budget.
 
-If that warning fires, the world is spawning faster than the budget lets that peer receive: raise `MaximumObjectKilobytesPerTick`, or spawn less at once. A `NetworkSystemGroup` wider than the whole budget is not a fault on its own: its objects simply arrive over more than one tick.
+If that warning fires, the world spawns faster than the budget lets that client receive: raise the budget, or spawn less at once. A `NetworkSystemGroup` wider than the budget is not a fault on its own; it arrives over more than one tick.
 
 ## Setting the technique or axes logs an error and does nothing
 
-`InterestManager.SetInterestTechnique` is refused, with a logged error, once any distance condition has already registered in that world, globally or per system. One technique and one plane govern a world for its whole lifetime, so choose them before the first distance condition registers.
+The technique and axes are refused, with a logged error, once any distance rule has registered in the world, globally or per system.
 
-Fix: call `SetInterestTechnique` during setup, before any system carrying a distance rule can spawn — never after.
-
-## A distance rule with no spawn range, only a stop range
-
-This is specific to the authored Unity rule (`AuthoredDistanceInterestCondition`), not the underlying condition type. The inspector-authored rule only exposes a stop distance; it always builds its condition with the despawn cutoff unset (`DistanceInterestLadder.UnsetDistance`), so an object authored this way never culls by distance at all, only stops.
-
-The underlying type has no such limitation. `DistanceInterestCondition` (Unity's own binding of the engine-neutral `DistanceInterestConditionBase`, not the inspector-authored rule) takes a `stopDistance` and a `spawnDistance` independently in its constructor, and so does the `DistanceInterestLadder` beneath it. Construct one yourself in code (or register a global condition) to get culling by distance instead of authoring through the inspector.
-
-## Every distance lever on this page is Pro-only
-
-Distance interest conditions, the spatial grid, level of detail, and object pacing are all Pro-only. On a free build none of the above levers exist: no distance rule, no spatial grid, no level of detail, no object pacing. The scene rule and the base interest system are not gated this way and ship in free.
-
-If a build behaves as though one of these settings simply doesn't apply, confirm it's a free build before debugging further.
+Fix: set **Interest Technique** and **Interest Axes** on the Unity Interest Manager before play. From code, call `InterestManager.SetInterestTechnique` during setup, before any system carrying a distance rule can spawn.

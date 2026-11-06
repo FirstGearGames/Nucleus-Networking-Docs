@@ -2,20 +2,18 @@
 title: "FishNet to Nucleus name map"
 ---
 
-## Read this first
+This map shows where FishNet and Nucleus concepts line up. It is not an alias list: write Nucleus names in Nucleus code. Some rows mark where the shapes differ, not just the names. There is no automated converter; port code by hand and write it in Nucleus's own shape.
 
-This table shows where FishNet concepts and Nucleus concepts line up. It is not an alias list and it does not import FishNet names into Nucleus. Nucleus has its own vocabulary; write Nucleus names in Nucleus code, not FishNet ones translated in place. Some rows also mark where the shapes genuinely differ, not just the names.
-
-## Objects and scripts
+## Map objects and scripts
 
 | FishNet | Nucleus |
 |---|---|
 | `NetworkObject` | `NetworkSystem` in the core, `NetworkSystemObject` in the Unity integration |
 | `NetworkBehaviour` | `NucleusBehaviour<T>` (Unity), layered over `MonoBehaviour` plus `NetworkSystemObject` plus `NetworkComponent` |
 
-These are not one-to-one. A FishNet `NetworkObject` is one networked identity per `GameObject`. A Nucleus `NetworkSystem` is not tied to a `GameObject` at all in the core, and in Unity one `GameObject`'s `NetworkSystemObject` can link several `NetworkSystem`s at once, each carrying its own `NetworkComponent`.
+A FishNet `NetworkObject` is one networked identity per `GameObject`. A Nucleus `NetworkSystem` is not tied to a `GameObject` in the core, and in Unity one `GameObject`'s `NetworkSystemObject` can link several `NetworkSystem`s, each carrying its own `NetworkComponent`.
 
-## Replicated state
+## Map replicated state
 
 | FishNet | Nucleus |
 |---|---|
@@ -27,9 +25,9 @@ These are not one-to-one. A FishNet `NetworkObject` is one networked identity pe
 | *(no FishNet counterpart)* | `NetworkQueueMember<T0>` |
 | `OnChange` (per-member callback) | `NetworkComponent.OnMembersChanged(ulong memberFlags, MemberChangeDirection memberChangeDirection)` |
 
-`OnMembersChanged` is component-wide, not per-member: it fires once per component with a flag mask of which members changed, and a `MemberChangeDirection` (`Write` or `Read`) saying which side of the wire the raise is reporting. There is no per-member changed event; this is a different shape, not a missing feature.
+`OnMembersChanged` fires once per component, with a flag mask of which members changed and a `MemberChangeDirection` (`Write` or `Read`) saying which side the change came from. There is no per-member changed event.
 
-## Ownership and calls
+## Map ownership and calls
 
 | FishNet | Nucleus |
 |---|---|
@@ -40,11 +38,11 @@ These are not one-to-one. A FishNet `NetworkObject` is one networked identity pe
 | `RequireOwnership` | `RpcSendAccess` |
 | `IBroadcast` | `IMessage` |
 
-There are no attribute-driven RPCs in Nucleus. A remote call is a plain struct implementing `IRpc`, sent explicitly through `TrySendRpc` with a target and channel, rather than a method decorated with an attribute. That is a design choice, not a gap.
+Nucleus has no attribute-driven RPCs. A remote call is a plain struct implementing `IRpc`, sent with `TrySendRpc`.
 
-`ControllerType` also has a `Server` and an `AnyController` value alongside `Client`, for checking whether the local peer is the server, the controlling client, or either.
+`ControllerType` also has `Server` and `AnyController`, for checking whether the local peer is the server, the controlling client, or either.
 
-## Managers and infrastructure
+## Map managers and infrastructure
 
 | FishNet | Nucleus |
 |---|---|
@@ -56,19 +54,11 @@ There are no attribute-driven RPCs in Nucleus. A remote call is a plain struct i
 | `ClientId` | `Connection.Id` |
 | kicking a client | `ServerManager.KickClient(connection)` |
 
-`CoreManager.Instance` is a real static slot, set the first time a `CoreManager` is constructed and guarded by `EnsureSetInstance` for a process that wants to name a different one as the instance later. `NucleusUnity.BoundCoreManager` is the Unity-side equivalent, bound by the integration's bootstrap.
+`CoreManager.Instance` is set when the first `CoreManager` is constructed, and `EnsureSetInstance` can point it at another. `NucleusUnity.BoundCoreManager` is the Unity equivalent. Each names one manager, so a process running several, such as a host pair or a two-peer test, should pass the `CoreManager` explicitly.
 
-Both slots name exactly one manager. A process running more than one `CoreManager` at a time — a host pair in the same process, a two-peer test — has more than one valid manager and no slot can name both. In that situation, resolve and pass the `CoreManager` explicitly instead of reading the static.
-
-## These names are the same in both frameworks
-
-These read the same in Nucleus as in FishNet; no rename to look up.
+## Some names are the same in both
 
 - `Channel.Reliable`, `Channel.Unreliable`
 - `IsHostStarted`, on a `NucleusBehaviour` as well as on `TransportManager` and `NetworkSystem`
 
-`IsServerStarted` and `IsClientStarted` keep their names on `TransportManager` and `NetworkSystem`, but a `NucleusBehaviour` has no property by either name. Inside a script, ask `IsStarted(Invoker.Server)` or `IsStarted(Invoker.Client)` instead.
-
-## There is no automated migration tool
-
-There is no automated FishNet-to-Nucleus converter. Port code by hand, using this map to find the replacement concept, then write it in Nucleus's own shape rather than FishNet's.
+`IsServerStarted` and `IsClientStarted` exist on `TransportManager` and `NetworkSystem`, but not on a `NucleusBehaviour`. Inside a script, use `IsStarted(Invoker.Server)` or `IsStarted(Invoker.Client)`.

@@ -4,37 +4,32 @@ title: "UnityLagCompensationManager"
 
 > **Driving the core API directly?** See [The rewind window and the view clamp](../../core-api/lag-compensation/the-rewind-window.md).
 
-## The inspector seat for lag compensation
+`UnityLagCompensationManager` sets lag compensation and spawn compensation. Both are Pro; in a free build every value is stored and never read.
 
-`UnityLagCompensationManager` is the inspector-side counterpart of the engine's `LagCompensationManager`. It is added to the `UnityCoreManager`'s GameObject automatically when a scene does not carry one, so a scene only needs it placed to change the defaults. Every value is pushed onto the engine once, in `ManagersInstantiated`, when the session starts, so the inspector disables the fields during play. After that, `NucleusLagCompensationManager` is the engine manager they were pushed onto, the same object as `NucleusUnity.BoundCoreManager.LagCompensationManager`, and code can change its fields directly.
+A scene without this component gets one automatically, so add it yourself only to change the defaults. Its values are applied when the session starts, and the fields are disabled during play. To change a value after that, set it from code on `NucleusLagCompensationManager`, which is the same object as `NucleusUnity.BoundCoreManager.LagCompensationManager`.
 
-Lag compensation and spawn compensation are Pro. In a free build every value is stored and never read. The inspector says so in its header.
-
-## Lag Compensation
+## Set the rewind window and query rules
 
 | Inspector field | Engine setting | Default | What it does |
 | --- | --- | --- | --- |
-| **Max Rewind (ms)** | `MaximumRewindMilliseconds` | 500 | How far back hitbox poses are kept and a shot may be judged. Read when an object's hitboxes register, so it applies to objects spawned after it changes. The slider runs to 2000; a longer window is legal from code but already far past any playable link. |
-| **2D Queries Hit 3D Hitboxes** | `Can2DQueriesHit3DHitboxes` | off | Lets 2D queries also hit 3D hitboxes, for a game that mixes the two. 3D queries never hit 2D hitboxes either way. |
-| **Queries Start In Hitboxes** | `CanQueriesStartInHitboxes` | on | Lets a ray or cast hit a hitbox it starts inside, at distance zero, the way Unity's 2D queries hit a collider they start in. When off, that hitbox is ignored and the query goes on to what lies beyond it. Overlaps are not affected. |
+| **Rewind Ceiling (ms)** | `MaximumRewindCeilingMilliseconds` | 500 | The longest rewind window the server honours. **Max Rewind (ms)** is held to it. The slider runs to 2000. |
+| **Max Rewind (ms)** | `MaximumRewindMilliseconds` | 500 | How far back hitbox poses are kept and a shot may be judged. Read when an object's hitboxes register, so it applies to objects spawned after it changes. The slider stops at **Rewind Ceiling (ms)**. |
+| **2D Queries Hit 3D Hitboxes** | `Can2DQueriesHit3DHitboxes` | off | Lets 2D queries also hit 3D hitboxes, for a game that mixes the two. A 2D ray and `OverlapBox2D` touch a 3D hitbox where the plane Z = 0 cuts it, and a circle, a 2D capsule and a circle cast reach it as a ball or capsule of their radius lying in the plane. 3D queries never hit 2D hitboxes either way. |
+| **Queries Start In Hitboxes** | `CanQueriesStartInHitboxes` | on | Lets a ray or cast hit a hitbox it starts inside, at distance zero, the way Unity's 2D queries hit a collider they start in. Turn it off when a muzzle can sit inside a hitbox the shot should pass through, such as another body part of a large creature; that hitbox is then ignored and the query goes on to what lies beyond. Overlaps are not affected. |
 
-With **2D Queries Hit 3D Hitboxes** ticked, a 2D ray and `OverlapBox2D` touch a 3D hitbox where the plane Z = 0 cuts it, and a circle, a 2D capsule and a circle cast reach it as a ball or capsule of their radius lying in the plane.
-
-Turn **Queries Start In Hitboxes** off when a muzzle can sit inside a hitbox the shot should pass through, such as another body part of a large creature, and the shot should carry on to whatever lies beyond.
-
-## Spawn Compensation
+## Cap spawn compensation
 
 | Inspector field | Engine setting | Default | What it does |
 | --- | --- | --- | --- |
-| **Max Spawn Compensation (ms)** | `MaximumSpawnCompensationMilliseconds` | 150 | The most a freshly spawned object may be caught up through the latency it lost, counted across every hop it travelled. The slider runs from 0 to the engine ceiling, 500, so the inspector cannot author a value the runtime would clamp. |
+| **Max Spawn Compensation (ms)** | `MaximumSpawnCompensationMilliseconds` | 150 | The most a freshly spawned object, such as a projectile, may be caught up through the latency it lost, counted across every hop it travelled. It also bounds how long a catch-up runs. The slider runs from 0 to the engine ceiling, 500, which the runtime clamps to. |
 
-Spawn compensation is the other half of lag compensation: lag compensation judges a shot against the past, and spawn compensation brings a fresh object, such as a projectile, up to the present. A client watching somebody else's shot is owed what the server already spent plus what the delivery cost it, and the two together are held to this one figure. It also bounds how long a catch-up runs. Raise it to watch the catch-up; on a local link the measured latency never asks for the whole of it. See [Spawn compensation](../../core-api/systems/spawn-compensation.md).
+A client watching somebody else's shot is owed the time the server already spent plus what the delivery cost it, and the two together are held to this one figure. On a local link the measured latency never asks for the whole of it, so raise it to watch the catch-up. See [Spawn compensation](../../core-api/systems/spawn-compensation.md).
 
 ## The view clamp violation
 
-A shooter whose view is older than **Max Rewind (ms)**, or newer than anything the server recorded, is reporting a moment the server could never have shown it. The query clamps the view into range and still judges the shot, so a player on a very slow link still gets results, and raises `LagCompensationViewClampedViolation` against the shooter, carrying the `ReportedTick` and the `ClampedTick` the shot was judged at. It defaults to `ViolationAction.Ignore`.
+A shooter whose view is older than **Max Rewind (ms)**, or newer than anything the server recorded, is reporting a moment the server could never have shown it. The query clamps the view into range and still judges the shot, so a player on a very slow link still gets results. It also raises `LagCompensationViewClampedViolation` against the shooter, carrying the `ReportedTick` and the `ClampedTick` the shot was judged at. The default action is `ViolationAction.Ignore`.
 
-There is no inspector for violations. Subscribe from code, after the manager root has woken:
+There is no inspector for violations. Subscribe from code in `Start`:
 
 ```csharp
 private CoreManager _coreManager;

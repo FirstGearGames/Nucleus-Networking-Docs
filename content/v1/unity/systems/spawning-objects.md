@@ -4,9 +4,9 @@ title: "Spawning and despawning objects"
 
 > **Driving the core API directly?** See [Starting and stopping systems](../../core-api/systems/spawning-systems.md).
 
-## Declaring what an object needs
+## Declare what an object needs with RequireSystem
 
-`NetworkSystemObjectPool.RequireSystem<TSystem, TComponent0...>` is the form to reach for from a component sitting on a marker. It declares what the object needs once, and hands the system over the moment one exists: replayed immediately if the object already holds a matching system, rented on the spot if this peer creates it, or delivered through the marker's link event when it arrives from the server instead.
+From a component on a networked object, call `NetworkSystemObjectPool.RequireSystem<TSystem, TComponent0...>` once. It hands you the system as soon as one exists: at once if the object already holds a matching system, rented on the spot if this peer creates it, or when it arrives from the server. It also waits while the transport is still starting.
 
 ```csharp
 NetworkSystemObjectPool.RequireSystem<NetworkSystem, ColorPulseComponent>(
@@ -26,61 +26,58 @@ private void OnSystemReleased(NetworkSystem networkSystem)
 }
 ```
 
-`OnSystemReleased` is optional — pass `null` when there is nothing to reset. Both handlers are typed as `NetworkSystemAcquiredHandler` and `NetworkSystemReleasedHandler`.
+The handlers are `NetworkSystemAcquiredHandler` and `NetworkSystemReleasedHandler`. Pass `null` for `OnSystemReleased` when there is nothing to reset. A `NucleusBehaviour` makes this call for you; see [NucleusBehaviour: the script base class](./nucleus-behaviour.md).
 
-A direct call to `TryRent` asks too early on a transport that has not finished starting, and misses a system that already linked before the call ran. `RequireSystem` owns both: it retries while the transport comes up, and adopts a system that linked before the subscription existed. Reach for `TryRent` instead only when a script wants the system back synchronously, such as a driver creating an object's system at a moment of its own choosing.
+## Rent directly with TryRent
 
-## Renting directly
-
-`NetworkSystemObjectPool.TryRent<TSystem, TComponent0...>(contextComponent, out networkSystem, canStartSystem = true)` is the one-shot form. It returns `true` once a system is linked to the object, and `false` on an error, which it logs. One call is correct on every peer:
+`NetworkSystemObjectPool.TryRent<TSystem, TComponent0...>(contextComponent, out networkSystem, canStartSystem = true)` returns the system at once. Use it only when a script needs the system at a moment of its own choosing, such as a driver creating an object's system. Called too early, it fails while the transport is still starting and misses a system that already linked.
 
 ```csharp
 if (!NetworkSystemObjectPool.TryRent<NetworkSystem, UnityLocalTransformComponent>(this, out NetworkSystem system))
     return;
 ```
 
-The call finds its `CoreManager` through `NucleusUnity`, so nothing is passed in. What it returns depends on where it is called:
+It returns `true` once a system is linked to the object, and `false` on an error, which it logs. One call is correct on every peer:
 
-- **A received spawn gets its own system.** While the integration instantiates an incoming spawn, the call returns the system already built from that spawn rather than a new one.
-- **A client scene object waits for the server.** On a client, a scene object gets a local, unstarted system that the server's spawn binds once it arrives.
-- **The server starts the system.** On the server, the call returns a started system, which replicates to observers.
+- **On the server**, it returns a started system, which replicates to observers.
+- **While a received spawn is being instantiated**, it returns the system built from that spawn.
+- **On a client, for a scene object**, it returns a local, unstarted system that the server's spawn binds when it arrives.
 
-## The marker, and renting more than once
+## Know the rent rules
 
-The context component supplies the marker: the rent locates a `NetworkSystemObject` on the component itself, or walks up through its parents. A second rent against the same marker is supported — the systems auto-group, sharing one `GroupId` so a receiver hosts every member on a single GameObject instead of instantiating a second prefab:
+- The rent finds the `NetworkSystemObject` on the context component or one of its parents.
+- A second rent against the same marker gives a second system. The two share one `GroupId`, so a receiver hosts both on one GameObject; see [Several systems on one object](./grouped-systems.md).
+- On a receiving client, a rent in a freshly instantiated prefab's `Awake` must ask for the same `TSystem` and component types the server spawned, or it logs an error and returns `false`.
+- `TryRent` and `RequireSystem` take up to 31 component types (`TComponent0` through `TComponent30`), or none for a system that carries only a spawn payload.
+- When the number of components comes from data, both take a count: `TryRent<TSystem, TComponent0>(this, componentCount, out networkSystem)` and `RequireSystem<TSystem, TComponent0>(this, componentCount, onAcquired)` give one system carrying `TComponent0` that many times. A system matches only when it holds exactly that many, all of that type. Reach each with `NetworkSystem.TryGetComponent(componentId, out component)`. This is how `NetworkTransform` puts every part it lists on one system.
 
-```csharp
-// Both calls target `this`, so both systems land on the one marker and share a GroupId.
-NetworkSystemObjectPool.TryRent<NetworkSystem, UnityLocalTransformComponent>(this, out _);
-NetworkSystemObjectPool.TryRent<NetworkSystem, ColorPulseComponent>(this, out _);
-```
+## A scene object needs no separate spawn call
 
-What is refused is a rent whose composition does not match the spawn being staged: on a receiving client, a rent inside a freshly instantiated prefab's `Awake` must ask for the same `TSystem` and the same NetworkComponent types the server actually spawned for that member, or the call logs an error and returns `false`. Up to 31 NetworkComponent type arguments are generated for both `TryRent` and `RequireSystem` (`TComponent0` through `TComponent30`), and both also have a form that takes none, for a system that carries only a spawn payload.
+An object already in a loaded scene is resolved by the same `TryRent` or `RequireSystem` call that spawns a dynamic prefab. It is built locally and bound once the server's spawn arrives.
 
-When the number of components comes from data rather than from your code, both also take a count: `TryRent<TSystem, TComponent0>(this, componentCount, out networkSystem)` and `RequireSystem<TSystem, TComponent0>(this, componentCount, onAcquired)` give one system carrying `TComponent0` that many times. A system satisfies the request only when it holds exactly that many components, all of that type, and each one is reached by its component Id with `NetworkSystem.TryGetComponent(componentId, out component)`. This is how `NetworkTransform` puts every part it lists on one system.
-
-## Despawning
-
-`NetworkSystemObject.Despawn()` despawns the object on the server. It stops every system linked to the marker, which replicates the despawn to observers, and requests the systems return to their pool once the stop completes:
+## Despawn on the server
 
 ```csharp
 _networkSystemObject.Despawn();
 ```
 
-A call with no linked system is a no-op. Only the server may despawn a replicated system — a client call is refused. On the receiving side, a dynamic prefab's GameObject returns to the prefab pool for reuse; a scene object's GameObject is destroyed, since it is a fixed instance rather than a poolable one.
+`NetworkSystemObject.Despawn()` stops every system linked to the object, replicates the despawn to observers, and returns the systems to their pool once the stop completes. A call with no linked system does nothing. Only the server may despawn a replicated system; a client's call is refused.
 
-## Where the object lands
+On receivers, a dynamic prefab's GameObject returns to the prefab pool, and a scene object's GameObject is destroyed.
 
-A received spawn's pose is known before the prefab instantiates, so the framework creates the GameObject in place rather than moving it there afterward. If the system carries a `UnityTransformComponentBase`, its `ReplicatedPosition`, `ReplicatedRotation`, and `LocalScale` supply the instantiate pose. If the system carries no transform component, the prefab's own authored transform is used instead, unless the marker's **Auto Transform Payload** is on, in which case the object arrives at the server's parent and pose. Either way, the instance is produced already positioned — there is no frame where it sits at the origin waiting to be moved.
+## A received spawn arrives already in place
 
-A system whose position is driven by a controller — a `NetworkRigidbody` another peer simulates — is not placed by `Instantiate` at all. The controlling peer builds its own copy from the prefab and asserts the prefab's pose back within a tick, so a server-chosen spawn point set through `Instantiate` is overwritten almost immediately. Derive or publish the spawn point so the controlling peer can place itself.
+A received spawn is instantiated already in place, never at the origin first:
 
-## A spawn can carry one-time data
+- If its system carries a `UnityTransformComponentBase`, its `ReplicatedPosition`, `ReplicatedRotation` and `LocalScale` give the pose.
+- If it carries no transform component, the prefab's own transform is used, unless the marker's **Auto Transform Payload** is on, in which case it arrives at the server's parent and pose.
 
-Data an object needs only when it arrives, such as a random seed or a loot table, goes in a spawn payload rather than a member. Pick a payload type in the marker's **Spawn Payload** list, or declare one from code with `NetworkSystem.SetSpawnPayload`. [Spawning systems](../../core-api/systems/spawning-systems.md) explains how payloads work and who may declare them. On a client, a scene object is bound after it has already linked, so read a scene object's payload where it arrives, in the payload's own `ReadSpawnPayload`, or from `SystemManager.SystemStarted` or a system watch, which announce a scene object on a client once the server's spawn has bound it, rather than in `OnSystemLinked`.
+A body whose position its controller drives, such as a `NetworkRigidbody` another peer simulates, is the exception. The controlling peer builds its copy from the prefab and asserts the prefab's pose back within a tick, overwriting a spawn point the server chose. Derive or publish the spawn point so the controlling peer can place itself.
 
-An object that needs nothing but a payload can require a system with no components: `NetworkSystemObjectPool.RequireSystem<NetworkSystem>(this, OnSystemAcquired)`.
+## Send one-time data with the spawn
 
-## A scene object needs no separate spawn call
+Data an object needs only when it arrives, such as a random seed or a loot table, goes in a spawn payload rather than a member. Pick a payload type from **Payload** in the marker's **Spawn Payload** section, or declare one from code with `NetworkSystem.SetSpawnPayload`. [Starting and stopping systems](../../core-api/systems/spawning-systems.md) explains how payloads work and who may declare them.
 
-There is no separate `Spawn` call for an object already sitting in a loaded scene — the same `TryRent` or `RequireSystem` call that spawns a dynamic prefab also resolves a scene object, built locally and bound once the server's spawn arrives.
+An object that needs only a payload can require a system with no components: `NetworkSystemObjectPool.RequireSystem<NetworkSystem>(this, OnSystemAcquired)`.
+
+On a client, a scene object is bound after it has already linked. Read its payload in the payload's own `ReadSpawnPayload`, or from `SystemManager.SystemStarted` or a system watch, not in `OnSystemLinked`.

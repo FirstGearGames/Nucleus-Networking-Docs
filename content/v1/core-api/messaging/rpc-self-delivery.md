@@ -4,80 +4,37 @@ title: "Seeing Your Own Call: RpcSelfDelivery"
 
 ## RpcSelfDelivery decides whether a sender sees its own call
 
-`RpcSelfDelivery` decides whether the peer that sends a remote call also sees that call itself, and when. It is a single enum, not a set of flags, because the three answers are mutually exclusive: a sender either runs its own call at the send site, waits for the copy that comes back, or does neither. A pair of flags could ask for two of those at once, which would run the handlers twice.
-
-`RpcSelfDelivery` says nothing about where the call is going; `RpcTarget` already does. It is only about the sender's own view of a call it is sending.
-
-```csharp
-public enum RpcSelfDelivery : byte
-{
-    None = 0,
-    Immediate = 1,
-    OnDelivery = 2,
-}
-```
-
-It is the last parameter on `NetworkSystem.TrySendRpc<T0>`, and defaults to `None`:
+`RpcSelfDelivery` is the last parameter of `NetworkSystem.TrySendRpc<T0>`. It controls only the sender's own view of the call; `RpcTarget` decides where the call goes.
 
 ```csharp
 public bool TrySendRpc<T0>(RpcTarget rpcTarget, Channel channel, T0 rpc, RpcSelfDelivery rpcSelfDelivery = RpcSelfDelivery.None) where T0 : IRpc, new()
 ```
 
-## The three values
+| Value | The sender's own handlers run |
+|---|---|
+| `None` (default) | Never. Use it when the sender already applied the effect another way. |
+| `Immediate` | At the send site, before the call goes anywhere. Feels instant, but runs even if the server later refuses the call. |
+| `OnDelivery` | Once the call has been delivered, and not at all if it was refused. Use it when peers must agree on whether and when something happened. |
 
-### None
+On the server, `OnDelivery` behaves like `Immediate`, because the server is the delivery point. The same `TrySendRpc` call therefore reads the same on both peers.
 
-The sender does not see its own call. This is the default, and it's what a call whose effect the sender already applied by other means wants.
+## OnDelivery with RpcTarget.Server is refused
 
-### Immediate
-
-The sender's own handlers run at the send site, before the call has gone anywhere. This is what makes a client-fired effect feel instant. The price is that it runs whether or not the call survives: a client's call can still be refused by the server afterward, and `Immediate` has already run by then. Use it where responsiveness matters more than being right.
-
-### OnDelivery
-
-The sender sees the call once it has actually been delivered, and not at all if it was refused. For effects that must agree on when something happens, or whether it happens at all, a client asking for `OnDelivery` sees its own call only if the server passed it on. A refusal then reads as nothing happening, rather than as an effect that has to be undone.
-
-The server is itself the delivery point. Asking for `OnDelivery` on a server's own send is treated the same as `Immediate`, resolved at the point of send rather than at the call site. That collapse is what lets one `TrySendRpc` call read the same on both peers instead of branching on role, the same way `RpcTarget.To` does for the destination.
-
-`OnDelivery` is meaningless with `RpcTarget.Server`, so the send is refused outright rather than silently downgraded: a call addressed to the server is not passed on anywhere, so there is nothing for it to come back from. `TrySendRpc` returns `false` and logs an error that ends with this text:
+A call to the server stops there, so there is nothing to come back. `TrySendRpc` returns `false` and logs an error ending with:
 
 > RpcSelfDelivery.OnDelivery waits for a call to be passed on, and one addressed to the authority stops there.
 
-## The host traps
+## Watch for these on a host
 
-A host runs both a server and a client in the same process, sharing one handler registry for a system. Two `RpcSelfDelivery` combinations need care as a result.
+A host's client half and server half share one set of handlers per system.
 
-### Immediate with RpcTarget.Server is refused
+- **`Immediate` with `RpcTarget.Server` is refused.** The call already runs the handlers locally, so `Immediate` would run them twice. `TrySendRpc` returns `false` and logs an error ending with:
 
-On a host, a call addressed to `RpcTarget.Server` already runs the handlers locally as part of the send. Asking for `Immediate` on top of that would run them a second time, so the send is refused: `TrySendRpc` returns `false` and logs an error that ends with this text:
+  > a host's call to its own authority is invoked locally already, so RpcSelfDelivery.Immediate on top of it would run the handlers twice.
 
-> a host's call to its own authority is invoked locally already, so RpcSelfDelivery.Immediate on top of it would run the handlers twice.
+- **`Immediate` with `RpcTarget.Observers` is safe.** The host's own client is served once.
+- **`Immediate` with `RpcTarget.To` runs the host's handlers for every addressed send**, including calls meant for other players. The call still reaches only its recipient, but the host has already run it locally. A handler on a system the host's client listens to must check who the call was for before treating it as its own.
 
-### Immediate with RpcTarget.Observers cannot double-fire
+## Tell your own copy apart
 
-Sending to `RpcTarget.Observers` with `Immediate` does not double-fire on a host either. The host's own client is served exactly once.
-
-### Immediate with RpcTarget.To: the real pitfall
-
-The trap that actually costs you something is not about double-firing. On a host, the client half and the server half register handlers on the same system, so `Immediate` runs the send site's handlers locally regardless of who the call is addressed to. Sending with `RpcTarget.To` and `Immediate` makes the host run a copy of every addressed send, including calls addressed to other players, not just calls addressed to the host itself.
-
-In other words, the host sees answers meant for somebody else. The call still reaches only the connection it was addressed to, but the local run has already happened.
-
-A handler on a system a host client listens to needs to check who a call was actually for before treating `Immediate` delivery as its own.
-
-## Telling your own copy apart: RpcContext.Disposition
-
-A handler doesn't have to guess whether it's looking at its own call. `RpcContext.Disposition` is an `RpcDisposition` the engine sets locally, from what it knows the moment before the handler runs; none of it travels on the wire.
-
-```csharp
-public enum RpcDisposition : byte
-{
-    Recipient = 0,
-    Origin = 1,
-    Routing = 2,
-}
-```
-
-`Origin` means this peer sent the call and is seeing its own copy: a local invoke as the server, or the echo a client asked for through `RpcSelfDelivery.OnDelivery`. A handler reading `Origin` knows the effect is one this peer caused rather than one done to it, which is the distinction an effect that must not fire for its own author needs.
-
-`Recipient` is the ordinary case, a call meant for the peer reading it. `Routing` is server-only, and marks a call passing through on its way to a client it names elsewhere, never meant for the server itself.
+When `RpcContext.Disposition` is `RpcDisposition.Origin`, this peer sent the call and is seeing its own copy, either a local invoke on the server or the echo a client asked for with `OnDelivery`. Check it in any effect that must not fire for its own author. The other values are described in [Judging and Refusing a Relayed Call](./rpc-relay-and-moderation.md).

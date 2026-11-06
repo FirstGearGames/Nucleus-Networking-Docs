@@ -2,18 +2,22 @@
 title: "Configuration reference"
 ---
 
-There is no engine-wide configuration object. Every setting is a public field or property on the manager that owns it, assigned after `new CoreManager()` returns. This page lists them by manager, with defaults and whether each can still change after start-up.
-
 > **Using Unity?** See [The Nucleus manager components](../unity/core/unity-manager-components.md) for setting the same values from the inspector.
 
-## Construction-only values
+Every setting is a public field or property on the manager that owns it. Assign it after `new CoreManager()` returns. There is no engine-wide configuration object.
 
-Most settings can change at any time. Two are exceptions:
+## Two values cannot change after start-up
 
-- **Tick rate.** `NetworkLoopManager.TickRate` is get-only, fixed by the `tickRate` argument passed when the loop starts. `DefaultTickRate` is 30. A requested rate below `MinimumTickRate` (5) or above `MaximumTickRate` (128) is clamped into range and logged, not rejected.
-- **`ServerConfiguration.MaximumConnections`** is read-only to your code. Change it with `transport.SetMaximumConnections(uint)`, and Synapse applies the new cap the next time the server starts.
+Every other setting can change at any time. These two cannot:
 
-The step provider is not on this list. `NetworkLoopManager.UseNetworkLoopStepProvider(INetworkLoopStepProvider)` swaps it at runtime, stopping the previous provider and returning it. To use your own provider from the start, pass it to the `CoreManager` constructor instead: swapped in after construction, it replaces a default provider that has already been stepping the loop from the thread pool.
+- **Tick rate.** `NetworkLoopManager.TickRate` is get-only, fixed by the `tickRate` argument passed when the loop starts. `DefaultTickRate` is 30. A rate below `MinimumTickRate` (5) or above `MaximumTickRate` (128) is clamped into range and logged.
+- **`ServerConfiguration.MaximumConnections`** is read-only to your code. Change it with `transport.SetMaximumConnections(uint)`; Synapse applies the new cap the next time the server starts.
+
+The step provider can change: `NetworkLoopManager.UseNetworkLoopStepProvider(INetworkLoopStepProvider)` swaps it at runtime, stopping and returning the previous one. To use your own provider from the start, pass it to the `CoreManager` constructor instead, because after construction the default provider is already stepping the loop from the thread pool.
+
+## Only the tick rate must match between peers
+
+Every other setting is local: a server and its clients can run different `StateInterpolation`, `EvaluationCadenceTicks`, timeout or retention values. A server and client with different `TickRate` values break replication and interpolation.
 
 ## SystemManager
 
@@ -27,8 +31,8 @@ The step provider is not on this list. `NetworkLoopManager.UseNetworkLoopStepPro
 | `PredictionHistoryTicks` | `UnsetPredictionHistoryTicks` (0) | How many ticks of history `Predict` and `Validate` members keep. Unset, every client keeps `DefaultPredictionHistoryTicks` (64) and the server keeps two. |
 | `MaximumReplayTicks` | `UnsetMaximumReplayTicks` (0) | Most ticks a reconcile replays; a longer one lands the server's values at its start tick without replaying. 0 sets no limit. |
 | `ReplayHoldRadius` | `UnsetReplayHoldRadius` (0) | Client: only systems it does not control within this distance of a restored system are held during a replay. 0 holds every one. |
-| `IsResultValueSendEnabled` | true | Read on the controller. On, a server that finds a `Validate` result different can report which members differed and both values through `NetworkSystem.ResultMismatched`, and each member's `resultTolerance` applies. Off saves bandwidth on every tick; the report then shows only that a mismatch happened, and results are compared exactly. |
-| `DefaultControllerRetentionPolicy` | `ControllerRetentionPolicy.Release` | Resolved most specific first: a system's own override, then its group's, then this. |
+| `IsResultValueSendEnabled` | true | Read on the controller. On, a server that finds a `Validate` result different reports which members differed and both values through `NetworkSystem.ResultMismatched`, and each member's `resultTolerance` applies. Off saves bandwidth every tick; the report then shows only that a mismatch happened, and results are compared exactly. |
+| `DefaultControllerRetentionPolicy` | `ControllerRetentionPolicy.Release` | A system's own override wins, then its group's, then this. |
 | `ControllerRetentionSeconds` | 120 (`DefaultControllerRetentionSeconds`) | `UnlimitedControllerRetentionSeconds` (0) removes the limit. |
 | `MaximumRetainedControllerRecords` | 64 (`DefaultMaximumRetainedControllerRecords`) | |
 | `HostMigrationEnabled` | false | |
@@ -45,9 +49,9 @@ The step provider is not on this list. `NetworkLoopManager.UseNetworkLoopStepPro
 | Setting | Default | Notes |
 |---|---|---|
 | `JoinPlacement` | `JoinScenePlacement.EveryOpenScene` | Where a newly authenticated client is placed. |
-| `LoadRequestTimeoutSeconds` | 180 | A value of 0 or less disables the timeout. |
+| `LoadRequestTimeoutSeconds` | 180 | 0 or less disables the timeout. |
 | `AutomaticRequestOnBlockedSpawnEnabled` | false | |
-| `SceneCarryFailure` | `SceneCarryFailureAction.SurrenderControl` | The world-wide answer; overridable per object via `NetworkSystem.SceneCarryFailureOverride` and per case via a registered `ISceneCarryFailureResolver`. |
+| `SceneCarryFailure` | `SceneCarryFailureAction.SurrenderControl` | The world-wide answer. Override it per object with `NetworkSystem.SceneCarryFailureOverride`, or per case with a registered `ISceneCarryFailureResolver`. |
 
 ## RpcManager
 
@@ -59,10 +63,10 @@ The step provider is not on this list. `NetworkLoopManager.UseNetworkLoopStepPro
 
 | Setting | Default | Notes |
 |---|---|---|
-| `AuthenticationTimeoutSeconds` | 30 | `UnsetAuthenticationTimeout` (0) disables the timeout; a connecting client that never authenticates is disconnected after this. |
-| `KickTimeoutMilliseconds` | 500 | How long a kicked or refused client's link may stay open after its kick before it is closed outright. Overloads that take a `timeoutMilliseconds` override it for one kick. |
-| `ObjectPacingEnabled` | `true` | Pro only. Switches object pacing off and on. Off, every whole object is sent on the tick it is owed. |
-| `MaximumObjectKilobytesPerTick` | 50 (`DefaultMaximumObjectKilobytesPerTick`) | Pro only. The most kilobytes (1 kB is 1,024 bytes) of whole objects one client is sent per tick: new objects, and objects sent again whole after packet loss. The rest follow on later ticks, and ordinary updates to objects a client already holds are not paced. A value below 1 (`MinimumObjectKilobytesPerTick`) is read as 1, so pacing cannot be switched off. |
+| `AuthenticationTimeoutSeconds` | 30 | A connecting client that never authenticates is disconnected after this. `UnsetAuthenticationTimeout` (0) disables the timeout. |
+| `KickTimeoutMilliseconds` | 500 | How long a kicked or refused client's link may stay open after the kick before it is closed. Overloads taking `timeoutMilliseconds` override it for one kick. |
+| `ObjectPacingEnabled` | `true` | Pro only. Off, every whole object is sent on the tick it is owed. |
+| `MaximumObjectKilobytesPerTick` | 50 (`DefaultMaximumObjectKilobytesPerTick`) | Pro only. The most kilobytes (1 kB is 1,024 bytes) of whole objects one client is sent per tick: new objects, and objects sent again whole after packet loss. The rest follow on later ticks. Ordinary updates to objects a client already holds are not paced. A value below 1 (`MinimumObjectKilobytesPerTick`) is read as 1, so this setting cannot switch pacing off. |
 
 ## ClientManager
 
@@ -74,7 +78,7 @@ The step provider is not on this list. `NetworkLoopManager.UseNetworkLoopStepPro
 
 | Setting | Default | Notes |
 |---|---|---|
-| `DefaultAction` | `ViolationAction.Ignore` | A constant. Used only when a violation type is raised with no default of its own and no handler is registered; `PacketTransformRejectedViolation` (Pro) is the one such type, and that raise always logs a warning. Every other type carries its own default, mostly `Ignore`. |
+| `DefaultAction` | `ViolationAction.Ignore` | A constant, used only for a violation type raised with no default of its own and no handler. `PacketTransformRejectedViolation` (Pro) is the only such type, and that raise always logs a warning. Every other type has its own default, mostly `Ignore`. |
 
 ## TransportManager
 
@@ -90,11 +94,11 @@ Pro only.
 
 | Setting | Default | Notes |
 |---|---|---|
-| `AutomaticRequestOnBlockedSpawnEnabled` | true | A blocked spawn also asks the client for the bundle it needs, so content hotloads on demand. |
+| `AutomaticRequestOnBlockedSpawnEnabled` | true | A blocked spawn also asks the client for the bundle it needs, so content loads on demand. |
 
-## Per-transport structs
+## Transports carry their own settings
 
-`Transport.Configuration` and `Transport.ServerConfiguration` hold settings specific to a transport rather than to a manager.
+`Transport.Configuration` and `Transport.ServerConfiguration` hold settings for a transport rather than a manager.
 
 **`Configuration`**
 
@@ -103,16 +107,10 @@ Pro only.
 | `Port` | 0 | |
 | `MaximumTransmissionUnit` | 1200 | Packets longer than this are split into multiple packets. |
 | `ConnectingTimeoutSeconds` | 10 | How long a client waits for the server to answer its connect. Zero falls back to `ConnectedTimeoutSeconds`. |
-| `ConnectedTimeoutSeconds` | 15 | Least applied value is one second. Times out a connection that has received no remote data within this window. |
+| `ConnectedTimeoutSeconds` | 15 | Times out a connection that has received nothing within this window. The smallest value applied is one second. |
 
 **`ServerConfiguration`**
 
 | Field | Default | Notes |
 |---|---|---|
-| `MaximumConnections` | `UnsetMaximumConnections` (0) | Accepts any number at 0. Set it with `transport.SetMaximumConnections(uint)`; Synapse applies it at the next server start. |
-
-## Local vs. shared values
-
-Most manager settings are purely local: a server and its clients can each run different `StateInterpolation`, `EvaluationCadenceTicks`, timeout, or retention values without breaking the connection, because each peer only governs its own side of the exchange.
-
-Tick rate is the exception that must match. A server and client running different `TickRate` values are ticking at different real-world speeds, which the replication and interpolation built on top of the tick assume does not happen.
+| `MaximumConnections` | `UnsetMaximumConnections` (0) | 0 accepts any number. Set it with `transport.SetMaximumConnections(uint)`; Synapse applies it at the next server start. |

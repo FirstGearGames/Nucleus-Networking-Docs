@@ -4,29 +4,28 @@ title: "Replaying a correction in Unity"
 
 > **Driving the core API directly?** See [Reconciliation and replay](../../core-api/control/reconciliation.md).
 
-When a predicted member disagrees with the server, the engine restores the client's world to the server's values as of one start tick and replays every tick since then through your fixed updates. Put the simulation in `OnEarlyFixedUpdate` and the replay comes with it; there is no replay loop to write.
+When a predicted member disagrees with the server, the engine restores the client's world to the server's values at a start tick and replays every tick since through your fixed updates. Put the simulation in `OnEarlyFixedUpdate` and the replay comes with it; there is no replay loop to write.
 
 ## Simulate in OnEarlyFixedUpdate
 
-`NucleusBehaviourBase` (the base every `NucleusBehaviour` script inherits) runs its two fixed-update virtuals once per simulated tick of the linked system:
+Every `NucleusBehaviour` runs its two fixed-update virtuals once per simulated tick of the linked system:
 
 ```csharp
 protected virtual void OnEarlyFixedUpdate(StepDelta stepDelta, SimulationContext simulationContext) { }
 protected virtual void OnLateFixedUpdate(StepDelta stepDelta, SimulationContext simulationContext) { }
 ```
 
-`simulationContext.Type` says which pass the call belongs to:
+| `simulationContext.Type` | When |
+|---|---|
+| `Forward` | The first time a tick is simulated: on the controlling client once per live tick; on the server once per server tick, using one of the client's ticks for an object a client drives through client state. |
+| `Replayed` | A past tick simulated again during a reconcile, on the controlling client or an observer predicting the object. |
+| `None` | Nothing is simulated: a client watching an object it does not control. The call still comes once per tick. |
 
-- `Forward`: the first time a tick is simulated. On the server, once per server tick on one of the client's ticks for an object a client drives through client state, otherwise once per tick; on the controlling client, once per live tick.
-- `Replayed`: a past tick simulated again during a reconcile, on the controlling client (or an observer predicting the object).
-- `None`: nothing is simulated, on a client watching an object it does not control. The call still comes once per loop tick.
+- `stepDelta.Tick` is the local tick being simulated, the server's own tick on the server. A replayed step carries one tick's worth of every delta.
+- `simulationContext.RemoteTick` is the other end's tick: on the server, the controller's tick whose client state is being simulated; on a client, the server tick of the state it applied. It is `NetworkLoopManager.UnsetTick` when there is none.
+- `simulationContext.IsRemoteTickEstimated` is true when that tick was inferred rather than received, as on the server's step for a client tick whose client state did not arrive, and on every replayed tick.
 
-`stepDelta.Tick` names the local tick being simulated, and a replayed step carries one tick's worth of every delta. On the server that is the server's own tick, even for a step that runs one of the client's ticks. The context also carries the other end's tick:
-
-- `simulationContext.RemoteTick`: on the server, the controller's tick whose client state is being simulated; on a client, the server tick of the state it applied. `NetworkLoopManager.UnsetTick` when there is none.
-- `simulationContext.IsRemoteTickEstimated`: true when that tick was inferred rather than received, as on the server's step for a client tick whose client state did not arrive, and on every replayed tick.
-
-Use `RemoteTick` to pair a log line with what the other end did, never for timing: on the server it is a number the client chose. Time cooldowns and everything else by `stepDelta.Tick`.
+Use `RemoteTick` only to pair a log line with what the other end did, never for timing: on the server it is a number the client chose. Time cooldowns and everything else by `stepDelta.Tick`.
 
 With the client state as `MemberRole.Predict` members and the result as `MemberRole.Validate` members, the component looks like this:
 
@@ -103,19 +102,24 @@ namespace MyGame
 }
 ```
 
-The server simulates the same tick from the controller's client state and, when its own `Position` differs from the client's, orders a reconcile. While **Send Result Values** is on, which it is by default, the server can also report both values when they differ; see [Send Result Values](./prediction-settings-in-unity.md#send-result-values). On a replayed tick, run the same step as on a live tick: read the `Predict` members and write the `Validate` members as usual, but do not write the `Predict` members yourself, which is why the example sets `Direction` only on a `Forward` tick. The same lines then rebuild history instead of moving the live object. A `Validate` member's value is only as precise as its `accuracy`, the same on both peers, so pick an accuracy your simulation tolerates. Step by the fixed tick (`1f / CoreManager.NetworkLoopManager.TickRate`), never `Time.deltaTime`, so every pass of a tick computes the same value. Physics steps between the early and late fixed update of every replayed tick, as it does on a live tick, so `CharacterController.Move` and the forces on a `ValidatedRigidbody` both replay. Bodies the replay does not rewind are held still while it runs; see [Predicting a body with a validated behaviour](../physics/predicting-a-body-with-a-validated-behaviour.md).
+The server simulates the same tick from the controller's client state and orders a reconcile when its `Position` differs from the client's. While **Send Result Values** is on (the default), it also reports both values; see [Send Result Values](./prediction-settings-in-unity.md#send-result-values).
+
+- **Run the same step on a replayed tick.** Read the `Predict` members and write the `Validate` members as usual, but never write the `Predict` members yourself, which is why the example sets `Direction` only on a `Forward` tick.
+- **Give each `Validate` member an accuracy your simulation tolerates.** Its value is only as precise as its `accuracy`, on both peers.
+- **Step by the fixed tick** (`1f / CoreManager.NetworkLoopManager.TickRate`), never `Time.deltaTime`, so every pass of a tick computes the same value.
+- **Physics replays too.** It steps between the early and late fixed update of every replayed tick, so `CharacterController.Move` and the forces on a `ValidatedRigidbody` both replay. Bodies the replay does not rewind are held still; see [Predicting a body with a validated behaviour](../physics/predicting-a-body-with-a-validated-behaviour.md).
 
 The `ValidatedJump` demo under `Demos/Prediction` is a complete example: its movement lives in `ValidatedJumpMovementComponent.OnEarlyFixedUpdate`, and its behaviour only feeds it the keys and draws.
 
 ## Play effects once
 
-A replay re-runs every tick since the start tick, so play one-shot effects (sounds, particles, a jump animation) only on `SimulationType.Forward`. The behaviour mirrors the loop's `SimulationType` and `IsPredicting` (true on a client that replays this object) for code outside the two fixed updates.
+A replay re-runs every tick since the start tick, so play one-shot effects (sounds, particles, a jump animation) only on `SimulationType.Forward`. Outside the two fixed updates, the behaviour's `SimulationType` and `IsPredicting` (true on a client that replays this object) tell you whether a replay is running.
 
 While a replayed tick runs, the engine refuses calls that would act twice, logging once per kind: `TrySendRpc` returns false, `Connection.SendMessage` sends nothing, predicted spawns report `PredictedSpawnRefusal.Replaying`, collection and reference writes change nothing, and `NetworkAnimator.SetTrigger`, `ResetTrigger`, `CrossFade` and `Play` do nothing.
 
 ## Place the object around a replay
 
-The engine does not move your Transform. Override the replay hooks to put whatever shows the object at its member values, so replayed raycasts and `CharacterController.Move` calls start from the right place:
+The engine does not move your Transform. Override the replay hooks to put the object at its member values, so replayed raycasts and `CharacterController.Move` calls start from the right place:
 
 ```csharp
 protected override void OnReplayStarting(ReplayReport replayReport)
@@ -131,7 +135,7 @@ protected override void OnReplayCompleted(ReplayReport replayReport)
 }
 ```
 
-They are called on a client, on every object the replay covers: each one it controls, restored to `replayReport.StartTick` and then replayed, and each one it does not control, held at the server's start-tick values for the replay and then returned to its latest values. Physics transforms are synced after each hook. A behaviour is subscribed only when its type overrides one of them.
+They are called on a client for every object the replay covers: each one it controls, restored to `replayReport.StartTick` and then replayed, and each one it does not control, held at the server's start-tick values and then returned to its latest values. Physics transforms are synced after each hook.
 
 ## Read what was corrected
 
@@ -151,9 +155,9 @@ To glide to a correction instead of jumping, construct the member with `correcti
 
 By default every object this client does not control is held at the start tick during a replay. Set **Replay Hold Radius** on the Unity system manager to hold only the ones near a restored object, or tick **Predicted By Observers** on a `NetworkSystemObject` to have observing clients predict and replay it instead of holding it. See [Prediction settings on the Unity manager](./prediction-settings-in-unity.md).
 
-## Replaying from ReconcileRequired yourself
+## Replay from ReconcileRequired yourself
 
-A game that must own the replay loop can still subscribe to `NetworkSystem.ReconcileRequired` and replay in `OnReconcile`, which runs every tick on the `Reconcile` step. Do this only for an object nothing simulates in `OnEarlyFixedUpdate`/`OnLateFixedUpdate`; otherwise the engine has already replayed it.
+A game that must own the replay loop can subscribe to `NetworkSystem.ReconcileRequired` and replay in `OnReconcile`. Do this only for an object nothing simulates in `OnEarlyFixedUpdate` or `OnLateFixedUpdate`; otherwise the engine has already replayed it.
 
 ```csharp
 private uint _pendingRewoundTick = NetworkLoopManager.UnsetTick;
@@ -188,9 +192,11 @@ protected override void OnReconcile(StepDelta stepDelta)
 }
 ```
 
-`ReconcileRequired` is raised at the head of the `Reconcile` step, after the restore, so `OnReconcile` runs after it on the same step. `rewoundTick` is the start tick: the server's value there already includes that tick's client state, so replay from the tick after it. It is `NetworkLoopManager.UnsetTick` when a server `SendReconcile` landed with no echo of the processed client state tick; skip the replay then. Bracket every past tick with `BeginReplayTick` / `EndReplayTick`, in tick order: a write to a predicted member outside the bracket lands on the live value and breaks the next comparison.
-
-A server correction of your client state alone does not raise `ReconcileRequired`. The server's value lands in that tick's history and the component raises `OnMembersChanged` with `MemberChangeDirection.Correction` instead.
+- `ReconcileRequired` is raised on the `Reconcile` step after the restore, before `OnReconcile` runs.
+- `rewoundTick` is the start tick. The server's value there already includes that tick's client state, so replay from the tick after it.
+- `rewoundTick` is `NetworkLoopManager.UnsetTick` when a server `SendReconcile` arrived without the client state tick it processed. Skip the replay then.
+- Bracket every past tick with `BeginReplayTick` and `EndReplayTick`, in tick order. A write to a predicted member outside the bracket lands on the live value and breaks the next comparison.
+- A server correction of your client state alone does not raise `ReconcileRequired`. The component raises `OnMembersChanged` with `MemberChangeDirection.Correction` instead.
 
 ## See also
 

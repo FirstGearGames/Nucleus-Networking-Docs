@@ -4,58 +4,47 @@ title: "Messages and Calls That Do Not Arrive"
 
 ## The message hash could not be found for Type
 
-`Connection.SendMessage<T0>` looks up the type's wire hash before anything else, and if no usable hash comes back it logs `The message hash could not be found for Type [...]` and returns. Nothing is queued.
+`Connection.SendMessage<T0>` logs `The message hash could not be found for Type [...]` and returns without queuing anything when it cannot get a usable wire hash for the type. A type never needs registering before it is sent. The lookup fails in only two cases:
 
-The hash is worked out from the type's full name, so a sender never has to register a type before sending it. The lookup fails in only two cases:
+- **Another message type this peer has already used hashes to the same value.** This is the usual cause. The first time, a separate error names both types (see the next section). After that, every send of either type logs the error above.
+- **The type has no full name.** That logs `The FullName for [...] could not be found.` first. An ordinary concrete message type always has one.
 
-- **Another message type this peer has already used hashes to the same value.** This is the usual cause. The first time it happens a separate error names both types (see the next section), and from then on every send of either type logs the error above.
-- **The type has no full name to hash.** That logs `The FullName for [...] could not be found.` first. An ordinary concrete message type always has one.
+A host sending to its own other half is refused the same way.
 
-This check runs before the host-loopback branch is even considered, so a host sending to its own other half is refused the same way as every other peer: loudly, and before anything is written.
+To fix a collision, rename one of the two types or move it to another namespace. Registering a handler does not help, because the same lookup refuses the handler too.
 
-The fix for a collision is renaming one of the two types, or moving it to another namespace, because the hash follows the full name. Registering a handler does not help: the same lookup refuses the handler too.
+## Two types that share a wire hash are both refused
 
-## Two types resolving to the same wire hash
+If two different message types, or two different call types, collide, neither can be sent or handled until you rename one of them.
 
-`MessageManager` and `RpcManager` each remember which type first claimed each wire hash. If a second, different type produces the same hash, the registry does not pick a winner: it refuses both types, for sending, for registering a handler and for delivering a received body, for as long as they collide.
+## A call for a system the receiver lacks is dropped silently
 
-The alternative would be delivering the second type's body to the first type's handler, reading bytes as the wrong shape. The registry treats a collision as unresolvable and names both types when it happens, rather than let ambiguous data through.
+If the receiver does not hold the call's target system, the call is dropped with no log and no violation. An interest cull, a despawn and a spawn that has not arrived yet all look the same here.
 
-## A call that reaches nobody
+A routed call (`RpcRoute.TargetRelay`) is also dropped silently if the connection it names has left or no longer observes the addressed system.
 
-The receiver looks up the call's target system before any handler runs. If the receiver does not hold that system, the call is dropped with no log and no violation: an interest cull, a despawn, or a spawn that has not arrived yet all look identical from here, and none of them are faults.
-
-A routed call (`RpcRoute.TargetRelay`) has one more check once the system is found, still before any handler runs: the connection it names must be connected and must actually observe the addressed system. A target that has left or no longer observes it is refused the same way, silently.
-
-So when a call goes nowhere, check interest first: does the receiver still hold the system, and does the intended recipient still observe it. A data bug would produce a read error or a violation. Silence is interest.
+So when a call goes nowhere, check interest first: does the receiver still hold the system, and does the intended recipient still observe it? A data bug would produce a read error or a violation.
 
 ## Nothing happens on the sender
 
-`RpcSelfDelivery` defaults to `None`, meaning the sender does not see its own call at all. A sender that expects immediate local feedback and gets nothing has not lost a call; it never asked to see it.
+`RpcSelfDelivery` defaults to `None`: the sender does not see its own call.
 
-- `RpcSelfDelivery.Immediate` runs the sender's own handlers at the send site, before the call has gone anywhere. It runs even if the server later refuses the call.
-- `RpcSelfDelivery.OnDelivery` runs the sender's handlers only once the call has actually been delivered (and not at all if refused). On the server's own send this behaves like `Immediate`, since the server is the delivery point.
+- `RpcSelfDelivery.Immediate` runs the sender's own handlers at the send site, before the call goes anywhere, even if the server later refuses it.
+- `RpcSelfDelivery.OnDelivery` runs them only once the call is delivered, and not at all if it is refused. On the server's own send it behaves like `Immediate`.
 
-If a sender's own handler never fires, check what `RpcSelfDelivery` the send asked for.
+## Three gates can refuse a client's call
 
-## A client's call refused
+The server checks these in order:
 
-Three separate gates can refuse a client's call, in order:
+1. **`RpcAccess`.** The sender must observe the system. Then `RpcSendAccess.AnyClient` admits any client, and otherwise only the system's controller is admitted. This applies to a host's own client half too. If the sender is not admitted, the server raises `RpcSendPermissionViolation` with the addressed `SystemId`. `CanLocalClientSendRpc` is a separate check on the sending side that lets a client queue a call at all when it is not the controller; it does not change the server's check.
+2. **A server handler returning `RpcRelayAction.Cancel`.** The server runs every registered handler, and any single `Cancel` settles it. A handler that throws counts as `Cancel` and is logged, and the remaining handlers still receive the call.
+3. **`MaximumInboundRpcsPerConnectionPerDrain`** (default 64). Past this many calls from one connection in one drain, the server raises `RpcFloodViolation` once for that drain, with the received and allowed counts, and drops the rest of that drain's calls from the connection.
 
-1. **`RpcAccess`.** The server checks the sender against the system's `RpcAccess`. The sender must observe the system, and then `RpcSendAccess.AnyClient` admits any client while otherwise only the system's controller is admitted. The same check applies to a remote client's call and to a host's own client half calling its own server half. `CanLocalClientSendRpc` is a separate, earlier gate on the sending side: it lets a client queue a call upstream at all even when it is not the controller, and does not enter the server's admission check. If the system's access does not admit the sender, the receive is refused, and the server raises `RpcSendPermissionViolation` with the `SystemId` of the addressed system.
-2. **A server handler returning `RpcRelayAction.Cancel`.** The server runs every registered handler and folds their answers: any single `Cancel` settles it, and no later `Relay` can overturn it. A handler that throws is treated as `Cancel` too: the throw counts as a refusal to relay, and the handler collection logs it, but the remaining handlers still receive the call.
-3. **`MaximumInboundRpcsPerConnectionPerDrain`.** The server bounds how many calls one connection may deliver in a single drain (default 64). Once a connection exceeds it, `RpcFloodViolation` is raised (once per drain) with the received and allowed counts, and the rest of that drain's calls from that connection are dropped.
+## A host runs calls addressed to other players
 
-`RpcSendPermissionViolation` and `RpcFloodViolation` tell these two failure modes apart: a permission violation means the system's access rule rejected the sender; a flood violation means the sender delivered more calls in one drain than the bound admits.
+A host never fires a call twice. What it does do: with `RpcSelfDelivery.Immediate` on an addressed send, the host's client half runs a copy of calls addressed to other players, not only those addressed to itself, because the sender's handlers run on the same process as the server that relays the call. Check the call's target, not whether it "happened twice".
 
-## The real host symptom: not "fires twice"
+## A receiver with no handler skips the payload
 
-The engine already prevents every double-fire shape a naive host implementation could produce. The actual symptom to watch for with a host is different: with `RpcSelfDelivery.Immediate` on an addressed send, the host's client half runs a copy of calls addressed to *other* players, not only the ones addressed to itself.
+A receiver with no handler for a message type skips that message silently. The sender needs no registration. If a message type seems to vanish, check that the receiving peer registered a handler for it.
 
-This falls out of what a host is: one peer running both the server and a client. A call routed to another connection is relayed by the server half; if that call was sent with `Immediate` self-delivery, the sender's own handlers already ran at the send site, on the same process the server is running on. The host's client half is not a separate machine, so it sees the immediate copy of every call its server half sends, not just the ones meant for it. Check the target of the call, not whether it "happened twice."
-
-## A message type the receiver never registered
-
-A receiver with no handler registered for a type is not an error. The receiver skips that message and moves on to the next one. No error, no log.
-
-This is why a missing handler looks exactly like silence: the send succeeds, the packet arrives, and the receiver quietly steps over it. If a message type seems to vanish in transit, check that the receiving peer registered a handler for it. The sender needs no registration of its own.

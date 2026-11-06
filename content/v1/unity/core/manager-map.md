@@ -2,56 +2,31 @@
 title: "The manager map"
 ---
 
-## The eleven managers
+> **Driving the core API directly?** See [The manager map](../../core-api/core/manager-map.md).
 
-`CoreManager` owns eleven managers as public fields, constructed once and held for the life of the session. Each one is documented in full on its own pages elsewhere; this page only says which manager owns which concern and how to reach it.
+## Each concern has one manager
 
-| Manager | Owns |
-|---|---|
-| `NetworkLoopManager` | The tick loop: tick rate and the steps that drive a tick forward. |
-| `TransportManager` | The transports a session sends and receives over. |
-| `ServerManager` | Server-side session state. |
-| `ClientManager` | Client-side session state. |
-| `SystemManager` | Networked systems: spawning, ownership, and their lifecycle. |
-| `InterestManager` | What each peer is allowed to see. |
-| `SceneManager` | Scene load, stacking, and per-scene state. |
-| `PacketManager` | Packet framing and dispatch. |
-| `MessageManager` | Messages sent between peers. |
-| `RpcManager` | Remote procedure calls. |
-| `ViolationManager` | Detecting and acting on protocol violations. |
+`CoreManager` holds eleven managers as public fields, such as `coreManager.TransportManager`. Every setting lives on the manager that owns its concern; there is no single settings object, so to change something, find its manager first.
 
-## The two Pro-only managers
+| Manager | Owns | Unity component |
+|---|---|---|
+| `NetworkLoopManager` | The tick loop: tick rate and the steps that drive a tick forward. | `UnityNetworkLoopManager` |
+| `TransportManager` | The transports a session sends and receives over. | `UnityTransportManager` |
+| `ServerManager` | Server-side session state. | `UnityServerManager` |
+| `ClientManager` | Client-side session state. | `UnityClientManager` |
+| `SystemManager` | Networked systems: spawning, ownership, and their lifecycle. | `UnitySystemManager` |
+| `InterestManager` | What each peer is allowed to see. | `UnityInterestManager` |
+| `SceneManager` | Scene load, stacking, and per-scene state. | `UnitySceneManager` |
+| `PacketManager` | Packet framing and dispatch. | `UnityPacketManager` |
+| `MessageManager` | Messages sent between peers. | `UnityMessageManager` |
+| `RpcManager` | Remote procedure calls. | None |
+| `ViolationManager` | Detecting and acting on protocol violations. | None |
 
-`BundleManager` and `WorldPersistenceManager` are Pro only. In a Free build `CoreManager` simply has no `BundleManager` or `WorldPersistenceManager` field at all: not null, absent.
+`BundleManager` (content delivered from outside the build, such as Addressables, a patcher or a CDN) and `WorldPersistenceManager` (writing a world to disk and building it back) exist only in Pro. In a Free build, `CoreManager` has no such fields at all.
 
-`BundleManager` owns content delivered from outside the build (Addressables, a patcher, a CDN). `WorldPersistenceManager` owns writing a world to disk and building it back.
+`UnityPhysicsManager` is the one component that fronts no core manager. It holds physics execution settings; see [Manager components reference](./unity-manager-components.md).
 
-## Reaching a manager
+## Reach a manager from a script
 
-**From C#**, every manager is a public field directly on `CoreManager`: `coreManager.TransportManager`, `coreManager.SystemManager`, and so on, including the two Pro fields when they're present.
-
-**From Unity**, nine of the eleven have a matching `Unity*Manager` component with a `Nucleus*Manager` property that returns the same instance:
-
-| Component | Property |
-|---|---|
-| `UnityNetworkLoopManager` | `NucleusNetworkLoopManager` |
-| `UnityTransportManager` | `NucleusTransportManager` |
-| `UnityServerManager` | `NucleusServerManager` |
-| `UnityClientManager` | `NucleusClientManager` |
-| `UnitySystemManager` | `NucleusSystemManager` |
-| `UnityInterestManager` | `NucleusInterestManager` |
-| `UnitySceneManager` | `NucleusSceneManager` |
-| `UnityPacketManager` | `NucleusPacketManager` |
-| `UnityMessageManager` | `NucleusMessageManager` |
-
-Two exceptions have no Unity-side component of their own: `RpcManager` and `ViolationManager`. Reach either one through `UnityCoreManager.CoreManager` (the component that owns the session's `CoreManager`) or through `NucleusUnity.BoundCoreManager`, then take the field as in C#.
-
-The tenth Unity component that `UnityCoreManager` adds when it is missing, `UnityPhysicsManager`, is the odd one out in the other direction: it fronts no core manager at all. It's an inspector-side seat for physics execution settings that a physics coordinator reads directly, not a wrapper around one of the eleven fields above.
-
-## No engine-wide settings object
-
-There is no single settings type for a Nucleus session. Every knob - tick rate, a transport's connection settings, interest rules, scene load behavior - is a field on the manager that owns that concern. To change something, find its manager first.
-
-## Managers are instance-scoped
-
-None of the eleven (or thirteen, with Pro) managers are static. Each belongs to one `CoreManager`, and a `CoreManager` is just an object - a process can construct more than one, each with its own independent set of managers. This is what lets a single process host a server and a client in the same run, or run several test peers side by side, without their state colliding.
+- Through a component's `Nucleus*` property, for example `unityTransportManager.NucleusTransportManager`.
+- Through `UnityCoreManager.CoreManager` or `NucleusUnity.BoundCoreManager`, then the field, for example `NucleusUnity.BoundCoreManager.RpcManager`. Use this for `RpcManager` and `ViolationManager`, which have no component.

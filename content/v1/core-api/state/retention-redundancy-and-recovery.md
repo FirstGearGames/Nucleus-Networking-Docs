@@ -2,27 +2,19 @@
 title: "Retention, redundancy and recovery"
 ---
 
-## The interpolation ceiling
+These `SystemManager` settings trade latency and bandwidth for tolerance to packet loss. Set `StateInterpolation`, `GlobalRedundancy`, `ClientRedundancy` and `StateRetentionMilliseconds` the same on both peers: `StateInterpolation` sets how large a buffer the receiver has, so a mismatch leaves one side planning for recovery the other cannot provide.
 
-`SystemManager.StateInterpolation` sets how many ticks the receiver buffers a state packet before applying it. `0` applies immediately; `1` holds a packet until the next tick before applying; and so on. It is capped at `SystemManager.MaximumStateInterpolation` (`7`) — a higher value is silently clamped at runtime.
+## Buffer incoming state with StateInterpolation
 
-This value is the ceiling for most of what is on this page. The server's redundant resends and recovery only work within the window the receiver is already buffering, so both `GlobalRedundancy` and the interpolation itself are bounded by it. A client's upstream resends are the one exception, described below.
+`SystemManager.StateInterpolation` is how many ticks a receiver holds a state packet before applying it. `0` applies at once, `1` waits until the next tick, and so on. The maximum is `SystemManager.MaximumStateInterpolation` (`7`); higher values are clamped at runtime.
 
-## Redundancy
+Each buffered tick adds a tick of delay, and gives late and resent packets more time to arrive. The server's redundant resends and recovery only work within this buffer. A client's upstream resends are the exception (see `ClientRedundancy`).
 
-`SystemManager.GlobalRedundancy` is how many past serializations of each unreliable state packet every peer resends alongside the current one. A value of `N` retransmits each tick's unreliable packets on the following `N` ticks. A value of `2` puts 3 copies of every tick on the wire (the current send plus 2 redundant resends), so the receiver can recover a tick whose earlier copies were lost.
+## Resend state with GlobalRedundancy
 
-Each redundant copy arrives one tick later than the last, so on the server's sends a value larger than `StateInterpolation` would resend copies that always arrive too late to apply. The engine clamps for this automatically.
+`SystemManager.GlobalRedundancy` is how many past ticks of unreliable state every peer resends alongside the current one. At `2`, each tick goes out three times, so a receiver can still apply a tick whose first copies were lost. On the server's sends, values above `StateInterpolation` are clamped, because those copies would arrive too late to apply.
 
-Redundancy only matters on an unreliable channel, since a reliable one already guarantees delivery and resending is wasted bandwidth. Check `SystemManager.CanUseRedundancy()` rather than reading `GlobalRedundancy` directly: it reports true only when the server's effective redundancy is above zero *and* the transport's default channel is unreliable.
-
-### Client redundancy
-
-`SystemManager.ClientRedundancy` (default `3`) is how many extra copies a client adds, on top of `GlobalRedundancy`, to everything it sends the server: its predicted spawns and its own writes. A client with the defaults therefore sends each upstream tick four times.
-
-It is not capped at `StateInterpolation`. A copy that arrives after the server has moved past its tick is discarded as stale and costs only its upstream bytes, while one that arrives during a burst of loss, when the ticks in between were lost too, is applied. A host's own client does not use it, since what it sends never leaves the process.
-
-Redundancy is the first defence, not the guarantee. A predicted spawn whose copies are all lost is despawned locally, and a client's write that still goes missing is repaired by upstream loss recovery.
+Redundancy only helps on an unreliable channel. Call `SystemManager.CanUseRedundancy()` rather than reading `GlobalRedundancy`: it returns true only when the server's effective redundancy is above zero and the transport's default channel is unreliable.
 
 ```csharp
 if (systemManager.CanUseRedundancy())
@@ -31,79 +23,53 @@ if (systemManager.CanUseRedundancy())
 }
 ```
 
-## A tick that loses some of its packets applies what arrived
+## Resend client writes with ClientRedundancy
 
-A tick carrying more state than one packet holds is sent as several packets. On a lossy link one of them is sometimes still missing when the tick's buffering window runs out.
+`SystemManager.ClientRedundancy` (default `3`) is how many extra copies a client adds, on top of `GlobalRedundancy`, to its predicted spawns and its own writes. With the defaults, a client sends each upstream tick four times.
 
-With `SystemManager.PartialStateApplyEnabled` on, which is the default, the receiver applies the packets that did arrive and tells the server which ones never did, and the server re-serves only what was missing, on its very next tick. A tick that is lost entirely is reported the same way, and the server re-serves everything that changed since the last tick the client applied. In both cases the repair starts as soon as the client notices the loss, rather than once the server has waited long enough to suspect it. If that report is lost too, the server's own recovery still catches the gap, a little later than a repair would have. With it off, the whole tick is discarded and recovered. That costs more under steady loss, because a repair spanning many packets has to arrive complete before any of it applies, and a large world can fall further behind with every attempt.
+It is not limited by `StateInterpolation`: a copy that arrives too late is discarded and costs only its upstream bytes, while one that arrives during a burst of loss is applied. A host's own client does not use it.
 
-A tick is still discarded whole when a missing packet carried a change the rest of the tick relies on, such as a despawn, a controller change or a reparent. Applying around such a change could put state on the wrong object.
+Redundancy is the first defence, not a guarantee. A predicted spawn whose copies are all lost is despawned locally. A client write that still goes missing is recovered (see below).
 
-## A client's own writes are recovered too
+## A tick missing some packets applies what arrived
 
-What a client writes to a system it controls, or one it has been allowed to write, always reaches the server eventually, however much of the upstream link is lost. Messages and remote calls are not covered: those are allowed to drop.
+A tick too large for one packet is sent as several. With `SystemManager.PartialStateApplyEnabled` on (the default), the receiver applies the packets that arrived, and only what was missing is sent again, starting as soon as the loss is noticed. With it off, the whole tick is discarded and recovered. That costs more under steady loss, and a large world can fall further behind with every attempt.
 
-The server reports a gap in a client's stream exactly as a client reports one in the server's: as soon as a later tick reveals it, or when a tick arrives in part. The client answers by resending the current value of exactly the members those ticks carried, and nothing else. A tick lost with nothing sent after it is invisible to the server, so a client also resends whatever the server has not acknowledged once a patience window has passed, and again each window until it is acknowledged. A repair that is itself lost is a gap like any other and is repaired the same way.
+A tick is still discarded whole when a missing packet carried a change the rest relies on, such as a despawn, a controller change or a reparent.
 
-A member the server has written since the client's lost write is skipped: the client would otherwise reassert a value older than the one the server now holds. A client that may no longer write the system resends nothing for it, and nothing older than the retention window can be resent, so a link silent for longer than that loses what it was carrying.
-
-None of this costs anything on a link that loses nothing. `ClientRedundancy` keeps the repair rare on one that does.
-
-The setting is the receiver's alone, so the two peers do not need to match.
+The setting belongs to the receiver, so the peers do not need to match.
 
 ```csharp
-// Discard and recover any tick that loses a packet, as every tick was handled before this option existed.
+// Discard and recover any tick that loses a packet.
 coreManager.SystemManager.PartialStateApplyEnabled = false;
 ```
 
-## Retention
+## A client's own writes always reach the server
 
-`SystemManager.StateRetentionMilliseconds` governs two things at once: how much past state is kept for targeted recovery, and how long a sent state tick may go unacknowledged before recovery escalates. Raise it for high-latency audiences — every recovery threshold derives from it, so a peer whose acknowledgments simply travel slowly is never mistaken for one that lost data.
+Writes to a system a client controls, or has been allowed to write, are recovered however much upstream traffic is lost. Messages and remote calls are not: they may drop. Recovery costs nothing on a link that loses nothing, and `ClientRedundancy` keeps it rare on one that does.
 
-- `SystemManager.DefaultStateRetentionMilliseconds` is `1000`.
-- `SystemManager.MaximumStateRetentionMilliseconds` is `2000` — higher values are silently capped.
-- Changing `StateRetentionMilliseconds` at runtime never triggers a reallocation.
+Limits:
 
-A peer whose acknowledged tick has aged past the full retention window can no longer be recovered per-system, and is instead re-served the world it observes.
+- A member the server has written since the client's lost write is not resent, so an older value never overrides the server's newer one.
+- A client that may no longer write the system resends nothing for it.
+- Nothing older than the retention window can be resent, so a link silent for longer than that loses what it was carrying.
 
-## Setting them, and setting them together
+## Keep past state with StateRetentionMilliseconds
 
-Set `StateInterpolation`, `GlobalRedundancy`, `ClientRedundancy` and `StateRetentionMilliseconds` the same on both peers. Interpolation determines how large a buffer the receiver actually has, so a mismatch means one side is budgeting for recovery capacity the other side isn't providing.
+`SystemManager.StateRetentionMilliseconds` sets both how much past state is kept for recovery and how long a sent tick may go unacknowledged before recovery escalates. Raise it for high-latency players, so slow acknowledgments are not mistaken for loss.
 
-A deeper `StateInterpolation` (and the `GlobalRedundancy` it permits) buys more loss tolerance — more room for a redundant resend to land, more ticks a late packet can still be applied within. It costs latency directly: every buffered tick is a tick of delay before state is applied. A longer `StateRetentionMilliseconds` buys a wider recovery window on struggling connections, at the cost of a longer tail before a slow-but-healthy peer would be mistaken for a lossy one.
+- Default: `SystemManager.DefaultStateRetentionMilliseconds` (`1000`).
+- Maximum: `SystemManager.MaximumStateRetentionMilliseconds` (`2000`). Higher values are capped.
+- Changing it at runtime never reallocates.
 
-## Member-granular repair
+A longer window gives struggling connections more time to recover, at the cost of a longer wait before a slow but healthy peer would be mistaken for a lossy one. A peer that falls behind by more than the window is sent the whole world it observes again.
 
-When a component needs a targeted recovery serve, the engine checks `NetworkComponent.IsMemberRecoverySupported`. A component that overrides this to `true` also overrides:
+## Set them in Unity
 
-```csharp
-public virtual void WriteRecovery(Writer writer, ulong memberMask) { }
-public virtual void ReadRecovery(Reader reader) { }
-```
+`UnitySystemManager` has inspector fields for `GlobalRedundancy` (Global Redundancy), `ClientRedundancy` (Client Redundancy), `StateInterpolation` and `PartialStateApplyEnabled` (Partial State Apply). `StateRetentionMilliseconds` has no inspector field; set it in code.
 
-`WriteRecovery` serializes only the flagged members named by `memberMask`; `ReadRecovery` reads that mask back and applies just those members. Whether a component type supports member recovery is the component type's own choice, and it must be identical on both peers — `IsMemberRecoverySupported` isn't negotiated between peers.
+## Watch for recovery violations
 
-A component that does not support member recovery (the base `IsMemberRecoverySupported` is `false`) is re-served whole through its ordinary `Write` instead of a targeted recovery.
+A `RetentionExceededViolation` or `RecoveryUnconfirmedViolation` means the retention or recovery settings are too small for what a connection is experiencing. See [Violation reference](../diagnostics/violation-reference.md).
 
-## Diagnostic reads
-
-Four members on `SystemManager` let you inspect what's actually in the serialization history, independent of any recovery in progress:
-
-| Member | Reports |
-|---|---|
-| `SerializationHistoryTickCount` | How many ticks of serialization history are currently retained. |
-| `IsSystemRecentlySerialized(uint systemId)` | Whether a given system was locally serialized as changed or spawned within the recent history window. |
-| `GetRecentlySerializedSystemIds(HashSet<uint> collectedSystemIds)` | Adds the Id of every system locally serialized as changed or spawned within the recent history window. |
-| `TryGetSerializedSystemIdsAfterTick(uint afterTick, HashSet<uint> collectedSystemIds)` | Adds the Id of every system serialized after a baseline tick; returns false if part of the requested range has already aged out of the history window. |
-
-```csharp
-using HashSet<uint> changedSystemIds = HashSetPool<uint>.Get();
-
-systemManager.GetRecentlySerializedSystemIds(changedSystemIds);
-```
-
-## When it isn't working
-
-See the Diagnostics page for what a `RetentionExceededViolation` or a `RecoveryUnconfirmedViolation` means when one is raised — they're the signal that retention or recovery settings are undersized for what a connection is actually experiencing.
-
-In the Unity inspector, `UnitySystemManager` exposes `GlobalRedundancy` (labelled Global Redundancy), `ClientRedundancy` (labelled Client Redundancy), `StateInterpolation` and `PartialStateApplyEnabled` (labelled Partial State Apply) as fields. `StateRetentionMilliseconds` has no inspector field; set it in code.
+To check which systems were recently sent, see [Reading serialization history](../diagnostics/inspecting-packets-and-state-history.md).

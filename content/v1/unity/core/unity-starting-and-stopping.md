@@ -4,50 +4,21 @@ title: "Starting and stopping a session in Unity"
 
 > **Driving the core API directly?** See [Server, client and host roles](../../core-api/core/server-client-and-host-roles.md).
 
-## The Automatic Start Mode field
+## Start on Play with no code
 
-`UnityTransportManager` has an **Automatic Start Mode** field backed by `NetworkStartMode`:
+Set **Automatic Start Mode** on `UnityTransportManager`, shown as **Start On Play** in the **Setup** tab of the Nucleus window (**Tools > Nucleus**). It is a `NetworkStartMode`:
 
-- `None` (the default) - does nothing on `Start`.
-- `Server` - starts every transport as a server.
-- `Client` - starts every transport as a client, connecting to its configured remote host.
-- `Host` - starts every transport as both a server and a client in one process.
+- `None` (the default): nothing starts until a script starts it.
+- `Server`: starts every transport as a server.
+- `Client`: starts every transport as a client, connecting to its configured remote host.
+- `Host`: starts every transport as both a server and a client in one process.
+- `Auto`: starts as a client in a ParrelSync clone or when another process already holds the server port, and as a host otherwise.
 
-Set it in the Inspector and press Play. It is the fastest way to get two editors talking: build one editor's `UnityTransportManager` with `Server` (or `Host`) and the other with `Client`, and both come up connected without a line of code.
+To get two editors talking, set one to `Server` or `Host` and the other to `Client`, or set both to `Auto`, and press Play in each.
 
-## Starting from code
+## Start from code
 
-Call the async methods on `UnityTransportManager` directly instead:
-
-```csharp
-await unityTransportManager.StartServerAsync();
-await unityTransportManager.StartClientAsync();
-await unityTransportManager.StartHostAsync();
-```
-
-Each of these calls `EnsureAddedAsync()` first, so the transports are added before they connect. Call `EnsureAddedAsync()` on its own when you need the transports added to the core manager without starting anything yet:
-
-```csharp
-await unityTransportManager.EnsureAddedAsync();
-```
-
-`EnsureAddedAsync()` only adds once - a later call returns immediately if transports are already present.
-
-## Shutting a session down
-
-```csharp
-unityTransportManager.ShutdownAll();
-```
-
-`ShutdownAll()` removes and shuts down every transport the manager added. It leaves the `CoreManager` itself standing; only `CoreManager`'s own teardown (driven by `UnityCoreManager.OnDestroy`) tears that down.
-
-`UnityTransportManager.OnDestroy` calls `ShutdownAll()` itself, unless the `CoreManager` is already deinitialized (checked via `CoreManager.IsDeinitialized`). That means an ordinary scene unload does not leave sockets open behind it - you do not have to call `ShutdownAll()` manually before a scene change.
-
-## Wiring a menu button
-
-`UnityCoreManager.Awake` runs at execution order `-10000` and binds every `UnityManager`, `UnityTransportManager` included, before any other script's `Awake` runs. An ordinary menu-button script can call `StartServerAsync()`, `StartClientAsync()`, `StartHostAsync()`, or `ShutdownAll()` from its own `Awake` and find `NucleusTransportManager` already set. Only a script whose own execution order sits at or below `-10000` needs to wait until `Start` instead.
-
-A minimal button hookup:
+Call the async methods on `UnityTransportManager` from `Start` or later, for example from a menu button:
 
 ```csharp
 public UnityTransportManager TransportManager;
@@ -63,17 +34,23 @@ public void OnStopButtonPressed()
 }
 ```
 
-## How the manager finds its transports
+`StartServerAsync()`, `StartClientAsync()` and `StartHostAsync()` each add the transports first. To add them without starting anything, call `EnsureAddedAsync()`; a second call does nothing.
 
-`EnsureAddedAsync()` collects `NetworkTransport` components with `GetComponentsInChildren<NetworkTransport>()` - on the `UnityTransportManager`'s own GameObject and its children - and adds each to the core manager in the order they are found. When none are present, it adds a `SynapseTransport` component instead, so the manager always has a usable transport. Configure the transport's own settings on that component; they are not repeated here.
+The transports are the `NetworkTransport` components on the `UnityTransportManager`'s GameObject and its children, added in the order they are found. With none present, a `SynapseTransport` component is added. Configure each transport on its own component.
 
-## Reading the result
+## Stop a session
 
-`NucleusTransportManager` (the core `TransportManager` the `UnityTransportManager` drives) exposes three booleans:
+`ShutdownAll()` removes and shuts down every transport the manager added. The `CoreManager` stays until its `UnityCoreManager` is destroyed.
 
-- `IsServerStarted` - true when a server connection is established on any added transport.
-- `IsClientStarted` - true when a client connection is established **and authenticated**. A socket-level connect is not enough: until the local client finishes authenticating, `IsClientStarted` stays false.
-- `IsHostStarted` - true when both of the above are true at once.
+Unloading the scene shuts the transports down for you, so you do not need to call `ShutdownAll()` before a scene change.
+
+## Check what is running
+
+`NucleusTransportManager` has three booleans:
+
+- `IsServerStarted`: a server connection is established on any added transport.
+- `IsClientStarted`: a client connection is established **and authenticated**. It stays false after a socket-level connect until the local client finishes authenticating.
+- `IsHostStarted`: both are true.
 
 ```csharp
 if (unityTransportManager.NucleusTransportManager.IsClientStarted)

@@ -2,32 +2,18 @@
 title: "Filing a bug report"
 ---
 
-## What to include
-
-State the edition: Free or Pro. The edition is a compile-time choice, not a runtime flag, so a report that says "Free" or "Pro" is telling us which features exist in the build, not a setting that could be misread.
-
-List the DLL set you deployed, and confirm every one of those DLLs came from the same build. A mismatched set (an old engine DLL next to a new source-generator DLL, for example) produces failures that look like engine bugs but are actually version skew. If Unity is involved, give the Unity version. If it's a plain host, give the target framework you're building against (the engine itself targets `netstandard2.1`).
-
 ## Before you file
 
-Reproduce it outside host mode first. A host runs both the server and client sides of the connection in the same process, and that dual role masks or manufactures behavior that a real client/server split does not show. If a repro only fails when hosting, it usually isn't the bug it looks like — narrow it to a genuine two-process reproduction before filing.
+1. Reproduce it with the server and client in separate processes. A host runs both in one process, which can hide or create behavior a real split does not show, so a failure that only appears when hosting is usually not the bug it looks like.
+2. Cut the repro down to one networked object, one member on it, and the smallest scene (Unity) or `Main` (plain host) that still fails.
+3. Run it again with logging at `LoggerLevel.Information` and capture the output.
 
-Reproduce it again with logging set to `LoggerLevel.Information` and capture the output. Information is verbose enough to show the sequence of events leading into the failure without needing a rebuild.
+## Include in the report
 
-Say which violations were raised, if any. The engine reports rule breaks through `IViolation` payloads dispatched by the violation system; if your repro triggers one, name it and include its context.
-
-## Building a minimal repro
-
-Minimal means: one networked object, one member on it, and the smallest scene (Unity) or the smallest `Main` (plain host) that reproduces the failure. Strip everything not required to trigger it — other systems, other objects, other members — before filing.
-
-A repro that only fails in host mode is usually not the bug you think it is. Confirm it reproduces with the server and client as separate processes before treating it as real.
-
-## Attaching evidence
-
-Include:
-
-- The log lines, full text, not paraphrased or truncated.
-- Counter readings before and after the failure, if the behavior involves a count (received/sent packets, retries, spawned objects, etc.).
-- The exact tick or sequence number at which the failure occurs, if you can identify it.
-
-Evidence in this shape is what lets a report be reproduced from the outside, rather than argued about.
+- The edition: Free or Pro.
+- The DLLs you deployed, all from the same build. A mixed set, such as an old engine DLL next to a new source generator DLL, fails in ways that look like engine bugs.
+- The Unity version, or for a plain host, the target framework you build against (the engine targets `netstandard2.1`).
+- Any violations raised, with their context.
+- The full log lines, not paraphrased or truncated.
+- Counter readings before and after the failure, if it involves a count (packets sent or received, retries, spawned objects).
+- The tick or sequence number where it fails, if you can find it.

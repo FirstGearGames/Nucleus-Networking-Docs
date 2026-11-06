@@ -4,11 +4,9 @@ title: "The Synapse transport"
 
 > **Using Unity?** See [Synapse Transport component](../../unity/transports/synapse-transport-component.md).
 
-Synapse is Nucleus's production UDP transport, backed by SynapseSocket. It has no editor dependency; every setting is a plain C# property or field set before connecting.
+Synapse is Nucleus's production UDP transport. Every setting is a plain C# property or field you set before connecting.
 
-## Adding and connecting
-
-Add the transport through `TransportManager.AddTransportAsync<T0>()`, then configure it before calling `ConnectAsync`:
+## Add and connect it
 
 ```csharp
 Synapse synapse = (Synapse)await transportManager.AddTransportAsync<Synapse>();
@@ -18,26 +16,26 @@ await synapse.ConnectAsync(Invoker.Server);
 await synapse.ConnectAsync(Invoker.Client);
 ```
 
-`RemoteHost` is the address the client half dials, and it defaults to `IPAddress.Loopback` so a single-process session works without setting anything. Override it before `ConnectAsync(Invoker.Client)` to reach a remote host; the server side always binds every local address, so `RemoteHost` has no effect on `Invoker.Server`.
+- `RemoteHost` is the address the client dials. It defaults to `IPAddress.Loopback`; set it before `ConnectAsync(Invoker.Client)` to reach another machine. The server always binds every local address, so `RemoteHost` does not affect it.
+- A host calls `ConnectAsync` on the same `Synapse` instance twice, once with `Invoker.Server` and once with `Invoker.Client`.
+- `SetPort(ushort)` sets both `Configuration.Port`, which the server binds, and `RemotePort`, which the client dials.
 
-A host process calls `ConnectAsync` with both invokers on the same `Synapse` instance, once for `Invoker.Server` and once for `Invoker.Client`.
-
-## Configuration
+## Configure it
 
 `Synapse.Configuration` is the shared `Configuration` struct:
 
 | Field | Default | Notes |
 |---|---|---|
-| `Port` | `0` | Server listen port and the port the client connects to. The engine's own default is `0`; the Unity component sets it to `7777`, but that default lives on the component, not here. |
-| `MaximumTransmissionUnit` | `1200` | Packets beyond this length are split into multiple packets. |
-| `ConnectedTimeoutSeconds` | `15` | How long a connected socket waits without remote data before the connection is considered timed out. One second is the floor, whatever value is set. Synapse also holds the heartbeat interval to at most a third of this value, so a link carrying nothing else is still heard from twice over before its peer gives up on it. |
-| `ConnectingTimeoutSeconds` | `10` | How long a client waits for the server to answer its connect before giving up and returning to `Disconnected`. Zero falls back to `ConnectedTimeoutSeconds`. Only the client applies it, since a server answers every handshake as it arrives. |
+| `Port` | `0` | The server's listen port and the port the client connects to. The Unity component defaults it to `7777`; the engine does not. |
+| `MaximumTransmissionUnit` | `1200` | Larger packets are split. |
+| `ConnectedTimeoutSeconds` | `15` | How long a connection waits without hearing from the other side before it times out. Never less than one second. |
+| `ConnectingTimeoutSeconds` | `10` | How long a client waits for the server to answer its connect before returning to `Disconnected`. Zero uses `ConnectedTimeoutSeconds`. Client only. |
 
-Cap how many clients the server accepts with `synapse.SetMaximumConnections(uint)`. The value lands in `ServerConfiguration.MaximumConnections`, which your code can read but not write, and `ServerConfiguration.UnsetMaximumConnections` (`0`, the default) accepts any number. Synapse applies the cap the next time the server starts. A client beyond it is refused during its handshake without an answer, so it gives up as it would on a server that never answered.
+Cap how many clients the server accepts with `synapse.SetMaximumConnections(uint)`. It sets `ServerConfiguration.MaximumConnections`, which is read-only to your code. `ServerConfiguration.UnsetMaximumConnections` (`0`, the default) accepts any number. The cap applies the next time the server starts. A client over the cap gets no answer, so it gives up as it would on a server that never replied.
 
 ## Finding out why a connection dropped
 
-A connection reported `Disconnected` carries no reason. To learn why, subscribe to `ViolationObserved` on the `Synapse` transport. It is raised for every violation the socket layer reports, before the socket layer acts on it, so a timeout or a reliable message that could not be delivered arrives just before the connection is reported `Disconnected`.
+A `Disconnected` connection carries no reason. Subscribe to `ViolationObserved` on the `Synapse` transport; it is raised for every violation the socket layer reports, just before the connection is reported `Disconnected`.
 
 ```csharp
 using SynapseSocket.Core.Events;
@@ -54,35 +52,27 @@ void OnViolationObserved(Connection? connection, in ViolationEventArgs violation
 }
 ```
 
-- `Reason` names the cause: `Timeout` when nothing was heard within `ConnectedTimeoutSeconds`, `ReliableExhausted` when a reliable message ran out of resends, `PeerDisconnect` when the other side said goodbye, and the security reasons when a peer sends something malformed, oversized or too fast.
-- `Action` is the response the socket layer has already settled on. The event only reports it and cannot change it.
-- On a server, `connection` is the remote client, still registered. On a client it is the server. It is null for a sender that never connected.
+- `Reason`: `Timeout` when nothing was heard within `ConnectedTimeoutSeconds`, `ReliableExhausted` when a reliable message ran out of resends, `PeerDisconnect` when the other side disconnected, and the security reasons when a peer sends something malformed, oversized or too fast.
+- `Action` is the response already decided. The event cannot change it.
+- `connection` is the remote client on a server (still registered) and the server on a client. It is null for a sender that never connected.
 
-The event is raised on the network loop thread and allocates nothing. A handler may read what it is given, but must not block, stop the transport or disconnect anyone from inside it.
+The event is raised on the network loop thread. A handler must not block, stop the transport or disconnect anyone.
 
-## Starting and stopping
+## Start and stop it
 
-- `ConnectAsync(Invoker.Server)` starts listening for remote clients.
+- `ConnectAsync(Invoker.Server)` starts listening for clients.
 - `ConnectAsync(Invoker.Client)` connects the local client to `RemoteHost`.
-- `DisconnectLocalConnectionAsync(Invoker)` disconnects a local connection (server or client) and closes its sockets.
-- `DisconnectRemoteClientAsync(Connection)` disconnects a specific remote client from the server.
+- `DisconnectLocalConnectionAsync(Invoker)` disconnects the local server or client and closes its sockets.
+- `DisconnectRemoteClientAsync(Connection)` disconnects one remote client from the server.
 - `ShutdownAsync()` stops all local connections.
 
-## HostPairing
+## Choose how a host pairs with itself
 
-`HostPairing` controls how a `Synapse` transport recognizes its own client half when one process runs both server and client. It's read when the client socket is asked to connect, so it must be set before that.
+`HostPairing` sets how a host's server and client halves connect. Set it before the client connects.
 
-- **`HostPairing.Endpoint`** (the engine default) — the two halves talk over the socket like any other pair. The server recognizes its own client by the source port of its datagrams, matched against the port the client socket bound. A host proves the same thing under this value that a remote client would prove: a real datagram, a real handshake, a real acknowledgment.
-- **`HostPairing.Local`** — the two halves are paired in process and never exchange a datagram. Engaged only when the client is asked to dial a loopback address with its own server already up. Nothing about a host's own traffic crosses a socket, but a host also no longer proves anything about the transport with its own half.
+- `HostPairing.Endpoint` (default): the halves talk over the socket like any remote pair, so a host exercises the same path a remote client does.
+- `HostPairing.Local`: the halves are paired in process and never exchange a datagram. It applies only when the client dials a loopback address with its own server already running.
 
-`IsOwnClientConnection(Connection)` is how the transport answers "is this connection my own client half": under `Local` it's a reference check against the server socket's paired client connection, and under `Endpoint` it's the port match described above.
+`IsOwnClientConnection(Connection)` reports whether a connection is the host's own client half. `IsLocalTransport()` returns `false`, even under `HostPairing.Local`.
 
-## DatagramOverheadBytes
-
-`Synapse.DatagramOverheadBytes` reports the widest header the socket layer puts on a datagram. The engine subtracts it when sizing its own segments, so each one stays inside a single datagram instead of being chopped again by the socket layer.
-
-## Other members
-
-`SetPort(ushort)` sets both `Configuration.Port`, the port the server binds, and `RemotePort`, the port the client dials.
-
-`IsLocalTransport()` returns `false`. Synapse always uses a real UDP socket, even under `HostPairing.Local`, where the traffic just never crosses one.
+`Synapse.DatagramOverheadBytes` is the socket layer's largest per-datagram header, which comes out of the transmission unit.

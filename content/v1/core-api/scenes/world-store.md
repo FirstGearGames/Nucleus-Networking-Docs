@@ -2,19 +2,19 @@
 title: "Writing a world store"
 ---
 
-## The seam
+`IWorldStore` decides where a saved world lives: a file, a database row, a save service or cloud storage. `JsonWorldStore` ships as the default and as a reference to read alongside your own.
 
-A saved world has no file, no format and no address defined by the engine, only a shape. `IWorldStore` is that seam: implement it to persist a world somewhere other than a file, a database row, a save-service blob, cloud storage, whatever the game already uses. `JsonWorldStore` ships as the default implementation, both as a working store and as the reference to read alongside your own.
+Pro only: `IWorldStore`, `IWorldDocument`, `WorldSystemIdentity`, `WorldLoadFailureAction`, `JsonWorldStore` and `WorldDocument`. `IWorldStateWriter` and `IWorldStateReader` ship in both editions.
 
-Almost every type behind this feature is Pro-only: `IWorldStore`, `IWorldDocument`, `WorldSystemIdentity`, `WorldLoadFailureAction`, `JsonWorldStore` and `WorldDocument`. The two exceptions are `IWorldStateWriter` and `IWorldStateReader`, which ship in both editions.
+## Register a store
 
-Register a store through `WorldPersistenceManager.SetWorldStore`. The engine consults exactly one store at a time.
+The engine uses one store at a time:
 
 ```csharp
 CoreManager.WorldPersistenceManager.SetWorldStore(new JsonWorldStore(CoreManager, filePath));
 ```
 
-## IWorldStore
+## Implement IWorldStore
 
 ```csharp
 public interface IWorldStore
@@ -26,16 +26,16 @@ public interface IWorldStore
 }
 ```
 
-- `BeginSave` returns an empty document for the engine to write the whole world into. It is separate from `SaveAsync` so nothing is committed until the write is complete; a failed save leaves the previous one intact.
-- `SaveAsync(IWorldDocument)` keeps the document the engine just finished writing. Return `true` once it is safely stored.
-- `LoadAsync` returns the document to read a saved world out of, or `null` when there is nothing to load.
-- `OnSceneUnavailable(ushort sceneId, uint sceneHandle)` is asked once per scene instance the save names that this build cannot open, before any object from it has been built. Answer with a `WorldLoadFailureAction`.
+- `BeginSave`: return an empty document for the engine to write the world into. Nothing is committed until the write completes, so a failed save leaves the previous one intact.
+- `SaveAsync(IWorldDocument)`: keep the finished document. Return `true` once it is safely stored.
+- `LoadAsync`: return the document to read, or `null` when there is nothing to load.
+- `OnSceneUnavailable(ushort sceneId, uint sceneHandle)`: called once for each saved scene instance this build cannot open, before any object from it is built. Return a `WorldLoadFailureAction`.
 
-The work is genuinely asynchronous. The engine does not block on it and does not care which thread it completes on; completion is marshalled back onto the network loop before anything is built.
+The async methods may complete on any thread. The engine does not block on them.
 
-## IWorldDocument
+## Implement IWorldDocument
 
-A document is streamed, not handed over whole, so neither saving nor loading builds a second copy of the world in memory. Scenes are written and read before objects, because an object names the scene it lives in.
+A document is streamed, so neither saving nor loading holds a second copy of the world in memory. Scenes are written and read before objects, because an object names its scene.
 
 ```csharp
 public interface IWorldDocument
@@ -48,20 +48,20 @@ public interface IWorldDocument
 }
 ```
 
-Writing direction:
+Writing:
 
 - `WriteScene` records one open scene instance.
-- `BeginSystem(systemId, in worldSystemIdentity)` opens one object and returns the `IWorldStateWriter` its components are written through.
-- `EndSystem` closes the object opened by `BeginSystem`.
+- `BeginSystem` opens one object and returns the `IWorldStateWriter` its components are written through.
+- `EndSystem` closes that object.
 
-Reading direction:
+Reading:
 
-- `TryReadScene` returns the next saved scene, or `false` once they are exhausted.
-- `TryReadSystem` returns the next saved object, its `WorldSystemIdentity`, and the `IWorldStateReader` to read its components through. The returned reader is valid until the next `TryReadSystem` call, so apply state before asking for the next object.
+- `TryReadScene` returns the next saved scene, or `false` when there are no more.
+- `TryReadSystem` returns the next saved object, its `WorldSystemIdentity`, and the `IWorldStateReader` for its components. The reader only needs to stay valid until the next `TryReadSystem` call.
 
-## IWorldStateWriter and IWorldStateReader
+## Store members by name
 
-These write and read one object's component state, keyed by component type name and member name rather than by position. Names are what let a save survive a component gaining or losing a member.
+`IWorldStateWriter` and `IWorldStateReader` handle one object's component state, keyed by component type name and member name rather than position, so a save survives a component gaining or losing a member.
 
 ```csharp
 public interface IWorldStateWriter
@@ -79,26 +79,26 @@ public interface IWorldStateReader
 }
 ```
 
-Nucleus calls these, not game code: each `NetworkComponent` names its own type and then writes each member in declaration order. `Write` hands over the member itself rather than its value, so an implementation asks the member to write itself and stores the result under its name; it never grows a case per type.
+Nucleus calls these, not your game code. Each `NetworkComponent` names its type, then writes each member in declaration order. `Write` passes the member itself: ask the member to write itself and store the result under its name, with no per-type cases.
 
-On the read side, a member the save does not carry is never assigned and keeps its constructed default. A name the save carries that the component no longer has is never asked for and is skipped. There is no version number or schema check. What this does not cover is a member whose type changed under a name that stayed the same; that reads back silently wrong. Rename the member when its meaning changes.
+On load, a member the save does not contain keeps its constructed default, and a saved name the component no longer has is skipped. There is no version or schema check. A member whose type changed but whose name stayed the same reads back silently wrong, so rename a member when its meaning changes.
 
-## WorldSystemIdentity
+## WorldSystemIdentity describes each saved object
 
-A readonly struct recording everything a save needs beyond member values: what type to build, what it was built from, where it lives, and what it belongs to.
+A readonly struct holding what a save needs beyond member values:
 
 | Field | Meaning |
 |---|---|
 | `SystemTypeName` | Full name of the `NetworkSystem` type to build, resolved through the type registry on load. |
 | `PlatformId` | The prefab or scene-object identifier the object was started with. |
-| `PrefabBundleId` | The content bundle the prefab was registered from, or the base build for an object that ships inside it. |
-| `IsSceneObject` | Whether the object is a scene object; a load binds it to an object the scene already placed instead of constructing one. |
+| `PrefabBundleId` | The content bundle the prefab was registered from, or the base build. |
+| `IsSceneObject` | Whether the object is a scene object. A load binds it to the object the scene already placed instead of constructing one. |
 | `SceneHandle` | The scene instance the object lives in. |
 | `GroupId` | The group the object belongs to. |
 | `ParentId` | The object this one is parented to. |
-| `ComponentTypeNames` | Full names of the `NetworkComponent` types the object carried, in order. A constructed system starts with no components, so a save needs this list to know what to add before it has values to put in them. A scene object ignores it for rebuilding, since its components were placed by the scene; it is recorded only to describe what was there. |
+| `ComponentTypeNames` | Full names of the object's `NetworkComponent` types, in order, so a load knows which components to add. A scene object's components come from the scene, so for it this list is descriptive only. |
 
-## WorldLoadFailureAction
+## Choose what a missing scene does
 
 ```csharp
 public enum WorldLoadFailureAction : byte
@@ -108,11 +108,14 @@ public enum WorldLoadFailureAction : byte
 }
 ```
 
-Returned from `OnSceneUnavailable` when a saved scene cannot be opened in this build. `Skip` drops that scene instance and every object saved inside it, then loads the rest of the world; it is the default and the safer answer when scenes are independent of each other. `Fail` abandons the load and `LoadAsync` returns `false`, but it does not bring back the world that was standing: a load despawns every object and closes every open scene before it reads the saved scenes, so by the time this is asked the old world is already gone. No saved object is built until every saved scene has been answered for, so `Fail` leaves an empty world rather than a half-built one. Saved scenes that reopened before the one that failed stay open, with nothing built in them.
+Return one from `OnSceneUnavailable` when a saved scene cannot be opened in this build:
 
-## JsonWorldStore as a reference
+- `Skip` (default): drop that scene instance and every object saved in it, then load the rest. The safer answer when scenes are independent.
+- `Fail`: abandon the load, and `LoadAsync` returns `false`. The old world does not come back: a load despawns every object and closes every scene before reading saved scenes. No saved object is built until every saved scene has been answered for, so the result is an empty world, not a half-built one. Saved scenes that reopened before the failure stay open and empty.
 
-`JsonWorldStore` is the shipped `IWorldStore`. It writes a real JSON structure (scenes, objects, components and member names all read as text), so a saved world diffs object by object and member by member.
+## Start from JsonWorldStore
+
+`JsonWorldStore` writes readable JSON (scenes, objects, components and member names as text), so saved worlds diff object by object and member by member.
 
 ```csharp
 public sealed class JsonWorldStore : IWorldStore
@@ -124,8 +127,9 @@ public sealed class JsonWorldStore : IWorldStore
 }
 ```
 
-`FilePath` is the file saved worlds are written to and read from. `MissingSceneAction` is settable rather than fixed, so a game can pick `Skip` or `Fail` without implementing the interface itself; it defaults to `Skip`. `OnSceneUnavailable` just returns `MissingSceneAction`.
+- `FilePath`: the file saved worlds are written to and read from.
+- `MissingSceneAction` (default `Skip`): what `OnSceneUnavailable` returns, so you can choose `Skip` or `Fail` without writing your own store.
 
-The file is written to a temporary path beside the target and moved over it only once the write completes, so a save interrupted partway leaves the previous world in place rather than a truncated one.
+A save writes to a temporary file beside the target and moves it over only when complete, so an interrupted save leaves the previous world in place.
 
-Use `WorldDocument` (the `IWorldStore`-agnostic `IWorldDocument`/`IWorldStateWriter`/`IWorldStateReader` implementation `JsonWorldStore` builds through `BeginSave`) as a second reference if your own store needs an in-memory document to write into before serializing it to your target.
+If your store needs an in-memory document to write into before sending it to your target, use `WorldDocument`, the `IWorldDocument`, `IWorldStateWriter` and `IWorldStateReader` implementation that `JsonWorldStore` returns from `BeginSave`.

@@ -4,61 +4,49 @@ title: "Diagnosing desync"
 
 ## Work the layers in order
 
-"It looks wrong on the other peer" is four different bugs wearing one symptom. Check them in this order, because each rung rules out the ones below it:
+"It looks wrong on the other peer" can be four different bugs. Check them in this order, because each one rules out the ones below it:
 
-1. **Is the object there at all?** If the receiver never spawned it, or the object vanished when it shouldn't have, this is interest: an `IInterestCondition` culled the pair (`InterestEffect.Spawn`, resolving to `InterestMembership.Unspawned`), or a despawn genuinely happened.
-2. **Is it there but frozen?** The object exists on the receiver but stopped updating a while ago. This is `InterestEffect.Stop`: the pair resolved to `InterestMembership.Stopped`, which retains the receiver's object and stops sending it updates rather than despawning it. It looks identical to a dead connection from the outside; it isn't.
-3. **Is it there and moving, but wrong?** Position, rotation, or some other member holds a value that doesn't match the sender. This is a member value question: either the value never changed on the receiver, or it changed to something incorrect.
-4. **Is it there, correct, but late?** The value is right eventually, just visibly behind. This is interpolation and the retention window, not a data bug.
+1. **Is the object there at all?** If the receiver never spawned it, or it vanished, this is interest: an `IInterestCondition` culled the pair (`InterestEffect.Spawn`, resolving to `InterestMembership.Unspawned`), or the object really was despawned.
+2. **Is it there but frozen?** This is `InterestEffect.Stop`: the pair resolved to `InterestMembership.Stopped`, so the receiver keeps the object but is sent no more updates. It looks like a dead connection, but it is not.
+3. **Is it there and moving, but wrong?** A member holds a value that does not match the sender. See the next section.
+4. **Is it correct, but late?** This is interpolation and the retention window, not a data bug.
 
-Don't skip ahead. A value that "looks wrong" because the object was actually culled five seconds ago and you're staring at a stale render is not a serializer bug, and chasing it as one wastes time.
+Do not skip ahead. A value that looks wrong because the object was culled five seconds ago is not a serializer bug.
 
-## Never arrived vs. arrived and wrong
+## Tell a missing value from a wrong one
 
-Once you're at rung 3, split it again before touching a serializer:
+Split layer 3 again before you touch a serializer:
 
-- **A value that never changes on the receiver** is an observation or access question. Is the Connection actually registered as an observer of that `NetworkSystem`? Did an interest condition stop it (rung 2, revisit it)? Does the sender even own or control the member it's trying to change? A member that never updates usually means the write never left the sender, or never reached this receiver, not that the receiver decoded it wrong.
-- **A value that changes, but to the wrong thing**, is a serializer or prediction question. The receiver is getting updates and applying them, so the pipeline is working; the value it lands on is what's wrong. That points at how the member is being written or projected (`TransmissionMode.Divine` vs `TransmissionMode.Interval`), or, for a controlled member, at prediction/reconciliation on the controlling side.
-
-These two failure modes live in different subsystems. Don't debug a serializer because a value never showed up, and don't debug interest because a value arrived and was simply incorrect.
+- **A value that never changes on the receiver** is an observation or access problem. Is the Connection an observer of that `NetworkSystem`? Did an interest condition stop it? Does the sender own or control the member it is changing? Usually the write never left the sender, or never reached this receiver.
+- **A value that changes, but to the wrong thing**, is a serializer or prediction problem. Look at how the member is written (`TransmissionMode.Divine` or `TransmissionMode.Interval`) or, for a controlled member, at prediction and reconciliation on the controlling side.
 
 ## Read the violation stream first
 
-Most desyncs that are actually protocol faults - not just late or stale data - raise a violation before you'd notice anything visually. `ViolationManager` is the framework-wide pipeline for this: register a `ViolationHandler<T0>` to decide the `ViolationAction` for one violation type, or an `IViolationObserver` to hear every type raised, or subscribe the matching per-type event (for example `UnauthorizedMemberChangeViolationDetected`) to just watch.
+Most protocol faults raise a violation before you would notice anything on screen. Register an `IViolationObserver` to hear every type, or subscribe a per-type event such as `UnauthorizedMemberChangeViolationDetected` (see [Handling violations in Unity](./handling-violations-in-unity.md)).
 
-The types worth knowing when chasing desync:
+The types that matter for desync are `UnauthorizedMemberChangeViolation`, `PredictedMemberChangeViolation`, `EmptyCollectionDeltaViolation`, `InvalidStateAckViolation`, `RetentionExceededViolation`, `RecoveryUnconfirmedViolation` and `UnauthorizedSpawnViolation`. The [Violation reference](./violation-reference.md) says what each means and what to check first.
 
-- `UnauthorizedMemberChangeViolation` - a peer changed a member of a `NetworkSystem` it doesn't control.
-- `PredictedMemberChangeViolation` - a controller sent a value for a predicted member, which should only ride upstream as client state.
-- `EmptyCollectionDeltaViolation` - a collection delta declared no operations, which a compliant sender can't produce; usually a crafted packet or a diverged serializer pair.
-- `InvalidStateAckViolation` - a peer acknowledged a tick above anything ever sent to it.
-- `RetentionExceededViolation` - a peer's acknowledged tick fell beyond the retention window and had to be re-served the whole world. A single raise is ordinary heavy loss; chronic raises mean the peer's latency exceeds `SystemManager.StateRetentionMilliseconds`, or it's deliberately withholding acknowledgments.
-- `RecoveryUnconfirmedViolation` - consecutive recoveries were served to a Connection without it ever confirming one.
-- `UnauthorizedSpawnViolation` - a client sent state naming a system identifier the server doesn't hold, which would have spawned an object on the server.
+A matching raise names the subsystem directly. If nothing is raised, the cause is something violations do not police: an interest decision, ordinary loss inside the retention window, interpolation lag, or a prediction mismatch carried in a well-formed packet.
 
-If a symptom in rungs 1-3 has a matching raise, that's your subsystem, directly. **If nothing is raised at all**, the fault sits in something the violation pipeline doesn't police: a legitimate interest decision, ordinary loss inside the retention window, an interpolation lag, or a prediction mismatch that's still a well-formed packet. Absence of a violation is evidence, not a dead end.
+## Reproduce with two processes, not only a host
 
-## The host special case
+Some bugs only show on a client in a separate process, never on a host's own client. Test with two separate processes (two clients, or a client against a dedicated server) as well as with a host.
 
-A host still serializes its own client's packets normally on the send side - nothing is skipped there. What changes is receipt: the arriving loopback copy is discarded unread rather than deserialized, because whatever it carries either duplicates what the sending half already applied in-process, or is a stale re-apply of the same object the host itself authored.
+## Some faults are timing, not data
 
-This means a bug on the receive-and-apply path - deserialization, violation checks that only run on an incoming packet, interest resolution for an arriving state, anything downstream of "a packet was read" - never runs for a host's own client at all. If a repro only shows up between two separate processes (two real clients, or a client against a dedicated server) and never on a host testing against its own client, look at the receive path first. Host loopback simply never exercises it.
+Some symptoms come from which network loop step a callback runs on, not from the data. A callback only sees what was applied before its step ran. Signs of a step-ordering problem:
 
-## Timing faults
+- A value read in one callback is stale compared to the same value read in another callback on the same tick.
+- A change does not take effect until the following tick, or takes effect twice.
+- The symptom varies with frame rate, or with several fixed updates landing in one variable update.
 
-Some symptoms point at the tick loop, not at data. The loop runs its steps in a fixed order - network reads happen early, state is read and applied at the start of a step, serialized and sent at the end of one - and a callback only sees what's already been applied by the point it runs on. Signs you're looking at a step-ordering problem rather than a data problem:
+Fix these by moving the callback to the right step, not by changing serialization.
 
-- A value read in one callback is stale compared to the same value read in a different one on the same tick - check which steps each callback runs on, not the value itself.
-- A change looks like it "doesn't take" until the following tick, or takes twice - it's being written on the wrong side of a state-apply boundary, or read before the write it depends on has happened.
-- Symptoms vary with frame rate or with multiple fixed updates landing inside one variable update - that's the loop's own cadence, not the network.
+## Narrow it to a reproduction
 
-Fixing these means moving the callback to the correct step relative to when state applies and when it's written, not touching serialization at all.
+Once you know the layer and which of the two failure modes it is, shrink the repro before reading a single packet:
 
-## Narrowing to a reproduction
-
-Once you know which rung and which of the two failure modes, shrink the repro before reading a single packet:
-
-1. Cut to one object and one member. A whole scene desyncing is the same bug as one member desyncing, just noisier to look at.
-2. Turn projection off - set the member's `TransmissionMode` to `Interval`. If the bug disappears, it's in the projection path; if it doesn't, projection was never the cause.
-3. Raise loss deliberately (a `NetworkConditions` with a `PacketLossChance`, passed to `TransportManager.SetNetworkConditions`) to see whether the symptom is loss-shaped - arrives late, arrives out of order, never arrives - versus present on every send.
-4. Only then read a packet. By this point you know which member, which tick range, and which of "never arrived" or "arrived wrong" you're chasing, so there's an actual question to answer instead of a blind capture.
+1. Cut to one object and one member.
+2. Set the member's `TransmissionMode` to `Interval`. If the bug disappears, it is in the `Divine` path.
+3. Add packet loss deliberately (a `NetworkConditions` with a `PacketLossChance`, passed to `TransportManager.SetNetworkConditions`) to see whether the symptom depends on loss.
+4. Only then read a packet, knowing which member, which tick range, and whether the value never arrived or arrived wrong.

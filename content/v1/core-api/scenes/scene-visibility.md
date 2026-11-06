@@ -2,43 +2,36 @@
 title: "Scene visibility: what a client in a scene can see"
 ---
 
-## The gate
+## Clients see only the scenes they hold
 
-`SceneManager` owns a `SceneInterestCondition` called `SpawnGate`. It has `Capabilities => InterestEffect.Spawn`, and `SceneManager` registers it on startup as one of the engine's default conditions (listed in `InterestManager.DefaultConditions`), so it applies to every `NetworkSystem` without any per-game setup. A game that wants to arbitrate scene membership itself can pull it back out with `InterestManager.RemoveDefaultConditions`.
+`SceneManager.SpawnGate`, a `SceneInterestCondition`, is one of the engine's default interest conditions (listed in `InterestManager.DefaultConditions`), so it applies to every `NetworkSystem` with no setup. It withholds a system whose `SceneHandle` names a live scene instance from any client that does not hold that instance. A system with `NetworkSystem.UnsetSceneHandle` is seen by everyone, so a world that never opens a scene pays almost nothing for the gate.
 
-The rule it enforces: a `NetworkSystem` whose `SceneHandle` names a live scene instance is withheld from a `Connection` that does not hold that scene. `NetworkSystem.UnsetSceneHandle` (a system that belongs to no server-opened scene) is exempt and is always held by everyone, so a world that never opens a scene pays almost nothing for this gate being on.
+To handle scene membership yourself, remove it with `InterestManager.RemoveDefaultConditions`.
 
-## Spawning and ongoing replication
+The gate is also what keeps stacked scenes apart. Copies of one scene share the same coordinates, so without it a distance-based condition would match a player in one copy against objects in every other copy.
 
-`SpawnGate` only carries `InterestEffect.Spawn`, but it is not just a spawn-time check. The gate stops serving a scene to a client the moment `SceneManager.RequestSceneUnload` asks it to leave, not when the unload finishes, even though `Connection.IsSceneLoaded` keeps answering true until the client confirms. `RequestSceneUnload` drops the connection as an observer of that scene's systems immediately, before any unload confirmation comes back. `SceneInterestCondition.Evaluate` mirrors this: while that unload request is outstanding, the condition returns `InterestResult.Spawn(isMet: false)` instead of abstaining, withholding the object rather than re-serving it into a scene the client is on its way out of.
+## A leaving client is cut off at once
 
-So "the gate only restricts spawning" is only true for a client that fully holds the scene start to finish. A client mid-leave is cut off before the unload is confirmed.
+As soon as `SceneManager.RequestSceneUnload` asks a client to leave, that scene's objects stop being sent to it, even though `Connection.IsSceneLoaded` stays true until the client confirms.
 
-## Local and emulated peers
+## A client's own object arrives as it enters
 
-The condition abstains for a local peer, returning `InterestResult.None` immediately. A local peer is not a host's own player connection. It is an emulated `Connection`, or any peer sharing an in-memory Transport (test setups, most commonly), and it is distinct from `Connection.IsHostLoopback`, which is what actually names a host's own client half. A host's own client is evaluated by this gate like any other connection; it is placed by the same scene protocol and holds a real membership record.
+While a client's load of a scene is outstanding, the gate still lets through a spawned (not scene) object in that scene that the client controls, so the client does not wait for the load to see its own object. A client already holding the scene does not need this, and a client asked to leave never gets it.
 
-What differs for a host's client is how that record is used: the result is surfaced through `NetworkSystem.HostInterestMembership` rather than acted on, which is what lets a host hide an object its client half would not have been sent without actually withholding anything from itself as the server.
+## A host's client is gated, a local peer is not
 
-## Carried systems
+A host's own client is gated like any other connection. The result is reported through `NetworkSystem.HostInterestMembership` instead of acted on, so the host can hide an object its client would not have been sent without withholding anything from itself as the server.
 
-A client that is being moved into a scene does not have to wait for the scene load to land before its own controlled object shows up. When the system is a spawned object rather than a scene object, the connection controls it, and the connection has been asked into the system's scene with that load still outstanding, the condition abstains (`InterestResult.None`) rather than withholding. This is checked after the held-scene branch and after the leaving-scene branch, so a client that already holds the scene never needs it, and a client that has been asked to leave never gets it either. Only a client on its way in, for a system it drives, gets served across the gap.
+The gate does not apply to a local peer: an emulated `Connection`, or a peer sharing an in-memory Transport (usually a test setup). A host's own client is not a local peer; it is the connection with `Connection.IsHostLoopback`.
 
-## Automatic scene requests
+## Ask clients into scenes automatically
 
-By default a blocked spawn does nothing beyond withholding the object. Setting `SceneManager.AutomaticRequestOnBlockedSpawnEnabled` to `true` turns that block into an action: when `Evaluate` is about to withhold a spawn, it also calls `SceneManager.TryRequestSceneLoad` for that connection and scene, naming the system so the load's confirmation can arrive as a spawn on the same tick rather than waiting for the next stagger slot. The request dedupes per connection and scene, and stops firing once that client has reported it cannot load the scene.
+With `SceneManager.AutomaticRequestOnBlockedSpawnEnabled` set to `true` (default `false`), a withheld spawn also calls `SceneManager.TryRequestSceneLoad` for that client and scene, so the object spawns on the same tick the load is confirmed. Requests are deduplicated per client and scene, and stop once the client reports it cannot load the scene.
 
-## Why stacked scenes cannot see each other
+## Find out why a client is missing an object
 
-Two open instances of the same scene occupy the same world coordinates — nothing about position tells them apart. Only membership does. `SceneHandle` on a `NetworkSystem`, checked against what `Connection.IsSceneLoaded` reports for that client, is the only thing separating a player in instance A from an identical-looking object sitting in the same spot in instance B. Without this gate a distance-based condition would happily match a player in one instance against every object in every other instance at the same coordinates.
-
-## Troubleshooting
-
-**A client should be seeing an object and isn't.**
-
-- Check `NetworkSystem.SceneHandle` on the object. If it is not `NetworkSystem.UnsetSceneHandle`, the client must hold that exact scene instance.
-- Check `Connection.IsSceneLoaded(sceneHandle)` for that client. If it is false, the object is being withheld correctly — the fix is getting the client into the scene (`SceneManager.TryRequestSceneLoad`), not the interest system.
-- If the client was recently told to leave the scene (`RequestSceneUnload`), everything in it is withheld immediately, before the unload confirms. This is expected, not a bug.
-- If the object is the client's own controlled object arriving right as it enters the scene, confirm the carry conditions hold: the system must be a spawned object rather than a scene object, the scene load must be outstanding for that connection, and the connection must control the system's group.
-- On a genuinely local setup, an emulated connection or a peer sharing an in-memory Transport, `SpawnGate` abstains; this does not apply to a real host's own client, which is gated normally and reported through `NetworkSystem.HostInterestMembership` instead.
-- If none of the above applies and the object still never arrives, check whether `InterestManager.RemoveDefaultConditions` was called somewhere, removing `SpawnGate` entirely.
+1. Check `NetworkSystem.SceneHandle` on the object. If it is not `NetworkSystem.UnsetSceneHandle`, the client must hold that exact instance.
+2. Check `Connection.IsSceneLoaded(sceneHandle)` for the client. If it is false, the object is correctly withheld: place the client with `SceneManager.TryRequestSceneLoad`.
+3. If the client was recently asked to leave the scene with `RequestSceneUnload`, everything in it is withheld at once. This is expected.
+4. If it is the client's own controlled object arriving as the client enters the scene, confirm that the object is a spawned object rather than a scene object, that the scene load is outstanding for that client, and that the client controls the object's group.
+5. If none of the above applies, check whether `InterestManager.RemoveDefaultConditions` removed `SpawnGate`.

@@ -4,36 +4,34 @@ title: "Ticks, tick rate and time"
 
 > **Using Unity?** See [Tick rate and the loop in Unity](../../unity/core/unity-tick-rate-and-the-loop.md).
 
-## Tick rate
+## Set the tick rate when you construct the CoreManager
 
-`NetworkLoopManager.TickRate` is the number of ticks the loop runs each second. It is set once, from the `tickRate` argument passed to the `CoreManager` constructor, and has no setter afterward:
+`NetworkLoopManager.TickRate` is the number of ticks per second. It comes from the `tickRate` argument of the `CoreManager` constructor and has no setter:
 
 ```csharp
 public uint TickRate { get; }
 ```
-
-If the caller names no rate, `CoreManager`'s constructor defaults to `NetworkLoopManager.DefaultTickRate` (30). A requested rate outside `NetworkLoopManager.MinimumTickRate` (5) through `NetworkLoopManager.MaximumTickRate` (128) is clamped to the nearer bound and logged as a warning rather than rejected.
-
-Every rate-derived value in the engine, the loop provider's tick interval, the state retention window, each `NetworkMember`'s send interval in ticks, is baked once from this value while the managers are constructed. There is no supported way to change the tick rate mid-session; a new rate means a new `CoreManager`.
 
 ```csharp
 CoreManager coreManager = new(tickRate: 60);
 uint rate = coreManager.NetworkLoopManager.TickRate; // 60
 ```
 
-## The tick counter
+- The default is `NetworkLoopManager.DefaultTickRate` (30).
+- A rate outside `NetworkLoopManager.MinimumTickRate` (5) through `NetworkLoopManager.MaximumTickRate` (128) is clamped to the nearer bound and logged as a warning.
+- The rate cannot change mid-session. A new rate means a new `CoreManager`.
 
-`NetworkLoopManager.Tick` is the current local tick, incremented once per tick at the very end of the `TickAdvance` step, after its callbacks have run:
+## Tick counts this peer's ticks
 
 ```csharp
 public uint Tick { get; private set; } = FirstTick;
 ```
 
-Because it advances as the last thing a tick does, `LateVariableUpdate`, the frames between ticks and every message handler already read the tick their writes will ride.
+`NetworkLoopManager.Tick` is the current local tick. It increments at the very end of the `TickAdvance` step, after its callbacks, so `LateVariableUpdate`, the frames between ticks and every message handler already read the tick their writes will ride.
 
-It starts at `FirstTick` (1), never at zero. `UnsetTick` is 0, and the framework relies on "a live tick is never the unset value" wherever a tick doubles as a presence flag.
+It starts at `FirstTick` (1). `UnsetTick` is 0, and a live tick is never the unset value.
 
-`Tick` is this peer's own local counter, not a shared wall clock. Two connected peers do not share a tick number: a client's `Tick` and the server's `Tick` are two independently incrementing counters that happen to run at the same rate. To estimate what tick a remote peer is on, read `Connection.TryGetServerTickEstimate` instead:
+`Tick` is this peer's own counter. A client's `Tick` and the server's are independent counters that run at the same rate, not a shared clock. To estimate the server's tick, use `Connection.TryGetServerTickEstimate`:
 
 ```csharp
 public bool TryGetServerTickEstimate(uint localTick, out uint serverTickEstimate)
@@ -41,20 +39,16 @@ public bool TryGetServerTickEstimate(uint localTick, out uint serverTickEstimate
 
 It derives the estimate from the newest state received from that connection, and returns `false` until at least one has arrived.
 
-## Subtick percentage
-
-`SubtickPercentage` is the fraction, 0 through 1, of the current tick that has elapsed:
+## SubtickPercentage is how far through the tick you are
 
 ```csharp
 public float SubtickPercentage { get; private set; }
 public void SetSubtickPercentage(float percentage)
 ```
 
-It is set through `SetSubtickPercentage`, which clamps the value into the 0-1 range. `NetworkLoopStepDriver` publishes it on every frame that runs a variable update, just before `VariableUpdate`, so the default `SystemNetworkLoopStepProvider`, the Unity integration's provider, and any provider you build on the driver all keep it current; do not set it yourself from such a provider. Only a provider that invokes the steps without the driver leaves it at zero, its default, which is a safe value: interpolation reading it resolves to the previous value rather than an undefined intermediate one.
+`SubtickPercentage` is the fraction, 0 through 1, of the current tick that has elapsed. `SetSubtickPercentage` clamps into that range. `NetworkLoopStepDriver` sets it on every frame that runs a variable update, just before `VariableUpdate`, so any provider built on the driver (including the default and the Unity provider) keeps it current; do not set it yourself from such a provider. A provider that invokes the steps without the driver leaves it at zero, which is safe: interpolation then resolves to the previous value.
 
-## StepDelta
-
-Every loop step callback receives a `StepDelta`, carrying four millisecond fields:
+## Every step callback receives a StepDelta
 
 ```csharp
 public struct StepDelta
@@ -66,18 +60,18 @@ public struct StepDelta
 }
 ```
 
-- `Delta` — milliseconds since the step last ran. Use it for variable-timing work.
-- `FixedDelta` — the fixed delta for the step, when one applies; zero otherwise. Use it for work that needs consistent timing, such as physics or anything keyed to the tick rate.
-- `TimeSinceLastFixedUpdate` — milliseconds since the last fixed update completed. Not modified until that fixed update finishes.
-- `NormalizedDelta` is the frame's delta adjusted so the frames between two ticks add up to exactly one tick interval. Use it for anything you move every frame, as the next section explains. `NetworkLoopStepDriver` sets it, so it is zero when you invoke the steps yourself.
+All four are in milliseconds:
 
-## Move per-frame work by the normalized delta
+- `Delta`: time since the step last ran. Use it for variable-timing work.
+- `FixedDelta`: the step's fixed delta when one applies, and zero otherwise. Use it for work that needs consistent timing, such as physics or anything keyed to the tick rate.
+- `TimeSinceLastFixedUpdate`: time since the last fixed update completed. It does not change until that fixed update finishes.
+- `NormalizedDelta`: the frame's delta adjusted so the frames between two ticks add up to exactly one tick interval. `NetworkLoopStepDriver` sets it, so it is zero when you invoke the steps yourself.
 
-Moving an object by the raw frame delta is the most common way to spend bandwidth without noticing. Frames never line up with ticks, so an object moved by each frame's own delta covers a different distance in every tick, and an object whose per-tick movement keeps changing costs more to replicate than one moving evenly.
+## Move per-frame work by NormalizedDelta
 
-`NormalizedDelta` removes that unevenness while keeping the object moving every frame. Each frame gets its delta plus anything held back from the frame before. On a frame that ticks, whatever the frames since the last tick add up to beyond one tick interval is held back and added onto the next frame, so no time is lost and the object's speed is unchanged. A single frame longer than a tick interval runs its whole delta plus anything held back.
+Frames never line up with ticks, so an object moved by each frame's raw delta covers a different distance every tick, and uneven per-tick movement costs more bandwidth to replicate. `NormalizedDelta` keeps the object moving every frame but evens out the distance per tick, without losing time or changing its speed: time past one tick interval is carried onto the next frame. A single frame longer than a tick interval still gets its whole delta, plus anything carried.
 
-Read it on `VariableUpdate`, and convert it to seconds yourself:
+Read it on `VariableUpdate` and convert it to seconds:
 
 ```csharp
 public void OnNetworkLoopStep(NetworkLoopSteps networkLoopStep, StepDelta stepDelta)
@@ -87,45 +81,4 @@ public void OnNetworkLoopStep(NetworkLoopSteps networkLoopStep, StepDelta stepDe
 }
 ```
 
-## Running your own code on the loop
-
-Implement `INetworkLoopStepCallback` to have code invoked on chosen loop steps:
-
-```csharp
-public interface INetworkLoopStepCallback
-{
-    public NetworkLoopSteps GetNetworkLoopSteps() => NetworkLoopSteps.None;
-
-    public void OnNetworkLoopStep(NetworkLoopSteps networkLoopStep, StepDelta stepDelta);
-}
-```
-
-`GetNetworkLoopSteps` declares which steps the callback wants; `OnNetworkLoopStep` is invoked on each of them, receiving the step and its `StepDelta`.
-
-Register and unregister the callback against the `NetworkLoopManager`:
-
-```csharp
-public void RegisterNetworkLoopStepCallbacks(INetworkLoopStepCallback networkLoopStepCallback)
-public void UnregisterNetworkLoopStepCallbacks(INetworkLoopStepCallback networkLoopStepCallback)
-```
-
-A callback registered from inside another callback's step is queued and takes effect from the following step; the current step has already decided who it dispatches to. The same applies to unregistering: a callback that departs mid-step is still invoked for the remainder of that step.
-
-To find an already-registered callback of a known type back through the loop, rather than keeping a separate reference to it:
-
-```csharp
-public bool TryGetFirstNetworkLoopStepCallback<T0>(NetworkLoopSteps networkLoopStep, out T0 networkLoopStepCallback)
-    where T0 : class, INetworkLoopStepCallback
-```
-
-Pass a single step, not a combination; callbacks are held per flag, so a combined value finds nothing.
-
-## Error handling
-
-A callback that throws does not stop the step. The exception is caught per callback, logged, and the step continues to its remaining callbacks:
-
-```
-The loop callback [<CallbackType>] threw during [<Step>]; the step went on to its remaining callbacks: [<exception>].
-```
-
-One misbehaving callback therefore cannot block the framework work, or any other registered callback, on the same step.
+To run your own code on the loop, see [The network loop steps](./network-loop-steps.md#hook-into-steps-with-inetworkloopstepcallback).

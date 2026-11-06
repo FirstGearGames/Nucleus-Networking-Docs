@@ -2,9 +2,9 @@
 title: "Refusing a scene load"
 ---
 
-## What a validator does
+## Implement and register a validator
 
-`ISceneLoadValidator` gives the server a chance to refuse a client before it is ever asked to load a scene instance:
+`ISceneLoadValidator` lets the server refuse to place a client in a scene instance before the client is asked:
 
 ```csharp
 public interface ISceneLoadValidator
@@ -13,13 +13,11 @@ public interface ISceneLoadValidator
 }
 ```
 
-- `connection` is the client the server is about to ask.
-- `sceneHandle` identifies the live scene instance.
-- `sceneId` identifies the scene asset that instance was opened from.
+- `connection`: the client the server is about to ask.
+- `sceneHandle`: the live scene instance.
+- `sceneId`: the scene asset that instance was opened from.
 
-Return `true` to let the request go out, `false` to refuse it. A validator is a predicate and nothing else: it must not open scenes, send messages, or otherwise act on what it's deciding.
-
-Register one with `SceneManager.RegisterSceneLoadValidator`, and remove it with `TryUnregisterSceneLoadValidator` when it no longer applies:
+Return `true` to allow the request or `false` to refuse it. Only decide: do not open scenes, send messages or otherwise act inside it.
 
 ```csharp
 sceneManager.RegisterSceneLoadValidator(myValidator);
@@ -28,24 +26,19 @@ sceneManager.RegisterSceneLoadValidator(myValidator);
 sceneManager.TryUnregisterSceneLoadValidator(myValidator);
 ```
 
-## Several validators, first refusal wins
+## The first refusal wins
 
-Any number of validators may be registered. When `TryRequestSceneLoad` is about to ask a client into a scene, the server walks the registered list in order and stops at the first one that returns `false`. If none are registered, or none refuse, the request proceeds. There's no voting and no override: one refusal is final, and validators after it aren't even asked.
+You can register any number. Before `TryRequestSceneLoad` asks a client into a scene, the server calls them in order and stops at the first that returns `false`. Validators after it are not called. With none registered, or none refusing, the request goes ahead.
 
-This means validator order can matter if two validators disagree about edge cases, but it never matters for the common case of independent entitlement checks — each one only needs to say yes or no about its own rule.
+## The client is never told
 
-## The client never finds out
+A refused request is never sent, so the client cannot tell a refused scene from one that was never offered. That makes a validator the place for entitlement rules such as a party requirement, a ticket, a subscription or a ban.
 
-A refusal happens before the request is sent. Nothing is sent at all: no rejection message, no scene reference, no acknowledgment that a scene existed at all. From the client's point of view a refused scene is indistinguishable from one that was never offered.
+## Do not use a validator for capacity or visibility
 
-This makes `ISceneLoadValidator` the right place for entitlement rules, such as a party requirement, a ticket, a subscription or a ban, where the answer has to come from the server and can't be inferred or forged by a client that was told "no" and why.
+- **Capacity**: how many scenes a peer can hold is `ISceneLoader.MaximumConcurrentScenes`. Do not count scenes in a validator.
+- **Per-object visibility**: which objects in a scene a client sees is decided by interest. A validator only decides whether the client is placed in the scene at all.
 
-## Where a validator is the wrong tool
+## Keep validators cheap
 
-**Capacity.** How many live scene instances a peer can hold at once is `ISceneLoader.MaximumConcurrentScenes`, a property of the loading strategy itself, not a per-client decision. Don't write a validator that counts scenes and refuses past some number — that logic already belongs on the loader.
-
-**Per-object visibility.** Deciding which objects inside a scene a given client can see is interest's job, not the scene load's. A validator only answers whether the client is placed into the scene instance at all; it has no say over what becomes visible once they're in.
-
-## A validator runs once per gated placement, for every client
-
-The scene manager runs the registered list once per gated placement — one call per validator until a refusal or the list ends. With no validators registered it's a single empty-list check, effectively free. A validator that does real work (a database lookup, a network call to an entitlement service) pays that cost on every scene placement it's asked about, for every client, so keep it to an in-memory check wherever possible, or cache the result behind whatever state already tracks the entitlement.
+Every validator runs on every gated placement, for every client, until one refuses. Keep it to an in-memory check, or cache the result of any database or service lookup.

@@ -4,42 +4,36 @@ title: "System groups"
 
 > **Using Unity?** See [Several systems on one object](../../unity/systems/grouped-systems.md).
 
-## Why groups exist
+A networked object is often several `NetworkSystem`s: a body, an inventory, a health pool. A group marks them as one object, so a receiver waits for the whole set before treating it as arrived, and `Despawn()` stops every member together. Members share a `GroupId`, read from `NetworkSystem.GroupId`; an ungrouped system carries `NetworkSystem.UnsetGroupId`.
 
-A networked object is often more than one `NetworkSystem`: a body, an inventory, a health pool. Each is spawned, replicated, and despawned independently unless something ties them together. A group does that tying: it marks several systems as belonging to the same object so a receiver waits for the whole set before treating the object as arrived, and the group's `Despawn()` stops every member together.
+## Build a group
 
-Membership is a shared `GroupId`, read from `NetworkSystem.GroupId`. A system with no group carries `NetworkSystem.UnsetGroupId`. Nothing about a group is visible on an ungrouped system beyond that unset id.
+`NetworkSystemGroup` is not replicated itself; it stamps a shared `GroupId` onto its members and spawns or despawns them together.
 
-## NetworkSystemGroup
+1. Initialize it before adding members. `Initialize` rents a fresh `GroupId`:
 
-`NetworkSystemGroup` is the object you build a group with. It is not itself replicated; it is host-side bookkeeping that stamps a shared `GroupId` onto its members and spawns or despawns them together.
+   ```csharp
+   NetworkSystemGroup group = ...;
+   group.Initialize(coreManager);
+   ```
 
-Initialize it before adding members:
+   A client predicting a spawn under a group id the server already leased to it uses `InitializeAdopted`, which stores that id instead of renting one:
 
-```csharp
-NetworkSystemGroup group = ...;
-group.Initialize(coreManager);
-```
+   ```csharp
+   group.InitializeAdopted(coreManager, groupId);
+   ```
 
-`Initialize` rents a fresh `GroupId` from the `SystemManager`. A client predicting a spawn under a group id it did not rent itself — because the server already leased one and told the client what it is — uses `InitializeAdopted` instead, which stores the given id rather than renting a new one:
+2. Add and remove members. Adding stamps the group's `GroupId` at once, whether or not the group has spawned.
 
-```csharp
-group.InitializeAdopted(coreManager, groupId);
-```
+   ```csharp
+   group.AddSystem(bodySystem);
+   group.AddSystem(healthSystem);
+   group.RemoveSystem(healthSystem);
+   ```
 
-Add and remove members with `AddSystem` and `RemoveSystem`:
+## Spawn and despawn the group
 
-```csharp
-group.AddSystem(bodySystem);
-group.AddSystem(healthSystem);
-group.RemoveSystem(healthSystem);
-```
-
-Adding a system stamps it with the group's `GroupId` immediately, whether or not the group has spawned yet.
-
-### Spawning and despawning
-
-`Spawn()` starts every member that is not already started. Call it again after adding more members and only the new ones start — this is how a group spawns some systems up front and others later onto the same networked instance:
+`Spawn()` starts every member not already started. Call it again after adding members and only the new ones start, so some systems can join the object later:
 
 ```csharp
 group.Spawn();
@@ -49,47 +43,37 @@ group.AddSystem(inventorySystem);
 group.Spawn();
 ```
 
-`Spawn(networkSystem)` is the single-member shortcut: it adds the system to the group and starts it in one call.
+`Spawn(networkSystem)` adds one system and starts it in one call:
 
 ```csharp
 group.Spawn(inventorySystem);
 ```
 
-`Despawn()` stops every member the group holds. A group despawn always cascades to the whole set; there is no per-system despawn through the group. Stopping one member directly with `SystemManager.EnsureStopSystem` stops only that member, and the rest of the group stays spawned.
+`Despawn()` stops every member. Stopping one member with `SystemManager.EnsureStopSystem` stops only that member; the rest stay spawned.
 
 ```csharp
 group.Despawn();
 ```
 
-## Reading membership
+- A group always arrives as one object, even when it is wider than the per-tick budget, so a wide group can take more than one tick to arrive.
+- Interest combines every member's despawn and stop votes, so one member out of range, or one member still wanted, can decide what happens to every member.
 
-`NetworkSystem.GroupMemberCount` reports how many systems the group holds. On the server it reads the group's live member count, so it grows as members are added. On a receiver, which builds no `NetworkSystemGroup` of its own, it reports the count received with the first member to arrive.
+## Read the member count
 
-That received count is what lets a receiver wait for the whole set instead of acting the moment the first member shows up: it knows how many systems to expect for a given `GroupId` before it treats the object as fully arrived.
+`NetworkSystem.GroupMemberCount` is the number of systems in the group, or zero when ungrouped. On the server it is the live count. On a receiver it is the count received with the first member, which tells it how many systems to expect for that `GroupId`.
 
 ```csharp
 uint expected = someSystem.GroupMemberCount;
 ```
 
-`GroupMemberCount` is zero for an ungrouped system.
+## Set controller retention for the whole group
 
-## Controller retention
-
-`NetworkSystemGroup.ControllerRetentionPolicyOverride` sets what happens to every member's controlling identity when the controller leaves, for the whole group at once. It is resolved less specifically than a system's own `ControllerRetentionPolicyOverride`: a member's own override wins if set, then the group's, then the engine default. Setting it on the group is how the systems making up one object are kept from disagreeing with each other about retention.
+`NetworkSystemGroup.ControllerRetentionPolicyOverride` sets what happens to every member's controller when the controller leaves. A member's own `ControllerRetentionPolicyOverride` wins if set, then the group's, then the engine default. Setting it on the group keeps one object's systems from disagreeing.
 
 ```csharp
 group.ControllerRetentionPolicyOverride = ControllerRetentionPolicy.Retain;
 ```
 
-What `Release` and `Retain` actually do is covered where controller retention itself is documented.
+See [Controller retention](../control/controller-retention.md) for what `Release` and `Retain` do.
 
-## Group-wide behavior elsewhere
-
-Two other parts of the engine treat a group as a single unit rather than repeating this page's material:
-
-- Object pacing never splits a group: it arrives as one object, even when it is wider than the per-tick budget, and a wide group can take more than one tick to arrive.
-- Interest resolution folds each member's despawn and stop votes across the whole group, so one member out of range or one member still wanted is enough to decide the fate of every member.
-
-## INetworkSystemGroup
-
-`INetworkSystemGroup` exists as a marker interface. As of this writing it declares no members — it names the concept of "a group" without yet defining a contract for it.
+`INetworkSystemGroup` is a marker interface with no members.

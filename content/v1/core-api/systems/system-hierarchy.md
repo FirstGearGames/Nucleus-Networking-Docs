@@ -4,43 +4,39 @@ title: "Parents, children and hierarchy"
 
 > **Using Unity?** See [Carrying and re-parenting objects](../../unity/systems/reparenting-objects.md).
 
-A NetworkSystem can be attached to another so the two move together and replicate as a unit. The link is server-only, the child follows a strict eligibility rule, and a receiver sees the identifier before it can see the object it names.
+A `NetworkSystem` can be attached to another so the two move together and replicate as a unit.
 
-## Setting a parent
+## Set a parent on the server
 
-`SystemManager.EnsureSetSystemParent` is the only way a started system's parent changes:
+`SystemManager.EnsureSetSystemParent` is the only way to change a started system's parent:
 
 ```csharp
 bool isParentChanged = CoreManager.SystemManager.EnsureSetSystemParent(crateSystem, carrierSystem);
 ```
 
-Passing `null` for the parent detaches the system and returns it to the root of its scene:
+Pass `null` to detach the system and return it to the root of its scene:
 
 ```csharp
 CoreManager.SystemManager.EnsureSetSystemParent(crateSystem, parentNetworkSystem: null);
 ```
 
-The call only succeeds on the server. A client calling it is refused and logged, and nothing else in the engine reparents a started system.
+It only succeeds on the server; a client's call is refused and logged. You cannot spawn an object directly into a parent; call `EnsureSetSystemParent` after the spawn.
 
-## Eligibility
+## Only dynamically spawned systems can be children
 
-Only a dynamically spawned `NetworkSystem` can be a child. A scene object's placement is authored and half its bind key, and a system with no platform identity has no engine object to seat anywhere, so both are rejected. Being a parent has no such restriction: any started system can hold children.
-
-A proposed parent is also rejected when:
+A scene object, or a system with no platform identity, cannot be a child. Any started system can be a parent. A parent is also refused when:
 
 - it is the same system as the child,
 - it is not started and registered,
 - it belongs to a different `CoreManager`,
-- it is in a different scene than the child, or
-- attaching it would make the hierarchy circular or nest deeper than `SystemManager.MaximumParentDepth` (8).
+- it is in a different scene than the child (hierarchies cannot cross scenes), or
+- attaching it would make the hierarchy circular or deeper than `SystemManager.MaximumParentDepth` (8).
 
-## How the link travels
+## Handle a parent that has not arrived yet
 
-An object that already has a parent when a new observer receives it arrives with that parent, so the observer learns the relationship as part of the spawn itself. A later change made with `EnsureSetSystemParent` reaches every peer that already holds the object, and that peer re-seats it in place rather than treating the change as a new spawn.
+A new observer receives an object together with its current parent. A later change reaches every peer that holds the object, which re-seats it in place rather than spawning it again.
 
-## The receiving side
-
-On a receiving peer, `ParentId` can name a system that has not arrived yet. Two members exist for that gap:
+On a receiver, `ParentId` can name a system that has not arrived yet:
 
 ```csharp
 public uint ParentId { get; }
@@ -48,7 +44,7 @@ public bool IsParentResolved { get; }
 public event ParentChangedHandler ParentChanged;
 ```
 
-`IsParentResolved` is true once the system holds a live reference to the parent `ParentId` names; it is false both for an unparented system and for one whose parent identifier has arrived but the parent itself has not been resolved yet. `ParentChanged` fires on both ends, the server as it reparents and a client as it applies the change, and carries the Ids rather than the systems:
+`IsParentResolved` is true once the system holds a live reference to the parent `ParentId` names. It is false for an unparented system and for one whose parent has not arrived. `ParentChanged` fires on the server as it reparents and on a client as it applies the change, and carries the Ids:
 
 ```csharp
 void OnParentChanged(uint previousParentId, uint currentParentId)
@@ -57,10 +53,6 @@ void OnParentChanged(uint previousParentId, uint currentParentId)
 }
 ```
 
-## Despawn and interest
+## Stopping a parent stops its children
 
-Stopping a parented system cascades to its children, deepest first, so a receiver is never handed a despawn for a parent while a child still names it. Interest respects the same link: a system withholds its own subtree from a peer it has been culled for, so a child is never revealed to a peer that has not been given its parent.
-
-## Not supported yet
-
-An object cannot be spawned directly into a parent; call `EnsureSetSystemParent` after the spawn instead. Hierarchies cannot cross scenes, a proposed parent in a different scene than the child is refused outright, so do not design around either.
+Stopping a parented system stops its children too, deepest first. A child is never shown to a peer that cannot see its parent.

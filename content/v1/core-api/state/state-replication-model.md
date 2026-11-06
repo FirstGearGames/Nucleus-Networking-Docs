@@ -2,45 +2,41 @@
 title: "How replicated state works"
 ---
 
-## Containment
+## Members live in components, components live in systems
 
-A `NetworkSystem` holds `NetworkComponent`s, up to 64 per system. A `NetworkComponent` holds `NetworkMember`s, at most 64, one for each bit of the `ulong` `memberFlags` that `OnMembersChanged` reports. The generator does not check that limit on a component, so one that declares more still builds but does not replicate correctly. `Constants.MaximumNetworkMemberCount` (63) is a separate limit, on the structs and classes a member's value is made of: the generator reports `SERIALIZERS000` once such a type has 63 serialized fields and properties, so 62 is the most one can hold.
+- A `NetworkSystem` holds up to 31 `NetworkComponent`s. It tracks identity, lifecycle and observers.
+- A `NetworkComponent` holds up to 64 members, one for each bit of the `ulong memberFlags` that `OnMembersChanged` reports. Nothing checks this limit: a component with more still builds but does not replicate correctly.
 
-Data lives in components, not in the `NetworkSystem` subclass itself. `NetworkSystem` tracks identity, lifecycle, and observers; the values that actually replicate are declared on the `NetworkComponent`s attached to it.
+Put replicated values on components, not on your `NetworkSystem` subclass.
+
+A separate limit applies to the structs and classes a member's value is made of: at 63 serialized fields and properties (`Constants.MaximumNetworkMemberCount`) the build reports `SERIALIZERS000`, so 62 is the most one can hold.
 
 ## Late joiners need no extra code
 
-A member simply holds the value as of the last write. There is no separate late-joiner payload to author.
+A new observer receives every member's current value, then only changes. There is no separate late-joiner payload to write.
 
-When a new observer starts watching a system, it receives the current value of every member, and after that only what changes. A member's author never writes two versions of anything.
+## OnMembersChanged reports each tick's changes
 
-## One write pass, one read pass, per tick
+`NetworkComponent.OnMembersChanged` runs up to twice per component per tick: once for what this peer changed (`MemberChangeDirection.Write`) and once for what it received (`MemberChangeDirection.Read`). See [Reacting to changes: OnMembersChanged](./change-callbacks.md).
 
-Each tick raises `NetworkComponent.OnMembersChanged(ulong memberFlags, MemberChangeDirection memberChangeDirection)` up to twice per component: once for what this peer is sending, once for what it received.
+## Only the controller writes by default
 
-- `MemberChangeDirection.Write` fires before anything is sent this tick, on the peer that made the change. It reports that the members were committed to the outbound pass, not that bytes left the process - a system with no observers, or one withheld from an observer, still raises this.
-- `MemberChangeDirection.Read` fires after everything received this tick has been applied, before reconciliation. A full apply (spawn, resync, reconcile, whole-component recovery) reports every member changed; a member-granular recovery reports only the members it repaired.
+Under `MemberWriteAccess.Controller` (the default, value `0`), the server or the single controlling client sets a system's members. `MemberWriteAccess.AnyClient` lets other observers write too; it is Pro, and a Free build has no `MemberWriteAccess` type. See [Letting clients set members](./state-write-access.md).
 
-A host raises both directions in the same frame, write first, without waiting for its own packet to come back. Code that only cares about a remote change - anything calling `NetworkMemberBase.TryGetWritingClient` - must check for `MemberChangeDirection.Read`; that claim only resolves under a read.
+## Four settings decide what a change costs
 
-## Who may write
+- **Accuracy**: how finely a value's change is compared and sent.
+- **Compression level**: how much the value is compressed before it is sent.
+- **Transmission mode**: whether changes are interval-paced or projected.
+- **Send interval**: how often a changed member may send.
 
-By default, `MemberWriteAccess.Controller` (the enum's `0` value): the server, or the single controlling client, may set a system's members. Letting other observers write as well (`MemberWriteAccess.AnyClient`) is a Pro opt-in, covered on its own page. A free build has no `MemberWriteAccess` type, so there only the controller writes.
+See [NetworkMember](./network-member.md) and [How often a member is sent](./send-pacing.md).
 
-## What a change costs
+## Use Nucleus terms
 
-Four independent axes decide the price of a member changing, each covered on its own page:
-
-- **Accuracy** - how finely a value's change is compared and sent.
-- **Compression level** - how much the value is compressed before it is sent.
-- **Transmission mode** - how the value's changes are sent across ticks (interval-paced or projected).
-- **Send interval** - how often a changed member is actually allowed to send.
-
-## Vocabulary
-
-Nucleus has its own terms; do not substitute names from another engine's netcode.
+Do not substitute names from another engine's netcode:
 
 - **System**, not object: `NetworkSystem` is the networked entity.
-- **Component**, not behaviour: `NetworkComponent` is a container of members within a system.
-- **Member**, not variable: `NetworkMemberBase` is the individual replicated value.
-- **Controller**, not owner: the client permitted to set a system's members by default.
+- **Component**, not behaviour: `NetworkComponent` holds members within a system.
+- **Member**, not variable: `NetworkMemberBase` is one replicated value.
+- **Controller**, not owner: the client allowed to set a system's members by default.

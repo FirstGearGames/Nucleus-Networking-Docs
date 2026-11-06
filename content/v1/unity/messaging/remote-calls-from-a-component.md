@@ -4,9 +4,9 @@ title: "Sending a Remote Call From a Component"
 
 > **Driving the core API directly?** See [System RPCs](../../core-api/messaging/system-rpcs.md).
 
-## Resolving the system to send from
+## Send from the component's system
 
-`TrySendRpc` is a method on `NetworkSystem`, so a `MonoBehaviour` needs that system before it can call it. A script derived from `NucleusBehaviour<TComponent0>` already has one: `NetworkSystem`, inherited from `NucleusBehaviourBase`, is set once the script's required system links, and stays set until it unlinks. `NucleusBehaviour<TComponent0>` separately exposes `Component`, the typed `NetworkComponent` the system carries; that property is for reading replicated values, not for sending calls.
+`TrySendRpc` is a method on `NetworkSystem`. A script deriving from `NucleusBehaviour<TComponent0>` has a `NetworkSystem` property, set while its required system is linked:
 
 ```csharp
 public class DemoScoreRpcSender : NucleusBehaviour<DemoScoreComponent>
@@ -18,18 +18,18 @@ public class DemoScoreRpcSender : NucleusBehaviour<DemoScoreComponent>
 }
 ```
 
-A script that is not built around one required component instead resolves a `NetworkSystemObject` on the object and asks it for a system:
+`Component`, the typed `NetworkComponent`, is for reading replicated values, not for sending calls.
+
+Any other script gets a system from the object's `NetworkSystemObject`. `TryGetFirstSystem` returns the first-linked system, the one to send from when several systems share the object:
 
 ```csharp
 if (networkSystemObject.TryGetFirstSystem(out NetworkSystem networkSystem))
     networkSystem.TrySendRpc(RpcTarget.Server, Channel.Reliable, new AddScoreRpc { Amount = 1 });
 ```
 
-`TryGetFirstSystem` returns the object's first-linked system, the correct one to address a call from when several systems share the object.
+`TrySendRpc` returns `true` when the call was queued or invoked locally, not when it was delivered. `false` means nothing was sent, most often because this client lacks the access the target requires. Call it wherever the game decides to act: input handling, a UI callback, or an animation event.
 
-## Declaring the payload
-
-A call is a plain struct that implements `IRpc` and carries `[NetworkType]`:
+The payload is a `[NetworkType]` struct implementing `IRpc`:
 
 ```csharp
 [NetworkType]
@@ -39,21 +39,13 @@ public struct AddScoreRpc : IRpc
 }
 ```
 
-`[NetworkType]` marks the struct for the Nucleus source generator; without the generator having run over it, the struct compiles but never sends. In a Unity project that generator ships as `Nucleus.CodeAnalysis.SourceGenerators.dll` under `Assets/Nucleus`, and it must keep its `RoslynAnalyzer` asset label for Unity to run it at compile time. A struct declared with the label stripped, or with the DLL missing, still builds, still passes type-checking, and still sends nothing.
+If `Nucleus.CodeAnalysis.SourceGenerators.dll` is missing from `Assets/Nucleus` or has lost its `RoslynAnalyzer` label, the struct still builds but the call never sends. See [Code Generation in Unity](../wire/code-generation-in-unity.md).
 
-## Sending the call
+## Guard the send
 
-`NetworkSystem.TrySendRpc<T0>` queues the call to the peers a target names, and returns a `bool`:
+Use the `NucleusBehaviour` helpers instead of comparing connections or transport state yourself. Both return `false` before a system is linked, so they need no null check on `NetworkSystem`.
 
-```csharp
-bool sent = NetworkSystem.TrySendRpc(RpcTarget.Server, Channel.Reliable, new AddScoreRpc { Amount = 1 });
-```
-
-The return value reports only what this peer can see. `true` means the call was queued, or was invoked locally; it does not mean the call was delivered, and a client routing a call through the server has no way to know that it arrived. `false` means nothing was sent, most often because the local client does not hold the access this call's target requires. Call `TrySendRpc` from wherever the game decides to act: input handling, a UI callback, or a script method fired by an animation event.
-
-## Guarding the send
-
-Address checks and role checks belong to `NucleusBehaviourBase`, not to hand-written comparisons against connections or transport state. `IsController(ControllerType)` reports whether this peer controls the linked system. Input reaches every copy of an object, so a false answer on the peers that do not control it is the normal case, and it logs nothing:
+`IsController(ControllerType)` reports whether this peer controls the linked system. Input reaches every copy of an object, so `false` on the peers that do not control it is normal and logs nothing:
 
 ```csharp
 private void OnFireButton()
@@ -65,25 +57,13 @@ private void OnFireButton()
 }
 ```
 
-`IsStarted(Invoker)` answers whether a role is up for a behaviour whose system is linked, for code that needs to know the role rather than control:
+`IsStarted(Invoker)` reports whether a role is running, for code that cares about the role rather than control:
 
 ```csharp
 if (IsStarted(Invoker.Client))
     NetworkSystem.TrySendRpc(RpcTarget.Server, Channel.Reliable, new AddScoreRpc { Amount = 1 });
 ```
 
-Both read `false` before a system is linked, so a script can call them without a separate null check on `NetworkSystem`.
+## Reach the RPC manager
 
-## Reaching the RPC manager
-
-There is no Unity component for the RPC manager, and nothing about a call's targets, self-delivery, or access appears in the inspector. `RpcManager` lives on `CoreManager`, reached as `NucleusUnity.BoundCoreManager.RpcManager` from outside a `NucleusBehaviourBase`, or as `CoreManager.RpcManager` from inside one:
-
-```csharp
-RpcManager rpcManager = CoreManager.RpcManager;
-```
-
-Every setting on that subject is a plain C# assignment against the manager or the system, not a field a script exposes to the inspector.
-
-## Targets, self-delivery, and access
-
-For `RpcTarget`, `RpcSelfDelivery`, and `RpcSendAccess`, see [System RPCs](../../core-api/messaging/system-rpcs.md).
+There is no RPC manager component, and no call setting appears in an inspector. Targets, self-delivery and access are all set in C# on `RpcManager` or the system. Reach `RpcManager` as `CoreManager.RpcManager` inside a `NucleusBehaviour`, or `NucleusUnity.BoundCoreManager.RpcManager` anywhere else.

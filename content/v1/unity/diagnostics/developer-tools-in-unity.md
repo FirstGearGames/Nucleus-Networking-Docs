@@ -2,55 +2,47 @@
 title: "Developer tools in the editor"
 ---
 
-Four tools help you see what a session is doing without writing a readout of your own. Two are components you add to an object while you chase a problem, one is a tab of the Nucleus editor window, and one is a build step that checks your prefabs before you build.
-
 | Tool | Where it lives | What it answers |
 |---|---|---|
 | `NetworkCorrectionVisualizer` | Component, added under a networked object | Where and how far did prediction correct this object? |
 | `NetworkInterestOverlay` | Component, added under a networked object | What is this object's controller being sent? |
 | Traffic tab | **Tools > Nucleus**, then the **Traffic** tab | What is this session sending and receiving, and how healthy are its connections right now? |
-| Validate Network Prefabs | **Tools > Nucleus > Build > Validate Network Prefabs** | Will my networked prefabs spawn correctly? |
+| Validate Network Prefabs | **Tools > Nucleus**, then the **Build** tab | Will my networked prefabs spawn correctly? |
 
-None of them change the session they look at, so they are safe to leave in a scene while you test. Take the two components off, or switch them off, before you ship: they exist to answer a question, not to run in a player's build.
+None of them change the session, apart from the Traffic tab's control buttons and simulated conditions. Remove or switch off the two components before you ship.
 
-## Seeing prediction corrections
+## See where prediction corrected an object
 
-Add `NetworkCorrectionVisualizer` to a predicted object, either on the `NetworkSystemObject` itself or on a child of it. It finds the nearest `NetworkSystemObject` at or above it in `Awake` and watches every system linked to that object, including systems that link later. Without a `NetworkSystemObject` above it, it logs an error and disables itself.
+Add `NetworkCorrectionVisualizer` to a predicted object, on its `NetworkSystemObject` or a child of it. Without a `NetworkSystemObject` at or above it, it logs an error and disables itself. It watches every system linked to that object, including systems that link later.
 
-Each time a reconcile's replay finishes on a system, the visualizer looks at the members the replay corrected. For every correction larger than its threshold it flashes: a cross where the member was shown before the correction, a cross where the replay put it, and a line between them. The flash is drawn with `Debug.DrawLine`, so it shows in the Scene view, and in the Game view while the Game view's Gizmos toggle is on.
-
-Corrections only happen on a client that predicts the object, so that is the only peer where the visualizer ever draws. On the server, and on a client that only observes the object, it stays quiet.
+For every correction larger than **Threshold**, it flashes a cross where the member was shown before the correction, a cross where the replay put it, and a line between them. The flash shows in the Scene view, and in the Game view while its Gizmos toggle is on. It only ever draws on a client that predicts the object.
 
 | Field | Default | What it does |
 |---|---|---|
-| **Threshold** | `0.05` | The largest correction ignored, in the member's own units (metres for a position). Only larger corrections flash. |
-| **Flash Interval** | `0` | The shortest time between two flashes, in seconds of unscaled time. Zero flashes on every correction past the threshold. |
+| **Threshold** | `0.05` | The largest correction ignored, in the member's own units (metres for a position). Set it to your prediction tolerance to see exactly the corrections the engine treats as real. |
+| **Flash Interval** | `0` | The shortest time between two flashes, in seconds of unscaled time. Zero flashes on every correction past the threshold. Raise it when the lines turn into a smear. |
 | **Flash Duration** | `0.5` | How long each flash stays drawn, in seconds. |
 | **Color** | magenta | The color of the line and both crosses. |
 | **Marker Size** | `0.15` | The half-size of the cross drawn at each end, in metres. |
 | **Log Enabled** | off | Also log each flashed correction, naming the member, its size and the tick. |
 
-While playing, the inspector adds two readouts: **Flashes**, the number of corrections drawn or logged since the component woke, and **Last Correction (m)**, the size of the most recent position correction. Both are also public properties (`FlashCount` and `LastCorrectionDistance`), so a script or a test can read them.
+In play mode the inspector shows **Flashes**, the number of corrections drawn or logged so far, and **Last Correction (m)**, the size of the most recent position correction. Scripts and tests can read them as `FlashCount` and `LastCorrectionDistance`.
 
-### What gets drawn
+Only a `NetworkMember<System.Numerics.Vector3>` is drawn. A position replicated in a parent's local space is drawn where it would sit unparented. Corrections to other member types still count toward **Flashes** and are logged with **Log Enabled**, but nothing is drawn.
 
-Only a `NetworkMember<System.Numerics.Vector3>` is drawn as a line, because only a position has a place in the world to draw it. A position replicated in a parent's local space is drawn where it would sit unparented. A correction to any other member type (a rotation, a float, a custom struct) still counts toward **Flashes**, and with **Log Enabled** it is logged, but nothing is drawn for it.
+### Read the lines
 
-The number you type is compared in the member type's units, the same way the engine compares corrections, so a threshold that matches your prediction tolerance shows exactly the corrections the engine treats as real.
-
-### Reading what you see
-
-- **Short lines on every tick** mean the client's prediction disagrees with the server by a small, steady amount. Look for something the client simulates differently: a value read from `Time.deltaTime` instead of the network step, a random number, or a physics setting that differs between builds.
-- **Long lines now and then** usually line up with packet loss or a collision the client did not predict. Turn on **Log Enabled** to see which tick each one happened on.
+- **Short lines on every tick** mean the client predicts slightly differently from the server. Look for a value read from `Time.deltaTime` instead of the network step, a random number, or a physics setting that differs between builds.
+- **Long lines now and then** usually match packet loss or a collision the client did not predict. Turn on **Log Enabled** to see the tick of each one.
 - **No lines at all** while the object visibly snaps means the snap is not a prediction correction. Check smoothing and interpolation instead (see [Proxies and smoothing](../control/proxies-and-smoothing.md)).
-
-Raise **Flash Interval** when corrections come so often that the lines turn into a smear.
 
 ## Seeing what an object's controller is sent
 
-Add `NetworkInterestOverlay` to a networked object, on the `NetworkSystemObject` or a child of it, and switch on **Overlay Enabled**. It is off by default, and it costs nothing until it is switched on and the object is selected, because the drawing happens in `OnDrawGizmosSelected`.
+1. Add `NetworkInterestOverlay` to a networked object, on its `NetworkSystemObject` or a child of it.
+2. Switch on **Overlay Enabled**. It is off by default.
+3. Enter play mode as the server or host and select the object.
 
-Enter play mode as the server or host and select the object. The overlay reads who controls each system on the object, and for each controlling client it draws a line from this object to every other networked object, colored by what that client's connection holds of it:
+For each client controlling a system on the object, it draws a line from this object to every other networked object, colored by what that client holds of it:
 
 | Color | Meaning |
 |---|---|
@@ -58,38 +50,38 @@ Enter play mode as the server or host and select the object. The overlay reads w
 | Yellow | Stopped: the client still has the object, but is no longer sent updates for it. |
 | Faint red | Unspawned: the client does not have the object at all. Drawn only with **Unspawned Draw Enabled**. |
 
-An object with several systems is colored by the most the connection holds of any of them, so an object with one streamed part reads as streamed. When different clients control different systems on the selected object, each client's set of lines is lifted a little higher than the last, by **Controller Spacing**, so they stay apart. **Marker Radius** sets the size of the wire sphere drawn on each object a line reaches.
+An object with several systems takes the color of the most the client holds of any of them. When different clients control different systems on the selected object, each client's lines are raised by **Controller Spacing** so they stay apart. **Marker Radius** sets the size of the wire sphere drawn on each object a line reaches.
 
-Interest is resolved only on the authority, so the overlay draws only on a server or host. Selecting the object in a client's editor draws nothing. An object nobody controls (a server-owned object) also draws nothing, because there is no client whose view to show.
+It draws nothing on a client, and nothing for an object no client controls.
 
-To make the same check from code on the server, call `NetworkSystem.GetInterestMembership(connection)`, which returns the `InterestMembership` that system currently resolves toward a connection. Game code that needs to react when that changes should subscribe to the system's `InterestChanged` event instead of polling. [Interest troubleshooting](../interest/interest-troubleshooting.md) walks through what to do once you can see the problem.
+To make the same check from code on the server, call `NetworkSystem.GetInterestMembership(connection)`, which returns the `InterestMembership` the system resolves toward that connection. To react when it changes, subscribe to the system's `InterestChanged` event instead of polling. [Interest troubleshooting](../interest/interest-troubleshooting.md) covers what to do next.
 
 ## The Traffic tab
 
-Open **Tools > Nucleus** and choose the **Traffic** tab. Outside play mode it says the readouts fill in once a session is running, offers an **Enter Play Mode** button, and still lets you set up simulated network conditions. While a session runs, the window's banner shows this peer's role (Host, Server, Client or Stopped), and the tab shows five sections, refreshed twice a second:
+Open **Tools > Nucleus** and select the **Traffic** tab. Outside play mode it offers an **Enter Play Mode** button and the simulated network conditions. While a session runs, the window's banner shows this peer's role (Host, Server, Client or Stopped), and the tab shows these sections, refreshed twice a second:
 
-- **Controls**: **Start Server** or **Stop Server** and **Start Client** or **Stop Client**, each following whether that side is running, and **Start Host** while neither is. A client stopped here counts as a deliberate stop, so it does not reconnect on its own.
-- **Session**: the average frame time, the tick rate in ticks per second and milliseconds per tick, the reconciles this peer has sent or received, and the tick drift, which is how far the measured tick rate strays from the configured one. Frame time turns amber when a frame lasts longer than a tick, and tick drift turns amber when it strays more than five percent of the tick rate. A server under its rate is falling behind; a client away from it is having its clock sped up or slowed down to keep its input arriving on time.
+- **Controls**: **Start Server** or **Stop Server**, **Start Client** or **Stop Client**, and **Start Host** while neither side runs. A client stopped here does not reconnect on its own.
+- **Session**: average frame time, the tick rate in ticks per second and milliseconds per tick, reconciles, and tick drift (how far the measured tick rate strays from the configured one). Frame time turns amber when a frame lasts longer than a tick, and tick drift turns amber past five percent of the tick rate. A server under its rate is falling behind; a client away from it is having its clock adjusted to keep its input arriving on time.
 - **Bandwidth**: bytes sent and received per second, total bytes sent and received, a graph of both rates over the last minute, and how much of each direction is replicated state.
-- **World**: the number of connections, started systems, networked objects in the open scenes, and spawns that interest management admitted and deferred, with a line under them showing the session's redundancy, state interpolation, state retention and partial apply settings.
-- **Network conditions**: on a server or host, one row per connected client with the round trip latency, jitter and packet loss that client reported for its link; on a client, the same figures for its link to the server. A dash means the link has not been measured yet. Under them, **Simulated conditions** has a **Simulate** toggle that delays, drops and reorders packets on every transport, presets from **Perfect** through **LAN**, **Broadband**, **Wi-Fi** and **Mobile** to **Awful**, and the **Latency (ms)**, **Jitter (ms)**, **Packet Loss** and **Out Of Order** values themselves. The values are settings of the scene's `UnityTransportManager`, so they save with the scene, and a change made in play mode reaches the running transports straight away.
+- **World**: connections, started systems, networked objects in the open scenes, and spawns that interest management admitted and deferred, followed by the session's redundancy, state interpolation, state retention and partial apply settings.
+- **Network conditions**: on a server or host, one row per client with the round trip latency, jitter and packet loss that client reported; on a client, the same figures for its link to the server. A dash means not measured yet. Under them, **Simulated conditions** has a **Simulate** toggle that delays, drops and reorders packets on every transport, presets from **Perfect** through **LAN**, **Broadband**, **Wi-Fi** and **Mobile** to **Awful**, and the **Latency (ms)**, **Jitter (ms)**, **Packet Loss** and **Out Of Order** values. These are settings of the scene's `UnityTransportManager`, so they save with the scene, and a change in play mode applies straight away.
 
-The readouts change nothing. Only the control buttons and the simulated conditions affect the session.
-
-The reconcile count is kept on one side only. A server or host counts the corrections it sent its clients, so the tile reads **reconciles sent**. A client counts the corrections its systems received, so the tile reads **reconciles received**, and it covers only the objects still in the scene. Open the window in both editors (see [Testing with two editors](../../start-here/testing-with-two-editors.md)) to see both halves.
+A server or host shows **reconciles sent**, the corrections it sent its clients. A client shows **reconciles received**, counting only objects still in the scene. To see both, open the window in both editors (see [Testing with two editors](../../start-here/testing-with-two-editors.md)).
 
 ## Validating your networked prefabs
 
-Run **Tools > Nucleus > Build > Validate Network Prefabs** before a build, or whenever a spawn goes wrong in a way you cannot explain. It loads every prefab in the project, logs each problem it finds to the Console as an error against the prefab it names (click the entry to ping the prefab), and ends with a dialog counting the problems. A clean project gets a dialog saying every networked prefab is set up correctly.
+Before a build, or when a spawn goes wrong in a way you cannot explain:
 
-It checks two kinds of problem.
+1. Open **Tools > Nucleus** and select the **Build** tab.
+2. Click **Validate** next to **Validate Network Prefabs**.
+3. Click each error in the Console to ping the prefab it names. A dialog at the end counts the problems.
 
-**Identity problems** are the ones a player build refuses (see [Prefab identity and the prefab collection](../systems/prefab-ids-and-collections.md)): no base `NetworkPrefabCollection`, two collections resolving to the same prefab bundle, a networked prefab missing from its collection, a prefab with no prefab id, two prefabs sharing one id, or a prefab stamped with a different bundle than its collection. This is the same check the build runs, so the validator and the build never disagree. Every identity problem is fixed by **Tools > Nucleus > Build > Rebuild Network Prefab Collection**, and the dialog says so when it finds one.
+The validator runs only when you click **Validate**, never on save or on entering play mode, and changes nothing in your project. It reports two kinds of problem.
+
+**Identity problems** are the ones a player build refuses (see [Prefab identity and the prefab collection](../systems/prefab-ids-and-collections.md)): no base `NetworkPrefabCollection`, two collections resolving to the same prefab bundle, a networked prefab missing from its collection, a prefab with no prefab id, two prefabs sharing one id, or a prefab stamped with a different bundle than its collection. The build runs the same check. To fix any of them, click **Rebuild** next to **Rebuild Network Prefab Collection** on the same tab.
 
 **Structure problems** are hierarchies a spawn would mishandle:
 
-- A `NetworkSystemObject` on a child of the prefab. Only a prefab's root marker is spawned, so remove the child's marker; components on the child belong to the root's marker.
-- A `NucleusBehaviour` or `NetworkTransform` with no `NetworkSystemObject` at or above it. It is never given a system, so it never replicates. Add a marker to the prefab's root.
-- A `NetworkHitboxRoot` that would record nothing. The validator reports the errors the hitbox root's own inspector shows; its warnings and notes stay in the inspector.
-
-The validator runs only when you ask, never on save or on entering play mode, because loading every prefab gets slower as the project grows. It changes nothing in your project.
+- A `NetworkSystemObject` on a child of the prefab. Only the root's marker is spawned, so remove the child's marker.
+- A `NucleusBehaviour` or `NetworkTransform` with no `NetworkSystemObject` at or above it. It never replicates. Add a marker to the prefab's root.
+- A `NetworkHitboxRoot` that would record nothing. The validator reports the errors its inspector shows; warnings and notes stay in the inspector.

@@ -2,23 +2,34 @@
 title: "The network scene manifest and scene references"
 ---
 
-## Why scenes need a manifest
+The server names a scene by a `ushort` scene id, never by its path or name. `NetworkSceneManifest`, a `ScriptableObject` in `Nucleus.Integrations.Unity.Scenes`, maps each id to a scene asset on every peer. A project has exactly one, named `NetworkSceneManifest` and kept under a `Resources` folder. It is found by that name, not assigned in an inspector.
 
-The server names a scene by a `ushort` identifier, never by its path or name. Something has to map that number back to an actual scene asset on each peer, and that something is `NetworkSceneManifest`, a `ScriptableObject` under `Nucleus.Integrations.Unity.Scenes`. It is also the identifier registry itself: a networked prefab carries its id stamped on the prefab asset, but a scene has nowhere comparable to hold one, so the manifest entry keyed by the scene's GUID *is* where the id lives.
+## Scene ids are assigned for you
 
-A project has exactly one manifest. It lives under a `Resources` folder and is resolved by convention, not by being dragged into an inspector.
+You never assign scene ids by hand. The editor rebuilds the manifest when:
 
-## NetworkSceneManifest
+- the Build Settings scene list changes,
+- a scene asset is imported, moved or deleted (saving a scene re-imports it),
+- the project's Addressables entries change,
+- a player build starts.
+
+To rebuild it yourself, open the Nucleus window (**Tools > Nucleus**), select the **Build** tab and click **Rebuild** next to **Rebuild Network Scene Manifest**.
+
+The rebuild covers scenes in Build Settings and scenes the project has made Addressable. Each entry's delivery mode follows the project, so making a scene Addressable is the whole change needed to deliver it through Addressables (see [Addressables-delivered scenes](./bundle-delivered-scenes.md)).
+
+A scene's id is keyed to its GUID, so it survives a rename or move and is kept across rebuilds. A rebuild only adds ids for new scenes, and it keeps the entry of a scene that has left the build, so that id is never given to another scene.
+
+## Look up a scene from code
 
 `NetworkSceneManifest` exposes:
 
-- `Entries` — the `IReadOnlyList<SceneEntry>` of every networked scene this peer knows.
-- `UnsetSceneId` — the constant `0`, reserved so a lookup that failed can be told apart from "the first scene."
-- `ResourceName` — the constant `"NetworkSceneManifest"`, the file name the manifest must have under a `Resources` folder.
-- `TryGetScene(ushort sceneId, out SceneEntry sceneEntry)` — resolves an entry from the id the server named.
-- `TryGetSceneId(string scenePath, out ushort sceneId)` — resolves an id from a scene's asset path.
-- `TryGetSceneIdByGuid(string sceneGuid, out ushort sceneId)` — resolves an id from a scene's GUID; prefer this one, since it is what the id is actually keyed to.
-- `LoadProjectManifest()` — a static method that loads the project's manifest via `Resources.Load<NetworkSceneManifest>(ResourceName)`. Nothing is cached: a manifest held in a static would keep answering for an asset a later session replaced.
+- `Entries`: every networked scene this peer knows, as an `IReadOnlyList<SceneEntry>`.
+- `UnsetSceneId`: the constant `0`, which no scene uses, so a failed lookup can be told apart from the first scene.
+- `ResourceName`: the constant `"NetworkSceneManifest"`, the file name the manifest must have under a `Resources` folder.
+- `TryGetScene(ushort sceneId, out SceneEntry sceneEntry)`: finds the entry for an id.
+- `TryGetSceneId(string scenePath, out ushort sceneId)`: finds the id for a scene's asset path.
+- `TryGetSceneIdByGuid(string sceneGuid, out ushort sceneId)`: finds the id for a scene's GUID. Prefer it, since the id is keyed to the GUID.
+- `LoadProjectManifest()`: a static method that loads the project's manifest with `Resources.Load<NetworkSceneManifest>(ResourceName)`. It does not cache the result.
 
 ```csharp
 NetworkSceneManifest manifest = NetworkSceneManifest.LoadProjectManifest();
@@ -29,23 +40,21 @@ if (manifest != null && manifest.TryGetScene(sceneId, out NetworkSceneManifest.S
 }
 ```
 
-### SceneEntry
-
-Each `SceneEntry` in `Entries` carries:
+Each `SceneEntry` holds:
 
 | Field | Purpose |
 |---|---|
-| `SceneId` | The identifier the server names this scene by. Assigned once by the build and never renumbered. |
-| `SceneGuid` | The scene asset's GUID. The identifier is keyed to this, so a rename or move keeps it. |
-| `ScenePath` | The scene asset's path, which is what the loader hands to Unity. |
-| `RequiredBundleId` | The content bundle this scene ships in, or zero when it ships inside the player build. A scene in a bundle can't load until that bundle is held. |
-| `DeliveryMode` | A `SceneDeliveryMode`, either `BuildSettings` or `Addressables`, deciding which machinery the loader opens the scene through. |
+| `SceneId` | The id the server names this scene by. Assigned once and never renumbered. |
+| `SceneGuid` | The scene asset's GUID, which the id is keyed to. |
+| `ScenePath` | The scene asset's path, which the loader hands to Unity. |
+| `RequiredBundleId` | The content bundle the scene ships in, or zero when it ships in the player build. A scene in a bundle cannot load until that bundle is held. |
+| `DeliveryMode` | `SceneDeliveryMode.BuildSettings` or `SceneDeliveryMode.Addressables`: how the loader opens the scene. |
 
-## NetworkSceneReference
+Each peer's own manifest decides how a scene is delivered, not the server. A build can point at different content, or ship a renamed scene, without changing the id the server uses.
 
-Fields that need to name a scene do not store a path or an id. They store a `NetworkSceneReference`, a serializable struct that holds only a scene asset's GUID (`SceneGuid`), plus `HasScene` (true once a GUID is assigned) and `TryGetSceneId(out ushort sceneId)`.
+## Name a scene in a field with NetworkSceneReference
 
-`TryGetSceneId` resolves through the project's manifest at the moment it's called, via `TryGetSceneIdByGuid`. Nothing is baked in at authoring time, so a scene added to the manifest after the reference was set resolves as soon as the manifest is rebuilt, and a scene that stopped being networked resolves to `UnsetSceneId` instead of silently opening the wrong thing.
+For a serialized field that names a scene, use `NetworkSceneReference`. It stores only the scene asset's GUID (`SceneGuid`), and offers `HasScene` (true once a scene is assigned) and `TryGetSceneId(out ushort sceneId)`.
 
 ```csharp
 [SerializeField]
@@ -57,18 +66,4 @@ if (_lobbyScene.TryGetSceneId(out ushort sceneId))
 }
 ```
 
-Because only the GUID is stored, renaming or moving the scene asset never repoints the field to a different scene and never breaks it.
-
-In the inspector, a `NetworkSceneReference` field is drawn as an ordinary scene-asset picker, with the scene id it currently resolves to shown beside it as a small label. You drag a scene in exactly as you would for a plain `SceneAsset` field; the GUID is captured for you.
-
-## Minting a scene id
-
-Scene ids are not assigned by hand. **Tools > Nucleus > Build > Rebuild Network Scene Manifest** rescans the project and writes `Entries`, and the editor also runs that rebuild automatically. It runs when the Build Settings scene list changes, when a scene asset is imported, moved or deleted (saving a scene re-imports it), when the project's Addressables entries change, and when a player build starts. The last is the backstop, catching anything the others missed before it ships.
-
-The scan covers both ways a scene can be networked: scenes listed in Build Settings, and scenes the project has made Addressable. The Addressables pass matters because marking a scene Addressable *removes it from Build Settings* — without a dedicated pass, the very act of making a scene streamable would drop it out of the manifest. Whichever way a scene is found, its `DeliveryMode` is derived from the project (Addressable scenes record `SceneDeliveryMode.Addressables`, everything else records `BuildSettings`), so making a scene Addressable is the whole of the change needed to switch it.
-
-Once assigned, a scene's id is preserved across rebuilds. A rebuild only adds ids for newly found scenes, and it keeps the entry of a scene that has left the build, so that scene's id is never given to a different scene later.
-
-## The server names a scene only by id
-
-The server names a scene by `SceneId` alone, never by path, name or build index. How the scene is delivered (`DeliveryMode`, `RequiredBundleId`) is decided by each peer's own manifest, not by the server. A build can therefore point at different content, or ship a renamed scene, without changing the id the server uses.
+In the inspector it is a scene-asset picker, with the scene id it currently resolves to shown beside it. `TryGetSceneId` looks the id up in the project's manifest each time it is called. Renaming or moving the scene never breaks the field, a scene added to the manifest later resolves after the next rebuild, and a scene that stopped being networked resolves to `UnsetSceneId` instead of opening the wrong scene.

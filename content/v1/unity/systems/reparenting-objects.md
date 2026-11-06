@@ -4,34 +4,32 @@ title: "Carrying and re-parenting objects"
 
 > **Driving the core API directly?** See [Parents, children and hierarchy](../../core-api/systems/system-hierarchy.md).
 
-## The call
+## Parent one object to another on the server
 
-One server-only call parents one networked object to another:
+Call `EnsureSetSystemParent` on the server with the child's and the parent's `NetworkSystem`, not their GameObjects:
 
 ```csharp
 CoreManager.SystemManager.EnsureSetSystemParent(crateSystem, carrierSystem);
 ```
 
-Pass `null` as the parent to detach the object and return it to the root of its scene:
+Pass `null` as the parent to detach the object to the root of its scene:
 
 ```csharp
 CoreManager.SystemManager.EnsureSetSystemParent(crateSystem, parentNetworkSystem: null);
 ```
 
-Both arguments are `NetworkSystem` references, not GameObjects. `EnsureSetSystemParent` returns `true` when the parent actually changed, `false` if the caller is not the server, either system is not started, or the pair fails one of the eligibility checks described below. Only the server may call it.
+It returns `true` when the parent changed, and `false` when the caller is not the server, either system is not started, or the pair is not allowed (see the limits below).
 
-## What re-parenting does on each peer
+Every peer, the server included, moves the child's GameObject under the new parent's transform for you, so never call `transform.SetParent` yourself. The server also refreshes the object's interest.
 
-Nothing in your code moves the child's GameObject. As the replicated parent identifier lands on each peer, the Unity integration re-seats the linked GameObject under the new parent's transform (or, on detach, back under its scene root). This runs identically on the server and on every client, including the frame the server itself makes the call, so you never write `transform.SetParent` yourself. The server additionally refreshes the object's interest as part of the same call, since interest is only ever computed there.
+## Place the child where you want it
 
-## Why carrying is free
+`NetworkTransform`'s **Transform Space** decides what the ride costs:
 
-Whether the ride costs anything to replicate depends on the transform's space, set per object on `NetworkTransform`'s `Transform Space` field:
+- **Local** (default): the child sends its offset inside the parent, which stops changing while it rides, so it costs nothing to send. Only the carrier's own transform is sent each tick.
+- **World**: the child sends its scene pose and keeps paying for full pose replication while it rides.
 
-- **Local** (the default): the object replicates the offset it holds inside its parent. Once parented, that offset stops changing while the ride continues, so a carried child costs nothing to send for as long as it rides — only the carrier's own transform is written per tick.
-- **World**: the object replicates the pose it holds in the scene. A re-parent moves nothing and the child keeps paying full pose replication while it rides, regardless of what it's attached to.
-
-A re-parent under Local space carries the child's *local* values through rather than holding its world pose still, so the child lands wherever its old world pose happens to read as once it's measured inside the new parent. If you want it to land at a specific spot — a deck slot, a socket — set its world position and rotation explicitly right after the call, the same way you'd place any other object:
+Under Local, a re-parent carries the child's local values through instead of holding its world pose, so it lands wherever those values put it inside the new parent. To land it on a specific spot, such as a deck slot or a socket, set its world pose right after the call:
 
 ```csharp
 if (!CoreManager.SystemManager.EnsureSetSystemParent(crateSystem, carrierSystem))
@@ -40,19 +38,19 @@ if (!CoreManager.SystemManager.EnsureSetSystemParent(crateSystem, carrierSystem)
 crate.transform.SetPositionAndRotation(carrierTransform.TransformPoint(slotPosition), carrierTransform.rotation);
 ```
 
-The same applies in reverse on detach: read the world pose before calling `EnsureSetSystemParent` with a `null` parent, then write it back afterward, or the object will jump to wherever its local offset reads as from the scene root.
+When detaching, read the world pose before the call and write it back afterwards, or the object jumps to where its local offset puts it from the scene root.
 
-## Reading the parent link from a script
+## React to a parent change
 
-`NetworkSystem` exposes the link for code that needs to react to it rather than drive it:
+`NetworkSystem` exposes the link:
 
-- `ParentId` — the server's `Id` for the current parent, or unset when there is none.
-- `HasParent` — true whenever `ParentId` is set, whether or not the parent object has arrived on this peer yet.
-- `Parent` — the resolved `NetworkSystem` reference, or `null` when unparented *or* when the parent hasn't resolved locally yet.
-- `IsParentResolved` — true only once `Parent` is non-null.
-- `ParentChanged` — an event of type `NetworkSystem.ParentChangedHandler(uint previousParentId, uint currentParentId)`, raised on the server as it makes the change and on each client as it applies the replicated one.
+- `ParentId`: the server's `Id` for the current parent, or unset when there is none.
+- `HasParent`: true whenever `ParentId` is set, even if the parent has not arrived on this peer yet.
+- `Parent`: the parent's `NetworkSystem`, or `null` when unparented or not yet arrived.
+- `IsParentResolved`: true once `Parent` is not null.
+- `ParentChanged`: a `NetworkSystem.ParentChangedHandler(uint previousParentId, uint currentParentId)` event, raised on the server as it makes the change and on each client as it applies it.
 
-`ParentId` can be set before `Parent` resolves: the live reference is only wired up once everything received for that tick has been applied. Code that reacts to a parent change should read `ParentId`/`HasParent` rather than assume `Parent` is already populated in the same callback:
+`Parent` may still be null inside the callback, so read `ParentId` or `HasParent` there:
 
 ```csharp
 private void OnSystemLinked(NetworkSystem system)
@@ -67,10 +65,10 @@ private void OnParentChanged(uint previousParentId, uint currentParentId)
 }
 ```
 
-## Limits to design around
+## Design around the hierarchy limits
 
-- **Only a dynamically spawned prefab can be a child.** A scene object's placement is authored, and a pure-code system has no engine object to re-seat, so neither is eligible as a child. Either kind of system can still be a parent.
-- **Hierarchies nest at most 8 deep**, counted from a root. This bound also caps the despawn and interest walks that follow the parent link.
-- **Despawning a parent cascades to its children.** Stopping a system stops every started descendant beneath it, deepest first, so a peer is never left holding a child whose parent is already gone. Objects not parented to the one being despawned are untouched.
+- **Only a dynamically spawned prefab can be a child.** A scene object or a system with no GameObject cannot, though either can be a parent.
+- **Hierarchies nest at most 8 deep**, counted from a root.
+- **Despawning a parent despawns its children**, deepest first.
 
-For the full model — the resolved-versus-arrived distinction, the acyclic and same-scene checks the server enforces, and how the child's Id, controller and access survive the move — see [Parents, children and hierarchy](../../core-api/systems/system-hierarchy.md).
+The core page lists every check the server makes before it accepts a parent.

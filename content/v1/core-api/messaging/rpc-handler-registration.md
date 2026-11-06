@@ -4,9 +4,33 @@ title: "Handler Registration and Scope"
 
 > **Using Unity?** See [Registering Call Handlers Across a Component's Lifetime](../../unity/messaging/call-handlers-and-component-lifetime.md).
 
-## Scope decides who a call reaches
+## Register through the system the call is for
 
-`RpcManager` keys registered handlers by call type. Without a scope, every handler for a type would run for every object of that type in the world, forcing each handler to open by asking whether the call was actually addressed to it. `IRpcScope` moves that check into the engine:
+```csharp
+public void RegisterRpcHandler<T0>(RpcManager.RpcReceivedHandler<T0> rpcReceivedHandler) where T0 : IRpc, new();
+
+public void UnregisterRpcHandler<T0>(RpcManager.RpcReceivedHandler<T0> rpcReceivedHandler) where T0 : IRpc, new();
+```
+
+A handler registered through `NetworkSystem.RegisterRpcHandler` runs only for calls addressed to that instance, so one object's handler can never cancel the relay of another object's call.
+
+You can register before the system spawns. From then on the handler follows the system:
+
+- Removed when the system despawns.
+- Registered again when the system respawns.
+- Dropped for good when the instance returns to the pool.
+
+## Register with RpcManager to serve many systems
+
+`RpcManager` has two overloads:
+
+```csharp
+public void RegisterRpcHandler<T0>(RpcReceivedHandler<T0> rpcReceivedHandler) where T0 : IRpc, new();
+
+public void RegisterRpcHandler<T0>(RpcReceivedHandler<T0> rpcReceivedHandler, IRpcScope rpcScope) where T0 : IRpc, new();
+```
+
+The first is unscoped: the handler receives every call of that type in the world. The second runs the handler only for systems the scope accepts:
 
 ```csharp
 public interface IRpcScope
@@ -15,54 +39,12 @@ public interface IRpcScope
 }
 ```
 
-`NetworkSystem` implements it by scoping to itself:
+One scope may accept any number of systems. `NetworkSystem` itself is an `IRpcScope` that accepts only itself.
 
-```csharp
-public bool IsRpcScopedTo(NetworkSystem networkSystem) => ReferenceEquals(this, networkSystem);
-```
+Handlers registered through a `NetworkSystem` cost the same however many objects handle that call type. Unscoped handlers, and handlers with any other `IRpcScope`, are each asked on every call of their type, so register through the system unless one handler really speaks for many systems.
 
-A handler registered through `NetworkSystem.RegisterRpcHandler` is invoked only for calls addressed to that instance, by reference identity. This matters beyond filtering: a handler that is never invoked for a call cannot return `RpcRelayAction.Cancel` for it. Scoping is what stops one object's handler from being able to refuse the relay of a call addressed to another.
+## Registering twice or inside a handler is safe
 
-`IRpcScope` is a predicate rather than a property naming the system it is for, so a scope is not required to own exactly one system: something that hosts several systems can answer the question for all of them.
-
-## Registering directly with RpcManager
-
-Most code registers through the `NetworkSystem` methods below, which handle scope and lifecycle automatically. `RpcManager` itself exposes the two underlying overloads:
-
-```csharp
-public void RegisterRpcHandler<T0>(RpcReceivedHandler<T0> rpcReceivedHandler) where T0 : IRpc, new();
-
-public void RegisterRpcHandler<T0>(RpcReceivedHandler<T0> rpcReceivedHandler, IRpcScope rpcScope) where T0 : IRpc, new();
-```
-
-The first registers unscoped: the handler receives every call of that type in the world. The second scopes the handler to whatever `IRpcScope` is passed, which can own any number of systems.
-
-## Registering through a NetworkSystem
-
-```csharp
-public void RegisterRpcHandler<T0>(RpcManager.RpcReceivedHandler<T0> rpcReceivedHandler) where T0 : IRpc, new();
-
-public void UnregisterRpcHandler<T0>(RpcManager.RpcReceivedHandler<T0> rpcReceivedHandler) where T0 : IRpc, new();
-```
-
-Calling `RegisterRpcHandler` before the system has spawned is legal. The handler is tracked on the system; if the system is already started it registers with the manager immediately, otherwise the spawn registers every tracked handler as it goes live. From there the handler follows the system's lifecycle:
-
-- Deregistered from the manager when the system despawns.
-- Re-registered when the system respawns.
-- Dropped from tracking only when the instance returns to the pool.
-
-A handler is live with the manager exactly while the object is in the world, and a caller never has to time registration to the spawn.
-
-## What dispatch costs
-
-A handler registered through a `NetworkSystem` is scoped to that system, and the engine files it by the system itself. A received call addressed to a system finds that system's handlers with one lookup, however many other objects handle the same call type, so a world of a thousand objects each handling the same call pays the same per call as a world of one. Only handlers registered with no scope, or against an `IRpcScope` that is not a `NetworkSystem`, are walked and asked one by one, because an arbitrary scope can only be asked. Prefer registering through the system unless the handler genuinely speaks for many systems.
-
-## Re-registration and unregistration are idempotent and identity-scoped
-
-Re-registering the same handler is a no-op: `NetworkSystem` checks whether the handler already has a tracked record before adding another, matching `RpcManager`'s own de-duplication.
-
-Unregistering removes by handler identity only, never by scope. A handler belongs to at most one scope, so removing it by identity cannot remove another scope's handler.
-
-## Registering or unregistering during a dispatch
-
-Each call type's handler collection tracks a dispatch depth while it enumerates handlers for a received call. A registration or unregistration requested while that enumeration is in progress cannot touch the live collection, so it defers. The deferred change is applied only once the outermost dispatch unwinds - not a re-entrant one, since a handler may itself invoke a call of the type it is currently handling. This is what makes it safe for a handler to unregister itself from within its own invocation, which matters because a system auto-clears its handlers when it returns to the pool.
+- Registering the same handler again does nothing.
+- Unregistering removes by handler identity. A handler belongs to at most one scope, so this never removes another scope's handler.
+- Registering or unregistering from inside a handler is allowed, including a handler unregistering itself. The change applies once the outermost dispatch finishes.

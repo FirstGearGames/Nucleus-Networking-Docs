@@ -2,19 +2,17 @@
 title: "Scene events and observers"
 ---
 
-## Events on SceneManager
-
-`SceneManager` raises seven events. Each has its own delegate.
+## SceneManager raises seven events
 
 | Event | Delegate | Raised on | When |
 |---|---|---|---|
-| `SceneLoadRequested` | `SceneLoadRequestedHandler(uint sceneHandle, ushort sceneId, bool isLoadRequested)` | client | The server asks the client to load or release a scene, before the loader is consulted. |
+| `SceneLoadRequested` | `SceneLoadRequestedHandler(uint sceneHandle, ushort sceneId, bool isLoadRequested)` | client | The server asks the client to load or release a scene, before the loader is called. |
 | `SceneLoadStateChanged` | `SceneLoadStateChangedHandler(Connection connection, uint sceneHandle, bool isLoaded)` | server | A client's answer changes which scenes it holds. |
-| `SceneLoaded` | `SceneLoadedHandler(uint sceneHandle, ushort sceneId)` | client | This client's registered `ISceneLoader` finishes a load the server asked for, after the outcome has been reported to the server. Not raised on the server, a host included, for the server's own copy: server code awaits `OpenSceneAsync` instead, which returns the handle once the scene is loaded there, or `NetworkSystem.UnsetSceneHandle` if it could not be. |
-| `SceneUnloaded` | `SceneUnloadedHandler(uint sceneHandle, ushort sceneId)` | client | This client's registered `ISceneLoader` finishes a release the server asked for, after the report is sent. Not raised on the server when it closes its own copy; await `CloseSceneAsync` there instead. |
-| `SceneLoadFailed` | `SceneLoadFailedHandler(uint sceneHandle, ushort sceneId)` | local peer | This peer's own load fails, after the failure has been reported to the server. Also raised on the server when `OpenSceneAsync` could not load the server's own copy. |
-| `ClientSceneLoadFailed` | `ClientSceneLoadFailedHandler(Connection connection, uint sceneHandle)` | server | A client reports it could not load a scene, after the pending request has been cancelled. |
-| `SceneLoadProgressed` | `SceneLoadProgressedHandler(uint sceneHandle, ushort sceneId, float progress)` | local peer | This peer's own load advances, for a loading screen. Purely local; progress is never sent. |
+| `SceneLoaded` | `SceneLoadedHandler(uint sceneHandle, ushort sceneId)` | client | The client's `ISceneLoader` finishes a load the server asked for, after the outcome is reported. Not raised for the server's own copy, a host included: await `OpenSceneAsync` there, which returns the handle, or `NetworkSystem.UnsetSceneHandle` if the scene could not load. |
+| `SceneUnloaded` | `SceneUnloadedHandler(uint sceneHandle, ushort sceneId)` | client | The client's `ISceneLoader` finishes a release the server asked for, after the report is sent. Not raised when the server closes its own copy: await `CloseSceneAsync` there. |
+| `SceneLoadFailed` | `SceneLoadFailedHandler(uint sceneHandle, ushort sceneId)` | local peer | This peer's own load fails, after the failure is reported. Also raised on the server when `OpenSceneAsync` could not load the server's own copy. |
+| `ClientSceneLoadFailed` | `ClientSceneLoadFailedHandler(Connection connection, uint sceneHandle)` | server | A client reports it could not load a scene, after the pending request is cancelled. |
+| `SceneLoadProgressed` | `SceneLoadProgressedHandler(uint sceneHandle, ushort sceneId, float progress)` | local peer | This peer's own load advances, for a loading screen. Progress is never sent. |
 
 ```csharp
 sceneManager.SceneLoadRequested += (sceneHandle, sceneId, isLoadRequested) =>
@@ -28,11 +26,11 @@ sceneManager.ClientSceneLoadFailed += (connection, sceneHandle) =>
 };
 ```
 
-`SceneLoadStateChanged` fires only on a genuine change to what a client holds, and only once the record and interest re-resolution have already happened.
+`SceneLoadStateChanged` fires only when what a client holds actually changes, after interest has been updated.
 
-## ISceneObserver: the read-only alternative
+## Watch with an ISceneObserver
 
-`ISceneObserver` covers the same ground as three of the events, for code that wants to watch without adding its own event subscription per manager instance:
+`ISceneObserver` receives the same occurrences as three of the events, without an event subscription per manager:
 
 ```csharp
 public interface ISceneObserver
@@ -43,45 +41,43 @@ public interface ISceneObserver
 }
 ```
 
-Register any number of observers with `sceneManager.RegisterSceneObserver(observer)`, and remove one with `TryUnregisterSceneObserver`. Both the events above and the matching `ISceneObserver` callback are raised for the same occurrence, so use whichever form suits the call site. Registering the same observer twice is ignored; registering null is logged as an error.
+Register any number with `sceneManager.RegisterSceneObserver(observer)` and remove one with `TryUnregisterSceneObserver`. Registering the same observer twice is ignored; registering null logs an error. The events and the observer callbacks both fire for each occurrence.
 
-## Reporting from a loader that is not the shipped one
+## Report from your own loading code
 
-A registered `ISceneLoader` reports automatically. A game driving its own loading calls these instead:
+A registered `ISceneLoader` reports for you. If your game loads scenes itself, call these on the client:
 
-- `NotifySceneLoaded(uint sceneHandle, uint systemId = NetworkSystem.UnsetId)` — this client now holds the scene instance.
-- `NotifySceneUnloaded(uint sceneHandle)` — this client has released a scene instance.
-- `NotifySceneLoadFailed(uint sceneHandle, uint systemId = NetworkSystem.UnsetId)` — this client could not load a scene instance.
-- `NotifySceneLoadProgress(uint sceneHandle, ushort sceneId, float progress)` — reports progress through a load, purely local. Nothing is sent; the server learns only whether the scene did or did not load, never how far along it got.
+- `NotifySceneLoaded(uint sceneHandle, uint systemId = NetworkSystem.UnsetId)`: the client now holds the instance.
+- `NotifySceneUnloaded(uint sceneHandle)`: the client released the instance.
+- `NotifySceneLoadFailed(uint sceneHandle, uint systemId = NetworkSystem.UnsetId)`: the client could not load the instance.
+- `NotifySceneLoadProgress(uint sceneHandle, ushort sceneId, float progress)`: local progress only. Nothing is sent.
 
-All three report methods are safe to call from any thread, and each is only sent in answer to a request the server actually made — a self-driven load the server never asked for loads locally and stays silent.
+The three report methods are safe to call from any thread. Each is sent only in answer to a request the server made, so a load the server never asked for stays local.
 
-## Clearing a stuck client
+## Clear a stuck client
 
-A reported failure latches, so the server stops asking a client that cannot fetch the content. Re-arm it once whatever blocked the load has been addressed:
+A reported failure is remembered, so the server stops asking a client that cannot fetch the content. Once the cause is fixed, clear it:
 
 ```csharp
 bool cleared = sceneManager.TryClearSceneLoadFailure(connection, sceneHandle);
 ```
 
-Check whether a client is currently latched with `connection.HasSceneLoadFailed(sceneHandle)`.
+`connection.HasSceneLoadFailed(sceneHandle)` tells you whether a failure is recorded.
 
-## SceneLoadOutcome
+## A client reports one of four outcomes
 
-A client reports one of four outcomes for a scene instance it was asked to load or release:
+`SceneLoadOutcome` for a scene the client was asked to load or release:
 
-- **Loaded** — the client now holds the instance and can be served the objects inside it.
-- **Released** — the client has released the instance it was asked to release.
-- **Failed** — the client could not load the instance: content would not fetch, the scene would not resolve, or the load threw.
-- **Refused** — the client's `ISceneLoader` is already at the limit set by `ISceneLoader.MaximumConcurrentScenes`; the loader was never consulted.
+- **Loaded**: the client holds the instance and can be sent its objects.
+- **Released**: the client released the instance.
+- **Failed**: the load did not work. The content would not fetch, the scene would not resolve, or the load threw.
+- **Refused**: the client's loader is already at `ISceneLoader.MaximumConcurrentScenes`. The loader was never called.
 
-`Refused` and `Failed` both surface through `ClientSceneLoadFailed` and `ISceneObserver.OnSceneLoadFailed`, and neither raises `SceneLoadStateChanged` — the client holds nothing it did not hold before, so nothing about what it holds changed. Only `Failed` runs scene-carry-failure resolution for objects being carried into that scene; a refusal says only that the loader will not hold another scene at once, which the game fixes by moving the client with `SceneReplaceMode.AllScenes` rather than adding to what it holds, so nothing about the object itself is wrong.
+`Failed` and `Refused` both raise `ClientSceneLoadFailed` and `ISceneObserver.OnSceneLoadFailed`, and neither raises `SceneLoadStateChanged`. Only `Failed` triggers carry-failure handling for objects being carried into the scene (see [Moving and carrying objects between scenes](./moving-objects-between-scenes.md)). Fix a refusal by moving the client with `SceneReplaceMode.AllScenes` instead of adding the scene.
 
-## Violations
+## Two violations catch a client acting on its own
 
-A client that answers about a scene it was never asked about did not merely send a stray message — it is trying to place or remove itself from scenes on its own, which is how it would serve itself content it was never admitted to. The server drives every load and release itself, so these settle as violations rather than ordinary reports.
-
-- **UnsolicitedSceneReportViolation** — a client reports loading a scene it was never asked to load, or releasing one it was never asked to release. Carries `SceneHandle` and `IsLoadReported` (true for a claimed load, false for a claimed release).
-- **UnexpectedSceneRequestViolation** — a client sends a scene load request, the message that only ever travels server to client. Carries `SceneHandle` and `IsLoadRequested`.
+- **UnsolicitedSceneReportViolation**: a client reports loading a scene it was never asked to load, or releasing one it was never asked to release. Carries `SceneHandle` and `IsLoadReported` (true for a claimed load, false for a claimed release).
+- **UnexpectedSceneRequestViolation**: a client sends a scene load request, a message that only travels server to client. Carries `SceneHandle` and `IsLoadRequested`.
 
 Both default to a kick.

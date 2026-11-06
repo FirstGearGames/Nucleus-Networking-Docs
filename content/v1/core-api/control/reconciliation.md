@@ -4,22 +4,22 @@ title: "Reconciliation and replay"
 
 > **Using Unity?** See [Replaying a correction in Unity](../../unity/control/reconcile-in-unity.md).
 
-A predicted member can diverge from the server: the server simulates a tick of the controller's client state, finds the controller's result different from its own, and orders a correction. The server also orders one itself when it re-anchors a stalled client, and when game code calls `SendReconcile`. Reconciliation is what the engine does next: it restores the client's world to the server's values as of one tick, replays every tick since then through the same fixed updates that produced them, and reports what was wrong and what changed. A game writes the simulation once; it does not write the replay.
+The server orders a reconcile when it finds the controller's predicted result different from its own, when it re-anchors a stalled client, and when game code calls `SendReconcile`. The engine then restores the client's world to the server's values as of one tick, replays every tick since through the same fixed updates that produced them, and reports what changed. You write the simulation once; you do not write the replay.
 
-## One reconcile, in order
+## What happens in one reconcile
 
-1. **Detect, on `LateStateUpdate`.** While the inbound packets apply, a reconcile the server ordered is recorded against the echoed client state tick as `MismatchCause.ServerOrdered`, instead of rewinding on the spot. An observer predicting a system records its own [compare](./prediction-history-and-predicted-members.md#an-observer-that-predicts-compares-for-itself) the same way. Once the earliest tick is recorded, every predicted member of every system captures the value the server last sent as the restore base, so remote calls and `LateStateUpdate` callbacks that run before the `Reconcile` step cannot move it.
-2. **Restore, at the head of the `Reconcile` step,** ahead of its callbacks. One start tick is chosen for the whole world: the earliest tick any member recorded. Every predicted member of every system this client predicts is set to its captured server value, its later history is cleared, and its value before the restore is kept as its pre-rewind value. A member the server has sent nothing for yet keeps its own history, rewound to the same tick. Systems this client does not control are held at their captured values. `ReplayReport` is filled with the members whose restored value differs from what this client held for the start tick.
+1. **Detect, on `LateStateUpdate`.** A reconcile the server ordered is recorded against the echoed client state tick as `MismatchCause.ServerOrdered`. An observer predicting a system records its own [compare](./prediction-history-and-predicted-members.md#an-observer-that-predicts-compares-for-itself) the same way. From then on, the server values to restore are fixed, so remote calls and `LateStateUpdate` callbacks that run before the `Reconcile` step cannot move them.
+2. **Restore, at the head of the `Reconcile` step,** before its callbacks. The start tick, the earliest tick any member recorded, is one tick for the whole world. Every predicted member of every system this client predicts takes its server value, its later history is cleared, and its value before the restore is kept as its pre-rewind value. A member the server has sent nothing for yet keeps its own history, rewound to the same tick. Systems this client does not control are held at their server values. `ReplayReport` lists the members whose restored value differs from what this client held for the start tick.
 3. **`ReconcileRequired`** is raised with the start tick on each restored system, in system Id order.
 4. **Replay.** `ReplayStarting` is raised on every system the replay covers. Then, for each tick from the start tick plus one to the live tick minus one, every restored system runs its early fixed update and then its late one as `SimulationType.Replayed`, in system Id order.
-5. **Report the effect.** Held systems return to their latest values. Each predicted member whose present the replay moved away from its pre-rewind value is added to `ReplayReport.Corrections` and raises `OnMembersChanged` with `MemberChangeDirection.Correction`. Then `ReplayCompleted` is raised on every system that raised `ReplayStarting`.
-6. **Continue, on `EarlyFixedUpdate`.** The live tick runs the fixed updates as `SimulationType.Forward` from the corrected state.
+5. **Report.** Held systems return to their latest values. Each predicted member the replay moved away from its pre-rewind value is added to `ReplayReport.Corrections` and raises `OnMembersChanged` with `MemberChangeDirection.Correction`. Then `ReplayCompleted` is raised on every system that raised `ReplayStarting`.
+6. **Continue, on `EarlyFixedUpdate`.** The live tick runs as `SimulationType.Forward` from the corrected state.
 
-A reconcile covers the whole world, once per inbound pass. Two members of one system, or two systems this client controls, that diverge in the same pass are restored to the same tick and replayed together, so one divergence costs one replay.
+A reconcile covers the whole world, once per inbound pass. Members or systems that diverge in the same pass are restored to the same tick and replayed together, so one divergence costs one replay.
 
-## The fixed updates the engine replays
+## The engine replays your fixed updates
 
-The engine replays the fixed updates of a system something simulates: a component that overrides one of them, or a callback registered with `NetworkSystem.RegisterSimulationCallback`:
+The engine replays a system's fixed updates when something simulates it: a component that overrides one of them, or a callback registered with `NetworkSystem.RegisterSimulationCallback`:
 
 ```csharp
 // On NetworkComponent:
@@ -33,7 +33,7 @@ public interface INetworkSimulationCallback
 }
 ```
 
-Within a system, components run first in component order, then the registered callbacks in registration order. `UnregisterSimulationCallback` removes a callback. A raw `INetworkLoopStepCallback` keeps running once per loop tick and is never replayed.
+Within a system, components run first in component order, then registered callbacks in registration order. `UnregisterSimulationCallback` removes a callback. A raw `INetworkLoopStepCallback` runs once per loop tick and is never replayed.
 
 | Peer | System | How the fixed updates run |
 | --- | --- | --- |
@@ -51,11 +51,11 @@ Each fixed update receives a `SimulationContext`, a read-only struct describing 
 
 | Field | Meaning |
 | --- | --- |
-| `Type` | The pass the step belongs to: `SimulationType.Forward` the first time a tick is simulated, `Replayed` for a past tick simulated again during a reconcile, `None` on a peer that does not simulate the system. |
-| `RemoteTick` | The opposite end's tick the step pairs with. On the server, for a system a client drives, the controller's tick whose client state is being simulated. On a client, the server tick of the state it applied. `NetworkLoopManager.UnsetTick` when there is none: on the server for a system no client drives, and on a client before any state has arrived. |
-| `IsRemoteTickEstimated` | True when `RemoteTick` was inferred rather than arriving with the data: on the server for a client tick whose client state did not arrive, where it is the tick the server assumed, and on a client for a tick no state was applied on, every replayed tick included, where it is the newest server tick applied carried on one tick per local tick. |
+| `Type` | `SimulationType.Forward` the first time a tick is simulated, `Replayed` for a past tick simulated again during a reconcile, `None` on a peer that does not simulate the system. |
+| `RemoteTick` | The other end's tick the step pairs with. On the server, for a system a client drives, the controller's tick whose client state is being simulated. On a client, the server tick of the state it applied. `NetworkLoopManager.UnsetTick` when there is none: on the server for a system no client drives, and on a client before any state has arrived. |
+| `IsRemoteTickEstimated` | True when `RemoteTick` was inferred rather than arriving with the data. On the server, for a client tick whose client state did not arrive, it is the tick the server assumed. On a client, for a tick no state was applied on (every replayed tick included), it is the newest server tick applied, carried on one tick per local tick. |
 
-Time everything by `StepDelta.Tick`, the local tick being simulated. On the server that is the server's own tick even for a step that runs one of the client's ticks. `RemoteTick` is the other end's numbering, and on the server it is a number the client chose: use it to pair what the server did with what the client logged, never for a cooldown, a timeout or any other timing.
+Time everything by `StepDelta.Tick`, the local tick being simulated. On the server that is the server's own tick, even for a step that runs one of the client's ticks. On the server, `RemoteTick` is a number the client chose: use it to pair what the server did with what the client logged, never for a cooldown, a timeout or any other timing.
 
 ```csharp
 protected override void OnEarlyFixedUpdate(StepDelta stepDelta, SimulationContext simulationContext)
@@ -69,7 +69,7 @@ protected override void OnEarlyFixedUpdate(StepDelta stepDelta, SimulationContex
 }
 ```
 
-## Writing the simulation
+## Write the simulation once for every pass
 
 ```csharp
 using System.Numerics;
@@ -109,21 +109,22 @@ public partial class MoverComponent : NetworkComponent
 }
 ```
 
-The controller writes the client state for the live tick before the step reads it, on the live tick only; every other pass reads the `Predict` member, which a replay points at the tick it replays. Step by the fixed tick, never by frame time, so every pass of a tick computes the same value.
+- Write the client state on the live tick only, before the step reads it. Every other pass reads the `Predict` member, which a replay points at the tick it replays.
+- Step by the fixed tick, never by frame time, so every pass of a tick computes the same value.
 
-## What a replayed tick sees
+## Each kind of member behaves differently in a replayed tick
 
 - `Validate` members write the replayed tick's value, and each replayed tick becomes the member's newest, so `Value` reads the last tick replayed and the next live write lands after it.
 - `Predict` members read the client state recorded for the replayed tick.
 - `Replicate` members keep their live value; writes to them land on the live value.
 - Systems this client does not control read the server values that arrived with the start tick, unless the [hold radius](#holding-only-the-systems-near-a-replay) leaves them out.
-- The core steps no physics itself. `SystemManager.ReplayEarlyFixedUpdated` is raised between the early and late fixed update of each replayed tick, so an integration can step its physics world there; the Unity integration does, so a body predicted through its `ValidatedRigidbody` replays.
+- The core steps no physics itself. `SystemManager.ReplayEarlyFixedUpdated` is raised between the early and late fixed update of each replayed tick, so an integration can step its physics world there. The Unity integration does, so a body predicted through its `ValidatedRigidbody` replays.
 
-`NetworkLoopManager.SimulationType` is the pass running now (`None` outside a simulate step), mirrored as `NetworkSystem.SimulationType`. `NetworkLoopManager.ReplayTick` is the replayed tick during a replay and `NetworkLoopManager.UnsetTick` otherwise, and `SimulationTick` is the replayed tick during a replay and `Tick`, which stays the live tick throughout, otherwise. `NetworkSystem.IsPredicting` is true on the clients that replay a system: its controller, or an observer predicting it, while it has a predicted member.
+`NetworkLoopManager.SimulationType` is the pass running now (`None` outside a simulate step), mirrored as `NetworkSystem.SimulationType`. `NetworkLoopManager.ReplayTick` is the replayed tick during a replay and `NetworkLoopManager.UnsetTick` otherwise. `SimulationTick` is the replayed tick during a replay and `Tick` otherwise; `Tick` stays the live tick throughout. `NetworkSystem.IsPredicting` is true on the clients that replay a system (its controller, or an observer predicting it) while it has a predicted member.
 
-## Calls refused during a replay
+## The engine refuses side effects during a replay
 
-A replay re-runs every tick since the start tick, so anything with an effect outside the simulation would happen again. While a replayed tick runs, the engine refuses these calls, logging once per kind of call:
+A replay re-runs every tick since the start tick, so anything with an effect outside the simulation would happen again. While a replayed tick runs, these calls are refused, logging once per kind of call:
 
 - `TrySendRpc` returns false, and `Connection.SendMessage<T0>` sends nothing.
 - `EnsureStartPredictedSystem` and `EnsureStopPredictedSystem` refuse with `PredictedSpawnRefusal.Replaying`.
@@ -132,7 +133,7 @@ A replay re-runs every tick since the start tick, so anything with an effect out
 
 Play one-shot effects (sounds, particles, an RPC to the server) on `SimulationType.Forward` only.
 
-## What the reconcile reports
+## Read what the reconcile changed
 
 ```csharp
 public event ReplayStartingHandler? ReplayStarting;
@@ -143,7 +144,7 @@ public delegate void ReplayCompletedHandler(ReplayReport replayReport);
 public ReplayReport ReplayReport { get; }
 ```
 
-`NetworkSystem.ReplayReport` describes the latest reconcile on the system. It is one instance per system, reused by every reconcile, so read it while the reconcile it describes is current:
+`NetworkSystem.ReplayReport` describes the latest reconcile on the system. One instance per system is reused by every reconcile, so read it while the reconcile it describes is current:
 
 | Member | Meaning |
 | --- | --- |
@@ -170,51 +171,54 @@ public override void OnMembersChanged(ulong memberFlags, MemberChangeDirection m
 
 On the controlling client each system also counts `ReconcileCount`, `ReplayedTickCount` and `LastReplayTickCount` since it was rented, and `GetMismatchCount(MismatchCause)` per cause. All of them stay at zero while predictions agree.
 
-## Smoothing a correction
+## Smooth a correction
 
-Construct a member with `correctionSmoothingTicks` to have its `InterpolatedValue` glide from the pre-rewind value to the corrected one over that many presented ticks, while `Value` is correct at once:
+Construct a member with `correctionSmoothingTicks` to have its `InterpolatedValue` glide from the pre-rewind value to the corrected one over that many presented ticks, while `Value` is correct at once. 0, the default, shows the correction at once.
 
 ```csharp
 public readonly NetworkMember<Vector3> Position = new(role: MemberRole.Validate, accuracy: 0.01f, correctionSmoothingTicks: 6);
 ```
 
-0, the default, shows the correction at once.
+For a physics body, a convergence follower can hide the visual jump a rewind produces by interpolating toward the corrected pose; see [PhysicsConvergence](../physics/physics-convergence.md).
 
-## Limiting how long a replay runs
+## Limit how long a replay runs
 
 ```csharp
 coreManager.SystemManager.MaximumReplayTicks = 30;
 ```
 
-A reconcile whose replay would run longer lands the server's values at the start tick without replaying, and its report sets `IsReplaySkipped`. `SystemManager.UnsetMaximumReplayTicks` (0), the default, sets no limit.
+A reconcile whose replay would run longer lands the server's values at the start tick without replaying, and its report sets `IsReplaySkipped`. The default, `SystemManager.UnsetMaximumReplayTicks` (0), sets no limit.
 
-## Systems this client does not control
+## Systems this client does not control are held during a replay
 
-A system controlled by the server or by another client takes its values from the server, which are the truth, and is never compared or simulated on this client. It still takes part in a reconcile: the client only knows it up to the start tick, so from the restore its predicted members read the server values that arrived with the start tick, and the controlled systems replay against it there. It raises `ReplayStarting` and `ReplayCompleted` with the replayed systems, so whatever shows it can be placed where the replay sees it and put back. Before `ReplayCompleted` it returns to its latest values, so a replay leaves no net change on it.
+A system controlled by the server or by another client takes its values from the server and is never compared or simulated on this client. It still takes part in a reconcile: from the restore, its predicted members read the server values that arrived with the start tick, and the controlled systems replay against it there. It raises `ReplayStarting` and `ReplayCompleted` with the replayed systems, so whatever shows it can be placed where the replay sees it and put back. Before `ReplayCompleted` it returns to its latest values, so a replay leaves no net change on it.
 
 ## Holding only the systems near a replay
 
-Systems the client does not control are held at the start tick while the ones it controls replay. In a crowded scene, set a radius so only those near a restored system are held:
+In a crowded scene, set a radius so only systems near a restored system are held:
 
 ```csharp
 coreManager.SystemManager.ReplayHoldRadius = 20f;
 ```
 
-Distances are read through the interest position reader (`InterestManager.SetPositionReader`). A system whose position cannot be read is always held, and the rest keep their latest values and raise no replay events. `SystemManager.UnsetReplayHoldRadius`, the default, holds every system, and so does a build without distance interest.
+Distances are read through the interest position reader (`InterestManager.SetPositionReader`). A system whose position cannot be read is always held. The rest keep their latest values and raise no replay events. The default, `SystemManager.UnsetReplayHoldRadius`, holds every system, and so does a build without distance interest.
 
 ## Predicting another client's object
 
-A client can predict a system another client controls instead of holding it, opted in per system on that client:
+A client can predict a system another client controls instead of holding it. Opt in per system on that client:
 
 ```csharp
 observedSystem.IsObserverPredictionEnabled = true;
 ```
 
-Its fixed updates then run as `SimulationType.Forward` on every live tick, from the client state the server forwards, which lands on the local tick the server's echo names. On a live tick that client state has not arrived yet, so the step says `StepDelta.IsClientStateMissing` and the game carries the last client state forward with `TryGetLastState`, exactly as the server does. The observer compares the server's values for the `Validate` members with its prediction at its own echo, since the server checks only the controller's result, and a reconcile restores and replays the system with the ones the observer controls. Nothing new travels. The observer needs an echo of its own, so it must control a system that sends client state: one with `MemberRole.Predict` members. An observer controlling nothing of the kind gets no echo, and the server's values land on it directly.
+- Its fixed updates then run as `SimulationType.Forward` on every live tick, from the client state the server forwards, which lands on the local tick the server's echo names.
+- On a live tick that client state has not arrived yet, so the step says `StepDelta.IsClientStateMissing`. Carry the last client state forward with `TryGetLastState`, as the server does.
+- The observer compares the server's values for the `Validate` members with its prediction at its own echo, and a reconcile restores and replays the system with the ones the observer controls. Nothing new travels.
+- The observer needs an echo of its own, so it must control a system that sends client state: one with `MemberRole.Predict` members. An observer that controls nothing like that gets no echo, and the server's values land on it directly.
 
-## Replaying from ReconcileRequired yourself
+## Replay from ReconcileRequired yourself
 
-`ReconcileRequired` stays as the low-level hook, for a game that drives its own replay:
+`ReconcileRequired` is the low-level hook for a game that drives its own replay:
 
 ```csharp
 public delegate void ReconcileRequiredHandler(uint rewoundTick);
@@ -222,32 +226,47 @@ public delegate void ReconcileRequiredHandler(uint rewoundTick);
 public event ReconcileRequiredHandler? ReconcileRequired;
 ```
 
-It is raised at the head of the `Reconcile` step, after the restore, on each restored system in system Id order. `rewoundTick` is the start tick: the server's value there already includes that tick's client state, so replay from the tick after it. It is `NetworkLoopManager.UnsetTick` when the correction was a snap with no replay target, a reconcile the server sent that landed with no echo of the processed client state tick. A server correction of the controller's client state alone does not raise it: a `Predict` value the server changed lands in that tick's history and raises `OnMembersChanged` with `MemberChangeDirection.Correction` instead.
+- It is raised at the head of the `Reconcile` step, after the restore, on each restored system in system Id order.
+- `rewoundTick` is the start tick. The server's value there already includes that tick's client state, so replay from the tick after it.
+- It is `NetworkLoopManager.UnsetTick` when the correction was a snap with no replay target: a reconcile the server sent that landed with no echo of the processed client state tick.
+- A server correction of the controller's client state alone does not raise it. A `Predict` value the server changed lands in that tick's history and raises `OnMembersChanged` with `MemberChangeDirection.Correction` instead.
 
-When something on the system overrides a fixed update or registers a simulation callback, the engine replays it after `ReconcileRequired`, and a subscriber should not replay it a second time. A system nothing simulates is left to the subscriber. Replay it on the `Reconcile` step (an `INetworkLoopStepCallback` returning `NetworkLoopSteps.Reconcile`), bracketing every past tick in tick order:
+When something on the system overrides a fixed update or registers a simulation callback, the engine replays it after `ReconcileRequired`, so do not replay it a second time. A system nothing simulates is left to you. Replay it on the `Reconcile` step (an `INetworkLoopStepCallback` returning `NetworkLoopSteps.Reconcile`), bracketing every past tick in tick order:
 
 ```csharp
 public void BeginReplayTick(uint tick);
 public void EndReplayTick();
 ```
 
-`BeginReplayTick(tick)` opens a replay of that tick: `Validate` members write that tick's value, `Predict` members read its client state, and `NetworkLoopManager.SimulationType` reads `Replayed`, so the refusals above apply. `EndReplayTick()` returns writes and reads to the live tick. A write to a predicted member outside the bracket lands on the live value and breaks the next result check. Re-simulate the ticks from `rewoundTick + 1` up to the tick before the current one this way, then apply the current tick's values normally. Systems held for the reconcile stay held until the `Reconcile` step's callbacks have run.
+1. For each tick from `rewoundTick + 1` up to the tick before the current one, call `BeginReplayTick(tick)`, re-simulate, then call `EndReplayTick()`. Inside the bracket, `Validate` members write that tick's value, `Predict` members read its client state, and `NetworkLoopManager.SimulationType` reads `Replayed`, so the refusals above apply.
+2. Apply the current tick's values normally.
 
-## SendReconcile
+A write to a predicted member outside the bracket lands on the live value and breaks the next result check. Systems held for the reconcile stay held until the `Reconcile` step's callbacks have run.
 
-`SendReconcile(Connection)` is the server side of a forced, full-state correction: the server pushes a system's complete current state to one connection outright, rather than waiting for the result check to find a difference. The correction is queued and sent to that connection at the end of the tick.
+## Force a correction with SendReconcile
 
 ```csharp
 public void SendReconcile(Connection connection);
 ```
 
-Only the server can call it; a client attempting to reconcile a system is refused with a logged error, and nothing is queued. A reconcile is the one kind of correction that must never travel upstream, since accepting one from a client would let it overwrite any system on the server outright.
+`SendReconcile` pushes a system's complete current state to one connection, rather than waiting for the result check to find a difference. It is queued and sent to that connection at the end of the tick. Asking again for the same system and connection before then queues nothing more.
 
-A server reaches for this when a gameplay event invalidates a controller's prediction in a way the result check would not catch: a teleport, a respawn, an out-of-band member change the client could not have predicted from its own client state. The engine also sends one itself for a `Validate` result that differs and when it re-anchors a client that stalled. The controller's `Predict` values for the start tick are replaced with the ones the server applied after validation, raising `OnMembersChanged` with `MemberChangeDirection.Correction` when they differ from its own. Asking again for the same system and connection before the flush queues nothing more. On arrival it is recorded as `MismatchCause.ServerOrdered` and restores and replays like any other reconcile.
+Only the server can call it. A client that tries is refused with a logged error, and nothing is queued.
+
+Use it when a gameplay event invalidates the controller's prediction in a way the result check would not catch: a teleport, a respawn, or a member change the client could not have predicted from its own client state. The engine also sends one itself for a `Validate` result that differs and when it re-anchors a stalled client.
+
+On arrival it is recorded as `MismatchCause.ServerOrdered` and restores and replays like any other reconcile. The controller's `Predict` values for the start tick are replaced with the ones the server applied after validation, raising `OnMembersChanged` with `MemberChangeDirection.Correction` when they differ from its own.
 
 ## Validate results the server found different
 
-For `MemberRole.Validate` members the server checks the controller's result against its own. When one differs it queues the correcting reconcile and raises `NetworkSystem.ResultMismatched` with a `ResultMismatchReport`: the controller's `Connection`, the server's `Tick` the difference was found on, the controller's `RemoteTick` it pairs with (for matching what the client logged, never for timing) and, when `AreValuesSent` is true, the `Members` that differed. Each of those answers `TryGetResultMismatchValues(out controllerValue, out serverValue)` until the tick advances. The values are available while the controller's `SystemManager.IsResultValueSendEnabled` is set, the default. Turning it off in a release build saves bandwidth, and the report then shows only that a mismatch happened. No violation is raised, so what to do about the client is the game's call.
+When the server finds a controller's `MemberRole.Validate` result different from its own, it queues the correcting reconcile and raises `NetworkSystem.ResultMismatched` with a `ResultMismatchReport`:
+
+- `Connection`: the controller.
+- `Tick`: the server's tick the difference was found on.
+- `RemoteTick`: the controller's tick it pairs with, for matching what the client logged, never for timing.
+- `Members`: the members that differed, when `AreValuesSent` is true. Each answers `TryGetResultMismatchValues(out controllerValue, out serverValue)` until the tick advances.
+
+The values are available while the controller's `SystemManager.IsResultValueSendEnabled` is set, the default. Turning it off in a release build saves bandwidth, and the report then shows only that a mismatch happened. No violation is raised, so what to do about the client is the game's call.
 
 Read the report inside the handler and keep no reference to it after the handler returns:
 
@@ -271,7 +290,3 @@ public sealed class ResultMismatchLogger
     }
 }
 ```
-
-## See also
-
-Physics convergence followers can hide the visual jump a rewind produces; see the Physics documentation for how a follower interpolates toward the corrected pose instead of snapping to it.

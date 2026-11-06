@@ -2,21 +2,25 @@
 title: "Moving and carrying objects between scenes"
 ---
 
-## Moving a system to another scene
+## Move a system to another scene
 
-`SystemManager.EnsureMoveSystemToScene(NetworkSystem networkSystem, uint destinationSceneHandle)` is the one call that moves a spawned object between scene instances. It is server-only, and it returns `false` without moving anything if the system is not started and registered, if it is a scene object or has no platform identity (only a dynamically spawned object carries a scene handle to move), or if `destinationSceneHandle` is `NetworkSystem.UnsetSceneHandle`.
+`SystemManager.EnsureMoveSystemToScene(NetworkSystem networkSystem, uint destinationSceneHandle)` moves a spawned object to another scene instance. It is server-only, and returns `false` without moving anything when:
+
+- the system is not started and registered;
+- it is a scene object or has no platform identity (only a dynamically spawned object can move);
+- `destinationSceneHandle` is `NetworkSystem.UnsetSceneHandle`.
 
 ```csharp
 coreManager.SystemManager.EnsureMoveSystemToScene(asteroid, destinationSceneHandle);
 ```
 
-If `networkSystem` belongs to a group, every member is restamped with the new scene together; a group shares one engine object and moves as a unit. The object's controller is carried along: the move requests the scene load for the controlling client before this tick's interest pass runs, so the client is walked into the destination scene rather than losing the object out from under it.
+A system in a group moves with its whole group. The move also asks the object's controlling client into the destination scene, so the client follows the object instead of losing it.
 
-## Reading a system's scene
+## Read a system's scene
 
-`NetworkSystem.SceneHandle` names the scene instance the system currently belongs to. `NetworkSystem.UnsetSceneHandle` (zero) means the scene every peer already booted into - the boot scene needs no handle, since nothing has to carry a client into a scene it already holds.
+`NetworkSystem.SceneHandle` is the instance the system belongs to. `NetworkSystem.UnsetSceneHandle` (zero) means the boot scene every peer already holds.
 
-`NetworkSystem.SceneChanged` fires whenever the handle changes: on the server as it performs the move, and on a client as it applies the change.
+`NetworkSystem.SceneChanged` fires when the handle changes: on the server as it moves the system, and on a client as it applies the move.
 
 ```csharp
 networkSystem.SceneChanged += (previousSceneHandle, currentSceneHandle) =>
@@ -26,32 +30,32 @@ networkSystem.SceneChanged += (previousSceneHandle, currentSceneHandle) =>
 };
 ```
 
-## When the destination can't take it
+## A refusal is not a carry failure
 
-Carrying an object into another scene means walking that object's controlling client into the destination scene along with it. Two different things can go wrong on that client's end, and they are not the same failure:
+When the controlling client cannot follow the object, one of two things happened:
 
-- **A carry failure.** The client's scene load for the destination scene fails outright. The object has lost the controller that was meant to follow it.
-- **A refusal.** The client's scene loader will not hold another scene at once, so the load is refused rather than failing - the fix is placing the client with `SceneReplaceMode.AllScenes` instead of loading additively. Nothing about the object or its content was wrong, and the object is still perfectly reachable once the client is placed correctly. A refusal does not trigger carry-failure resolution, so the object is neither despawned nor released from control for it.
+- **Carry failure**: the client's load of the destination scene failed. The object has lost the controller meant to follow it, and `SceneCarryFailureAction` decides what happens next.
+- **Refusal**: the client's loader will not hold another scene at once. Place the client with `SceneReplaceMode.AllScenes` instead of loading the scene additively. The object is unaffected: it is not despawned or released from control.
 
-## Deciding what happens on a carry failure
+## Decide what happens on a carry failure
 
-`SceneCarryFailureAction` is the outcome for an object whose controlling client failed to load the destination scene:
+`SceneCarryFailureAction` values:
 
-- `SurrenderControl` - return the object to the server's control and leave it where it is. The default. Destroys nothing and strands nothing: the client stops driving something it can't reach, and the object stays live for whoever is actually in the scene.
-- `Despawn` - despawn the object (the whole group, since a group is one object). What a player's avatar usually wants, since the client that was going to drive it never arrived.
-- `Retain` - leave the object exactly as it is, controller included. The engine does nothing further, so the game is expected to resolve the failure itself, typically by moving the object back and asking the client into that scene instead.
+- `SurrenderControl` (default): return the object to server control and leave it where it is, live for whoever is in the scene.
+- `Despawn`: despawn the object, and its whole group. Usually right for a player's avatar.
+- `Retain`: change nothing, controller included. Your game resolves it, typically by moving the object back and asking the client into that scene.
 
-The action is resolved once, per carried object, on the failing edge, from three layers:
+The action is resolved once per carried object. Each layer below outranks the one before it:
 
-1. **`SceneManager.SceneCarryFailure`** - the world-wide default. Defaults to `SceneCarryFailureAction.SurrenderControl`.
-2. **`NetworkSystem.SceneCarryFailureOverride`** - a nullable per-object override, for the cases where the blanket default reads wrong (a player's avatar in a world where everything else should surrender control, say). Null takes the manager's default.
-3. **A registered `ISceneCarryFailureResolver`** - decides case by case, and outranks both of the above.
+1. `SceneManager.SceneCarryFailure`: the world-wide default, `SceneCarryFailureAction.SurrenderControl`.
+2. `NetworkSystem.SceneCarryFailureOverride`: a per-object override. Null uses the manager's default.
+3. A registered `ISceneCarryFailureResolver`: decides case by case.
 
 ```csharp
 public SceneCarryFailureAction? SceneCarryFailureOverride { get; set; }
 ```
 
-### Resolving case by case
+### Resolve case by case
 
 ```csharp
 public interface ISceneCarryFailureResolver
@@ -64,15 +68,13 @@ public interface ISceneCarryFailureResolver
 }
 ```
 
-`defaultSceneCarryFailureAction` is what would happen without this resolver - the object's override, or the manager's default if it has none. Returning it unchanged is how a resolver declines a case, so a resolver only has to speak about the objects it cares about; several resolvers can be registered at once and each hands the next the answer so far.
-
-Register and unregister a resolver on the `SceneManager`:
+`defaultSceneCarryFailureAction` is the answer without this resolver: the object's override, or the manager's default. Return it unchanged to leave a case alone. Several resolvers can be registered, and each receives the answer so far.
 
 ```csharp
 coreManager.SceneManager.RegisterSceneCarryFailureResolver(resolver);
 coreManager.SceneManager.TryUnregisterSceneCarryFailureResolver(resolver);
 ```
 
-## In Unity
+## In Unity, only root GameObjects follow a move
 
-A root GameObject bound to its scene follows the move automatically. A parented GameObject is refused and stays in its parent's scene. An object whose scene binding is not yet resolved is parked until it resolves. See the Unity scene events page for the detail.
+A root GameObject bound to its scene follows the move. A parented GameObject is refused and stays in its parent's scene. An object whose scene binding is not yet resolved waits until it resolves.

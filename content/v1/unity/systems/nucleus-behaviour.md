@@ -5,39 +5,39 @@ components: "NucleusBehaviour"
 
 > **Driving the core API directly?** See [Renting and finding systems in code](../../core-api/systems/renting-and-watching-systems.md).
 
-## The base class requires a system for you on Awake
+Inherit `NucleusBehaviour<TComponent0>` for a gameplay script that belongs to one networked system. It requires a `NetworkSystem` carrying `TComponent0` for you and exposes that component as `Component` once the system links.
 
-`NucleusBehaviour<TComponent0>` is the base class for a gameplay `MonoBehaviour` that belongs to one networked system. On `Awake` it requires that system for you, resolving the `CoreManager` and calling `NetworkSystemObjectPool.RequireSystem`, and hands back a typed `Component` property once the system is acquired. A script inheriting it never writes the manager lookup, the `RequireSystem` call, or the unlink/unsubscribe that a hand-rolled version would otherwise repeat.
+## Pick the base class
 
-The class splits in two:
+| Base class | Use it when |
+|---|---|
+| `NucleusBehaviour<TComponent0>` | The script needs one component on a plain `NetworkSystem`. |
+| `NucleusBehaviour<TSystem, TComponent0, ...>` | The script needs a system type other than `NetworkSystem`, or more than one component. Overloads go up to 31 component types (`TComponent0` through `TComponent30`). |
+| `NucleusBehaviour` (non-generic) | The script needs only the role and control checks and the hooks, and another component on the object, such as a `NetworkTransform` or `NetworkRigidbody`, already declares the system. |
 
-- `NucleusBehaviourBase` is the non-generic half: the `NetworkSystem` reference, role and control checks, the loud guards, and the eleven per-step virtuals. It never declares a required system, so it is not the type a script inherits directly.
-- `NucleusBehaviour<TComponent0>` requires a `NetworkSystem` carrying `TComponent0` and exposes it as `Component`.
+`NucleusBehaviourBase` holds the shared members below; scripts do not inherit it directly.
 
-A script that only needs the role and control checks and the hooks, on an object where another component (a `NetworkTransform` or a `NetworkRigidbody`, say) already declares the system, inherits the non-generic `NucleusBehaviour` instead. It declares nothing and adopts whichever system the object's `NetworkSystemObject` links, so something else on the object must declare one or it waits for the object's whole life. If the system it adopted is stopped on its own while the object keeps another, it re-adopts the one that remains at the end of that frame; a whole-object despawn unlinks it once and adopts nothing.
+The non-generic `NucleusBehaviour` declares nothing and adopts whichever system the object's `NetworkSystemObject` links. If nothing else on the object declares a system, it waits for the object's whole life. If the system it adopted stops while the object keeps another, it adopts the remaining one at the end of that frame; a whole-object despawn unlinks it and adopts nothing.
 
-A generated family widens this to more component types: `NucleusBehaviour<TSystem, TComponent0>` through `NucleusBehaviour<TSystem, TComponent0, TComponent1, ..., TComponent31>`, one overload per arity from 1 to 32 component types, each naming the system type explicitly and each calling the matching `NetworkSystemObjectPool.RequireSystem<TSystem, TComponent0, ...>` overload. Use the generated form when a script needs a system that isn't just `NetworkSystem`, or needs more than one component off it.
+If a script needs a system it did not declare, rent or find it through the core API rather than adding a type parameter you don't otherwise need.
 
-## Inherited properties
+## Read the linked system
 
 | Property | Type | Meaning |
 |---|---|---|
 | `NetworkSystem` | `NetworkSystem` | The linked system, or null before linking and after unlinking. |
-| `CoreManager` | `CoreManager` | The manager resolved in `Awake`, or null when none was bound. |
-| `IsHostStarted` | `bool` | True when this peer runs both server and client roles at once, for a linked system. |
-| `Component` | `TComponent0` | The typed component this behaviour required, or null before `OnSystemLinked` and after `OnSystemUnlinked`. |
+| `CoreManager` | `CoreManager` | The bound manager, or null when none was bound. |
+| `IsHostStarted` | `bool` | True when this peer runs both server and client, for a linked system. |
+| `Component` | `TComponent0` | The required component, or null before `OnSystemLinked` and after `OnSystemUnlinked`. |
 
-## Role and control checks
+## Check role and control
 
 - `IsController(ControllerType controllerType)` returns `NetworkSystem.IsController(controllerType)`, or false while no system is linked.
-- `IsStarted(Invoker invoker)` returns whether this peer's server or client role is started, for a linked system; false until one links.
+- `IsStarted(Invoker invoker)` returns whether this peer's server or client role is started, for a linked system.
 
-Both have loud counterparts that log instead of failing silently:
+`EnsureIsController(ControllerType controllerType)` and `EnsureIsStarted(Invoker invoker)` return the same answers, and log a warning naming the calling member when the answer is false. Each warns once per calling member and argument.
 
-- `EnsureIsController(ControllerType controllerType, [CallerMemberName] string callerMemberName = null)`
-- `EnsureIsStarted(Invoker invoker, [CallerMemberName] string callerMemberName = null)`
-
-Each returns the same answer as its plain counterpart, and when that answer is false, logs a warning naming the calling member (supplied automatically via `[CallerMemberName]`). Each behaviour warns once per calling member and argument, so a guard that keeps failing from the same place warns the first time and then stays quiet. Reach for the loud form only where reaching the code without that control or role is a programming error, such as a server-only method that only other server code calls. Use the plain form for any check that is expected to fail on some peers: input handling, RPC sends and per-tick callbacks such as `OnEarlySerialize` run on peers that do not control the object as a matter of course, so a false answer there is normal and should log nothing:
+Use the `Ensure` form only where reaching the code without that role or control is a programming error, such as a server-only method that only server code calls. Use the plain form for checks that are expected to fail on some peers, such as input handling, RPC sends and per-tick callbacks:
 
 ```csharp
 protected override void OnEarlySerialize(StepDelta stepDelta)
@@ -49,25 +49,25 @@ protected override void OnEarlySerialize(StepDelta stepDelta)
 }
 ```
 
-## Lifecycle hooks
+## Override the lifecycle hooks
 
-Override these `protected virtual` methods on `NucleusBehaviourBase`:
+Override these `protected virtual` methods:
 
-| Hook | Guarantee |
+| Hook | Called |
 |---|---|
-| `OnSystemLinked()` | Called once `NetworkSystem` is linked. |
-| `OnSystemUnlinked()` | Called as `NetworkSystem` unlinks, while it is still readable for the duration of the call, including when this behaviour is destroyed while still linked. A pooled, recycled instance resets its per-life state here. |
-| `OnServerStarted()` | Called once this peer's server role starts, with a system already linked. |
-| `OnServerStopped()` | Called once this peer's server role stops while a system is still linked. |
-| `OnClientStarted()` | The client-role counterpart of `OnServerStarted`. |
-| `OnClientStopped()` | The client-role counterpart of `OnServerStopped`. |
-| `OnControllerChanged(Connection previousControllerConnection, Connection currentControllerConnection)` | Called on every peer when control of the linked system moves. |
+| `OnSystemLinked()` | Once `NetworkSystem` is linked. |
+| `OnSystemUnlinked()` | As `NetworkSystem` unlinks, including when the behaviour is destroyed while linked. The system is still readable during the call. Reset a pooled instance's per-life state here. |
+| `OnServerStarted()` | Once this peer's server role starts, with a system linked. |
+| `OnServerStopped()` | Once this peer's server role stops while a system is linked. |
+| `OnClientStarted()` | Once this peer's client role starts, with a system linked. |
+| `OnClientStopped()` | Once this peer's client role stops while a system is linked. |
+| `OnControllerChanged(Connection previousControllerConnection, Connection currentControllerConnection)` | On every peer when control of the linked system moves. |
 
-Linking adopts whichever roles are already started rather than waiting for an edge: it immediately raises `OnServerStarted`/`OnClientStarted` for any role already up, instead of only firing on a later start/stop transition. A scene object's `Awake` runs on every peer regardless of which of them already has a role running, so a script that only reacted to edges would miss a role that started before it linked.
+When a system links while a role is already running, `OnServerStarted` or `OnClientStarted` is raised at once, so a script never misses a role that started before it linked.
 
-## Overriding Awake, OnEnable, OnDisable and OnDestroy
+## Call the base Awake, OnEnable, OnDisable and OnDestroy
 
-The base classes do required setup in their own `Awake`, `OnEnable`, `OnDisable` and `OnDestroy`: `Awake` resolves the `CoreManager` and, in `NucleusBehaviour<TComponent0>`, requires the system, `OnEnable` and `OnDisable` take and drop the per-step registration, and `OnDestroy` unlinks the system. Unity calls only the most derived method of each name, so a script that needs one of these must override it and call the base method:
+The base class needs its own `Awake`, `OnEnable`, `OnDisable` and `OnDestroy`. If your script needs one of them, override it and call the base method:
 
 ```csharp
 protected override void Awake()
@@ -78,20 +78,20 @@ protected override void Awake()
 }
 ```
 
-Call the base method first, unless the work must be ready before the system links: `base.Awake()` can link a system that is already present and raise `OnSystemLinked` on the spot, so a reference that hook reads is cached before the call. Setup that wants the system anyway belongs in `OnSystemLinked`.
+Call the base method first, unless `OnSystemLinked` reads something you set up: `base.Awake()` can link a system that already exists and raise `OnSystemLinked` on the spot, so cache what that hook reads before the call. Setup that needs the system belongs in `OnSystemLinked`.
 
-The build enforces both halves of this rule, as errors:
+The build reports both mistakes as errors, since either would leave the behaviour unlinked with nothing logged:
 
 | Id | Reported when |
 |---|---|
-| `NUCLEUS001` | A class deriving, directly or indirectly, from `NucleusBehaviourBase` declares `Awake`, `OnEnable`, `OnDisable` or `OnDestroy` without `override`, hiding the base method. |
+| `NUCLEUS001` | A class deriving, directly or indirectly, from `NucleusBehaviourBase` declares `Awake`, `OnEnable`, `OnDisable` or `OnDestroy` without `override`. |
 | `NUCLEUS002` | An override of one of those four methods never calls the base method. |
 
-Either mistake would otherwise leave the behaviour unlinked with nothing logged. The lifecycle hooks above and the per-step virtuals below are empty in the base class, so an override of those may skip the base call and is never reported.
+The lifecycle hooks and per-step methods are empty in the base class, so their overrides may skip the base call.
 
-## Per-step virtuals
+## Run code on a loop step
 
-`NucleusBehaviourBase` declares eleven `protected virtual void On...(StepDelta stepDelta)` methods, one per loop step, in loop order:
+Override any of these `protected virtual void On...(StepDelta stepDelta)` methods, listed in loop order:
 
 ```
 OnEarlyVariableUpdate
@@ -107,18 +107,14 @@ OnTickAdvance
 OnLateVariableUpdate
 ```
 
-`OnEarlyVariableUpdate`, `OnVariableUpdate` and `OnLateVariableUpdate` run every frame. `OnEarlyStateUpdate`, `OnLateStateUpdate`, `OnReconcile`, `OnEarlySerialize`, `OnLateSerialize` and `OnTickAdvance` run once per tick, on the frame that ticks. `OnEarlyFixedUpdate` and `OnLateFixedUpdate` run once per elapsed tick interval, so they can run twice on one frame after a long frame. They follow the linked system's simulation rather than the loop alone: each takes a `SimulationContext` naming the pass, and on a client that predicts the object they run again for every tick a reconcile replays (see [Replaying a correction in Unity](../control/reconcile-in-unity.md)).
+- `OnEarlyVariableUpdate`, `OnVariableUpdate` and `OnLateVariableUpdate` run every frame.
+- `OnEarlyStateUpdate`, `OnLateStateUpdate`, `OnReconcile`, `OnEarlySerialize`, `OnLateSerialize` and `OnTickAdvance` run once per tick, on the frame that ticks.
+- `OnEarlyFixedUpdate` and `OnLateFixedUpdate` run once per elapsed tick interval, so they can run twice in one frame after a long frame. They also take a `SimulationContext` naming the pass, and on a client that predicts the object they run again for every tick a reconcile replays (see [Replaying a correction in Unity](../control/reconcile-in-unity.md)).
 
-`Awake` reflects over these once to find which ones this instance's concrete type overrides, and only those steps are ever dispatched to. Registration for the loop steps a type overrides is taken and dropped alongside `OnEnable`/`OnDisable` (and tied to whether a system is linked), so a disabled or pooled-and-despawned behaviour costs nothing per tick.
+See [The network loop steps](../core/network-loop-steps.md) for what each step means.
 
-See the tick-loop pages for what each step means and when it runs.
+To move an object every frame, override `OnVariableUpdate` and move it by `stepDelta.NormalizedDelta` rather than moving it in `Update` by `Time.deltaTime`. The normalized delta keeps the distance moved each tick even, which costs far less to replicate. See [Tick rate and the loop in Unity](../core/unity-tick-rate-and-the-loop.md).
 
-To move an object every frame, override `OnVariableUpdate` and move it by `stepDelta.NormalizedDelta` rather than moving it in Unity's `Update` by `Time.deltaTime`. The normalized delta keeps the distance moved in each tick even, which costs far less to replicate. See [Tick rate and the loop in Unity](../core/unity-tick-rate-and-the-loop.md).
+## Delay the start with CanStartSystem
 
-## CanStartSystem
-
-`protected virtual bool CanStartSystem => true` controls whether the server may start the required system as soon as it is rented. It's read once, when the required system is declared, so a later change to it has no effect, and it's ignored on a receiving client, which is handed a system that already started elsewhere. Override it to return false for an object that must set its opening values before the spawn is announced, then start the system itself.
-
-## A script that needs an undeclared system
-
-`NucleusBehaviour<TComponent0>` (and its generated overloads) only give you the system(s) named in the type parameters. If a script needs a different system it didn't declare, rent or find it separately through the core API rather than adding it to the type parameter list for a type you don't otherwise need.
+`protected virtual bool CanStartSystem => true` decides whether the server may start the required system as soon as it is rented. Override it to return false for an object that must set its opening values before the spawn is announced, then start the system yourself. It is read once, when the system is declared, and ignored on a receiving client.

@@ -4,17 +4,17 @@ title: "Starting and stopping systems"
 
 > **Using Unity?** See [Spawning and despawning objects](../../unity/systems/spawning-objects.md).
 
-## Starting a system
+## Start a system
 
-`SystemManager.EnsureStartSystem` has two overloads. The plain one is for a system with no engine object behind it — pure code:
+`SystemManager.EnsureStartSystem` has two overloads. Use the plain one for a system with no engine object:
 
 ```csharp
 bool started = coreManager.SystemManager.EnsureStartSystem(networkSystem);
 ```
 
-The system must already be initialized. It carries `NetworkSystem.UnsetPlatformId`, so a receiver builds it with no engine object behind it. Find it on the receiving side through `SystemManager.SystemStarted` or a `NetworkSystemWatch` — there's no engine object for a script to have a reference to.
+The system must already be initialized. Receivers build it with no engine object, so find it there through `SystemManager.SystemStarted` or a [system watch](./renting-and-watching-systems.md).
 
-The fuller overload is for a system an integration is binding to an object it already owns:
+Use the fuller overload when an integration binds the system to an object it already owns:
 
 ```csharp
 bool started = coreManager.SystemManager.EnsureStartSystem(
@@ -25,53 +25,41 @@ bool started = coreManager.SystemManager.EnsureStartSystem(
     sceneHandle: NetworkSystem.UnsetSceneHandle);
 ```
 
-- `platformId` correlates the system with an engine object for replication; a scene object's identifier within its scene, or a dynamic prefab's local identifier within its shard.
-- `isSceneObject` is true when `platformId` identifies a scene object rather than a dynamically spawned prefab.
-- `prefabBundleId` is the content shard's bundle identifier for a dynamically spawned prefab; zero is the base build's default shard, and scene objects carry none.
-- `sceneHandle` is the live scene instance the system belongs to, so a receiver binds a scene object to the right instance and instantiates a dynamic prefab into the right scene; it defaults to unset, which is every world that opens no scenes.
+- `platformId` links the system to an engine object: a scene object's identifier within its scene, or a dynamic prefab's local identifier within its shard.
+- `isSceneObject` is true when `platformId` names a scene object rather than a dynamically spawned prefab.
+- `prefabBundleId` is the content bundle of a dynamically spawned prefab. Zero is the base build; scene objects carry none.
+- `sceneHandle` is the live scene instance the system belongs to, so a receiver binds or instantiates it in the right scene. Leave it unset in a world that opens no scenes.
 
-## Stopping a system
+A start called late in a tick stays `Starting`, with its Id unset, until the next tick. The system is still usable by the caller in the meantime. A peer can also see the system a tick or two after it started; see [Object pacing](../core/object-pacing.md).
+
+## Stop a system
 
 ```csharp
 bool stopped = coreManager.SystemManager.EnsureStopSystem(networkSystem, isPoolReturnRequestedOnDespawn: true);
 ```
 
-An accepted stop moves the system to `Stopping` immediately and despawns it on observers, then completes: the system moves to `Stopped`, its Id is released, and the registered spawn handler is notified. Keep no reference to a system that arrived from the server after that. A locally rented system stays owned by the code that rented it unless `isPoolReturnRequestedOnDespawn` asks for it to be returned to the pool too.
+An accepted stop moves the system to `Stopping` at once and despawns it on observers, including any that lose packets. At the end of the tick it moves to `Stopped`, its Id is released, and the spawn handler is notified. Keep no reference to a system that arrived from the server after that. A system you rented stays yours unless `isPoolReturnRequestedOnDespawn` returns it to the pool.
 
-Only the server stops a replicated system. A pure client's stop request is refused. A peer with no started transport (offline usage) can stop its own systems freely.
+- Only the server stops a replicated system. A client's stop is refused. A peer with no started transport (offline) can stop its own systems.
+- A stop called late in a tick takes effect on the next tick.
+- Starting a system again while its stop is pending cancels the stop: the system stays `Started` with its identity intact. A spawn, despawn and spawn in the same tick resolves to the latest one.
 
-## Shorthands
+## Use the shorthands on the system
 
-`NetworkSystemExtensions` gives both calls as instance methods that resolve the `CoreManager` from the system itself:
+`NetworkSystemExtensions` offers both calls as instance methods that find the `CoreManager` from the system. Both return false and log, rather than throw, when the system is null or has no `CoreManager`.
 
 ```csharp
 networkSystem.EnsureStart();
 networkSystem.EnsureStop(isPoolReturnRequestedOnDespawn: true);
 ```
 
-Both return false and log instead of throwing if the system is null or its `CoreManager` reference isn't set.
-
-## Deferred start and stop
-
-A start or stop that lands mid-tick doesn't always take effect on that tick.
-
-A start called too late for the tick's state flush is deferred: the system stays fully usable to the caller (rented, initialized, components in place), but its Id stays unset and it goes live only after the next tick increments.
-
-A stop called after the tick's state flush is held the same way and takes effect on the *next* tick, where receivers remove the system before applying anything new.
-
-If a system is started again while a stop is still pending on it, the restart cancels the pending stop: the system stays `Started` with its identity intact, and the queued despawn is withdrawn. If the despawn had already been sent this tick, the receivers that just removed the system are given it again on the next tick. This is what lets a spawn-then-despawn-then-spawn sequence in the same tick resolve to the latest intent.
-
-## Reliable despawn
-
-A despawn is reliable: a peer that loses the packet carrying it still removes the system, so a lost packet never leaves a peer holding a ghost.
-
-## Observing the roster from your own code
+## Observe the roster from your own code
 
 ```csharp
 coreManager.SystemManager.SystemStarted += networkSystem =>
 {
     // Raised once a system has completed its start on this peer, whether this
-    // peer created it or a wire spawn built it.
+    // peer created it or it arrived from the network.
 };
 
 coreManager.SystemManager.SystemStopped += networkSystem =>
@@ -85,7 +73,7 @@ int startedCount = coreManager.SystemManager.StartedSystemCount;
 if (coreManager.SystemManager.TryGetSystemReference(id, out NetworkSystem networkSystem))
 {
     // True either because the Id was found, or because id was the intentional
-    // Unset sentinel — in which case networkSystem comes back null.
+    // Unset value, in which case networkSystem comes back null.
 }
 
 coreManager.SystemManager.UnknownSystemDeltaReceived += (connection, systemId) =>
@@ -95,19 +83,19 @@ coreManager.SystemManager.UnknownSystemDeltaReceived += (connection, systemId) =
 };
 ```
 
-`SystemStarted` and `SystemStopped` are the broad half of the discovery surface — a subscriber that wants every system and will sort them out itself. A subscriber that knows the exact composition it wants should register a system watch instead and be handed only those.
+To be handed only systems of one composition, register a [system watch](./renting-and-watching-systems.md) instead.
 
-## Moving a started system between scene instances
+## Move a started system between scene instances
 
 ```csharp
 coreManager.SystemManager.EnsureMoveSystemToScene(networkSystem, destinationSceneHandle);
 ```
 
-This is the one path that moves a spawned object between scenes — nothing in interest, physics, or scene loading calls it on its own. It's server-only, and only for a started, dynamically spawned system (not a scene object) that carries a platform identity. The move restamps the system's scene handle in place, preserving its Id, controller, access and group, then re-evaluates interest so a peer no longer in the destination scene is despawned and a peer newly in it receives the system as a spawn. See the scenes category for how scene instances and handles work.
+This is the only call that moves a spawned object between scenes; nothing calls it for you. It is server-only, and only for a started, dynamically spawned system (not a scene object) with a platform identity. The system keeps its Id, controller, access and group. Peers no longer in the destination scene despawn it, and peers newly in it receive it as a spawn. See the scenes category for scene instances and handles.
 
-## A spawn can carry one-time data
+## Send one-time data with a spawn
 
-A spawn payload is a block of data attached to one object's spawn: a random seed, a loot table or a launch speed that the object needs when it arrives but that no member should keep replicating. Derive from `NetworkSpawnPayload`, write and read your own values, and declare an instance on the system before it spawns:
+A spawn payload is data attached to one object's spawn, such as a random seed, a loot table or a launch speed, that the object needs when it arrives but no member should keep replicating. Derive from `NetworkSpawnPayload` and declare an instance on the system in the same call stack as the rent:
 
 ```csharp
 public class CrateSpawnPayload : NetworkSpawnPayload
@@ -123,12 +111,9 @@ if (NetworkSystemPool.TryRent<NetworkSystem, CrateComponent>(coreManager, out Ne
     networkSystem.SetSpawnPayload(new CrateSpawnPayload { LootTableIndex = 3 });
 ```
 
-- The payload arrives with the object's spawn, including the spawn a late joiner or a peer that regains interest receives, and it is never sent in the updates in between. Declare it in the same call stack as the rent, exactly as you write a component's opening values.
-- A receiver reads it into an instance of its own, available as `networkSystem.SpawnPayload`. It is read after the object's member values, so `ReadSpawnPayload` can already see them and use them to decide what else to read. `ReadSpawnPayload` must read exactly what `WriteSpawnPayload` wrote, and it can run more than once for one object, so whatever it applies has to be harmless to repeat.
-- Declare it on the peer that creates the object. That is the server, or, for a predicted spawn, the client predicting it: that client can create the object, set its payload and spawn it, and the server passes the payload on to everyone else. A client cannot change a payload once the object exists.
-- Every concrete payload type is registered for you. A concrete payload type without a public parameterless constructor is a build error, because a receiver has to construct it.
-- A system can carry a payload and nothing else. Rent one with no components through `NetworkSystemPool.TryRent<NetworkSystem>(coreManager, out NetworkSystem networkSystem)` and declare the payload on it.
-
-## A system can reach a peer a tick or two after it starts
-
-A system may not start replicating to a given peer the instant it starts. Spawn admission is paced, so a peer can see the system a tick or two later than the tick it actually started on (see [Object pacing](../core/object-pacing.md)).
+- The payload arrives with every spawn of the object, including for a late joiner or a peer that regains interest, and never in the updates between.
+- A receiver reads it into its own instance, available as `networkSystem.SpawnPayload`. Member values are already applied, so `ReadSpawnPayload` can use them to decide what to read.
+- `ReadSpawnPayload` must read exactly what `WriteSpawnPayload` wrote. It can run more than once for one object, so whatever it applies must be safe to repeat.
+- Declare it on the peer that creates the object: the server, or the client predicting a predicted spawn, whose payload the server passes on. A client cannot change a payload once the object exists.
+- Every concrete payload type is registered for you. One without a public parameterless constructor is a build error.
+- A system can carry a payload and nothing else: rent it with `NetworkSystemPool.TryRent<NetworkSystem>(coreManager, out NetworkSystem networkSystem)`.

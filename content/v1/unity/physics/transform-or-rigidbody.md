@@ -2,40 +2,26 @@
 title: "NetworkTransform or NetworkRigidbody"
 ---
 
-## Two different models
+## Choose by what a proxy has to do
 
-`NetworkTransform` and `NetworkRigidbody` both replicate a moving object, and they do it in incompatible ways.
+`NetworkTransform` makes every other peer follow the pose: it applies the received position, rotation and scale one tick behind, and the proxy has no physical motion of its own. `NetworkRigidbody` keeps every peer simulating: each peer's `Rigidbody` steps with real collision response while it is steered toward the server's state.
 
-`NetworkTransform` makes every non-controlling peer a **pose follower**. The controller writes position, rotation, and scale each tick; every other peer applies the received values onto the transform, animated one tick behind fact. Velocity is never synchronized: a proxy has no physical motion of its own, it is just redrawn along the received path.
+Use `NetworkTransform` when a proxy only has to look right. It is cheaper and never fights local physics. Use `NetworkRigidbody` when a proxy has to behave right, so other bodies can bump it, land on it or collide with it on every peer.
 
-`NetworkRigidbody` keeps every peer **simulating**. The controller's `Rigidbody` steps normally and the stepped result is captured for replication. Every other peer's `Rigidbody` also steps — real collision response, real physics — while the convergence follower (`PhysicsConvergence`) steers it toward the server's snapshot, blending a diverged position or rotation back once it passes a threshold instead of teleporting onto it.
+| Object | Use |
+|---|---|
+| Player capsules, doors | `NetworkTransform`. Proxies don't need to be bumpable, and following the pose is cheap and smooth. |
+| Thrown and bumped bodies, such as a grenade or a kicked prop | `NetworkRigidbody`, so they bounce off geometry the same way for everyone watching. |
+| A body its controlling client predicts | Neither. Use a `ValidatedRigidbody`; see [Predicting a body with a validated behaviour](./predicting-a-body-with-a-validated-behaviour.md). |
+| Debris nobody steers | `NetworkRigidbody`, or no replication at all if it is not gameplay-relevant. |
+| Agents that walk a path | Neither. Use [NetworkNavMeshAgent](./network-nav-mesh-agent.md), which sends the leg being walked. |
 
-Pick by what a proxy needs to do: look right, or behave right. A pose follower is cheaper and never fights local physics. A converging body can be bumped, land on, or collide with on every peer, because it's actually simulating there.
+## Never put both on one object
 
-## Never both on one object
+`NetworkTransform`'s **Kinematic Management** (on by default) holds an attached `Rigidbody` kinematic on every peer that isn't the controller, including the server while a client controls the object. `NetworkRigidbody` never moves a kinematic body, so on every proxy the body sits where `NetworkTransform` last put it and never collides correctly. Replicate an object's pose through one component only.
 
-Adding both to the same GameObject is not redundant, it's broken. `NetworkTransform`'s Kinematic Management (on by default) holds an attached `Rigidbody` kinematic on every peer that isn't the controller — including the server while a client controls the system — so the interpolated pose writes don't fight local physics. That's exactly the body `NetworkRigidbody` needs to step.
+## Compare setup and sending cost
 
-A kinematic body is never converged. So on a non-controlling peer with both components, `NetworkTransform` sets the rigidbody kinematic and `NetworkRigidbody` never moves it. The body goes inert on every proxy — it sits wherever `NetworkTransform` last interpolated it to, never converging, never colliding correctly.
+`NetworkTransform` needs no physics setup. `NetworkRigidbody` needs a `Rigidbody`, and Nucleus adds the physics driver it runs under; see [Replicate a rigidbody](./replicate-a-rigidbody.md).
 
-An object replicates its pose through one system or the other, never both.
-
-## Choosing by object
-
-- **Player capsules, doors** — `NetworkTransform`. The pose is driven by client state or a controller, proxies don't need to be physically bumpable, and pose-follow interpolation is cheap and smooth.
-- **Thrown and bumped bodies** — `NetworkRigidbody`. These need to collide correctly on every peer — a thrown grenade or a kicked prop has to bounce off geometry the same way for everyone watching, not just the controller.
-- **A body its controlling client predicts needs neither.** Use a `ValidatedRigidbody`, which the client simulates from its own client state and the server checks. See [Predicting a body with a validated behaviour](./predicting-a-body-with-a-validated-behaviour.md).
-- **Debris nobody steers** — `NetworkRigidbody`, or nothing at all if it never needs to agree across peers. If it's not gameplay-relevant, it may not need replication at all.
-- **Agents that walk a path** — neither. See [NetworkNavMeshAgent](./network-nav-mesh-agent.md) — a path-following agent replicates the leg it's walking, not a per-tick pose or a physics body.
-
-## Cost, in outline
-
-`NetworkTransform` replicates position, rotation, and (optionally) scale as ordinary members. `NetworkRigidbody` replicates through `NetworkPhysicsComponent`, and additionally spends `PhysicsConvergence.Settings` steering: threshold, blend rate, teleport distance, and the rest, tuned per body rather than sent per tick.
-
-Both go through the same per-member choice of `TransmissionMode` — `Divine` or `Interval` — and, under `Interval`, `SendInterval`. `Divine` can go quiet for stretches where `Interval` would still be sending; that is a Pro feature, and a free build sends a `Divine` member as it would an `Interval` one. Pro also compresses values more tightly than Free. See [How Often a Member Is Sent](../../core-api/state/send-pacing.md) for what each mode actually costs and how to choose between them — that decision doesn't differ between the two components.
-
-## Setup cost
-
-A `NetworkTransform` object needs no driver and no `UnityPhysicsManager` decision. It's self-contained: add the component to an object carrying a `NetworkSystemObject`, and it works.
-
-A `NetworkRigidbody` object needs both a `Rigidbody` and a scene physics story. A `UnityPhysicsManager` is added to the manager graph automatically, and under its default `PhysicsExecutionMode.NucleusPerTick` so is a `PhysicsSimulationDriver` for the default physics world, so capture and follow already run on the tick cadence without adding a driver by hand. See [PhysicsSimulationDriver](./physics-simulation-driver.md) and [Replicate a rigidbody](./replicate-a-rigidbody.md).
+Both send through the same per-member `TransmissionMode` choice, `Divine` or `Interval`, with `SendInterval` under `Interval`. `Divine` can go quiet for stretches where `Interval` would still send. It is Pro: a free build sends a `Divine` member as `Interval`. Pro also compresses values more tightly than Free. See [How Often a Member Is Sent](../../core-api/state/send-pacing.md).

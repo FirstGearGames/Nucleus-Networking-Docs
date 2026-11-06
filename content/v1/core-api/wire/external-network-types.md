@@ -2,13 +2,11 @@
 title: "Reaching Types You Cannot Annotate"
 ---
 
-## The generator cannot reach a type in an assembly you do not control
+## Use a marker struct for types in other assemblies
 
-The generator only emits a serializer for a type when it can find `[NetworkType]` on that type, or reach the type through a member it is already generating a serializer for. A type declared in an assembly you do not control, such as `System.Numerics.Vector2` or a type from a third-party math library, can never carry that attribute. Without another way in, it has no serializer.
+The generator only serializes a type that carries `[NetworkType]` or that it reaches through a member it already serializes. A type from an assembly you do not control, such as `System.Numerics.Vector2` or a third-party math type, cannot carry the attribute.
 
-## The marker struct
-
-The way in is a struct in your own assembly, carrying `[NetworkType]`, whose fields are the external types you need. Nothing about the struct's fields matters except their types:
+Declare a struct in your own assembly, mark it `[NetworkType]`, and give it one field per external type you need. Only the field types matter; the struct is never used at runtime.
 
 ```csharp
 [NetworkType]
@@ -26,20 +24,12 @@ public struct ExternalNetworkTypes
 }
 ```
 
-Every field is a marker, not a value. Nothing reads this struct at runtime and no instance of it is ever made. The generator walks the fields of a type carrying `[NetworkType]` and emits a serializer for each field's type, which is the only way to reach a type declared in an assembly nobody here can annotate.
+Without `[NetworkType]` the struct is ignored with no error. A field whose type is reachable some other way still gets a serializer, which can hide the mistake.
 
-## The shipped marker
+## Nucleus already covers seven types
 
-Nucleus ships one of these as `ExternalNetworkTypes` in `Nucleus.Serializers`. It covers `Vector4`, `Vector3`, and `Vector2` from `System.Numerics`, plus CodeBoost's `Vector4Int`, `Vector3Int32`, `Vector2Int`, and `UnifiedColor`. If your project only needs these seven types, you don't need a marker of your own.
+Nucleus ships the struct above as `ExternalNetworkTypes` in `Nucleus.Serializers`. It covers `Vector4`, `Vector3` and `Vector2` from `System.Numerics`, plus CodeBoost's `Vector4Int`, `Vector3Int32`, `Vector2Int` and `UnifiedColor`. You need your own marker only for other types.
 
-## Writing your own
+## SERIALIZERS001 usually means a missing marker
 
-For third-party types outside that list, declare your own marker struct in your own assembly and add one field per type you need a serializer for. The `[NetworkType]` attribute is not optional decoration: it is the only thing the generator reads to find the struct at all.
-
-A marker struct that isn't actually carrying `[NetworkType]` fails silently, not loudly: a field whose type happens to be reachable some other way still gets a serializer and hides the fault, while every other field gets none.
-
-## Finding out a type has no serializer
-
-When a member's type has no serializer, the generator reports a `SERIALIZERS001` warning naming the member, once, instead of silently dropping it. See [Generator Errors and Warnings](./generator-diagnostics.md) for how to read generator diagnostics.
-
-Seeing that warning for a type from an assembly you don't control is almost always a sign you need a marker struct, not a hand-written serializer: the type is a plain data type and the generator can serialize it field-by-field once it can see it. Reach for a hand-written serializer instead only when the type's shape genuinely needs custom read/write logic, not just visibility. See [Writing a Custom Serializer](./custom-serializers.md) for that case.
+When a member's type has no serializer, the generator reports `SERIALIZERS001` naming the member; see [Generator Errors and Warnings](./generator-diagnostics.md). For a plain data type from an assembly you do not control, add it to a marker struct. Write a [custom serializer](./custom-serializers.md) only when the type needs custom read and write logic.

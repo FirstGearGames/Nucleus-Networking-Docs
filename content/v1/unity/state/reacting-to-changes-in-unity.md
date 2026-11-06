@@ -4,17 +4,15 @@ title: "Reacting to a replicated change in Unity"
 
 > **Driving the core API directly?** See [Reacting to changes: OnMembersChanged](../../core-api/state/change-callbacks.md).
 
-## Override OnMembersChanged, forward it to your MonoBehaviour
-
-`NetworkComponent` declares a virtual for this:
+`NetworkComponent.OnMembersChanged` is called once per tick per direction when any of the component's members changed, so a script never has to poll a value.
 
 ```csharp
 public virtual void OnMembersChanged(ulong memberFlags, MemberChangeDirection memberChangeDirection) { }
 ```
 
-It's called once per tick per direction when any of the component's members changed, so a Unity script never has to poll a value to find out it moved.
+## Forward OnMembersChanged to your MonoBehaviour
 
-A `NetworkComponent` is a pooled engine object, not a scene object, so a MonoBehaviour that wants to react cannot inherit from it. Override `OnMembersChanged` on your component partial and raise an event instead, and have the MonoBehaviour that owns the visuals subscribe:
+A MonoBehaviour cannot inherit from a `NetworkComponent`, and the component can be rented and returned independently of the scene object watching it. So override `OnMembersChanged` on the component and raise an event:
 
 ```csharp
 public partial class CoinComponent : NetworkComponent
@@ -27,7 +25,7 @@ public partial class CoinComponent : NetworkComponent
 }
 ```
 
-The MonoBehaviour subscribes when it rents the system and unsubscribes when it's destroyed:
+Subscribe from the MonoBehaviour when it rents the system, and unsubscribe when it is destroyed:
 
 ```csharp
 _coinComponent.MembersChanged += OnCoinMembersChanged;
@@ -35,11 +33,9 @@ _coinComponent.MembersChanged += OnCoinMembersChanged;
 _coinComponent.MembersChanged -= OnCoinMembersChanged;
 ```
 
-An event rather than a direct override on the MonoBehaviour, because the component can be rented and returned independently of the scene object watching it.
+## Find which member changed
 
-## Find which member moved
-
-Every `NetworkComponent` comes with a `[Flags] enum <ComponentName>Flags : ulong`, one value per member in declaration order. `CoinComponent` declares `Collector` then `PickupSequence`, so its generated enum carries `CoinComponentFlags.Collector` and `CoinComponentFlags.PickupSequence`. Cast the raw `memberFlags` to it and test the bits you care about:
+Every `NetworkComponent` gets a generated `[Flags] enum <ComponentName>Flags : ulong`, one value per member in declaration order. Cast `memberFlags` to it and test the bits you need:
 
 ```csharp
 private void OnCoinMembersChanged(ulong memberFlags, MemberChangeDirection memberChangeDirection)
@@ -55,31 +51,25 @@ private void OnCoinMembersChanged(ulong memberFlags, MemberChangeDirection membe
 
 A set flag means the member was applied, not that its value differs: a predicted member's confirmed outcome still sets its flag.
 
-## Almost always test for MemberChangeDirection.Read
+A spawn, a resync, a reconcile or a whole-component recovery reports `memberFlags` as `ulong.MaxValue` under `Read`: treat every member as changed. A late-joining client's first call looks like this. A member-granular recovery reports only the members it repaired.
 
-`MemberChangeDirection` has two values:
+## Usually react only to MemberChangeDirection.Read
 
-- `Write` — this peer changed the members itself; the raise arrives before the tick's serialization runs.
-- `Read` — the members were applied from received state; the raise arrives once everything received for the tick has been applied, before the Reconcile step.
+- `Write`: this peer changed the members itself. It is raised before the tick is sent, even for a system with no observers.
+- `Read`: the members were applied from received state. It is raised once everything received for the tick is applied, before the Reconcile step. `NetworkMemberBase.TryGetWritingClient` only resolves under `Read`.
 
-A visuals script almost always wants `Read` only, because it's reacting to something that arrived, not something it just wrote. Anything that calls `NetworkMemberBase.TryGetWritingClient` needs `Read` specifically — that claim only resolves under a read.
-
-This matters most on a host. A host raises both directions in the same frame for its own change, write first, without waiting for its own packet to come back — so a handler that doesn't branch on direction reacts twice to the same pickup on a host and once everywhere else. Guard every reaction with the direction check:
+A host raises both directions in the same frame for its own change, `Write` first. A handler that ignores the direction reacts twice on a host and once everywhere else, so guard one-sided reactions, such as a cooldown or a "you scored" label:
 
 ```csharp
 if (memberChangeDirection is not MemberChangeDirection.Read)
     return;
 ```
 
-A value that's a plain function of the replicated state — recomputed the same way on every peer regardless of who wrote it — doesn't need the branch. Only genuinely one-sided reactions (a cooldown, a "you scored" label) do.
+A value recomputed the same way on every peer from the replicated state does not need the guard.
 
-## Full applies report every member
+## Do per-tick work in a step virtual, not Update
 
-A spawn, a resync, a reconcile, or a whole-component recovery hands you `memberFlags` as `ulong.MaxValue` under `MemberChangeDirection.Read`: treat every member as changed. This is what a late-joining client's first raise looks like, since that apply is where it learns the component's starting values. Don't assume a specific bit is set before checking `memberFlags == ulong.MaxValue` for this case; a member-granular recovery instead reports only the members it actually repaired.
-
-## Do the work on the right loop step
-
-`OnMembersChanged` already fires event-driven at the right time, so nothing here should live in `Update`. If a script derived from `NucleusBehaviourBase` needs to do more than react to the event — read state the apply just landed, or run something every tick tied to that same point in the frame — override the per-step virtual instead of polling in `Update`:
+To read state the apply just landed, or run something every tick at that point, override a step virtual on your `NucleusBehaviourBase` script instead of polling in `Update`, which has no fixed relationship to the network loop:
 
 ```csharp
 protected override void OnLateStateUpdate(StepDelta stepDelta)
@@ -88,4 +78,4 @@ protected override void OnLateStateUpdate(StepDelta stepDelta)
 }
 ```
 
-`OnEarlyStateUpdate` runs just before replicated state is applied, `OnLateStateUpdate` once it has been, and `OnReconcile` after state has been set back for a reconcile. `Update` runs on Unity's own loop with no defined relationship to any of those points in a given frame; the per-step virtuals do.
+`OnEarlyStateUpdate` runs just before replicated state is applied, `OnLateStateUpdate` once it has been, and `OnReconcile` after state has been set back for a reconcile.

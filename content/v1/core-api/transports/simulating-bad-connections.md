@@ -4,18 +4,20 @@ title: "Simulating latency, jitter and loss"
 
 > **Using Unity?** See [Simulating a bad connection in the editor](../../unity/transports/simulating-bad-connections-unity.md).
 
-A loopback connection is instant and lossless, which means anything that only matters on a bad link never gets exercised until players hit it. A transport can make loopback behave like a real connection, so you can drive that behavior on demand.
+A loopback connection is instant and lossless. A transport can make it behave like a real connection so you can test bad-link behavior on demand.
 
 ## Describe the connection with NetworkConditions
 
-`NetworkConditions` is a struct in `Nucleus.Transports`. Each field describes one way a real connection goes wrong, and the default value simulates nothing.
+`NetworkConditions` is a struct in `Nucleus.Transports`. Its default simulates nothing.
 
-- `LatencyMilliseconds` is a one-way delay added to every packet sent.
-- `JitterMilliseconds` is extra delay on top of the latency. Each packet gets a fresh random amount below this figure, so packets genuinely arrive at different times instead of all shifting by the same amount. A steady 100 ms link and one swinging between 20 ms and 180 ms average the same and feel nothing alike, and only jitter produces the second.
-- `PacketLossChance` is the chance, from 0 to 1, that a packet is dropped. `0.2f` drops one packet in five.
-- `OutOfOrderChance` is the chance, from 0 to 1, that a packet is held back long enough to arrive after packets sent later.
-- `DuplicateChance` is the chance, from 0 to 1, that a packet is also sent a second time.
-- `Seed` fixes the random choices behind the other fields, so a test can be run again with the same choices for the same packets. `0`, the default, leaves them different on every run. The same seed repeats the choices, but a networked run can still differ, because how many packets are sent and when depends on timing. To replay a failing run, pick a seed yourself, log it, and set it.
+| Field | Meaning |
+|---|---|
+| `LatencyMilliseconds` | One-way delay added to every packet sent. |
+| `JitterMilliseconds` | Extra delay on top of the latency: each packet gets a fresh random amount below this figure, so packets arrive at different times. |
+| `PacketLossChance` | Chance, from 0 to 1, that a packet is dropped. `0.2f` drops one in five. |
+| `OutOfOrderChance` | Chance, from 0 to 1, that a packet is held back until after packets sent later. |
+| `DuplicateChance` | Chance, from 0 to 1, that a packet is also sent a second time. |
+| `Seed` | Fixes the random choices, so a test repeats them for the same packets. `0` (default) varies them every run. A networked run can still differ, because how many packets are sent and when depends on timing. To replay a failing run, pick a seed, log it and set it. |
 
 ```csharp
 using Nucleus.Transports;
@@ -28,9 +30,11 @@ NetworkConditions networkConditions = new()
 };
 ```
 
-## Pass the conditions to the TransportManager
+## Apply the conditions
 
-The `TransportManager` sets the conditions on every transport at once, or on every transport of one type.
+1. Add the transport.
+2. Set the conditions, **before** `ConnectAsync`. `Synapse` decides whether to simulate anything when it connects: one that connected with conditions takes new values at once, but one that connected with none ignores them until it next connects. To change conditions mid-session, start with something small, such as 1 ms of latency.
+3. Connect.
 
 ```csharp
 // Every transport.
@@ -43,9 +47,9 @@ coreManager.TransportManager.SetNetworkConditions<Synapse>(networkConditions);
 coreManager.TransportManager.SetNetworkConditions(null);
 ```
 
-If no transport of the type you name has been added, the call logs a message and does nothing.
+If no transport of the named type has been added, the call logs a message and does nothing. You can also call `transport.SetNetworkConditions(networkConditions)` and `transport.GetNetworkConditions()` on one transport.
 
-To read the conditions back, ask for one type or for every transport. Asking for every transport gives you a pooled list with one entry per transport, in the same order as `TransportManager.Transports`, so return it when you are done.
+To read the conditions back, ask for one type or for every transport. The list for every transport is pooled, one entry per transport in `TransportManager.Transports` order; return it when done:
 
 ```csharp
 NetworkConditions? synapseConditions = coreManager.TransportManager.GetNetworkConditions<Synapse>();
@@ -55,43 +59,22 @@ List<NetworkConditions?> everyTransportsConditions = coreManager.TransportManage
 ListPool<NetworkConditions?>.Return(everyTransportsConditions);
 ```
 
-A transport can also be set directly with `transport.SetNetworkConditions(networkConditions)`, and read with `transport.GetNetworkConditions()`.
+Conditions belong to a transport. A test running a server `CoreManager` and a client `CoreManager` side by side sets each one separately.
 
-## Not every transport supports every condition
+## Know what each transport supports
 
-A transport that cannot simulate a bad connection logs a warning when you set conditions on it, and reads back null. A transport that can may still support only some of the fields.
+- A transport that cannot simulate logs a warning when you set conditions, and reads back null. One that can may support only some fields.
+- `Synapse` supports everything except `DuplicateChance`, which it ignores. It holds an out-of-order packet back by up to 100 ms.
+- `Synapse` sends its connection setup packets, the handshake and NAT traversal probes, with no simulated delay or loss. A connection always opens, so a successful connect proves nothing about the handshake on that link.
 
-`Synapse` supports everything except `DuplicateChance`, which it ignores. A packet it puts out of order is held back by up to 100 ms.
+## Loss applies to each direction separately
 
-`Synapse` sends its connection setup packets, the handshake and the NAT traversal probes, without any simulated delay or loss, so a connection always opens however bad the conditions are. A connect that succeeds under simulated conditions does not show that the handshake copes with that link.
+Each peer drops packets it sends. With `PacketLossChance = 0.2f` on both peers, a round trip survives less than 80% of the time, because either leg can be dropped.
 
-## Set the conditions before Synapse connects
+## Check the result
 
-`Synapse` decides whether to simulate anything at all when it connects. Set the conditions after adding the transport and before calling `ConnectAsync`, and the connection starts out simulating them.
-
-Once connected, a `Synapse` that started with conditions takes new values straight away. One that connected with no conditions ignores them until its next connection. If you want to change the conditions mid-session, start with a small one, such as a latency of 1 ms, so the simulation is running from the start.
-
-## Each CoreManager has its own conditions
-
-Conditions belong to a transport, so a test process that runs a server `CoreManager` and a client `CoreManager` side by side sets each one on its own. Setting the server's conditions changes nothing about how the client sends.
-
-## Loss is per direction
-
-Loss is applied by each peer to the packets it sends. A request and its reply each roll independently, so a round trip survives only when both directions do. With `PacketLossChance = 0.2f` on both peers, a round trip's chance of surviving is lower than 80%, because either leg can be the one that is dropped.
-
-## Watch for the repair, not the breakage
-
-The engine has its own answers to a lossy link: redundancy, targeted recovery, and a retention window. The point of testing under loss is not to watch things break but to confirm the repair actually runs. Watch for these two things:
-
-- Check convergence: the peer should eventually hold exactly what the server holds, even with packets dropped along the way.
-- Check recovery activity: the server should actually serve a repair. A test that asserts convergence without also asserting a recovery happened can pass on a clean run and prove nothing about the repair path.
-
-## Read the result back from the Connection
-
-`Connection` reports what actually happened on the link:
-
-- `RoundTripTimeMilliseconds` is the smoothed round trip time.
-- `RoundTripTimeDeviationMilliseconds` is how far samples typically stray from that average, which is the measured jitter.
-- `PacketLossPercentage` is the connection's measured loss.
-
-These are measured on the live connection rather than echoed from the conditions, so they are a good check that the conditions are having the effect you expect before you trust the rest of the test.
+- Confirm the peer ends up holding exactly what the server holds, despite the drops.
+- Read what the link actually measured from `Connection`, to confirm the conditions took effect:
+  - `RoundTripTimeMilliseconds`: the smoothed round trip time.
+  - `RoundTripTimeDeviationMilliseconds`: how far samples typically stray from it, which is the measured jitter.
+  - `PacketLossPercentage`: the measured loss.

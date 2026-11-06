@@ -2,9 +2,9 @@
 title: "Opening and closing scene instances"
 ---
 
-## Opening an instance
+## Open an instance
 
-`SceneManager.TryOpenScene(ushort sceneId, SceneScope sceneScope, out uint sceneHandle, SceneReplacePolicy sceneReplacePolicy = SceneReplacePolicy.Released)` opens a live instance of a scene on the server and returns a handle for it. There is an awaitable form, `OpenSceneAsync(ushort sceneId, SceneScope sceneScope, SceneReplacePolicy sceneReplacePolicy = SceneReplacePolicy.Released)`, which does the same thing and completes once the scene has loaded.
+`SceneManager.TryOpenScene(ushort sceneId, SceneScope sceneScope, out uint sceneHandle, SceneReplacePolicy sceneReplacePolicy = SceneReplacePolicy.Released)` opens a live instance of a scene on the server and returns its handle. `OpenSceneAsync(ushort sceneId, SceneScope sceneScope, SceneReplacePolicy sceneReplacePolicy = SceneReplacePolicy.Released)` does the same and completes once the scene has loaded.
 
 ```csharp
 if (sceneManager.TryOpenScene(myDungeonSceneId, SceneScope.Connections, out uint sceneHandle))
@@ -17,35 +17,35 @@ if (sceneManager.TryOpenScene(myDungeonSceneId, SceneScope.Connections, out uint
 uint sceneHandle = await sceneManager.OpenSceneAsync(myLobbySceneId, SceneScope.Global);
 ```
 
-Opening a scene id twice gives two handles and two independent worlds; nothing about opening the same id again reuses or merges state with the first instance. Handles are never recycled, so a handle you have seen always refers to the same instance, and a new instance never reuses an old, closed handle's number.
+Every open makes a new, independent instance, even for a scene id already open. Handles are never reused.
 
-## Scope: who gets placed
+## Choose a scope
 
-`SceneScope` decides who the instance is for, and it cannot be changed after opening:
+`SceneScope` cannot change after opening:
 
-- `SceneScope.Connections` - private to whichever clients the game explicitly places into it later. Opening places nobody by itself.
-- `SceneScope.Global` - every client belongs in it. Opening places every already-connected client into it immediately, and a client that authenticates after the instance is already open is placed into it as part of authentication.
+- `SceneScope.Connections`: opening places nobody. The game places clients later.
+- `SceneScope.Global`: opening places every connected client, and a client that authenticates while the instance is open is placed as part of authentication.
 
-A `SceneScope.Connections` instance places nobody until the game asks for it. A `SceneScope.Global` instance is the one case where opening itself places clients, on top of the join-time placement every scope shares.
+`SceneManager.JoinPlacement` also places newly authenticated clients, and by default that includes `Connections` instances. See [Placing clients in scenes](./placing-clients-in-scenes.md).
 
-## Replace policy: what survives a replacement
+## Choose a replace policy
 
-`SceneReplacePolicy`, chosen at open time, decides what happens to this instance when a client already in it is later replaced out by a different placement:
+`SceneReplacePolicy`, chosen at open time, decides whether a client keeps this instance when a different placement later replaces what it holds:
 
-- `SceneReplacePolicy.Released` (the default) - a replacing placement releases this instance along with everything else the client holds.
-- `SceneReplacePolicy.Retained` - a replacing placement leaves the client in this instance and only releases the rest.
+- `SceneReplacePolicy.Released` (default): the replacing placement releases this instance along with everything else.
+- `SceneReplacePolicy.Retained`: the client stays in this instance, and only the rest is released.
 
-An explicit close or unload request always takes effect regardless of replace policy; the policy only exempts an instance from being swept aside by a *different* placement.
+An explicit close or unload always takes effect, whatever the policy.
 
-## Reading back what is open
+## Read back what is open
 
-- `OpenSceneHandles` - the handles of every currently open instance.
-- `TryGetOpenScene(uint sceneHandle, out ushort sceneId)` - which scene id a handle belongs to.
-- `TryGetSceneScope(uint sceneHandle, out SceneScope sceneScope)` - the scope it was opened with.
-- `TryGetSceneReplacePolicy(uint sceneHandle, out SceneReplacePolicy sceneReplacePolicy)` - the replace policy it was opened with.
+- `OpenSceneHandles`: the handles of every open instance.
+- `TryGetOpenScene(uint sceneHandle, out ushort sceneId)`: the scene id a handle belongs to.
+- `TryGetSceneScope(uint sceneHandle, out SceneScope sceneScope)`: the scope it was opened with.
+- `TryGetSceneReplacePolicy(uint sceneHandle, out SceneReplacePolicy sceneReplacePolicy)`: the replace policy it was opened with.
 
-## Closing an instance
+## Close an instance
 
-`EnsureCloseScene(uint sceneHandle)` and the awaitable `CloseSceneAsync(uint sceneHandle)` are the ordinary way to end an instance: occupants are asked to leave before the instance itself comes down.
+`EnsureCloseScene(uint sceneHandle)`, or the awaitable `CloseSceneAsync(uint sceneHandle)`, asks the occupants to leave and then closes the instance.
 
-If an instance goes away without being closed through the manager - unloaded out from under it - call `TryNotifySceneUnloadedUnexpectedly(uint sceneHandle)` to tell the manager. It despawns the instance's systems and removes its occupants, since nothing else will.
+If an instance was unloaded without going through the manager, call `TryNotifySceneUnloadedUnexpectedly(uint sceneHandle)`. It despawns the instance's systems and removes its occupants, since nothing else will.

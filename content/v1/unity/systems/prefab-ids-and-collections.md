@@ -2,54 +2,55 @@
 title: "Prefab identity and the prefab collection"
 ---
 
-## The prefab collection
+## Rebuild the prefab collection after changing networked prefabs
 
-`NetworkPrefabCollection` is a `ScriptableObject` that lists the networked prefabs a client can instantiate for a dynamic spawn before the prefab is otherwise in hand. Create one from **Assets > Create > Nucleus > Network Prefab Collection**.
+You never assign prefab identity by hand. In the Nucleus window (**Tools > Nucleus**), select the **Build** tab and click **Rebuild** next to **Rebuild Network Prefab Collection** whenever you:
 
-Each collection is one content shard:
+- add a networked prefab,
+- delete a networked prefab, or
+- change a prefab's asset bundle assignment.
 
-- **Prefabs** — the networked prefabs this shard ships, in deterministic order.
-- **PrefabBundleId** — the bundle identifier this shard registers its prefabs under. Zero is the base build's default shard.
-- **BundleAssemblyName** — the simple name of the assembly whose `NetworkBundle` attribute supplies this shard's bundle identifier. Empty means the base build's default shard.
+The rebuild finds every prefab with a `NetworkSystemObject`, groups them by the asset bundle Unity has them assigned to, and writes one `NetworkPrefabCollection` per group. The collection with no asset bundle (the one under `Resources`) is the base build's; a collection assigned to asset bundle `x` holds the prefabs assigned to `x`.
 
-`RegisterAll()` claims the shard's bundle identifier and registers every listed prefab into the runtime registry; call it when the shard's content loads. `UnregisterAll()` removes those prefabs and releases the bundle claim; call it when the content unloads. A prefab with an unset prefab identifier logs an error and is skipped instead of registering.
+The rebuild stamps each prefab's `NetworkSystemObject` with a local prefab id and its collection's bundle id. This `(bundle id, local id)` pair is the prefab's identity on every peer. Every machine that rebuilds from the same assets gets the same result, and a rebuild never renumbers a prefab that already has a unique id, so adding a prefab never changes the id of one that already shipped.
 
-## Rebuilding the collection
+## Fix a duplicated prefab id
 
-Prefab identity is not something you assign by hand. Run **Tools > Nucleus > Build > Rebuild Network Prefab Collection** and the editor does it for you.
+Duplicating a prefab in the Project window copies its stamped id, so the copy has the same identity as the original and a spawn of one can build the other.
 
-The build step scans every prefab in the project for a `NetworkSystemObject`, groups the networked ones by the asset bundle Unity has them assigned to, and writes one shard's `NetworkPrefabCollection` per group. The collection with no asset bundle assignment (the one under `Resources`) owns the base build's shard; a collection assigned to asset bundle `x` owns the prefabs assigned to `x`. Nothing new has to be authored to express that membership — asset bundle assignment already decides it.
+A player build fails while any networked prefab has an identity a rebuild would change, and the build error lists each problem:
 
-The rebuild stamps each prefab's `NetworkSystemObject` marker with a local prefab identifier and the shard's bundle identifier. Every machine that rebuilds from the same assets gets the same result, and a rebuild does **not** renumber existing entries: an identifier a prefab already carries is kept as long as it is still unique within its shard, and only a new or duplicated prefab gets a new one. Adding a prefab therefore never changes the identifier of a prefab that already shipped in a build or content bundle.
+- a missing base collection,
+- two collections resolving to the same prefab bundle,
+- a prefab missing from its collection,
+- a prefab with no id, or with an id another prefab holds,
+- a prefab stamped with a different bundle than its collection.
 
-Run the rebuild whenever you:
+To find these without building, click **Validate** next to **Validate Network Prefabs** on the **Build** tab (see [Developer tools in the editor](../diagnostics/developer-tools-in-unity.md#validating-your-networked-prefabs)).
 
-- Add a new networked prefab.
-- Delete a networked prefab.
-- Change a prefab's asset-bundle assignment (moving it between shards).
+To fix them:
 
-## The runtime registry
+1. Click **Rebuild** next to **Rebuild Network Prefab Collection**. The prefab the collection already lists keeps the shared id, and the copy gets a new one. A warning names the renumbered prefab, the prefab that held the id, and the new id.
+2. Rebuild both the server and the client builds so every peer agrees.
 
-`NetworkPrefabRegistry` is the runtime lookup from a prefab's wire identity to the prefab a client instantiates for a dynamic spawn. It is populated as each shard's collection loads and cleared as it unloads.
+If a clash reaches runtime, `NetworkPrefabRegistry.Register` keeps the first prefab registered under the identity and logs an error naming both prefabs.
 
-- `EnsureClaimBundle(bundleId, collection)` claims a bundle identifier for a collection before its prefabs register. A second collection trying to claim a bundle identifier already owned by a different loaded collection is an error.
-- `Register(bundleId, localId, prefab)` adds a prefab under its `(bundle id, local id)` identity.
-- `TryGet(bundleId, localId, out prefab)` resolves the prefab registered for an identity.
-- `TryGetPredictedSpawnPolicy(bundleId, localId, out predictedSpawnPolicy)` resolves what a client may do to that prefab ahead of the server, from the policy recorded at registration.
-- `ReleaseBundle(bundleId, collection)` releases a bundle identifier when its collection unloads.
+## Register a collection when its content loads
 
-The base build ships bundle zero. Each content shard claims and registers its own bundle identifier when its content loads, so separately built content never collides — as long as every shard declares a unique `NetworkBundle` identifier on its assembly.
+`NetworkPrefabCollection` is a `ScriptableObject` listing the networked prefabs one content shard ships. The rebuild writes these for you; you can also create one from **Assets > Create > Nucleus > Network Prefab Collection**.
 
-## The duplicated-id trap
+- **Prefabs**: the networked prefabs this shard ships.
+- **PrefabBundleId**: the bundle id this shard registers its prefabs under. Zero is the base build's shard.
+- **BundleAssemblyName**: the name of the assembly whose `NetworkBundle` attribute supplies the bundle id. Empty means the base build's shard.
 
-A prefab's identity is stamped onto the prefab asset itself, in the `NetworkSystemObject` marker's serialized fields. Duplicating a prefab in the Project window duplicates that stamp along with everything else, so the copy carries the *same* prefab identifier as the original.
+Call `RegisterAll()` when the shard's content loads, and `UnregisterAll()` when it unloads. A prefab with an unset id logs an error and is skipped. The base build ships bundle zero; every other shard needs a unique `NetworkBundle` id on its assembly so separately built content never collides.
 
-Two prefabs sharing one identity means a spawn of one can build the other. At runtime `NetworkPrefabRegistry.Register` keeps the first live prefab registered under an identity and logs an error naming both prefabs when a different one claims it, so every peer that registers the same collection at least resolves the identity to the same prefab, and the clash shows in the Console instead of being settled silently.
+## Look up prefabs in the registry
 
-You are told well before that, though. A player build fails while any networked prefab carries an identity a rebuild would change: a missing base collection, two collections resolving to the same prefab bundle, a prefab missing from its collection, a prefab with no id or with an id another prefab holds, or a prefab stamped with a different bundle than its collection. The build error lists each problem. To find the same problems without building, run **Tools > Nucleus > Build > Validate Network Prefabs** (see [Developer tools in the editor](../diagnostics/developer-tools-in-unity.md#validating-your-networked-prefabs)).
+`NetworkPrefabRegistry` maps a prefab's identity to the prefab a client instantiates. Collections fill it as they load and empty it as they unload.
 
-Running **Tools > Nucleus > Build > Rebuild Network Prefab Collection** fixes it: the rebuild keeps an id that is set and unique and gives a duplicate a new id, logging a warning that names the renumbered prefab, the prefab that already held the id, and the new id. When two prefabs share an id, the one the collection already lists keeps it, so an original keeps its id over a new copy, which matters once a build or content bundle has shipped with it. Then rebuild both the server and the client builds so every peer agrees.
-
-## Wire identity
-
-A prefab's wire identity is the `(bundle id, local id)` pair stamped onto its `NetworkSystemObject` marker and used as the key into `NetworkPrefabRegistry`.
+- `EnsureClaimBundle(bundleId, collection)` claims a bundle id for a collection before its prefabs register. Claiming a bundle id another loaded collection owns is an error.
+- `Register(bundleId, localId, prefab)` adds a prefab under its identity.
+- `TryGet(bundleId, localId, out prefab)` finds the prefab registered for an identity.
+- `TryGetPredictedSpawnPolicy(bundleId, localId, out predictedSpawnPolicy)` finds what a client may do to that prefab ahead of the server.
+- `ReleaseBundle(bundleId, collection)` releases a bundle id when its collection unloads.

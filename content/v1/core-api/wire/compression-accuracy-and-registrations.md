@@ -2,46 +2,40 @@
 title: "Compression, Accuracy and Per-Type Registrations"
 ---
 
-## Compression levels
+## Choose a compression level
 
-`CompressionLevel` controls how compactly a value is sent. Four values:
+`CompressionLevel` has four values:
 
-- **Aggressive**: the most compact for small, well-predicted changes. Costs efficiency on mid-range values.
-- **Tight**: balanced, performing well across the common range of change sizes. This is the default a network member uses.
-- **Loose**: suited to values that can be large.
-- **Uncompressed**: no compression at all.
+- **Aggressive**: the most compact for small changes. Less efficient on mid-range values. Use it for a quantity that mostly sits still and moves in small steps.
+- **Tight**: balanced across the common range of change sizes.
+- **Loose**: suited to values that can be large or jump around.
+- **Uncompressed**: no compression.
 
 `CompressionLevelExtensions.IsLooseOrUncompressed(this CompressionLevel)` returns true for `Loose` or `Uncompressed`.
 
-### Where it's set
+The defaults differ by place:
 
-Three places, and they don't share a default:
+| Where | Default |
+|---|---|
+| `NetworkMember<T0>` constructor, `deltaCompressionLevel` | `CompressionLevel.Tight` |
+| Every `Writer.Write*` method, `compressionLevel` | `CompressionLevel.Loose`, so `writer.WriteInt32(value)` is Loose unless you pass a level |
+| `Writer.DeltaCompressionLevel`, the writer's fallback | `CompressionLevel.Tight` |
 
-- `NetworkMember<T0>`'s constructor takes `deltaCompressionLevel`, defaulting to `CompressionLevel.Tight`. This is the level the member uses for its own delta writes.
-- Every `Writer.Write*` method takes a `compressionLevel` parameter that defaults to `CompressionLevel.Loose`, not `Tight`. A direct call — `writer.WriteInt32(value)` — is Loose unless you pass a level explicitly.
-- `Writer.DeltaCompressionLevel` is the stream-wide default the writer falls back to; it also defaults to `Tight`.
+## Set accuracy per member
 
-Pick the level per member based on what the value looks like: `Aggressive` for a quantity that mostly sits still and moves in small steps, `Loose` or `Uncompressed` for something that jumps around or must not be compressed.
+`NetworkMember<T0>`'s constructor also takes `accuracy`, `float.NaN` by default, which uses the type's default:
 
-## Wire accuracy
+- `Writer.DefaultFloatingAccuracyAsSingle`: `1/1000`, the default for `float`, `double` and `decimal`.
+- `Writer.MinimumFloatingAccuracyAsSingle`: `1/100000`, the finest accuracy allowed.
+- `Writer.DefaultQuaternionAccuracyAsSingle`: `1/1000`, the default for `Quaternion` members.
 
-`NetworkMember<T0>`'s constructor also takes `accuracy` (`float.NaN` by default). NaN defers to the per-type default:
+Give a coarser accuracy, such as `0.01f`, to a value that tolerates more error, like a velocity. An accuracy passed to `Initialize` overrides the one given at construction.
 
-- `Writer.DefaultFloatingAccuracyAsSingle` — `1/1000`, the default for `float`/`double`/`decimal`.
-- `Writer.MinimumFloatingAccuracyAsSingle` — `1/100000`, the floor any accuracy must respect.
-- `Writer.DefaultQuaternionAccuracyAsSingle` — `1/1000`, the default for `Quaternion` members.
+Accuracy is also the change threshold: a change smaller than `accuracy` is not sent. A velocity with `0.01f` stops reporting movement smaller than that.
 
-Set a coarser accuracy (e.g. `0.01f`) at the field declaration for quantities that tolerate more error than position — a velocity is the usual example. A per-call accuracy passed to `Initialize` still overrides the construction-time value.
+## Choose a DeltaCheckMode
 
-### Accuracy is also the change threshold
+Every delta write method (`TryWriteDeltaInt32`, `TryWriteDeltaSingle`, `TryWriteDeltaBoolean` and so on) takes a `DeltaCheckMode`:
 
-Accuracy doesn't only control how precisely a value arrives: it also decides whether a change is sent at all. `Writer.TryWriteDeltaSingle` (and the double and decimal equivalents) only write when the difference between the previous and next value exceeds `accuracy`. A coarser accuracy means the member goes quiet more often: a velocity given `0.01f` stops reporting movement smaller than that.
-
-## DeltaCheckMode
-
-Every delta write method (`TryWriteDeltaInt32`, `TryWriteDeltaSingle`, `TryWriteDeltaBoolean`, and so on) takes a `DeltaCheckMode`:
-
-- **Checked** — data is only written if the value changed.
-- **Unchecked** — data is always written, regardless of whether it changed.
-
-`Checked` is what lets a delta write emit nothing on an unchanged tick. `Unchecked` forces the write every time, skipping the change comparison entirely — useful where the caller already knows a write belongs on the wire and the comparison would be wasted work.
+- **Checked**: writes only if the value changed.
+- **Unchecked**: always writes, skipping the comparison. Use it when you already know the write is needed.

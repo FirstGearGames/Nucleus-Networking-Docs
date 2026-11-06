@@ -4,9 +4,15 @@ title: "Running a dedicated .NET server"
 
 > **Using Unity?** See [Building a headless Unity server](../../unity/transports/headless-server-build.md).
 
-There is no FishNet page for this, because every FishNet entry point begins in a scene. Nucleus does not require one: a dedicated server is a plain console application that references `Nucleus`, and nothing else.
+A dedicated server is a plain console application that references Nucleus. It needs no scene.
 
-## The whole program
+## Reference the engine
+
+There is no NuGet package. Reference `Nucleus.dll`, `CodeBoost.dll` and `SynapseSocket.dll` as a set from one release. A project that declares networked types also needs `Nucleus.CodeAnalysis.SourceGenerators.dll` from the same release as an `Analyzer` item, or those types cannot be sent. [Adding Nucleus to a .NET project](../../start-here/adding-nucleus-to-a-dotnet-project.md) shows the project file.
+
+`Nucleus.dll` targets `netstandard2.1`. Target a modern framework such as `net8.0` or `net9.0` for your own executable.
+
+## Write the program
 
 ```csharp
 using System.Diagnostics;
@@ -84,47 +90,35 @@ sealed class MainThreadStepProvider : INetworkLoopStepProvider
 }
 ```
 
-`CoreManager`'s constructor builds every subsystem manager, then installs the provider you pass it as its last line. This provider steps the loop only when `Main` calls `Step`, so nothing runs against the managers while `Main` adds the transport and connects. `AddTransportAsync<T0>` instantiates the transport, registers it with the `TransportManager`, and initializes it. Setting `Configuration.Port` before `ConnectAsync` is what the server socket binds to; `ConnectAsync(Invoker.Server)` is what actually starts listening.
+- Pass your own step provider. With none, `new CoreManager()` starts a default one on a thread-pool timer before the constructor returns, so adding the transport and connecting race a loop that is already running.
+- Set `Configuration.Port` before `ConnectAsync(Invoker.Server)`, which starts listening.
+- The `while` loop passes the time since its previous pass to the provider, whose `NetworkLoopStepDriver` decides when a tick runs. See [Driving the loop yourself](../core/custom-loop-step-provider.md).
 
-After that, `Main` is the loop. There is no `Update` method to hook and no scene to load: the `while` loop hands the provider the time since its previous pass, and the `NetworkLoopStepDriver` inside the provider decides when a tick runs and invokes the steps in order. See [Driving the loop yourself](../core/custom-loop-step-provider.md) for more on the driver.
+## Callbacks run on the thread that steps the loop
 
-Pass no provider and `new CoreManager()` starts a default one that steps the loop from a thread-pool timer before the constructor returns. Everything `Main` does after that, adding the transport and connecting included, then races a loop that is already running. See [Threading and lifetime](../core/threading-and-lifetime.md).
+With the provider above, every engine callback runs on `Main`'s thread inside `loop.Step`, so code in the `while` loop can share state with callbacks without locks. Only the two stop handlers run elsewhere, which is why they touch nothing but `stopSource` and `loopExited`.
 
-## Referencing the engine
+The default provider runs every callback on a thread-pool thread instead. If you use it, treat state shared between `Main` and your handlers as cross-thread. See [Threading and lifetime](../core/threading-and-lifetime.md).
 
-There is no NuGet package for Nucleus. Reference the three runtime DLLs, `Nucleus.dll`, `CodeBoost.dll`, and `SynapseSocket.dll`, as a set from one release, not independent picks. Any project that declares networked types also needs `Nucleus.CodeAnalysis.SourceGenerators.dll` from the same release as an `Analyzer` item, or those types cannot be sent. [Adding Nucleus to a .NET project](../../start-here/adding-nucleus-to-a-dotnet-project.md) shows the project file.
+## Shut down cleanly
 
-`Nucleus.dll` targets `netstandard2.1`. That is the engine's own floor, not a suggestion for your host: target a modern framework such as `net8.0` or `net9.0` for your own executable rather than copying `netstandard2.1` onto it.
-
-## Routing engine logs
-
-By default, Nucleus logs through `CodeBoost.Logging.LoggingService`, which starts out wired to a `ConsoleLogger`. In a container, `Console.WriteLine` output is usually fine as-is, but if you want logs routed anywhere else — a file, a structured sink, wherever your host reads them — implement `CodeBoost.Logging.ILogger` and call:
-
-```csharp
-LoggingService.UseLogger(myLogger);
-```
-
-Call this before `new CoreManager()` so every manager's startup logging already goes through it.
-
-## Shutting down cleanly
-
-Tear down transports before tearing down the manager:
+Shut down the transports, then the manager. `Deinitialize()` is safe to call more than once.
 
 ```csharp
 await synapse.ShutdownAsync();
 coreManager.Deinitialize();
 ```
 
-`Transport.ShutdownAsync()` closes the socket; `CoreManager.Deinitialize()` stops the network loop and releases every manager it owns, in the reverse of the order it built them. `Deinitialize()` is safe to call more than once.
+In a container, run this on `SIGTERM` so clients get a clean disconnect instead of a dropped socket. The program above does: .NET raises `ProcessExit` on `SIGTERM`, the handler cancels `stopSource` and waits, and `Main` tears down on the thread that was stepping the loop. Do not call `ShutdownAsync` or `Deinitialize` from the handler itself, because `Main` would still be stepping the session.
 
-In a container, wire this to `SIGTERM` rather than relying on process exit, so an orchestrator's stop signal gives connected clients a clean disconnect instead of a dropped socket. The program above already does: .NET raises `ProcessExit` on `SIGTERM`, the handler only cancels `stopSource` and waits, and `Main` leaves its loop and runs the teardown on the thread that was stepping the loop. Don't call `ShutdownAsync` or `Deinitialize` from the handler itself, because that thread would tear the session down while `Main` is still stepping it.
+## Route engine logs
 
-## The threading consequence
+Nucleus logs through `CodeBoost.Logging.LoggingService`, which starts with a `ConsoleLogger`. To send logs elsewhere, implement `CodeBoost.Logging.ILogger` and call this before `new CoreManager()`:
 
-Every callback the engine raises (connection state changes, replication callbacks, anything you hook) runs on the thread that steps the loop. With the provider above that is `Main`'s thread, inside `loop.Step`, so code in the `while` loop can share state with those callbacks without locks. Only the two stop handlers run elsewhere, which is why they touch nothing but `stopSource` and `loopExited`.
+```csharp
+LoggingService.UseLogger(myLogger);
+```
 
-`CoreManager`'s default network loop step provider is different: it drives the loop from a thread-pool timer, not from the thread that called `Main`, and every callback runs on that pool thread. A console host that accepts the default and touches shared state from both `Main` and an event handler needs to treat that state as cross-thread, the same as any other background-timer callback; there is no single "main thread" guarantee there the way a game engine's update loop gives you one.
+## Take the port from the command line
 
-## Taking the port from the command line
-
-Hard-coding a port works for local testing, but a real deployment wants it and the bind address configurable at launch. See [Configuring a transport from launch arguments](./command-line-configuration.md) for how `Transport.ApplyCommandLineArguments()` reads flags like `port` into `Configuration.Port`.
+To set the port and bind address at launch, see [Configuring a transport from launch arguments](./command-line-configuration.md).

@@ -2,25 +2,31 @@
 title: "CodeBoost reference"
 ---
 
-CodeBoost is a separate library that ships beside Nucleus and that the engine compiles against for logging, pooling and a handful of low-allocation types. It is public as its own submodule under its own terms, not part of the Nucleus API surface, and yours to use directly. CodeBoost.dll ships inside the Unity package too, so a Unity project reaching for its pooling or logging is exactly as supported as a plain .NET host.
+CodeBoost is a separate library, published under its own terms, that ships beside Nucleus (in the Unity package too) and provides logging, pooling and some low-allocation types. It is not part of the Nucleus API, but you are free to use it directly.
 
-## Logging
+## Replace the logger with LoggingService.UseLogger
 
-`ILogger` is the swap point. It declares `GetLoggerSetting()`, `DisableUnconditionalDevelopmentStacktrace()`, and `LogInformation`/`LogWarning`/`LogError`. `LoggingService` holds the active instance in its static `Logger` field and starts with a `ConsoleLogger` already registered, so a plain .NET host gets console output with no setup. Call `LoggingService.UseLogger(ILogger)` to replace it.
+`LoggingService.Logger` holds the active `ILogger`. It starts as a `ConsoleLogger`, so a plain .NET host gets console output with no setup. To replace it:
 
 ```csharp
 LoggingService.UseLogger(new MyServiceLogger());
 ```
 
-`LoggerSetting` carries three `LoggerLevel` values (`Editor`, `DevelopmentBuilds`, `ReleaseBuilds`), each one of `Disabled`, `Error`, `Warning`, or `Information`. `LoggingService` reads whichever applies to the current environment and caches it. Check `LoggingService.IsInformationEnabled` / `IsWarningEnabled` / `IsErrorEnabled` before formatting an interpolated log argument, so the string isn't built when the level would drop it anyway. For a level chosen at runtime, `Logger.IsEnabled(LoggerLevel)` answers the same question, `Logger.Log` takes the level as an argument, and a `LogEntry` carries a level and a message together so a line can be decided in one place and written in another; see [Logging](../core-api/diagnostics/logging.md#choosing-the-level-at-runtime).
+`ILogger` declares `GetLoggerSetting()`, `DisableUnconditionalDevelopmentStacktrace()`, `LogInformation`, `LogWarning` and `LogError`.
 
-`DisableUnconditionalDevelopmentStacktrace()` on `ILogger` controls whether a development build appends a stack trace to every log call regardless of level; `ConsoleLogger` returns `false`, because nothing else adds a trace to console output, so a development build traces its info and warning logs too. Errors always carry one.
+- `LoggerSetting` holds three `LoggerLevel` values, `Editor`, `DevelopmentBuilds` and `ReleaseBuilds`, each one of `Disabled`, `Error`, `Warning` or `Information`. `LoggingService` uses the one for the current environment.
+- Check `LoggingService.IsInformationEnabled`, `IsWarningEnabled` or `IsErrorEnabled` before formatting an interpolated log argument, so the string is not built when the level would drop it.
+- For a level chosen at runtime, use `Logger.IsEnabled(LoggerLevel)` and `Logger.Log`, which takes the level as an argument. A `LogEntry` carries a level and a message together, so a line can be decided in one place and written in another. See [Logging](../core-api/diagnostics/logging.md#choosing-the-level-at-runtime).
+- `DisableUnconditionalDevelopmentStacktrace()` decides whether a development build adds a stack trace to every log call. `ConsoleLogger` returns `false`, so a development build traces its information and warning logs too. Errors always carry one.
 
-## CodeBoost provides two object pools
+## Rent objects from the pools
 
-`ObjectPool<T0>` (constraint `new()`) rents and returns plain objects through a thread-local stack backed by a shared global stack. `ResettableObjectPool<T0>` does the same for a type implementing `IPoolResettable`, calling `OnRent()` after renting and `OnReturn()` before storing the instance back. Both expose `Rent()`, `Return(T0)`, and `ReturnAndNullifyReference(ref T0)`.
+- `ObjectPool<T0>` (constraint `new()`) rents and returns plain objects.
+- `ResettableObjectPool<T0>` does the same for a type implementing `IPoolResettable`, calling `OnRent()` after renting and `OnReturn()` before storing it.
+- `ListPool<T0>`, `HashSetPool<T0>`, `DictionaryPool<T0, T1>` and `QueuePool<T0>` pool the built-in collections.
+- `Utf8EncodingPool` pools `UTF8Encoding` instances.
 
-The collection pools follow the same shape for built-in collections: `ListPool<T0>`, `HashSetPool<T0>`, `DictionaryPool<T0, T1>`, `QueuePool<T0>`. `Utf8EncodingPool` pools `UTF8Encoding` instances the same way, without a resettable contract since the type has no mutable state to reset.
+Each pool has `Rent()`, `Return(T0)` and `ReturnAndNullifyReference(ref T0)`.
 
 ```csharp
 List<int> list = ListPool<int>.Rent();
@@ -34,26 +40,26 @@ finally
 }
 ```
 
-## Types worth knowing
+## Know the types Nucleus passes you
 
-Several Nucleus signatures pass these CodeBoost types directly:
+- `RingBuffer<T0>`: a fixed-size collection that overwrites its oldest entries once full.
+- `BoostedQueue<T0>`: a queue used in place of `Queue<T0>` where Unity 2022's code generation cannot compile a `Queue<T0>` reference.
+- `RentedArray<T0>`: an `IDisposable` wrapper around an `ArrayPool<T0>` rental; disposing it returns the array.
+- `RoundRobinCursor<T0>`: walks a read-only list in wrap-around batches sized to sweep the whole list once over a configured time window.
+- `Vector2Int`, `Vector3Int32`, `Vector3Int64`, `Vector4Int`: integer vectors.
+- `QuaternionInt16`, `QuaternionInt32`: integer-component quaternions.
+- `UnifiedColor`: an RGBA color stored as four bytes, with float accessors.
 
-- `RingBuffer<T0>` — a fixed-size collection that overwrites its oldest entries once full.
-- `BoostedQueue<T0>` — a queue-shaped collection used in place of `Queue<T0>` where Unity 2022's codegen can't compile a `Queue<T0>` reference.
-- `RentedArray<T0>` — an `IDisposable` wrapper around an `ArrayPool<T0>` rental; disposing it returns the array.
-- `RoundRobinCursor<T0>` — walks a read-only list in wrap-around batches sized to sweep the whole list once over a configured time window.
-- `Vector2Int`, `Vector3Int32`, `Vector3Int64`, `Vector4Int` — integer vectors.
-- `QuaternionInt16`, `QuaternionInt32` — integer-component quaternions.
-- `UnifiedColor` — an RGBA color stored as four bytes, with float accessors.
+## Mark pooled members so the build checks their reset
 
-## Build-time pool-reset checking
+- `[PoolResettableMember]` marks a field or property that must be reset in `IPoolResettable.OnReturn()` and initialized in `OnRent()`.
+- `[PoolResettableMethod]` marks a method that does that work for one or more such members outside `OnRent` and `OnReturn`.
+- `[PoolDisposableMember]` marks a member that must be disposed rather than reset.
 
-`[PoolResettableMember]` marks a field or property that must be reset on `IPoolResettable.OnReturn()` and initialized on `OnRent()`. `[PoolResettableMethod]` marks a method that handles that reset/initialize work for one or more of those members, for cases where it isn't done inline in `OnRent`/`OnReturn`. `[PoolDisposableMember]` marks a member that must be disposed rather than merely reset.
+An analyzer in `CodeBoost.CodeAnalysis.Analyzers` fails the build when an `IPoolResettable` type leaves a `[PoolResettableMember]` out of its reset.
 
-An analyzer in `CodeBoost.CodeAnalysis.Analyzers` checks every `IPoolResettable` type against its declared `[PoolResettableMember]` fields and fails the build if one is left out of the reset path. A pooled type that forgets to clear a marked member is a build error, not a runtime surprise.
+## Check the environment and use the math helpers
 
-## Environment and Mathematics
+The static `ApplicationState` class, an `IApplicationState`, answers `IsEditor()`, `IsDevelopment()`, `IsGuiBuild()`, `IsHeadlessBuild()`, `IsPlaying()` and `IsQuitting()`. `LoggingService` uses it to pick a `LoggerLevel`.
 
-`IApplicationState`, reached through the static `ApplicationState` class, answers `IsEditor()`, `IsDevelopment()`, `IsGuiBuild()`, `IsHeadlessBuild()`, `IsPlaying()`, and `IsQuitting()`. `LoggingService` uses it to pick which `LoggerLevel` applies.
-
-`MathCb`, in `CodeBoost.Mathematics`, is a static partial class of floating-point and vector utility methods. `RoundingType` (`Down`, `Up`, `UpNonZero`, `ToEven`, `AwayFromZero`) selects the rounding rule for the integer divide extension methods.
+`MathCb`, in `CodeBoost.Mathematics`, holds floating-point and vector helper methods. `RoundingType` (`Down`, `Up`, `UpNonZero`, `ToEven`, `AwayFromZero`) selects the rounding rule for the integer divide extension methods.

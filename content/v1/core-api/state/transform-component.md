@@ -4,9 +4,9 @@ title: "TransformComponent"
 
 > **Using Unity?** See [NetworkTransform](../../unity/state/network-transform.md).
 
-`TransformComponent` is the engine-neutral replicated pose of an object: position, rotation, and scale. It declares no space of its own — whichever adapter binds it decides whether the values mean world or parent-local, and that choice is expressed by which subclass a system carries, not by a flag on the component.
+`TransformComponent` replicates an object's position, rotation and scale. It has no space of its own: the engine adapter that binds it decides whether the values are world or parent-local, through which subclass the system carries rather than a flag.
 
-## Members
+## It replicates three members
 
 | Member | Type | Compression | Transmission mode |
 |---|---|---|---|
@@ -14,30 +14,26 @@ title: "TransformComponent"
 | `Rotation` | `NetworkMember<Quaternion>` | default | `TransmissionModeDefaults.Motion` |
 | `Scale` | `NetworkMember<Vector3>` | default | `TransmissionModeDefaults.Motion` |
 
-`Vector3` and `Quaternion` are `System.Numerics` types. `TransformComponent` never touches an engine's own vector or rotation type; an adapter converts at the boundary.
-
 ```csharp
 public readonly NetworkMember<Vector3> Position = new(CompressionLevel.Aggressive, transmissionMode: TransmissionModeDefaults.Motion);
 public readonly NetworkMember<Quaternion> Rotation = new(transmissionMode: TransmissionModeDefaults.Motion);
 public readonly NetworkMember<Vector3> Scale = new(transmissionMode: TransmissionModeDefaults.Motion);
 ```
 
-## Setting all three at once
+`Vector3` and `Quaternion` are `System.Numerics` types. An adapter converts to and from the engine's own types.
 
-`TransformComponent` adds three methods that push a single choice across `Position`, `Rotation`, and `Scale` together, so the whole pose replicates as one unit rather than three independently configured members:
+`TransmissionModeDefaults.Motion` is divine projection in Pro and `TransmissionMode.Interval` in Free, so framework components read correctly in both editions. Your own code can name a `TransmissionMode` directly in either edition: `TransmissionMode.Divine` compiles in Free and replicates as `Interval`.
+
+## Set all three members at once
+
+These apply one choice to `Position`, `Rotation` and `Scale` together:
 
 - `SetSendInterval(SendInterval sendInterval)`
 - `SetTransmissionMode(TransmissionMode transmissionMode)`
 - `SetExtrapolationEnabled(bool isExtrapolationEnabled)`
 
-Apply the same value on every peer. A platform integration typically pushes a serialized interval, mode, or extrapolation setting on bind so this stays consistent without each peer configuring it by hand.
+A receiver adopts the sender's transmission mode and extrapolation setting, so only the send interval must be the same on every peer.
 
-## Subclassing
+## Subclass it to bind a real transform
 
-`TransformComponent` is a `partial class`, meant to be subclassed by an engine adapter that binds `Position`, `Rotation`, and `Scale` to a real transform and decides what space they're measured in. A subclass's members are part of its owning system's component list, so both peers must agree on which subclass — and therefore which space — the system carries.
-
-## `TransmissionModeDefaults.Motion`
-
-All three members are built with `TransmissionModeDefaults.Motion` rather than a literal `TransmissionMode`. `Motion` resolves to divine projection in a Pro build and to `TransmissionMode.Interval` in a free build.
-
-Framework components use `TransmissionModeDefaults.Motion` instead of naming a mode directly so that one source reads correctly in both editions: divine projection where it's available, ordinary interval pacing where it isn't. Naming `TransmissionMode.Divine` directly also compiles in a free build, where the member replicates as `Interval` does, so game code can name a `TransmissionMode` directly in either edition.
+`TransformComponent` is a `partial class` for an engine adapter to subclass, binding the three members to a real transform and choosing their space. Both peers must carry the same subclass, and therefore the same space.

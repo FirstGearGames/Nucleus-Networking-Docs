@@ -4,29 +4,26 @@ title: "Driving a predicted body"
 
 > **Driving the core API directly?** See [Locally predicted bodies](../../core-api/physics/locally-predicted-bodies.md).
 
-A body a client drives directly - a player's own physics character, for example - should not wait a round trip to respond. `NetworkRigidbody` supports this: the driving peer predicts the body locally, applying its own client state the instant it arrives, while the server still owns where the body really is and the driver reconciles toward it as confirmations return.
+This page covers a body the server controls and simulates while one client steers it, such as a player's own physics character. The steering client applies its own client state at once, while the server still owns where the body really is. For a body the client controls outright, use a validated behaviour instead; [Predicting a body with a validated behaviour](./predicting-a-body-with-a-validated-behaviour.md) helps you choose.
 
-This page covers a body the server simulates while one client steers it. The other way to predict a body is a validated behaviour: the client controls the body outright, the server checks its result, and a wrong result is replayed. See [Predicting a body with a validated behaviour](./predicting-a-body-with-a-validated-behaviour.md) for that, and for help choosing between the two.
+## Turn prediction on
 
-## Turning prediction on
-
-`NetworkRigidbody.Convergence` is a `PhysicsConvergence`. Set `Convergence.IsLocallyPredicted` to `true` on the peer steering the body with its own client state, and back to `false` when it stops:
+On the peer steering the body, set `Convergence.IsLocallyPredicted` to `true`, and set it back to `false` the moment this peer stops driving the body:
 
 ```csharp
 networkRigidbody.Convergence.IsLocallyPredicted = true;
 ```
 
-The flag only has an effect on a peer that is not the body's controller. `NetworkRigidbody` runs its follower only where `NetworkSystem.IsController(ControllerType.AnyController)` is false; on the controlling peer the body simulates freely and its result is sent, so there is nothing to predict. The pattern the flag is for is the one the PhysicsBallMover demo uses: the server controls and simulates the body, and one client steers it through its own client state channel while applying the same client state to its local copy.
+- The flag only has an effect on a peer that is not the body's controller. On the controller the body simulates freely and its result is sent.
+- While it is set, the body only trims a position or rotation error once it passes its threshold, and never teleports.
+- Every step still sets the body's velocity from its target. For your client state to show at once, assign `Convergence.TargetProvider` a provider whose target includes it, as the PhysicsBallMover demo does.
+- A proxy left with the flag set has no client state of its own to trust.
 
-While it is set, the follower only trims a position or rotation error once that error passes its threshold, and never teleports the body. It does not keep the velocity your own simulation produced: every step it sets the body's velocity from its projected target, as it does for any proxy. For your client state to show up at once, the target has to include it; the PhysicsBallMover demo assigns `Convergence.TargetProvider` a provider that does. Clear the flag the moment this peer stops driving the body - a proxy left with `IsLocallyPredicted` set has no client state of its own to trust.
+## Apply force on the network tick
 
-## Applying force on the right cadence
+Physics steps on the network tick, not on Unity's `FixedUpdate`, so force applied in `FixedUpdate` does nothing or fires at the wrong rate. Use one of these instead:
 
-Under a `PhysicsSimulationDriver`, the physics world steps on the network tick, not on Unity's `FixedUpdate`. Applying force from client state in `FixedUpdate` there either does nothing or fires at the wrong rate.
-
-Two ways to run on the actual step cadence:
-
-- Subscribe to `PhysicsSimulationDriver.WorldStepStarted`, raised before each world step so gameplay code can apply per-step forces from client state on the simulated cadence:
+- Subscribe to `PhysicsSimulationDriver.WorldStepStarted`, raised before each world step:
 
 ```csharp
 driver.WorldStepStarted += (tick, stepDelta) =>
@@ -35,7 +32,7 @@ driver.WorldStepStarted += (tick, stepDelta) =>
 };
 ```
 
-- Or, on a `NucleusBehaviourBase` (the base every Nucleus MonoBehaviour that participates in the network loop derives from), override `OnEarlyFixedUpdate`:
+- Or override `OnEarlyFixedUpdate` on a `NucleusBehaviourBase`. It runs at the same point:
 
 ```csharp
 protected override void OnEarlyFixedUpdate(StepDelta stepDelta, SimulationContext simulationContext)
@@ -44,28 +41,19 @@ protected override void OnEarlyFixedUpdate(StepDelta stepDelta, SimulationContex
 }
 ```
 
-`OnEarlyFixedUpdate` maps to `NetworkLoopSteps.EarlyFixedUpdate`, which runs before the world step - the same point `WorldStepStarted` fires. Its parameters are a `StepDelta`, not a plain `float` (use its `FixedDelta` for the step's fixed timing), and a `SimulationContext` naming the pass the step belongs to (see [Replaying a correction in Unity](../control/reconcile-in-unity.md)).
+`stepDelta.FixedDelta` is the step's fixed timing. `SimulationContext` names the pass the step belongs to; see [Replaying a correction in Unity](../control/reconcile-in-unity.md).
 
-## Tuning the feel
+## Tune the correction
 
-A predicted body does not use `Blend Per Tick` (`PhysicsConvergenceSettings.BlendPerTick`) - that setting governs ordinary proxies. Instead it uses `Prediction Correction Rate` (`Convergence.PredictionCorrectionRate`, exposed in the inspector as *Prediction Correction Rate*): the fraction of a genuine position or rotation divergence closed per tick, once past the threshold.
+A predicted body ignores **Blend Per Tick** and uses **Prediction Correction Rate** (`Convergence.PredictionCorrectionRate`): the fraction of a position or rotation error closed per tick once past the threshold. Higher snaps back harder; lower corrects gently. `0` turns correction off entirely, and the body is then also exempt from teleporting, so a desync never closes. Leave some nonzero rate.
 
-Higher values snap the body back to the server harder and sooner. Lower values let the prediction ride looser and correct gently. Zero disables the correction entirely, so the body is pure, unreconciled prediction - it never blends toward the server, and it is exempt from the teleport-on-large-divergence path too, so a body left to drift this way effectively never snaps back. That is rarely what you want; leave some nonzero rate so a genuine desync still closes.
+A healthy predicted body corrects rarely: only on a genuine divergence such as a hit, a collision the server resolved differently, or a dropped tick of client state. A good correction looks like a brief nudge that eases back in over a few ticks. If corrections look like a snap, the rate is too high, the threshold is too tight, or the divergence itself is worth chasing.
 
-## Remote client state proxies
+## Choose how a remote-controlled proxy moves
 
-A body a client controls outright (its `ControllerConnectionId` is set) is a different case: on every other peer it is a proxy driven by that remote controller's client state, not a predicted body. By default (`RemoteExtrapolationEnabled = true`) such a proxy extrapolates its motion forward from the last received state, riding nearer to present time at the cost of overshooting on abrupt client state changes: a stopping body slides on a little, then corrects once the slower state arrives.
+A body a client controls outright (its `ControllerConnectionId` is set) is not predicted on other peers. It is a proxy driven by that client's state, and `RemoteExtrapolationEnabled` decides how it moves:
 
-Set `RemoteExtrapolationEnabled` to `false` on a body driven by a remote controller and its proxy copy instead follows the received states as a kinematic body: always a step behind, but smooth and free of overshoot. This only takes effect once the system also has a `ControllerConnectionId` set (unset, the body has no remote controller to speak of, and none of this applies).
+- `true` (the default): the proxy extrapolates forward from the last received state. It stays nearer present time but overshoots on abrupt changes: a stopping body slides on a little, then corrects. Prefer it for a fast body where responsiveness matters more than a rare overshoot.
+- `false`: the proxy follows the received states as a kinematic body, always a step behind but smooth. Prefer it where overshoot looks worse than lag: dense contacts, tight geometry, or a body other players stand near.
 
-Prefer extrapolation for a fast, client-state-driven body where responsiveness matters more than a rare overshoot. Prefer the kinematic, extrapolation-off path where overshoot would look worse than lag - dense contacts, tight geometry, or a body other players might stand near.
-
-## The client state channel itself
-
-None of the above covers how the driving peer's client state reaches the server or gets reconciled against the server's confirmation. See the client state and reconcile pages for that half.
-
-## What a correction looks like
-
-A healthy predicted body is quiet almost all the time: your own client state drives it, and a correct prediction that matches what the server later confirms reconciles to nothing visible. A correction only becomes visible on a genuine divergence - a hit, a collision the server resolved differently, a dropped tick of client state.
-
-There are two distinct phases to that correction. The impact is the moment the divergence is detected - the tick the position or rotation error crosses its threshold. The recovery is everything after: `PredictionCorrectionRate` closes part of the gap each tick through the body's motion rather than snapping the pose. A body correcting well looks like a brief nudge off its expected path that eases back in over a few ticks, not a teleport. If corrections look like a snap, `PredictionCorrectionRate` is too high, the threshold is too tight, or the divergence causing them is worth chasing on its own.
+Sending the client state itself is covered in [Sending client state from Unity](../control/writing-a-client-state-component-unity.md).
