@@ -9,7 +9,8 @@
   },
   {
     "slug": "how-transports-work",
-    "title": "How transports work"
+    "title": "How transports work",
+    "href": "/docs/v1/core-api/transports/how-transports-work"
   },
   {
     "slug": "blitz-relay-transport-component",
@@ -17,7 +18,8 @@
   },
   {
     "slug": "hosting-topologies",
-    "title": "Choosing a hosting topology"
+    "title": "Choosing a hosting topology",
+    "href": "/docs/v1/core-api/transports/hosting-topologies"
   },
   {
     "slug": "headless-server-build",
@@ -25,7 +27,8 @@
   },
   {
     "slug": "connecting-across-networks",
-    "title": "Connecting across networks"
+    "title": "Connecting across networks",
+    "href": "/docs/v1/core-api/transports/connecting-across-networks"
   },
   {
     "slug": "simulating-bad-connections-unity",

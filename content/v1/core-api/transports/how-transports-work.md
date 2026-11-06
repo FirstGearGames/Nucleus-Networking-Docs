@@ -12,7 +12,7 @@ A `Transport` only moves bytes between peers: it connects, disconnects, sends an
 | Yak | Offline and in-process; nothing is bound. | Single-player or same-process testing where no socket should exist. |
 | Blitz Relay | A third machine carries the traffic. | Peers that cannot reach each other directly, such as both behind NAT with no port forwarding. Costs relay overhead and depends on that machine. |
 
-A `CoreManager` can hold several transports at once. Add each with `TransportManager.AddTransportAsync` or `TryAddTransportAsync`, then connect with a separate `ConnectAsync` call. See [TransportManager](./transport-manager.md).
+A `CoreManager` can hold several transports at once. Add each with `TransportManager.AddTransportAsync` or `TryAddTransportAsync`, then connect with a separate `ConnectAsync` call. See [TransportManager](./transport-manager.md). In Unity, `UnityTransportManager` does this for you; see [Transport Manager component](../../unity/transports/transport-manager-component.md).
 
 ## Every send picks a channel
 

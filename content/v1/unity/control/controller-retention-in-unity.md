@@ -36,4 +36,4 @@ Use `RetainForReturn` only with an `IClientAuthenticator` that gives each player
 ## Read further
 
 - Tokens, the retention events and reclaiming an object by hand: [Controller retention](../../core-api/control/controller-retention.md).
-- What happens to retained objects when the host itself is lost: [Surviving the loss of a host](../transports/hosting-topologies.md).
+- What happens to retained objects when the host itself is lost: [Surviving the loss of a host](../../core-api/transports/hosting-topologies.md).

@@ -13,7 +13,8 @@
   },
   {
     "slug": "scene-model",
-    "title": "How networked scenes work"
+    "title": "How networked scenes work",
+    "href": "/docs/v1/core-api/scenes/scene-model"
   },
   {
     "slug": "networked-scenes-in-unity",
@@ -29,7 +30,8 @@
   },
   {
     "slug": "troubleshooting-scenes-and-bundles",
-    "title": "Scenes and bundles: things that look broken"
+    "title": "Scenes and bundles: things that look broken",
+    "href": "/docs/v1/core-api/scenes/troubleshooting-scenes-and-bundles"
   },
   {
     "slug": "bundle-delivered-scenes",
