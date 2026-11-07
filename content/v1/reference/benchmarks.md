@@ -16,8 +16,6 @@ Each framework's spawner hands every object its place in the spawn order through
 
 The two splits are interleaved, so half of the rigidbody quarter and half of the character controllers are fast. The same seed and numbers make the belt move the same way on every run.
 
-The CPU results were measured with an earlier version of this script, in which every object orbits the center of the belt.
-
 ```csharp
 using UnityEngine;
 
