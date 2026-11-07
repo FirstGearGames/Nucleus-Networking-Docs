@@ -2,17 +2,30 @@
 title: "How the benchmarks are run"
 ---
 
-Every framework runs a tick rate of 30, with the server and the client capped at 60 frames per second. The server and the client are separate standalone builds. The results are on the [Nucleus website](https://nucleus-networking.com/).
+Every framework runs a tick rate of 30. The server and the client are separate standalone builds. The results are on the [Nucleus website](https://nucleus-networking.com/).
 
 ## Every object runs the same movement script
 
-The bandwidth and CPU tests move their objects with this script. Each object orbits the center of the belt while it spins, and the same seed makes it move the same way on every run. Each framework's own networked script runs it on the server, and the framework's transform component replicates it.
+The bandwidth tests move their objects with this script, with linear motion on. Each object drifts in a straight line across a tilted belt while it spins, and reflects off the belt's rim. Each framework's own networked script runs it on the server, and the framework's transform component replicates it.
+
+Each framework's spawner hands every object its place in the spawn order through `AssignNumber`, and that number decides how the object moves:
+
+- Half of the objects multiply their speed range by 5.
+- A quarter move like rigidbodies. Their speed and spin never settle: both glide from one end of their range to the other and back, 4 seconds each way, so they are always accelerating.
+- The other three quarters move like character controllers. At each bounce they take a new speed, spin speed and spin direction at once, and hold them until the next bounce.
+
+The two splits are interleaved, so half of the rigidbody quarter and half of the character controllers are fast. The same seed and numbers make the belt move the same way on every run.
+
+The CPU results were measured with an earlier version of this script, in which every object orbits the center of the belt.
 
 ```csharp
 using UnityEngine;
 
 public class BeltedAsteroid : MonoBehaviour
 {
+    public const float MinimumSpeedRangeMultiplier = 1f;
+    public const float MaximumSpeedRangeMultiplier = 20f;
+
     [SerializeField]
     [Tooltip("Drift in a straight line and reflect off the belt's outer rim instead of orbiting the center.")]
     private bool _isLinearMotion;
@@ -28,6 +41,9 @@ public class BeltedAsteroid : MonoBehaviour
     [SerializeField]
     [Tooltip("The fastest ground speed a cube draws, in units per second: the drift speed in linear mode, the tangential speed in orbit mode.")]
     private float _maximumMovementSpeed = 2f;
+    [SerializeField]
+    [Tooltip("The factor half of the asteroids multiply their movement speed range by, from 1 to 20. Applied once as each asteroid wakes.")]
+    private float _speedRangeMultiplier = 5f;
     [SerializeField]
     [Tooltip("How likely the ground speed is drawn near the maximum: 1 always picks the max, 0.5 draws uniformly.")]
     private float _movementSpeedFullnessChance = 0.5f;
@@ -47,12 +63,17 @@ public class BeltedAsteroid : MonoBehaviour
     private Vector2 _linearPosition;
     private Vector2 _linearDirection;
     private SpeedRamp _linearSpeedRamp;
+    private float _cubeMinimumMovementSpeed;
+    private float _cubeMaximumMovementSpeed;
+    private bool _isSpeedSnappedAtBounce;
+    private bool _isMovementSweepRising;
+    private bool _isSpinSweepRising;
     private AsteroidRandom _random;
 
     private static readonly Vector3 OrbitCenter = Vector3.zero;
     private static readonly Quaternion BeltTilt = Quaternion.Euler(27f, 0f, 14f);
     private const float BeltOuterRadius = 16f;
-    private const float SpeedRampDuration = 2f;
+    private const float SpeedSweepDuration = 4f;
     private const float MinimumLinearStartRadiusFraction = 0.7f;
     private const float MaximumLinearStartRadiusFraction = 0.97f;
 
@@ -60,14 +81,21 @@ public class BeltedAsteroid : MonoBehaviour
 
     public void AuthorityTick(float stepSeconds) => Advance(stepSeconds);
 
+    public void AssignNumber(uint asteroidNumber) => SeedMotion(asteroidNumber);
+
     private void Awake()
     {
-        SeedMotion();
+        SeedMotion((uint)transform.GetSiblingIndex());
     }
 
-    private void SeedMotion()
+    private void SeedMotion(uint asteroidNumber)
     {
-        _random = AsteroidRandom.ForAsteroid(_seed, (uint)transform.GetSiblingIndex());
+        _random = AsteroidRandom.ForAsteroid(_seed, asteroidNumber);
+
+        float speedRangeMultiplier = asteroidNumber % 2u == 1u ? Mathf.Clamp(_speedRangeMultiplier, MinimumSpeedRangeMultiplier, MaximumSpeedRangeMultiplier) : 1f;
+        _cubeMinimumMovementSpeed = _minimumMovementSpeed * speedRangeMultiplier;
+        _cubeMaximumMovementSpeed = _maximumMovementSpeed * speedRangeMultiplier;
+        _isSpeedSnappedAtBounce = asteroidNumber / 2u % 4u != 0u;
 
         _orbitHeight = _random.NextRange(minimum: -1.25f, maximum: 1.25f);
         _rotationRamp.Reset(BiasedSpeed(ref _random, _minimumRotationDegreesPerSecond, _maximumRotationDegreesPerSecond, _rotationSpeedFullnessChance));
@@ -81,14 +109,23 @@ public class BeltedAsteroid : MonoBehaviour
             _linearPosition = radial * startRadius;
 
             _linearDirection = new(-radial.y, radial.x);
-            _linearSpeedRamp.Reset(BiasedSpeed(ref _random, _minimumMovementSpeed, _maximumMovementSpeed, _movementSpeedFullnessChance));
+            _linearSpeedRamp.Reset(BiasedSpeed(ref _random, _cubeMinimumMovementSpeed, _cubeMaximumMovementSpeed, _movementSpeedFullnessChance));
+
+            if (!_isSpeedSnappedAtBounce)
+            {
+                bool isSweepStartedAtMaximum = asteroidNumber / 8u % 2u == 1u;
+                _linearSpeedRamp.Reset(isSweepStartedAtMaximum ? _cubeMaximumMovementSpeed : _cubeMinimumMovementSpeed);
+                _rotationRamp.Reset(isSweepStartedAtMaximum ? _maximumRotationDegreesPerSecond : _minimumRotationDegreesPerSecond);
+                _isMovementSweepRising = isSweepStartedAtMaximum;
+                _isSpinSweepRising = isSweepStartedAtMaximum;
+            }
         }
         else
         {
             _orbitRadius = _random.NextRange(minimum: 8f, maximum: BeltOuterRadius);
             _orbitAngle = _random.NextRange(minimum: 0f, maximum: 2f * Mathf.PI);
 
-            _orbitAngularSpeed = BiasedSpeed(ref _random, _minimumMovementSpeed, _maximumMovementSpeed, _movementSpeedFullnessChance) / _orbitRadius;
+            _orbitAngularSpeed = BiasedSpeed(ref _random, _cubeMinimumMovementSpeed, _cubeMaximumMovementSpeed, _movementSpeedFullnessChance) / _orbitRadius;
         }
 
         transform.position = _isLinearMotion ? BeltWorldPosition(_linearPosition) : OrbitPosition();
@@ -102,6 +139,10 @@ public class BeltedAsteroid : MonoBehaviour
             DriveOrbitMotion(deltaSeconds);
 
         _rotationRamp.Advance(deltaSeconds);
+
+        if (_isLinearMotion && !_isSpeedSnappedAtBounce)
+            ContinueSweep(ref _rotationRamp, ref _isSpinSweepRising, _minimumRotationDegreesPerSecond, _maximumRotationDegreesPerSecond);
+
         transform.Rotate(_spinAxis * (_rotationRamp.Current * deltaSeconds), Space.Self);
     }
 
@@ -114,6 +155,10 @@ public class BeltedAsteroid : MonoBehaviour
     private void DriveLinearMotion(float deltaSeconds)
     {
         _linearSpeedRamp.Advance(deltaSeconds);
+
+        if (!_isSpeedSnappedAtBounce)
+            ContinueSweep(ref _linearSpeedRamp, ref _isMovementSweepRising, _cubeMinimumMovementSpeed, _cubeMaximumMovementSpeed);
+
         _linearPosition += _linearDirection * (_linearSpeedRamp.Current * deltaSeconds);
 
         float distance = _linearPosition.magnitude;
@@ -124,8 +169,12 @@ public class BeltedAsteroid : MonoBehaviour
             _linearDirection = Vector2.Reflect(_linearDirection, normal);
             _linearPosition = normal * BeltOuterRadius;
 
-            _rotationRamp.SetTarget(BiasedSpeed(ref _random, _minimumRotationDegreesPerSecond, _maximumRotationDegreesPerSecond, _rotationSpeedFullnessChance));
-            _linearSpeedRamp.SetTarget(BiasedSpeed(ref _random, _minimumMovementSpeed, _maximumMovementSpeed, _movementSpeedFullnessChance));
+            if (_isSpeedSnappedAtBounce)
+            {
+                _rotationRamp.Reset(BiasedSpeed(ref _random, _minimumRotationDegreesPerSecond, _maximumRotationDegreesPerSecond, _rotationSpeedFullnessChance));
+                _spinAxis = _random.NextUnitVector();
+                _linearSpeedRamp.Reset(BiasedSpeed(ref _random, _cubeMinimumMovementSpeed, _cubeMaximumMovementSpeed, _movementSpeedFullnessChance));
+            }
         }
 
         transform.position = BeltWorldPosition(_linearPosition);
@@ -151,32 +200,45 @@ public class BeltedAsteroid : MonoBehaviour
         return Mathf.Lerp(minimumSpeed, maximumSpeed, fraction);
     }
 
+    private static void ContinueSweep(ref SpeedRamp speedRamp, ref bool isSweepRising, float minimumSpeed, float maximumSpeed)
+    {
+        if (!speedRamp.IsSettled)
+            return;
+
+        isSweepRising = !isSweepRising;
+        speedRamp.SetTarget(isSweepRising ? maximumSpeed : minimumSpeed, SpeedSweepDuration);
+    }
+
     private struct SpeedRamp
     {
         public float Current { get; private set; }
+        public bool IsSettled => _elapsedSeconds >= _durationSeconds;
 
         private float _startValue;
         private float _targetValue;
         private float _elapsedSeconds;
+        private float _durationSeconds;
 
         public void Reset(float value)
         {
             _startValue = value;
             _targetValue = value;
-            _elapsedSeconds = SpeedRampDuration;
+            _elapsedSeconds = 0f;
+            _durationSeconds = 0f;
             Current = value;
         }
 
-        public void SetTarget(float target)
+        public void SetTarget(float target, float durationSeconds)
         {
             _startValue = Current;
             _targetValue = target;
             _elapsedSeconds = 0f;
+            _durationSeconds = durationSeconds;
         }
 
         public void Advance(float deltaTime)
         {
-            if (_elapsedSeconds >= SpeedRampDuration)
+            if (IsSettled)
             {
                 Current = _targetValue;
 
@@ -184,7 +246,7 @@ public class BeltedAsteroid : MonoBehaviour
             }
 
             _elapsedSeconds += deltaTime;
-            Current = Mathf.Lerp(_startValue, _targetValue, Mathf.Clamp01(_elapsedSeconds / SpeedRampDuration));
+            Current = Mathf.Lerp(_startValue, _targetValue, Mathf.Clamp01(_elapsedSeconds / _durationSeconds));
         }
     }
 }
@@ -254,11 +316,11 @@ public struct AsteroidRandom
 
 ## Bandwidth is counted by a relay on the client's machine
 
-Measuring starts 5 seconds after the 200 objects spawn and lasts 30 seconds. Positions and rotations are replicated at a precision of 0.001 and accurate to the tick. The server runs on an AWS c7i.large, about 195 ms from the client. A relay on the client's machine counts every byte and packet the server sends. The bytes counted are divided by the 30 seconds, the 200 objects and the 30 ticks a second, which gives bytes per object, per tick.
+Measuring starts 10 seconds after the client holds all 200 objects and lasts 60 seconds. Positions and rotations are replicated at a precision of 0.001 and accurate to the tick. The server and one client run on the same machine, both capped at 90 frames per second, and a relay between them delays every packet by 75 ms each way, a 150 ms round trip. The relay counts every byte and packet the server sends. The bytes counted are divided by the 60 seconds, the 200 objects and the 30 ticks a second, which gives bytes per object, per tick.
 
 ## Server CPU is measured by a monitor in the server process
 
-Measuring starts 5 seconds after the objects spawn and lasts 20 seconds. The server runs on an AWS c7i.large, with 200 objects and again with 2,000. The monitor below measures the CPU time of the whole server process and divides it by the frames the server ran. Each framework runs three times, and the chart shows the middle result.
+The server runs on an AWS c7i.large, capped at 60 frames per second, with 200 objects and again with 2,000. Its clients run on a separate machine and connect 0.3 seconds apart, 50 of them and then 200. Measuring starts 2 minutes after the last client connects and lasts 10 seconds. The monitor below measures the CPU time of the whole server process and divides it by the frames the server ran. A framework that cannot hold 30 ticks a second is marked as failed.
 
 :::hint type="info"
 Thank you to Kreyg for providing this CPU logger script.
@@ -598,6 +660,6 @@ uint ticks = CurrentTick() - _tickAtMeasureStart;
 double allocatedBytesPerTick = ticks == 0 ? 0d : (double)_gcAllocatedBytes / ticks;
 ```
 
-## Fusion results are incomplete
+## Fusion runs with 100 objects
 
-Fusion throttles beyond 100 objects, so its CPU and bandwidth results are incomplete.
+Fusion throttles beyond 100 objects. Its bandwidth is measured with 100 objects, since its bytes per object do not change with the count, and its CPU results are marked as failed.
