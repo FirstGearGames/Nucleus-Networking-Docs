@@ -15,5 +15,4 @@ Pages in this category:
 - [Connecting across networks](./connecting-across-networks.md)
 - [Packet transforms](./packet-transforms.md)
 - [Simulating latency, jitter and loss](./simulating-bad-connections.md)
-- [The relay transport](./relay-transport.md)
 - [The Transport contract](./transport-contract.md)

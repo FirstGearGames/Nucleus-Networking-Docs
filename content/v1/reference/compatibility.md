@@ -24,7 +24,7 @@ Each of these compiles in only when its define is set. Without the package, the 
 | `com.unity.addressables` 1.19+ | `NUCLEUS_ADDRESSABLES` | Addressables-based asset loading |
 | `com.unity.modules.ai`, the AI module, enabled in a new project | `NUCLEUS_NAVMESH` | `NetworkNavMeshAgent` and its inspector |
 | `Unity.ResourceManager` | None | Referenced alongside Addressables |
-| Relay transport | `BLITZ_RELAY` | The Blitz Relay transport (Pro only) |
+| Steamworks.NET (`com.rlabrecque.steamworks.net`) | `NUCLEUS_STEAMWORKS` | The Steam transport add-on, `SteamTransport` |
 
 The demos need the Input System, uGUI 2.0 or newer (for TextMeshPro), AI Navigation, and the Vehicles and Terrain modules. Without them the demos are skipped, the project still compiles, and the editor warns once per session naming the packages to install. The demo materials use the Universal Render Pipeline (URP), so they draw pink on any other pipeline; the same warning says so.
 

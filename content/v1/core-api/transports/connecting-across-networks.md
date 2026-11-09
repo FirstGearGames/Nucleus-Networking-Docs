@@ -31,8 +31,8 @@ The server never reads Remote Host. By default it listens on every address the m
 - **`Disconnected` without `LocalClientAuthenticated`**: the client's packets never reached the server, and it dropped after the idle timeout (`Configuration.ConnectedTimeoutSeconds`, or **Idle Timeout Seconds** on `SynapseTransport`, 15 by default). Check the address, port, firewall and forward. A server that refuses the client drops it at once instead, and `ClientManager.LastAuthenticationDenialReason` holds the reason.
 - **`LocalClientAuthenticated`, then `Disconnected`**: the path worked at least once, then traffic stopped. Look for something intermittent, such as an expired NAT mapping, a selective firewall rule or a real network interruption, not the port or forward.
 
-## Use the relay when NAT cannot be beaten
+## When NAT cannot be beaten
 
-If the port, firewall and forward are all right and it still fails over the internet, a peer is likely behind carrier-grade NAT. Use [`RelayTransport`](./relay-transport.md): one peer hosts a room and gets a `RoomCode`, and the others join with that code. No address, port or forwarding is needed. In Unity, see [Hosting and joining a relay session](../../unity/transports/relay-sessions.md).
+If the port, firewall and forward are all right and it still fails over the internet, the server is likely behind carrier-grade NAT, which no forward gets through. Host on a machine with a public address, such as a dedicated server, or in Unity use the Steam transport add-on, `SteamTransport`, which reaches players by Steam ID through Valve's relay network with no port to forward.
 
-Nucleus does not discover servers on the LAN or attempt NAT punchthrough. The address or room code always comes from you: typed in, read from a config file or fetched from your own service.
+Nucleus does not discover servers on the LAN or attempt NAT punchthrough. The address always comes from you: typed in, read from a config file or fetched from your own service.

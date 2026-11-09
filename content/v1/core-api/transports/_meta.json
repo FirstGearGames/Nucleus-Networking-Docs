@@ -44,10 +44,6 @@
     "title": "Simulating latency, jitter and loss"
   },
   {
-    "slug": "relay-transport",
-    "title": "The relay transport"
-  },
-  {
     "slug": "transport-contract",
     "title": "The Transport contract"
   }
