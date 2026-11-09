@@ -4,7 +4,7 @@ title: "ISessionHost"
 
 `ISessionHost` is how [`NewfarmHostMigration`](./newfarm-host-migration.md) reaches the service a session runs over. The coordinator decides who hosts and tells every peer where the session went; a session host turns that into the service's own terms: hosting a session, naming where it can be reached, joining somebody else's, and leaving. Implement it to carry host migration over a service Nucleus does not cover.
 
-It lives in the `Nucleus.Integrations.Newfarm` assembly.
+It lives in `Nucleus.dll`, in the `Nucleus.Integrations.Newfarm` namespace.
 
 ## Shipped session hosts
 

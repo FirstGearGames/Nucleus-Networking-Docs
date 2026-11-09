@@ -6,7 +6,7 @@ title: "NewfarmHostMigration"
 
 `NewfarmHostMigration` keeps a session going when the peer hosting it leaves. It registers the session with a newfarm directory, notices when the host goes, and then either takes the session over with the world this peer kept or rejoins the peer that did. Players find the session by a session id that stays the same for its whole life, while the address of whoever hosts it changes at every handover.
 
-It lives in the `Nucleus.Integrations.Newfarm` assembly and needs Pro. It reaches the service the session runs over through an [`ISessionHost`](./session-hosts.md), so the same coordinator works over any service with one.
+It lives in `Nucleus.dll`, in the `Nucleus.Integrations.Newfarm` namespace, and needs Pro. It reaches the service the session runs over through an [`ISessionHost`](./session-hosts.md), so the same coordinator works over any service with one.
 
 ## What you need
 

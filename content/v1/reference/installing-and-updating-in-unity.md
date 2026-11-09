@@ -10,11 +10,11 @@ Import the release's `.unitypackage` (**Assets > Import Package > Custom Package
 
 The folder holds:
 
-- `Nucleus.dll`, `CodeBoost.dll` and `SynapseSocket.dll`, each with a `.pdb` for debuggable stack traces.
+- `Nucleus.dll`, `CodeBoost.dll`, `SynapseSocket.dll` and `Newfarm.Client.dll`, each with a `.pdb` for debuggable stack traces.
 - `Nucleus.CodeAnalysis.SourceGenerators.dll`, the source generator that makes networked types compile. It has no `.pdb`.
-- `Nucleus.xml` and `SynapseSocket.xml`, which give your IDE hover docs for the public API.
+- `Nucleus.xml`, `SynapseSocket.xml` and `Newfarm.Client.xml`, which give your IDE hover docs for the public API.
 - `LICENSE.txt`, and `VERSION.txt`, which names the release.
-- An `Integrations` folder with four source trees, each its own assembly definition: `Unity`, `Loopback Relay`, `Newfarm Client` and `Newfarm Migration`. Beside them, `Newfarm Server` holds the editor-only directory the loopback relay runs.
+- An `Integrations` folder with two source trees, each its own assembly definition: `Unity` and `Loopback Relay`. Beside them, `Newfarm Server` holds the editor-only directory the loopback relay runs.
 
 The integration needs **Unity 6.5 (6000.5) or newer** and does not compile on older editors. An update never lowers that requirement.
 
