@@ -27,7 +27,7 @@ A plain host's session ends when the host's process does. For a session to survi
 - `ISessionHost` is what a directory implementation uses to publish where a session is hosted (`HostedCredential`) and to join wherever the directory points (`JoinAsync`).
 - `NewfarmHostMigration` polls the directory, so a session can hand its hosting role to another peer without clients being told a new address by hand. It is Pro, and it adopts the retained world when it promotes a peer, so the game state survives the handover.
 
-This pairing is not engine-level host migration. In Unity, the loopback relay tests it on one machine and the Steam transport add-on ships it; see [Testing host migration on one machine](../../unity/transports/relay-sessions.md).
+This pairing is not engine-level host migration. In Unity, the loopback relay tests it on one machine and the Steam transport add-on ships it; see [Testing host migration on one machine](../../unity/transports/relay-sessions.md). [`NewfarmHostMigration`](./newfarm-host-migration.md) is the coordinator, and [`ISessionHost`](./session-hosts.md) carries it over another service.
 
 ## Bring your own services
 

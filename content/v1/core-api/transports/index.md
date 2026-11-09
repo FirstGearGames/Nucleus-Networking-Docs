@@ -11,6 +11,8 @@ Pages in this category:
 - [Link states and connection events](./connection-link-lifecycle.md)
 - [The Yak offline transport](./yak-offline-transport.md)
 - [Choosing a hosting topology](./hosting-topologies.md)
+- [NewfarmHostMigration](./newfarm-host-migration.md)
+- [ISessionHost](./session-hosts.md)
 - [Configuring a transport from launch arguments](./command-line-configuration.md)
 - [Connecting across networks](./connecting-across-networks.md)
 - [Packet transforms](./packet-transforms.md)

@@ -28,6 +28,14 @@
     "title": "Choosing a hosting topology"
   },
   {
+    "slug": "newfarm-host-migration",
+    "title": "NewfarmHostMigration"
+  },
+  {
+    "slug": "session-hosts",
+    "title": "ISessionHost"
+  },
+  {
     "slug": "command-line-configuration",
     "title": "Configuring a transport from launch arguments"
   },

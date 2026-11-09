@@ -50,7 +50,7 @@ bool isJoined = await loopbackRelayNetworkTransport.JoinSessionAsync(sessionId);
 
 Pass the session id to the clone however suits the test, such as a file both editors read. In a game it travels through your own invite channel, such as a lobby or a friend list.
 
-Once a peer hosts or joins, the component runs every handover itself. The elected peer adopts the world it was receiving and hosts it, and the others rejoin it by session id.
+Once a peer hosts or joins, the component runs every handover itself through a [`NewfarmHostMigration`](../../core-api/transports/newfarm-host-migration.md), which its `Migration` property returns. The elected peer adopts the world it was receiving and hosts it, and the others rejoin it by session id.
 
 The `RelaySession` demo under `Demos/Transports` does all of this, and hands its session id over in a file.
 
