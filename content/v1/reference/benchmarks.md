@@ -318,7 +318,7 @@ Measuring starts 10 seconds after the client holds all 200 objects and lasts 60 
 
 ## Server CPU is measured by a monitor in the server process
 
-The server runs on an AWS c7i.large, capped at 60 frames per second, with 200 objects and again with 2,000. Its clients run on a separate machine and connect 0.3 seconds apart, 50 of them and then 200. Measuring starts 2 minutes after the last client connects and lasts 10 seconds. The monitor below measures the CPU time of the whole server process and divides it by the frames the server ran. A framework that cannot hold 30 ticks a second is marked as failed.
+The server runs on an AWS c7i.large, capped at 60 frames per second, with 200 objects and again with 2,000. Its clients run on a separate machine and connect 0.3 seconds apart, 50 of them and then 200. Measuring starts 10 seconds after the last client connects and lasts 30 seconds. The monitor below measures the CPU time of the whole server process and divides it by the frames the server ran. A framework that cannot hold 30 ticks a second is marked as failed.
 
 :::hint type="info"
 Thank you to Kreyg for providing this CPU logger script.
