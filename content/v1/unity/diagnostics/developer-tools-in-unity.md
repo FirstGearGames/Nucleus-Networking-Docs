@@ -60,7 +60,7 @@ To make the same check from code on the server, call `NetworkSystem.GetInterestM
 
 Open **Tools > Nucleus** and select the **Traffic** tab. Outside play mode it offers an **Enter Play Mode** button and the simulated network conditions. While a session runs, the window's banner shows this peer's role (Host, Server, Client or Stopped), and the tab shows these sections, refreshed twice a second:
 
-- **Controls**: **Start Server** or **Stop Server**, **Start Client** or **Stop Client**, and **Start Host** while neither side runs. A client stopped here does not reconnect on its own.
+- **Controls**: **Start Server** or **Stop Server**, **Start Client** or **Stop Client**, and **Start Host** while neither side runs.
 - **Session**: average frame time, the tick rate in ticks per second and milliseconds per tick, reconciles, and tick drift (how far the measured tick rate strays from the configured one). Frame time turns amber when a frame lasts longer than a tick, and tick drift turns amber past five percent of the tick rate. A server under its rate is falling behind; a client away from it is having its clock adjusted to keep its input arriving on time.
 - **Bandwidth**: bytes sent and received per second, total bytes sent and received, a graph of both rates over the last minute, and how much of each direction is replicated state.
 - **World**: connections, started systems, networked objects in the open scenes, and spawns that interest management admitted and deferred, followed by the session's redundancy, state interpolation, state retention and partial apply settings.

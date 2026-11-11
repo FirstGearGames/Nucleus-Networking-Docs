@@ -23,7 +23,7 @@ Each inspector field is copied into its core manager once, when the session star
 | `UnityPacketManager` | `NucleusPacketManager` |
 | `UnityMessageManager` | `NucleusMessageManager` |
 
-`UnityClientManager`, `UnityPacketManager` and `UnityMessageManager` have no inspector fields. The settings on `UnitySystemManager` (redundancy, state interpolation, partial state apply, host migration, controller retention), `UnityInterestManager` (evaluation cadence, host interest, interest conditions) and `UnitySceneManager` (join placement, automatic scene requests, load timeout) are covered on their own pages.
+`UnityPacketManager` and `UnityMessageManager` have no inspector fields. `UnityClientManager` has one, **Maximum Framerate**: the most frames per second while this peer runs as a client, from 1 to 1000. On a host the higher of it and the server's limit applies, and Unity ignores it while vertical sync is on. The settings on `UnitySystemManager` (redundancy, state interpolation, partial state apply, host migration, controller retention), `UnityInterestManager` (evaluation cadence, host interest, interest conditions) and `UnitySceneManager` (join placement, automatic scene requests, load timeout) are covered on their own pages.
 
 ## Configure UnityServerManager
 
