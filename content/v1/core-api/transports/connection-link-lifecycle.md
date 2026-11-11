@@ -25,12 +25,10 @@ public enum LocalConnectionState : byte
     Connecting = 1,
     Connected = 2,
     Disconnecting = 3,
-    Error = 4,
-    TimedOut = 5,
 }
 ```
 
-A `Connection` nothing has touched reads `Disconnected`. The shipped transports never set `Error` or `TimedOut`: a failed connect and a later drop both end at `Disconnected`.
+A `Connection` nothing has touched reads `Disconnected`. A failed connect and a later drop both end at `Disconnected`.
 
 `Connection.RemoteState` is a `RemoteConnectionState`, what this peer believes about the other side:
 

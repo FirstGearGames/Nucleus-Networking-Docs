@@ -78,8 +78,6 @@ public enum LocalConnectionState : byte
     Connecting = 1,
     Connected = 2,
     Disconnecting = 3,
-    Error = 4,
-    TimedOut = 5,
 }
 ```
 
@@ -92,7 +90,7 @@ public static bool IsConnectedOrDisconnected(this LocalConnectionState localConn
 public static bool IsAnyDisconnected(this LocalConnectionState localConnectionState);
 ```
 
-`IsConnectedOrDisconnected` is true only for `Connected` or `Disconnected`. `IsAnyDisconnected` is true for `Disconnecting`, `Disconnected`, `Error` and `TimedOut`.
+`IsConnectedOrDisconnected` is true only for `Connected` or `Disconnected`. `IsAnyDisconnected` is true for `Disconnecting` and `Disconnected`.
 
 `TransportManager` raises an event for each kind of change:
 
