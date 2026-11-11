@@ -28,11 +28,11 @@ During a replay, every object the client does not control is held at the replay'
 
 ## Send Result Values
 
-**Send Result Values** (`SystemManager.IsResultValueSendEnabled`, on by default) is read from the controlling client. While it is on, a server that finds a client's `MemberRole.Validate` result different reports which members differed and both values through `NetworkSystem.ResultMismatched`, and a member's `resultTolerance` applies. Off saves bandwidth on every tick, but the report then shows only that a mismatch happened and on which tick, and results are compared exactly. Turn it off for a release build if you do not need the values.
+**Send Result Values** (`SystemManager.ResultValueSendEnabled`, on by default) is read from the controlling client. While it is on, a server that finds a client's `MemberRole.Validate` result different reports which members differed and both values through `NetworkSystem.ResultMismatched`, and a member's `resultTolerance` applies. Off saves bandwidth on every tick, but the report then shows only that a mismatch happened and on which tick, and results are compared exactly. Turn it off for a release build if you do not need the values.
 
 ## Let observers predict an object
 
-Tick **Predicted By Observers** under **Prediction** on a `NetworkSystemObject` to set `NetworkSystem.IsObserverPredictionEnabled` on every system it links, on every peer. Observing clients then predict the object as its controller does.
+Tick **Predicted By Observers** under **Prediction** on a `NetworkSystemObject` to set `NetworkSystem.ObserverPredictionEnabled` on every system it links, on every peer. Observing clients then predict the object as its controller does.
 
 - It only affects an observing client that itself controls an object sending client state.
 - The object's simulation must carry missing client state with `TryGetLastState`.

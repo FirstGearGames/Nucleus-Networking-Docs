@@ -40,7 +40,7 @@ Within a system, components run first in component order, then registered callba
 | Server or host | Driven by a remote client through client state | `Forward`, once per server tick on one of the client's ticks, after its client state is validated, or as a step missing its client state when that tick's did not arrive |
 | Server or host | Controlled by the server, by the host's own client half, or by a client that sends no client state | `Forward`, once per tick |
 | Controlling client | Its own system | `Forward` once per live tick, and `Replayed` once per tick a reconcile replays |
-| Observing client with `IsObserverPredictionEnabled` | Another client's system | As the controlling client |
+| Observing client with `ObserverPredictionEnabled` | Another client's system | As the controlling client |
 | Any other client | A system it does not control | `None`, once per loop tick; nothing is simulated |
 
 `NetworkSystem.IsSimulatedPerClientState` is true on the server for a system run on its client's ticks. A replayed step, and the server's step for a tick of a client's client state, is not a real frame, so its `Delta`, `FixedDelta` and `NormalizedDelta` are one tick interval and `TimeSinceLastFixedUpdate` is 0.
@@ -208,7 +208,7 @@ Distances are read through the interest position reader (`InterestManager.SetPos
 A client can predict a system another client controls instead of holding it. Opt in per system on that client:
 
 ```csharp
-observedSystem.IsObserverPredictionEnabled = true;
+observedSystem.ObserverPredictionEnabled = true;
 ```
 
 - Its fixed updates then run as `SimulationType.Forward` on every live tick, from the client state the server forwards, which lands on the local tick the server's echo names.
@@ -266,7 +266,7 @@ When the server finds a controller's `MemberRole.Validate` result different from
 - `RemoteTick`: the controller's tick it pairs with, for matching what the client logged, never for timing.
 - `Members`: the members that differed, when `AreValuesSent` is true. Each answers `TryGetResultMismatchValues(out controllerValue, out serverValue)` until the tick advances.
 
-The values are available while the controller's `SystemManager.IsResultValueSendEnabled` is set, the default. Turning it off in a release build saves bandwidth, and the report then shows only that a mismatch happened. No violation is raised, so what to do about the client is the game's call.
+The values are available while the controller's `SystemManager.ResultValueSendEnabled` is set, the default. Turning it off in a release build saves bandwidth, and the report then shows only that a mismatch happened. No violation is raised, so what to do about the client is the game's call.
 
 Read the report inside the handler and keep no reference to it after the handler returns:
 

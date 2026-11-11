@@ -21,7 +21,7 @@ The server assigns control with `SetController`; see [Giving a client control of
 These are controller-only, whatever the write-access setting:
 
 - **Client state.** Only the controller's client state is accepted.
-- **Prediction.** The controlling client predicts the object from its own client state, and the server checks the result and corrects it when they differ. Other clients receive the server's state and hold the object still during a replay, unless **Predicted By Observers** (`NetworkSystem.IsObserverPredictionEnabled`) is ticked on its `NetworkSystemObject`.
+- **Prediction.** The controlling client predicts the object from its own client state, and the server checks the result and corrects it when they differ. Other clients receive the server's state and hold the object still during a replay, unless **Predicted By Observers** (`NetworkSystem.ObserverPredictionEnabled`) is ticked on its `NetworkSystemObject`.
 - **Setting members.** The default access, `MemberWriteAccess.Controller`, allows the server or the controlling client. The Pro setting `MemberWriteAccess.AnyClient` widens this to other observers; see [Letting clients set members](../../core-api/state/state-write-access.md).
 
 Remote calls work the same way: `RpcSendAccess.Controller` is the default.
