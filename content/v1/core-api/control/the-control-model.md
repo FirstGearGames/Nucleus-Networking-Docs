@@ -26,7 +26,7 @@ The server assigns control with `SetController`. A client that calls it is rejec
 These are controller-only, whatever the write-access setting:
 
 - **Client state.** Only the controller's client state is accepted for the system.
-- **Prediction.** The controlling client predicts the system from its own client state, and the server checks the result and corrects it when they differ. Any other client receives the server's state, and during a reconcile holds the system at the server's values while its own systems replay, unless it sets `NetworkSystem.IsObserverPredictionEnabled`.
+- **Prediction.** The controlling client predicts the system from its own client state, and the server checks the result and corrects it when they differ. Any other client receives the server's state, and during a reconcile holds the system at the server's values while its own systems replay, unless it sets `NetworkSystem.ObserverPredictionEnabled`.
 - **Setting members.** The controller can always set members. The default access, `MemberWriteAccess.Controller`, allows the server or the controlling client. The Pro setting `MemberWriteAccess.AnyClient` widens this to other observers; see [Letting clients set members](../state/state-write-access.md).
 
 Remote calls work the same way: `RpcSendAccess.Controller` is the default, so only whoever drives the object may ask it to do anything.

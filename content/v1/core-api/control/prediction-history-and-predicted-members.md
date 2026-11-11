@@ -26,7 +26,7 @@ What a predicted role does depends on the peer:
 
 - **The pure-client controller** writes its `Predict` members on its live tick and runs the step at once to compute its `Validate` members.
 - **The server** takes the controller's `Predict` members, simulates the same tick and checks the controller's `Validate` result against its own, without ever applying it.
-- **Any other client** applies the server's values as they arrive. During a reconcile, a member with a role other than `Replicate` is held at the server's start-tick values while the controlled systems replay. A client that sets `NetworkSystem.IsObserverPredictionEnabled` predicts the system as its controller does (see [Predicting another client's object](./reconciliation.md#predicting-another-clients-object)).
+- **Any other client** applies the server's values as they arrive. During a reconcile, a member with a role other than `Replicate` is held at the server's start-tick values while the controlled systems replay. A client that sets `NetworkSystem.ObserverPredictionEnabled` predicts the system as its controller does (see [Predicting another client's object](./reconciliation.md#predicting-another-clients-object)).
 - **A host** applies values as they arrive. It is the server, so nothing it predicts is ever corrected.
 
 ## The server checks the controller's result
@@ -41,13 +41,13 @@ Rules for `Validate` members:
 
 - A value is only as precise as the member's `Accuracy`, the same on both peers. Choose an accuracy the simulation can tolerate.
 - Any `SendInterval` works.
-- For a value a replay cannot reproduce exactly, such as one a physics engine moves, construct the member with `resultTolerance`. A predicted value within that distance of the server's orders no reconcile. It applies only while the controller's `SystemManager.IsResultValueSendEnabled` is on, the default; with it off, the result is compared exactly. The Unity validated behaviours set it on their position, rotation and velocities.
+- For a value a replay cannot reproduce exactly, such as one a physics engine moves, construct the member with `resultTolerance`. A predicted value within that distance of the server's orders no reconcile. It applies only while the controller's `SystemManager.ResultValueSendEnabled` is on, the default; with it off, the result is compared exactly. The Unity validated behaviours set it on their position, rotation and velocities.
 - The system needs `Predict` members. Without client state the server has nothing to check, and its values simply overwrite the prediction.
 - The result check runs after the client state is validated, so a tick your `IMemberWriteValidator<T0>` corrected produces a different result, and the controller is reconciled onto the server's outcome.
 
 ## An observer that predicts compares for itself
 
-The server checks only the controller. An observer predicting a system another client controls (`IsObserverPredictionEnabled`) compares the server's values for that system's `Validate` members itself, at the tick its own echo names, within each member's `Accuracy`:
+The server checks only the controller. An observer predicting a system another client controls (`ObserverPredictionEnabled`) compares the server's values for that system's `Validate` members itself, at the tick its own echo names, within each member's `Accuracy`:
 
 - **A match** is discarded. The prediction stands and the server's value is not applied.
 - **A mismatch** is recorded with the tick and a `MismatchCause`, and the system keeps predicting until the `Reconcile` step, where the engine restores and replays (see [Reconciliation and replay](./reconciliation.md)).
