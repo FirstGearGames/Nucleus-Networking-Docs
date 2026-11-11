@@ -42,7 +42,7 @@ A transport reports state through these `TransportManager` calls:
 - `ChangeLocalConnectionState(Invoker invoker, LocalConnectionState nextLocalConnectionState, Connection? connection)`: changes a connection's local state and raises callbacks.
 - `SetRemoteConnectionStateAsConnected(uint idBySocket, Connection connection)`: server-only; marks a connection remotely connected and raises callbacks.
 
-To report a client leaving, the socket asks its transport to call its protected, server-only `SetRemoteConnectionStateAsDisconnected(Connection connection)`. Game code drops a client with `Connection.Kick()` instead.
+To report a client leaving, the socket asks its transport to call its protected, server-only `SetRemoteConnectionStateAsDisconnected(Connection connection, string? disconnectReason = null)`. The reason reaches game code as `ConnectionStateChange.DisconnectReason`. Game code drops a client with `Connection.Kick()` instead.
 
 ## Give each received payload exactly one owner
 

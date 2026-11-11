@@ -67,12 +67,16 @@ public readonly struct ConnectionStateChange
     public readonly Invoker Invoker;
     public readonly Connection Connection;
     public readonly bool IsRemoteStateChange;
+    public readonly bool IsLocallyRequested;
+    public readonly string? DisconnectReason;
 }
 ```
 
 - `ConnectionLocalStateChanged` fires when `Connection.LocalState` changes.
 - `ConnectionRemoteStateChanged` fires when `Connection.RemoteState` changes. On a server, this tells you a client arrived or left.
 - `IsRemoteStateChange` tells a shared handler which event it is handling.
+- `IsLocallyRequested` is true when this peer asked for its own link to go down.
+- `DisconnectReason` says why a link went down, in the transport's words, such as `"The connection timed out."`. It is `null` when the transport gave no reason or the change is not a disconnect. Show it to players or write it to a log, but do not branch on its wording.
 
 **A local `Connected` does not mean the server accepted you.** A `Synapse` client reaches `Connected` once it has sent its handshake, before the server answers. To know your client has joined, use `ClientManager.LocalClientAuthenticated`, which fires once the server accepts it and assigns its `Id`, or read `TransportManager.IsClientStarted`.
 

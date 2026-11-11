@@ -105,10 +105,12 @@ public readonly struct ConnectionStateChange
     public readonly Invoker Invoker;
     public readonly Connection Connection;
     public readonly bool IsRemoteStateChange;
+    public readonly bool IsLocallyRequested;
+    public readonly string? DisconnectReason;
 }
 ```
 
-`Invoker` says which side raised it, `Connection` is the connection that changed, and `IsRemoteStateChange` says whether `RemoteState` or `LocalState` changed.
+`Invoker` says which side raised it, `Connection` is the connection that changed, and `IsRemoteStateChange` says whether `RemoteState` or `LocalState` changed. `IsLocallyRequested` is true when this peer asked for its own link to go down. `DisconnectReason` says why a link went down, in the transport's words, or is `null` when no reason was given.
 
 ## Log a connection with AsString
 
