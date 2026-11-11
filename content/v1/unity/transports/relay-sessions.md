@@ -1,62 +1,67 @@
 ---
-title: "Hosting and joining a relay session"
+title: "Testing host migration on one machine"
+components: "LoopbackRelayNetworkTransport"
 ---
 
-> **Driving the core API directly?** See [The relay transport](../../core-api/transports/relay-transport.md).
+`LoopbackRelayNetworkTransport` lets you test host migration with two editors on one machine, with nothing to install or launch. It is for testing only. A shipped game uses the Steam transport instead.
 
-## Run the relay and the directory
+## What it runs
 
-Nucleus does not include either service, so run both yourself:
+While the scene plays, the main editor runs a relay inside its own process, on the loopback address. With host migration on, it also runs a newfarm directory beside it, which finds a session by its id and elects a new host when the old one goes. A ParrelSync clone runs neither and uses the main editor's.
 
-- **The relay**, listening on UDP 7770, with a connection key that matches **Connection Key** on `BlitzRelayTransport`.
-- **The newfarm directory**, listening on UDP 47778, which resolves session ids and elections.
+No editor listens for another. Every editor connects out to the relay, and the one hosting is the one holding a room. The relay numbers rooms from 1 as it opens them.
 
-Their addresses and ports are fields on `BlitzRelayTransport`, defaulting to `127.0.0.1` and the ports above.
+| Field | Default | Purpose |
+|---|---|---|
+| Relay Hosting Enabled | on | Runs the relay, and the directory when host migration is on, in the main editor while the scene plays. |
+| Relay Port | `47779` | TCP port the relay listens on. Every editor sharing the relay uses the same port. |
+| Room Id | `1` | Room a client start joins when host migration is off. Joining by session id ignores it. |
+| Is Host Migration Enabled | on | Registers the session with the directory so it survives losing its host. Needs Pro. |
+| Directory Port | `47778` | UDP port the directory listens on. Shown only while host migration is on. |
 
-## Host a session
+If a port is already taken, for example by another project playing the same scene, the main editor logs a warning and uses whatever is already listening there. Stop the other project, or change both ports in every editor.
 
-1. Add `BlitzRelayTransport` to the `UnityCoreManager`'s GameObject.
-2. Call `StartHostingSessionAsync()`. It opens a session, hosts it and registers the room the relay names.
-3. When it returns `true`, give joining players the `RoomCode` or the `SessionId`.
+## It is for testing only
 
-```csharp
-bool isHosting = await blitzRelayTransport.StartHostingSessionAsync();
+- The relay listens on the loopback address alone, so only editors and builds on this machine can reach it.
+- It admits any process on this machine, with no authentication.
+- Nothing starts the relay or the directory in a build.
+- It shows that a handover works. It says nothing about how a session behaves on a lossy network.
 
-string roomCode = blitzRelayTransport.RoomCode;
-ulong sessionId = blitzRelayTransport.SessionId;
-```
+## Test a handover with two editors
 
-`RoomCode` reads `RelayTransport.HostedRoomCode` on the core transport once one exists, and the inspector's **Room Code** otherwise. `SessionId` reads `SessionDirectoryUnset` (`0`) when this peer holds no session, which is the case while `IsHostMigrationEnabled` is off or before hosting starts.
-
-## Join a session
-
-- **By room code:** set `RoomCode` before connecting. The peer joins that room and nothing else.
-- **By session id:** call `JoinSessionAsync(sessionId)`. It finds the session and joins whatever room it is in now.
-
-```csharp
-bool isJoined = await blitzRelayTransport.JoinSessionAsync(sessionId);
-```
-
-## Hand out a session id if the host can change
-
-A room code names one room on the relay. Every handover moves the session to a new room, so a room code goes stale when the host changes. A session id is registered with the newfarm directory and survives a handover, because a rejoining peer asks the directory, not the relay.
-
-Give players a room code only for a session that will never change host. Otherwise give them the session id.
-
-## Hand hosting to another peer
-
-To stop hosting without ending the match, call `TrySurrenderHostingSession()`. The session passes to whoever the directory elects next, and play does not stop.
+1. Add `LoopbackRelayNetworkTransport` to the `UnityCoreManager`'s GameObject, and leave **Automatic Start Mode** on the `UnityTransportManager` at `None`. The session calls start the server and client themselves.
+2. Leave **Is Host Migration Enabled** on. It also sets `ClientManager.DisconnectResetMode` to `RetainReceivedWorld`, so a client keeps its world when the host drops. See [Keeping the world across a disconnect](../../core-api/core/retaining-the-world-across-a-disconnect.md).
+3. Write a script that hosts in the main editor and joins in the clone, as below. Call `EnsureAddedAsync()` on the `UnityTransportManager` first, because the session calls refuse until the transport is added.
+4. Open the scene in a ParrelSync clone. See [Test with two editors](../../start-here/testing-with-two-editors.md).
+5. Press Play in the main editor first, so the relay and the directory are running, then in the clone.
+6. Hand the session over by calling `TrySurrenderHostingSession()` on the host. Once the clone hosts, stopping play in it tests a lost host. Stopping play in the main editor ends the session for everybody instead, because it runs the relay and the directory.
 
 ```csharp
-bool isSurrendered = blitzRelayTransport.TrySurrenderHostingSession();
+await unityTransportManager.EnsureAddedAsync();
+
+// In the main editor:
+bool isHosting = await loopbackRelayNetworkTransport.StartHostingSessionAsync();
+ulong sessionId = loopbackRelayNetworkTransport.SessionId;
+
+// In the clone, with the session id the main editor handed over:
+bool isJoined = await loopbackRelayNetworkTransport.JoinSessionAsync(sessionId);
 ```
 
-The component runs the handover itself through `Migration`, a `NewfarmHostMigration` it drives from its own `Update`. Once your game starts hosting or joins, election, adoption and finding the session's new location need nothing more from it. The elected peer adopts the world it was receiving and hosts it. Other peers rejoin the new host's room through the session id, the same way they joined.
+Pass the session id to the clone however suits the test, such as a file both editors read. In a game it travels through your own invite channel, such as a lobby or a friend list.
 
-## Keep Host Migration on
+Once a peer hosts or joins, the component runs every handover itself through a [`NewfarmHostMigration`](../../core-api/transports/newfarm-host-migration.md), which its `Migration` property returns. The elected peer adopts the world it was receiving and hosts it, and the others rejoin it by session id.
 
-`IsHostMigrationEnabled` (on by default) is what creates `Migration`. With it off, `StartHostingSessionAsync`, `JoinSessionAsync` and `TrySurrenderHostingSession` fail and log an error telling you to drive the `CoreManager` directly.
+The `RelaySession` demo under `Demos/Transports` does all of this, and hands its session id over in a file.
 
-Turning it on also sets `ClientManager.DisconnectResetMode` to `RetainReceivedWorld`, so a client keeps the world it received when its link to the server drops. The elected peer needs that world to adopt it. `RetainReceivedWorld` can be set in a Free build, but adopting the retained world needs Pro, so the Blitz Relay and Newfarm Migration assemblies do not compile against a Free `Nucleus.dll`.
+## Hand out the session id, not the room
 
-`SystemManager.RespawnWorldOnReconnectEnabled` changes only what happens when a client reconnects. The world is still kept when the link drops, and an elected peer still adopts it, but a peer that rejoins drops what it kept and rebuilds it from the new server instead of being relinked to it. That costs a spawn per object, and never keeps anything the new server does not know about.
+A room closes with the peer that opened it, so the room changes at every handover. The session id stays the same for the life of the session, so it is what players keep and share.
+
+## Without host migration
+
+With **Is Host Migration Enabled** off, or in a Free build, `StartHostingSessionAsync`, `JoinSessionAsync` and `TrySurrenderHostingSession` refuse with a logged error, and `SessionId` reads `UnsetSessionId` (`0`). Start the server through the `UnityTransportManager` instead, and start clients to join the room in **Room Id**.
+
+## Ship on the Steam transport
+
+The loopback relay never leaves this machine, so a shipped game needs a transport its players can reach. The Steam transport add-on, `SteamTransport`, reaches players by Steam ID or IP address and has the same `StartHostingSessionAsync`, `JoinSessionAsync`, `SessionId` and `TrySurrenderHostingSession`. It compiles when Steamworks.NET is installed. Its host migration is off by default, and it registers sessions with a newfarm directory at the address set on the component, so a shipped game runs a directory every player can reach.

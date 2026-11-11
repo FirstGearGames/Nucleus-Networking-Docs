@@ -10,11 +10,11 @@ Import the release's `.unitypackage` (**Assets > Import Package > Custom Package
 
 The folder holds:
 
-- `Nucleus.dll`, `CodeBoost.dll` and `SynapseSocket.dll`, each with a `.pdb` for debuggable stack traces.
+- `Nucleus.dll`, `CodeBoost.dll`, `SynapseSocket.dll` and `Newfarm.Client.dll`, each with a `.pdb` for debuggable stack traces.
 - `Nucleus.CodeAnalysis.SourceGenerators.dll`, the source generator that makes networked types compile. It has no `.pdb`.
-- `Nucleus.xml` and `SynapseSocket.xml`, which give your IDE hover docs for the public API.
+- `Nucleus.xml`, `SynapseSocket.xml` and `Newfarm.Client.xml`, which give your IDE hover docs for the public API.
 - `LICENSE.txt`, and `VERSION.txt`, which names the release.
-- An `Integrations` folder with four source trees, each its own assembly definition: `Unity`, `Blitz Relay`, `Newfarm Client` and `Newfarm Migration`.
+- An `Integrations` folder with two source trees, each its own assembly definition: `Unity` and `Loopback Relay`. Beside them, `Newfarm Server` holds the editor-only directory the loopback relay runs.
 
 The integration needs **Unity 6.5 (6000.5) or newer** and does not compile on older editors. An update never lowers that requirement.
 
@@ -39,7 +39,7 @@ If that `.meta` is overwritten or regenerated without the label, the project sti
 
 - `NUCLEUS_ADDRESSABLES` is set automatically when `com.unity.addressables` 1.19 or newer is installed.
 - `NUCLEUS_NAVMESH` is set automatically while Unity's AI module, `com.unity.modules.ai`, is enabled, as it is in a new project. Without it, `NetworkNavMeshAgent` is left out and the rest still compiles.
-- `BLITZ_RELAY` must be set in your project to compile the Blitz Relay transport.
+- `NUCLEUS_STEAMWORKS` is set automatically when Steamworks.NET is installed as a package, and compiles the Steam transport add-on, `SteamTransport`. If Steamworks.NET came in another way, add the define yourself.
 
 The main integration assembly is `Nucleus.Integrations.Unity.asmdef`, with its editor code in `Nucleus.Integrations.Unity.Editor.asmdef`. Every integration file is wrapped in:
 

@@ -13,10 +13,6 @@
     "href": "/docs/v1/core-api/transports/how-transports-work"
   },
   {
-    "slug": "blitz-relay-transport-component",
-    "title": "Blitz Relay Transport component"
-  },
-  {
     "slug": "hosting-topologies",
     "title": "Choosing a hosting topology",
     "href": "/docs/v1/core-api/transports/hosting-topologies"
@@ -36,6 +32,6 @@
   },
   {
     "slug": "relay-sessions",
-    "title": "Hosting and joining a relay session"
+    "title": "Testing host migration on one machine"
   }
 ]

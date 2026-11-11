@@ -71,7 +71,7 @@ title: "Component Index"
 | --- | --- |
 | `NetworkTransport` | Base for an Inspector-configurable transport component. |
 | `SynapseTransport` | Inspector-configurable component for the Synapse UDP transport: port, remote host, and timeouts. |
-| `BlitzRelayTransport` | Inspector-configurable component for the Blitz Relay transport, which carries a session through a relay. |
+| `LoopbackRelayNetworkTransport` | Inspector-configurable component for the loopback relay, which the main editor runs so host migration can be tested on one machine. |
 
 ## Bundles
 

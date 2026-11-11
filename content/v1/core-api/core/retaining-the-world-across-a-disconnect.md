@@ -68,4 +68,4 @@ coreManager.ServerManager.ClientAuthenticated += connection =>
 
 Treat `SessionId` as a secret shared only with the players. A directory cannot tell a peer that was told it from one that wasn't, so whoever holds it can generally take the session over.
 
-Reconnecting the survivors to the promoted host is covered in [Choosing a hosting topology](../transports/hosting-topologies.md) and [Relay transport](../transports/relay-transport.md).
+Reconnecting the survivors to the promoted host is covered in [Choosing a hosting topology](../transports/hosting-topologies.md).

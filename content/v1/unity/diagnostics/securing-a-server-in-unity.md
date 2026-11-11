@@ -38,7 +38,7 @@ To see what the socket refused, subscribe to `ViolationObserved` on the `Synapse
 
 ### Turn on the Unity Server Manager's limits for transports without their own
 
-The **Client Limits** section of the `UnityServerManager` inspector is **disabled by default**. These limits are checked on every packet a client sends, whatever the transport. Turn them on for a transport with no limits of its own, such as `BlitzRelayTransport`, or as a second line behind Synapse's.
+The **Client Limits** section of the `UnityServerManager` inspector is **disabled by default**. These limits are checked on every packet a client sends, whatever the transport. Turn them on for a transport with no limits of its own, or as a second line behind Synapse's.
 
 | Inspector field | Default | What it guards against |
 |---|---|---|

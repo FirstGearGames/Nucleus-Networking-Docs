@@ -318,7 +318,7 @@ Measuring starts 10 seconds after the client holds all 200 objects and lasts 60 
 
 ## Server CPU is measured by a monitor in the server process
 
-The server runs on an AWS c7i.large, capped at 60 frames per second, with 200 objects and again with 2,000. Its clients run on a separate machine and connect 0.3 seconds apart, 50 of them and then 200. Measuring starts 2 minutes after the last client connects and lasts 10 seconds. The monitor below measures the CPU time of the whole server process and divides it by the frames the server ran. A framework that cannot hold 30 ticks a second is marked as failed.
+The server runs on an AWS c7i.large, capped at 60 frames per second, with 200 objects and again with 2,000. Its clients run on a separate machine and connect 0.1 seconds apart, 50 of them and then 200. Measuring starts 10 seconds after all of that run's clients have connected and lasts 30 seconds. The monitor below measures the CPU time of the whole server process and divides it by the frames the server ran. A framework that cannot hold 30 ticks a second is marked as failed.
 
 :::hint type="info"
 Thank you to Kreyg for providing this CPU logger script.
@@ -333,7 +333,7 @@ using UnityEngine;
 using Debug = UnityEngine.Debug;
 
 /// <summary>
-/// Stack-agnostic CPU logger for headless runs. Warmup, then fixed windows, then everything is printed once at the end
+/// Stack-agnostic CPU logger for headless runs. Waits for every client to connect, then a grace period, then fixed windows, then everything is printed once at the end
 /// (per-window lines, mean and median), so logging never runs during a measured window.
 /// </summary>
 /// <remarks>
@@ -349,11 +349,14 @@ public class CpuLogger : MonoBehaviour
     [Tooltip("Label printed with the results, e.g. 'Purr Off 300 showcase'.")]
     private string _label = "run";
     [SerializeField]
-    [Tooltip("Seconds to wait before the first window, so spawning and JIT settle.")]
-    private float _warmupSeconds = 5f;
+    [Tooltip("Clients that must be connected before the grace period starts, e.g. 50 or 200.")]
+    private int _expectedClientCount = 50;
+    [SerializeField]
+    [Tooltip("Seconds to wait after every client connects before the first window, so spawning and JIT settle.")]
+    private float _graceSeconds = 10f;
     [SerializeField]
     [Tooltip("Length of each window, in seconds.")]
-    private float _windowSeconds = 20f;
+    private float _windowSeconds = 30f;
     [SerializeField]
     [Tooltip("How many windows to record. More windows make the median more robust to one-off spikes.")]
     private int _windowCount = 1;
@@ -375,10 +378,16 @@ public class CpuLogger : MonoBehaviour
         public double HeapMb;
     }
 
+    /// <summary>
+    /// Clients connected to the server. Each framework's probe sets this from its own connection events.
+    /// </summary>
+    public int ConnectedClientCount { get; set; }
+
     private Process _process;
     private WindowResult[] _results;
     private double[] _sortBuffer;
-    private float _startTime;
+    private float _allClientsConnectedTime;
+    private bool _isAllClientsConnected;
     private bool _isWarm;
     private bool _isDone;
     private int _windowIndex;
@@ -428,7 +437,6 @@ public class CpuLogger : MonoBehaviour
         _process = Process.GetCurrentProcess();
         _results = new WindowResult[_windowCount];
         _sortBuffer = new double[_windowCount];
-        _startTime = Time.realtimeSinceStartup;
 #if UNITY_STANDALONE_WIN && !UNITY_EDITOR
         // Busy-spin this thread for 100 ms wall time, three times; the fastest rate seen is the least preempted one.
         for (int attempt = 0; attempt < 3; attempt++)
@@ -454,9 +462,20 @@ public class CpuLogger : MonoBehaviour
 
         float now = Time.realtimeSinceStartup;
 
+        if (!_isAllClientsConnected)
+        {
+            if (ConnectedClientCount < _expectedClientCount)
+            {
+                return;
+            }
+
+            _isAllClientsConnected = true;
+            _allClientsConnectedTime = now;
+        }
+
         if (!_isWarm)
         {
-            if (now - _startTime < _warmupSeconds)
+            if (now - _allClientsConnectedTime < _graceSeconds)
             {
                 return;
             }
