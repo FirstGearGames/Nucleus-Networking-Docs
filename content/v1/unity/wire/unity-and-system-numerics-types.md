@@ -4,7 +4,7 @@ title: "Unity Types and System.Numerics"
 
 ## Declare members in System.Numerics, not UnityEngine
 
-Declare a networked member as `NetworkMember<System.Numerics.Vector3>`, never `NetworkMember<UnityEngine.Vector3>`. Nucleus applies its vector and rotation handling, such as interpolation and Divine projection, only to the `System.Numerics` types. A UnityEngine member still builds and replicates without any diagnostic, but as a plain struct with none of that handling, and a `UnityEngine.Quaternion` member sends more than it needs to.
+Declare a networked member as `NetworkMember<System.Numerics.Vector3>`, never `NetworkMember<UnityEngine.Vector3>`. Nucleus applies its vector and rotation handling, such as interpolation and Divine projection, only to the `System.Numerics` types. A UnityEngine member still builds and replicates, but as a plain struct with none of that handling, and a `UnityEngine.Quaternion` member sends more than it needs to. Set to `Divine`, it is sent as `Interval` and logs an error.
 
 Alias the `System.Numerics` type at the top of the file to avoid clashing with `UnityEngine.Vector3`, as the shipped `UnityNavMeshAgentComponent` does:
 
