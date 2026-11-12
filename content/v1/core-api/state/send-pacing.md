@@ -11,6 +11,8 @@ A `NetworkMember<T0>` uses one `TransmissionMode`, never both:
 
 Pick `Divine` for a value that moves smoothly, `Interval` otherwise.
 
+`Divine` works with whole-number and floating-point primitives, `Vector2`, `Vector3`, `Vector4`, `Vector2Int`, `Vector3Int32`, `Vector3Int64`, `Vector4Int`, `Quaternion`, `QuaternionInt16` and `QuaternionInt32`. A member of any other type set to `Divine` is sent as `Interval` and logs an error naming the type. Your own structs and classes are not supported yet; for any other type, the error links a form where you can request support.
+
 ## Choose a send interval
 
 `SendInterval` names a span rather than a tick count, so its meaning does not change with the tick rate:
