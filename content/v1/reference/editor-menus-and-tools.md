@@ -15,13 +15,13 @@ Log messages and dialogs name a build step by a path such as **Tools > Nucleus >
 
 ## Run a build step from the Build tab
 
-None of these steps runs at runtime, and each runs only when you click its button.
+None of these steps runs at runtime, and each runs only when you click its button or [call it from a build script](#run-the-rebuilds-from-a-build-script).
 
 ### Rebuild Network Prefab Collection
 
 Writes a `NetworkPrefabCollection` asset for every group of prefabs whose root carries a `NetworkSystemObject`, grouped by asset bundle. Prefabs with no asset bundle go into the base build's collection at `Assets/Resources/NetworkPrefabCollection.asset`.
 
-Nucleus's own test prefabs are always left out. Prefabs in a folder listed under **Excluded Folders**, just below the button, are left out too.
+Nucleus's own test prefabs are always left out. Prefabs in a folder listed under **Excluded Folders**, just below the button, are left out too. The list is saved in `ProjectSettings/NucleusPrefabCollectionSettings.asset`; commit that file so every machine and every build script leaves out the same folders.
 
 Each prefab is stamped with a local prefab id and a bundle id. A prefab that already has a valid, unique id keeps it; only a prefab with no id or a duplicated one gets a new id, and each renumbering logs a warning naming the prefab, the prefab that already holds the id, and the new id.
 
@@ -38,6 +38,24 @@ Records the scene id, path and content bundle of every scene enabled in Build Se
 ### Build Content Bundles
 
 Pro only. Runs the prefab collection and scene manifest rebuilds first, then builds every asset bundle a `NetworkPrefabCollection` is assigned to into `Assets/StreamingAssets`, and records each bundle's id and file name in `NetworkBundleManifest`.
+
+## Run the rebuilds from a build script
+
+The two rebuild steps are public static methods in the `Nucleus.Integrations.Unity.Editor` namespace, so an editor script or a CI job can run them without opening the Nucleus window.
+
+| Method | Same as |
+|---|---|
+| `NetworkPrefabCollectionBuilder.Rebuild()` | **Rebuild Network Prefab Collection** |
+| `NetworkSceneManifestBuilder.RebuildSceneManifest()` | **Rebuild Network Scene Manifest** |
+| `NetworkSceneManifestBuilder.RebuildWithPrefabCollection()` | Both, prefab collection first, the order **Build Content Bundles** uses |
+
+To run it from the command line, pass the method to Unity with `-executeMethod`:
+
+```bash
+Unity -batchmode -quit -projectPath <your project> -executeMethod Nucleus.Integrations.Unity.Editor.NetworkSceneManifestBuilder.RebuildWithPrefabCollection
+```
+
+If your CI fails a build on uncommitted changes, run this before that check. Anything the rebuild changes then shows up as a diff to commit, and the scene manifest rebuild before a player build finds nothing left to change.
 
 ## Some steps run on their own
 
