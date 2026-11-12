@@ -21,6 +21,8 @@ None of these steps runs at runtime, and each runs only when you click its butto
 
 Writes a `NetworkPrefabCollection` asset for every group of prefabs whose root carries a `NetworkSystemObject`, grouped by asset bundle. Prefabs with no asset bundle go into the base build's collection at `Assets/Resources/NetworkPrefabCollection.asset`.
 
+Nucleus's own test prefabs are always left out. Prefabs in a folder listed under **Excluded Folders**, just below the button, are left out too.
+
 Each prefab is stamped with a local prefab id and a bundle id. A prefab that already has a valid, unique id keeps it; only a prefab with no id or a duplicated one gets a new id, and each renumbering logs a warning naming the prefab, the prefab that already holds the id, and the new id.
 
 An error is logged when two collections resolve to the same prefab bundle, because the second to load is refused at runtime. Give each content bundle assembly its own `[NetworkBundle(n)]`.
@@ -39,7 +41,7 @@ Pro only. Runs the prefab collection and scene manifest rebuilds first, then bui
 
 ## Some steps run on their own
 
-- **Before every player build, a prefab check runs.** It fails the build when any networked prefab lacks the identity a rebuild would give it: no base collection, two collections sharing a prefab bundle, a prefab missing from its collection, a prefab with no id or a duplicated id, or a prefab stamped with a different bundle than its collection. The error lists every problem. Click **Rebuild** next to **Rebuild Network Prefab Collection** on the **Build** tab, then build every player you ship, server and client alike, again. The check never repairs prefabs itself.
+- **Before every player build, a prefab check runs.** It fails the build when any networked prefab lacks the identity a rebuild would give it: no base collection, two collections sharing a prefab bundle, a prefab missing from its collection, a prefab its collection lists but a rebuild would leave out, a prefab with no id or a duplicated id, or a prefab stamped with a different bundle than its collection. The error lists every problem. Click **Rebuild** next to **Rebuild Network Prefab Collection** on the **Build** tab, then build every player you ship, server and client alike, again. The check never repairs prefabs itself.
 - **Saving a scene assigns scene object ids.** A `NetworkSystemObject` whose `SceneObjectId` is unset or collides with another in the same scene gets the next free id; the first object holding a value keeps it.
 - **A scene gets its id as soon as it enters the build.** The scene manifest updates when the Build Settings scene list changes, when a scene asset is imported, moved or deleted, when Addressables entries change, and right before a player build. It logs only when something changed.
 
