@@ -21,7 +21,7 @@ None of these steps runs at runtime, and each runs only when you click its butto
 
 Writes a `NetworkPrefabCollection` asset for every group of prefabs whose root carries a `NetworkSystemObject`, grouped by asset bundle. Prefabs with no asset bundle go into the base build's collection at `Assets/Resources/NetworkPrefabCollection.asset`.
 
-Nucleus's own test prefabs are always left out. Prefabs in a folder listed under **Excluded Folders**, just below the button, are left out too. The list is saved in `ProjectSettings/NucleusPrefabCollectionSettings.asset`; commit that file so every machine and every build script leaves out the same folders.
+Nucleus's own test prefabs are always left out. Prefabs in a folder listed under **Excluded Folders**, just below the button, are left out too. Add a row with **+**, then type the folder's path relative to the project, such as `Assets/Prototypes`, and press Enter, or click **...** to pick the folder. A folder picked or pasted as a full path is stored relative to the project, and a path that is not a folder in the project is refused with a warning in the Console. The list is saved in `ProjectSettings/NucleusPrefabCollectionSettings.asset`; commit that file so every machine and every build script leaves out the same folders.
 
 Each prefab is stamped with a local prefab id and a bundle id. A prefab that already has a valid, unique id keeps it; only a prefab with no id or a duplicated one gets a new id, and each renumbering logs a warning naming the prefab, the prefab that already holds the id, and the new id.
 
