@@ -114,12 +114,6 @@ public delegate void PeerConnectionChangedHandler(Connection connection);
 
 These `TransportManager` events report peers the same way on a server, client or host. On a client, the `Connection` is a stand-in with no link behind it (`Connection.IsPeerStandIn`). `PeerConnectionDropped` fires while the `Connection` is still valid; clear anything that references it, and keep no reference after the handler returns.
 
-## Store a handle, not a Connection
+## Keep a Connection only while its peer is connected
 
-`Connection` objects are reused for later peers, so do not keep a reference. Read `LocalState`, `RemoteState` and `Transport` while you hold it, and store `Connection.Handle` (a `ConnectionHandle`) to remember the peer. A handle pairs the `Id` with a `Generation`, so a handle to a departed peer fails to resolve rather than naming whoever reused the `Id`:
-
-```csharp
-public bool TryGetConnection(ConnectionHandle connectionHandle, out Connection connection)
-```
-
-Resolve it each time you need it, and do not cache the `Connection` it returns either.
+`Connection` objects are reused for later peers. Keep one while its peer is connected and remove it from your collections in its disconnect event, as [Connections](../core/connections.md#remove-a-connection-from-your-collections-when-its-peer-leaves) describes. To recognize a player who reconnects, key on `Connection.Identity`.

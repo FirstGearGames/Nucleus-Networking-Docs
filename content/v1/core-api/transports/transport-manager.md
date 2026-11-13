@@ -37,17 +37,11 @@ bool added = await coreManager.TransportManager.TryAddTransportAsync(transport);
 ## Find a connection
 
 - `TryGetConnection(uint id, out Connection connection)` finds a connection by id, including a host's own client connection. Returns `false` for `Connection.UnsetId` and for an id this peer was never told about.
-- `TryGetConnection(ConnectionHandle connectionHandle, out Connection connection)` succeeds only while `connection.Generation` still matches `connectionHandle.Generation`. Ids and `Connection` instances are reused, so a bare id can later name a different peer. Store a handle to remember a peer longer than its link lasts.
 - `TryGetServerConnection(out Connection connection)` returns this peer's server connection.
 - `TryGetLocalClientConnection(out Connection connection)` returns this peer's client connection; a pure server has none and returns `false`.
 - `ActiveConnections` holds every `Connection` this peer knows. On the server, these are the connected remote clients. On a client, they are stand-ins for peers the server reported, never the local client itself.
 
-```csharp
-if (transportManager.TryGetConnection(storedHandle, out Connection connection))
-{
-    // connection is still the peer storedHandle was taken from.
-}
-```
+Ids and `Connection` instances are reused, so an id kept after its peer left can later name a different peer. See [Connections](../core/connections.md#remove-a-connection-from-your-collections-when-its-peer-leaves) for when to let go of one.
 
 ## Read the channel and transmission unit
 
