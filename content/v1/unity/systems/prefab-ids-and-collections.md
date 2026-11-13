@@ -12,6 +12,8 @@ You never assign prefab identity by hand. In the Nucleus window (**Tools > Nucle
 
 The rebuild finds every prefab with a `NetworkSystemObject`, groups them by the asset bundle Unity has them assigned to, and writes one `NetworkPrefabCollection` per group. The collection with no asset bundle (the one under `Resources`) is the base build's; a collection assigned to asset bundle `x` holds the prefabs assigned to `x`.
 
+The rebuild leaves out Nucleus's own test prefabs, because their scripts are not in a player build. To leave out your own prefabs, such as test prefabs, drag their folders into **Excluded Folders** under the rebuild button, then rebuild. The list is saved in `ProjectSettings`, so it never ships in a build.
+
 The rebuild stamps each prefab's `NetworkSystemObject` with a local prefab id and its collection's bundle id. This `(bundle id, local id)` pair is the prefab's identity on every peer. Every machine that rebuilds from the same assets gets the same result, and a rebuild never renumbers a prefab that already has a unique id, so adding a prefab never changes the id of one that already shipped.
 
 ## Fix a duplicated prefab id
@@ -23,6 +25,7 @@ A player build fails while any networked prefab has an identity a rebuild would 
 - a missing base collection,
 - two collections resolving to the same prefab bundle,
 - a prefab missing from its collection,
+- a prefab its collection lists but a rebuild would leave out, such as one in an excluded folder,
 - a prefab with no id, or with an id another prefab holds,
 - a prefab stamped with a different bundle than its collection.
 

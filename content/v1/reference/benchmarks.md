@@ -6,319 +6,266 @@ Every framework runs a tick rate of 30. The server and the client are separate s
 
 ## Every object runs the same movement script
 
-The bandwidth tests move their objects with this script, with linear motion on. Each object drifts in a straight line across a tilted belt while it spins, and reflects off the belt's rim. Each framework's own networked script runs it on the server, and the framework's transform component replicates it.
+The bandwidth and CPU tests move their objects with this script. Each object drifts in a straight line inside a sphere while it spins, and reflects off the sphere's edge. Each framework's own networked script runs it on the server once per network tick, and the framework's transform component replicates it.
 
-Each framework's spawner hands every object its place in the spawn order through `AssignNumber`, and that number decides how the object moves:
-
-- Half of the objects multiply their speed range by 5.
-- A quarter move like rigidbodies. Their speed and spin never settle: both glide from one end of their range to the other and back, 4 seconds each way, so they are always accelerating.
-- The other three quarters move like character controllers. At each bounce they take a new speed, spin speed and spin direction at once, and hold them until the next bounce.
-
-The two splits are interleaved, so half of the rigidbody quarter and half of the character controllers are fast. The same seed and numbers make the belt move the same way on every run.
+It draws no random numbers while moving. Every drift speed, spin speed and spin axis comes from tables of 300 entries, built once from fixed seeds, and every other drift speed in the table is 5 times faster. Each framework's spawner hands every object its place in the spawn order through `Number`: the object starts on that entry, takes the next entry at each bounce, and eases to it linearly over 3 seconds, counted in ticks. The same numbers give every object the same course on every run and every framework.
 
 ```csharp
 using UnityEngine;
 
-public class BeltedAsteroid : MonoBehaviour
+/// <summary>
+/// CPU benchmark only: moves an object only when the engine's tick calls <see cref="Tick"/>, so every engine does the same work per tick.
+/// The object drifts in a straight line and spins on its own axis, reflecting off a sphere of <see cref="Radius"/>. Drift and spin speeds
+/// come from two shared tables of <see cref="SpeedCount"/> predetermined entries: an object starts on the entry its number picks, at once
+/// begins easing to the next entry, and takes the next entry of both at every bounce, easing to them linearly over <see cref="RampSeconds"/>.
+/// The spin axis comes from a third table and switches to the new entry's axis at each bounce. Its whole course comes only from <see cref="Number"/>, so the
+/// same number gives the same course on every engine.
+/// </summary>
+public class CpuBenchMover : MonoBehaviour
 {
-    public const float MinimumSpeedRangeMultiplier = 1f;
-    public const float MaximumSpeedRangeMultiplier = 20f;
+    public const float Radius = 16f;
+    // The demo's movement speed range and multiplier: each speed is drawn between the two, and every odd entry multiplies both ends.
+    public const float MinimumSpeed = 0.5f;
+    public const float MaximumSpeed = 2f;
+    public const float SpeedRangeMultiplier = 5f;
+    // The demo's spin range, in degrees per second; spin is never multiplied.
+    public const float MinimumSpin = 5f;
+    public const float MaximumSpin = 65f;
+    public const int SpeedCount = 300;
+    public const float RampSeconds = 3f;
 
-    [SerializeField]
-    [Tooltip("Drift in a straight line and reflect off the belt's outer rim instead of orbiting the center.")]
-    private bool _isLinearMotion;
-    [SerializeField]
-    [Tooltip("The slowest self-spin a cube draws, in degrees per second.")]
-    private float _minimumRotationDegreesPerSecond = 5f;
-    [SerializeField]
-    [Tooltip("The fastest self-spin a cube draws, in degrees per second.")]
-    private float _maximumRotationDegreesPerSecond = 65f;
-    [SerializeField]
-    [Tooltip("The slowest ground speed a cube draws, in units per second: the drift speed in linear mode, the tangential speed in orbit mode.")]
-    private float _minimumMovementSpeed = 0.5f;
-    [SerializeField]
-    [Tooltip("The fastest ground speed a cube draws, in units per second: the drift speed in linear mode, the tangential speed in orbit mode.")]
-    private float _maximumMovementSpeed = 2f;
-    [SerializeField]
-    [Tooltip("The factor half of the asteroids multiply their movement speed range by, from 1 to 20. Applied once as each asteroid wakes.")]
-    private float _speedRangeMultiplier = 5f;
-    [SerializeField]
-    [Tooltip("How likely the ground speed is drawn near the maximum: 1 always picks the max, 0.5 draws uniformly.")]
-    private float _movementSpeedFullnessChance = 0.5f;
-    [SerializeField]
-    [Tooltip("How likely the self-spin speed is drawn near the maximum: 1 always picks the max, 0.5 draws uniformly.")]
-    private float _rotationSpeedFullnessChance = 0.5f;
-    [SerializeField]
-    [Tooltip("The seed of the whole belt. The same seed draws the same courses for every asteroid on every run; a different one draws a different belt.")]
-    private uint _seed = 1u;
+    // One table for every object, built once from a fixed seed, so half of its entries are multiplied and no random numbers are drawn
+    // while moving.
+    private static readonly float[] Speeds = BuildTable(2463534242u, MinimumSpeed, MaximumSpeed, SpeedRangeMultiplier);
+    private static readonly float[] Spins = BuildTable(88675123u, MinimumSpin, MaximumSpin, 1f);
+    private static readonly Vector3[] SpinAxes = BuildAxes(521288629u);
 
-    private float _orbitRadius;
-    private float _orbitHeight;
-    private float _orbitAngle;
-    private float _orbitAngularSpeed;
+    // RampSeconds in ticks, worked out on the first tick, so a ramp is a count of ticks rather than a time.
+    private static int _rampTicks;
+
+    private int _speedIndex;
+    private float _speed;
+    private float _spin;
+    // Added to _speed and _spin on each tick of a ramp, until _rampTicksLeft runs out; -1 starts a ramp on the next tick.
+    private float _speedStep;
+    private float _spinStep;
+    // This tick's rotation, and what it is multiplied by each tick of a ramp. Both turn about the same axis, so multiplying adds their
+    // angles: the spin ramps with one quaternion multiply per tick and no trigonometry outside a ramp's start and end.
+    private Quaternion _tickRotation;
+    private Quaternion _tickRotationStep;
+    private int _rampTicksLeft;
+    private Vector3 _direction;
     private Vector3 _spinAxis;
-    private SpeedRamp _rotationRamp;
-    private Vector2 _linearPosition;
-    private Vector2 _linearDirection;
-    private SpeedRamp _linearSpeedRamp;
-    private float _cubeMinimumMovementSpeed;
-    private float _cubeMaximumMovementSpeed;
-    private bool _isSpeedSnappedAtBounce;
-    private bool _isMovementSweepRising;
-    private bool _isSpinSweepRising;
-    private AsteroidRandom _random;
 
-    private static readonly Vector3 OrbitCenter = Vector3.zero;
-    private static readonly Quaternion BeltTilt = Quaternion.Euler(27f, 0f, 14f);
-    private const float BeltOuterRadius = 16f;
-    private const float SpeedSweepDuration = 4f;
-    private const float MinimumLinearStartRadiusFraction = 0.7f;
-    private const float MaximumLinearStartRadiusFraction = 0.97f;
-
-    public void AuthorityUpdate(float frameSeconds) => Advance(frameSeconds);
-
-    public void AuthorityTick(float stepSeconds) => Advance(stepSeconds);
-
-    public void AssignNumber(uint asteroidNumber) => SeedMotion(asteroidNumber);
-
-    private void Awake()
+    /// <summary>
+    /// Gives the object its number in the benchmark, picks its first speed from the table and places it at the start of its course. The spawner calls
+    /// this right after it instantiates the object.
+    /// </summary>
+    /// <param name="number">The object's number, unique within the run; the spawner's loop index.</param>
+    public void Number(uint number)
     {
-        SeedMotion((uint)transform.GetSiblingIndex());
+        // xorshift32 seeded from the number, so the course is identical on every engine and scripting backend.
+        uint state = number * 2654435761u + 1u;
+        // Start on the number's entry and head for the next one; the ramp starts on the first tick, once the tick interval is known.
+        _speedIndex = (int)(number % SpeedCount);
+        _speed = Speeds[_speedIndex];
+        _spin = Spins[_speedIndex];
+        _spinAxis = SpinAxes[_speedIndex];
+        _speedIndex = (_speedIndex + 1) % SpeedCount;
+        _rampTicksLeft = -1;
+
+        Vector3 position = new Vector3(Next(ref state) * 2f - 1f, Next(ref state) * 2f - 1f, Next(ref state) * 2f - 1f) * Radius * 0.5f;
+        _direction = UnitVector(ref state);
+        transform.SetPositionAndRotation(position, Quaternion.LookRotation(UnitVector(ref state)));
     }
 
-    private void SeedMotion(uint asteroidNumber)
+    /// <summary>
+    /// Advances the object by one tick.
+    /// </summary>
+    /// <param name="tickDelta">The engine's tick interval in seconds.</param>
+    public void Tick(float tickDelta)
     {
-        _random = AsteroidRandom.ForAsteroid(_seed, asteroidNumber);
-
-        float speedRangeMultiplier = asteroidNumber % 2u == 1u ? Mathf.Clamp(_speedRangeMultiplier, MinimumSpeedRangeMultiplier, MaximumSpeedRangeMultiplier) : 1f;
-        _cubeMinimumMovementSpeed = _minimumMovementSpeed * speedRangeMultiplier;
-        _cubeMaximumMovementSpeed = _maximumMovementSpeed * speedRangeMultiplier;
-        _isSpeedSnappedAtBounce = asteroidNumber / 2u % 4u != 0u;
-
-        _orbitHeight = _random.NextRange(minimum: -1.25f, maximum: 1.25f);
-        _rotationRamp.Reset(BiasedSpeed(ref _random, _minimumRotationDegreesPerSecond, _maximumRotationDegreesPerSecond, _rotationSpeedFullnessChance));
-        _spinAxis = _random.NextUnitVector();
-
-        if (_isLinearMotion)
+        if (_rampTicksLeft < 0)
+            StartRamp(tickDelta);
+        if (_rampTicksLeft > 0)
         {
-            float startAngle = _random.NextRange(minimum: 0f, maximum: 2f * Mathf.PI);
-            float startRadius = _random.NextRange(MinimumLinearStartRadiusFraction, MaximumLinearStartRadiusFraction) * BeltOuterRadius;
-            Vector2 radial = new(Mathf.Cos(startAngle), Mathf.Sin(startAngle));
-            _linearPosition = radial * startRadius;
-
-            _linearDirection = new(-radial.y, radial.x);
-            _linearSpeedRamp.Reset(BiasedSpeed(ref _random, _cubeMinimumMovementSpeed, _cubeMaximumMovementSpeed, _movementSpeedFullnessChance));
-
-            if (!_isSpeedSnappedAtBounce)
+            _speed += _speedStep;
+            _tickRotation = _tickRotationStep * _tickRotation;
+            // The last step lands exactly on the targets, so float drift never builds up.
+            if (--_rampTicksLeft == 0)
             {
-                bool isSweepStartedAtMaximum = asteroidNumber / 8u % 2u == 1u;
-                _linearSpeedRamp.Reset(isSweepStartedAtMaximum ? _cubeMaximumMovementSpeed : _cubeMinimumMovementSpeed);
-                _rotationRamp.Reset(isSweepStartedAtMaximum ? _maximumRotationDegreesPerSecond : _minimumRotationDegreesPerSecond);
-                _isMovementSweepRising = isSweepStartedAtMaximum;
-                _isSpinSweepRising = isSweepStartedAtMaximum;
+                _speed = Speeds[_speedIndex];
+                _spin = Spins[_speedIndex];
+                _tickRotation = Quaternion.AngleAxis(_spin * tickDelta, _spinAxis);
             }
-        }
-        else
-        {
-            _orbitRadius = _random.NextRange(minimum: 8f, maximum: BeltOuterRadius);
-            _orbitAngle = _random.NextRange(minimum: 0f, maximum: 2f * Mathf.PI);
-
-            _orbitAngularSpeed = BiasedSpeed(ref _random, _cubeMinimumMovementSpeed, _cubeMaximumMovementSpeed, _movementSpeedFullnessChance) / _orbitRadius;
-        }
-
-        transform.position = _isLinearMotion ? BeltWorldPosition(_linearPosition) : OrbitPosition();
-    }
-
-    private void Advance(float deltaSeconds)
-    {
-        if (_isLinearMotion)
-            DriveLinearMotion(deltaSeconds);
-        else
-            DriveOrbitMotion(deltaSeconds);
-
-        _rotationRamp.Advance(deltaSeconds);
-
-        if (_isLinearMotion && !_isSpeedSnappedAtBounce)
-            ContinueSweep(ref _rotationRamp, ref _isSpinSweepRising, _minimumRotationDegreesPerSecond, _maximumRotationDegreesPerSecond);
-
-        transform.Rotate(_spinAxis * (_rotationRamp.Current * deltaSeconds), Space.Self);
-    }
-
-    private void DriveOrbitMotion(float deltaSeconds)
-    {
-        _orbitAngle += _orbitAngularSpeed * deltaSeconds;
-        transform.position = OrbitPosition();
-    }
-
-    private void DriveLinearMotion(float deltaSeconds)
-    {
-        _linearSpeedRamp.Advance(deltaSeconds);
-
-        if (!_isSpeedSnappedAtBounce)
-            ContinueSweep(ref _linearSpeedRamp, ref _isMovementSweepRising, _cubeMinimumMovementSpeed, _cubeMaximumMovementSpeed);
-
-        _linearPosition += _linearDirection * (_linearSpeedRamp.Current * deltaSeconds);
-
-        float distance = _linearPosition.magnitude;
-
-        if (distance > BeltOuterRadius)
-        {
-            Vector2 normal = _linearPosition / distance;
-            _linearDirection = Vector2.Reflect(_linearDirection, normal);
-            _linearPosition = normal * BeltOuterRadius;
-
-            if (_isSpeedSnappedAtBounce)
+            else
             {
-                _rotationRamp.Reset(BiasedSpeed(ref _random, _minimumRotationDegreesPerSecond, _maximumRotationDegreesPerSecond, _rotationSpeedFullnessChance));
-                _spinAxis = _random.NextUnitVector();
-                _linearSpeedRamp.Reset(BiasedSpeed(ref _random, _cubeMinimumMovementSpeed, _cubeMaximumMovementSpeed, _movementSpeedFullnessChance));
+                _spin += _spinStep;
             }
         }
 
-        transform.position = BeltWorldPosition(_linearPosition);
-    }
-
-    private Vector3 OrbitPosition() =>
-        BeltWorldPosition(new(Mathf.Cos(_orbitAngle) * _orbitRadius, Mathf.Sin(_orbitAngle) * _orbitRadius));
-
-    private Vector3 BeltWorldPosition(Vector2 planePosition) =>
-        OrbitCenter + BeltTilt * new Vector3(planePosition.x, _orbitHeight, planePosition.y);
-
-    private static float BiasedSpeed(ref AsteroidRandom asteroidRandom, float minimumSpeed, float maximumSpeed, float fullnessChance)
-    {
-        if (fullnessChance >= 1f)
-            return maximumSpeed;
-
-        if (fullnessChance <= 0f)
-            return minimumSpeed;
-
-        float exponent = (1f - fullnessChance) / fullnessChance;
-        float fraction = Mathf.Pow(asteroidRandom.NextSingle(), exponent);
-
-        return Mathf.Lerp(minimumSpeed, maximumSpeed, fraction);
-    }
-
-    private static void ContinueSweep(ref SpeedRamp speedRamp, ref bool isSweepRising, float minimumSpeed, float maximumSpeed)
-    {
-        if (!speedRamp.IsSettled)
-            return;
-
-        isSweepRising = !isSweepRising;
-        speedRamp.SetTarget(isSweepRising ? maximumSpeed : minimumSpeed, SpeedSweepDuration);
-    }
-
-    private struct SpeedRamp
-    {
-        public float Current { get; private set; }
-        public bool IsSettled => _elapsedSeconds >= _durationSeconds;
-
-        private float _startValue;
-        private float _targetValue;
-        private float _elapsedSeconds;
-        private float _durationSeconds;
-
-        public void Reset(float value)
+        Vector3 position = transform.position + _direction * (_speed * tickDelta);
+        if (position.sqrMagnitude > Radius * Radius)
         {
-            _startValue = value;
-            _targetValue = value;
-            _elapsedSeconds = 0f;
-            _durationSeconds = 0f;
-            Current = value;
+            _direction = Vector3.Reflect(_direction, position.normalized);
+            position = position.normalized * Radius;
+            // The next drift and spin speeds in the tables, reached over RampSeconds from wherever the current ramp has got to.
+            _speedIndex = (_speedIndex + 1) % SpeedCount;
+            _spinAxis = SpinAxes[_speedIndex];
+            StartRamp(tickDelta);
         }
-
-        public void SetTarget(float target, float durationSeconds)
-        {
-            _startValue = Current;
-            _targetValue = target;
-            _elapsedSeconds = 0f;
-            _durationSeconds = durationSeconds;
-        }
-
-        public void Advance(float deltaTime)
-        {
-            if (IsSettled)
-            {
-                Current = _targetValue;
-
-                return;
-            }
-
-            _elapsedSeconds += deltaTime;
-            Current = Mathf.Lerp(_startValue, _targetValue, Mathf.Clamp01(_elapsedSeconds / _durationSeconds));
-        }
-    }
-}
-```
-
-```csharp
-using UnityEngine;
-
-public struct AsteroidRandom
-{
-    private ulong _state;
-    private ulong _increment;
-
-    private const ulong Multiplier = 6364136223846793005UL;
-
-    public AsteroidRandom(ulong initialState, ulong sequence)
-    {
-        _state = 0UL;
-        _increment = (sequence << 1) | 1UL;
-
-        NextUInt32();
-
-        _state += initialState;
-
-        NextUInt32();
+        transform.SetPositionAndRotation(position, _tickRotation * transform.rotation);
     }
 
-    public uint NextUInt32()
+    // Eases from the current drift and spin to the entry at _speedIndex over RampSeconds, counted in ticks.
+    private void StartRamp(float tickDelta)
     {
-        ulong previousState = _state;
-        _state = unchecked((previousState * Multiplier) + _increment);
-
-        uint xorShifted = (uint)(((previousState >> 18) ^ previousState) >> 27);
-        int rotation = (int)(previousState >> 59);
-
-        return (xorShifted >> rotation) | (xorShifted << ((-rotation) & 31));
+        if (_rampTicks == 0)
+            _rampTicks = Mathf.Max(1, Mathf.RoundToInt(RampSeconds / tickDelta));
+        _speedStep = (Speeds[_speedIndex] - _speed) / _rampTicks;
+        _spinStep = (Spins[_speedIndex] - _spin) / _rampTicks;
+        _rampTicksLeft = _rampTicks;
+        // The rotation is from the current spin, about the axis just switched to; the step adds one tick's worth of spin change per tick.
+        _tickRotation = Quaternion.AngleAxis(_spin * tickDelta, _spinAxis);
+        _tickRotationStep = Quaternion.AngleAxis(_spinStep * tickDelta, _spinAxis);
     }
 
-    public float NextSingle() => (NextUInt32() >> 8) * (1f / 16777216f);
-
-    public float NextRange(float minimum, float maximum) => minimum + ((maximum - minimum) * NextSingle());
-
-    public Vector3 NextUnitVector()
+    // Each entry drawn between minimum and maximum from a fixed seed; every odd entry is multiplied by oddMultiplier.
+    private static float[] BuildTable(uint seed, float minimum, float maximum, float oddMultiplier)
     {
-        float height = (2f * NextSingle()) - 1f;
-        float angle = 2f * Mathf.PI * NextSingle();
-        float radius = Mathf.Sqrt(Mathf.Max(0f, 1f - (height * height)));
-
-        return new(radius * Mathf.Cos(angle), radius * Mathf.Sin(angle), height);
+        float[] table = new float[SpeedCount];
+        uint state = seed;
+        for (int index = 0; index < SpeedCount; index++)
+            table[index] = Mathf.Lerp(minimum, maximum, Next(ref state)) * (index % 2 == 1 ? oddMultiplier : 1f);
+        return table;
     }
 
-    public static AsteroidRandom ForAsteroid(uint seed, uint asteroidIndex) => new(Mix(((ulong)seed << 32) | asteroidIndex), asteroidIndex);
-
-    private static ulong Mix(ulong value)
+    private static Vector3[] BuildAxes(uint seed)
     {
-        unchecked
-        {
-            value += 0x9E3779B97F4A7C15UL;
-            value = (value ^ (value >> 30)) * 0xBF58476D1CE4E5B9UL;
-            value = (value ^ (value >> 27)) * 0x94D049BB133111EBUL;
+        Vector3[] axes = new Vector3[SpeedCount];
+        uint state = seed;
+        for (int index = 0; index < SpeedCount; index++)
+            axes[index] = UnitVector(ref state);
+        return axes;
+    }
 
-            return value ^ (value >> 31);
-        }
+    // A value in [0, 1).
+    private static float Next(ref uint state)
+    {
+        state ^= state << 13;
+        state ^= state >> 17;
+        state ^= state << 5;
+        return (state >> 8) * (1f / 16777216f);
+    }
+
+    private static Vector3 UnitVector(ref uint state)
+    {
+        float z = Next(ref state) * 2f - 1f;
+        float angle = Next(ref state) * 2f * Mathf.PI;
+        float r = Mathf.Sqrt(1f - z * z);
+        return new Vector3(r * Mathf.Cos(angle), r * Mathf.Sin(angle), z);
     }
 }
 ```
 
 ## Bandwidth is counted by a relay on the client's machine
 
-Measuring starts 10 seconds after the client holds all 200 objects and lasts 60 seconds. Positions and rotations are replicated at a precision of 0.001 and accurate to the tick. The server and one client run on the same machine, both capped at 90 frames per second, and a relay between them delays every packet by 75 ms each way, a 150 ms round trip. The relay counts every byte and packet the server sends. The bytes counted are divided by the 60 seconds, the 200 objects and the 30 ticks a second, which gives bytes per object, per tick.
+Measuring starts 10 seconds after the client holds all 200 objects and lasts 120 seconds. Positions and rotations are replicated at a precision of 0.001 and accurate to the tick. The server and one client run on the same machine, both capped at 90 frames per second, and a relay between them delays every packet by 85 ms each way, a 170 ms round trip. The relay counts every byte and packet the server sends. The bytes counted are divided by the 120 seconds, the 200 objects and the 30 ticks a second, which gives bytes per object, per tick.
 
 ## Server CPU is measured by a monitor in the server process
 
-The server runs on an AWS c7i.large, capped at 60 frames per second, with 200 objects and again with 2,000. Its clients run on a separate machine and connect 0.1 seconds apart, 50 of them and then 200. Measuring starts 10 seconds after all of that run's clients have connected and lasts 30 seconds. The monitor below measures the CPU time of the whole server process and divides it by the frames the server ran. A framework that cannot hold 30 ticks a second is marked as failed.
+The server runs on an AWS c7i.large, capped at 60 frames per second, with 300 objects and again with 2,000. Its clients run on a separate machine and connect 0.3 seconds apart, 50 of them and then 150. Measuring starts 45 seconds after the server counts all of that run's clients as connected and lasts 30 seconds. The monitor below measures the CPU time of the whole server process and divides it by the frames the server ran. A framework that cannot hold 30 ticks a second, or that does not get every client connected and holding its objects, is marked as failed.
+
+Each client observes half of the objects, never all of them. Which half is a seeded random pick, so it is the same on every run and on every framework:
+
+- An object's number is its place in the spawn order, read from the framework's own network id.
+- A client's seed is the order it first reaches the server's visibility check: the first client is seed 1, the second seed 2, and so on. The server therefore holds the same set of halves on every run, which is all its CPU cost depends on.
+- Each half is exactly half of the objects, picked by a Fisher-Yates shuffle driven by SplitMix64.
+
+Every framework decides each client's half once, with its own visibility feature, when the client joins. Nothing re-checks it on a timer:
+
+| Framework | Visibility feature used |
+|---|---|
+| Nucleus | An interest condition on each object, with the manager's evaluation cadence switched off |
+| FishNet 5 | A Normal observer condition added to the ObserverManager's default conditions |
+| Mirror | A custom InterestManagement that never rebuilds on a timer |
+| NGO | `NetworkObject.CheckObjectVisibility` on each object |
+
+A client waits until it holds its half before the run counts it, and every run checks that each client ended up holding exactly half.
+
+```csharp
+using System;
+using System.Collections.Generic;
+
+/// <summary>
+/// Each client observes exactly half of the objects, a seeded random pick that is the same on every run and every framework.
+/// </summary>
+public static class BeltBenchInterest
+{
+    private static readonly Dictionary<object, bool[]> SetsByClient = new();
+
+    /// <summary>
+    /// The number of objects a peer waits for before it starts: half on a client, all of them on the server.
+    /// </summary>
+    public static int ExpectedObjects(int count, bool isClient) => isClient ? count / 2 : count;
+
+    /// <summary>
+    /// Whether the client behind clientKey observes the object at objectNumber. A new client takes the next seed.
+    /// </summary>
+    public static bool IsObserved(object clientKey, int objectNumber, int count)
+    {
+        if (!SetsByClient.TryGetValue(clientKey, out bool[] observed))
+        {
+            observed = CreateSet(SetsByClient.Count + 1, count);
+            SetsByClient.Add(clientKey, observed);
+        }
+
+        return (uint)objectNumber < (uint)observed.Length && observed[objectNumber];
+    }
+
+    /// <summary>
+    /// Ranks network ids in ascending order, which is spawn order on every framework, so the rank is the object's number.
+    /// </summary>
+    public static Dictionary<T, int> RankBySpawnOrder<T>(IEnumerable<T> objects, Func<T, ulong> networkId)
+    {
+        List<T> sorted = new(objects);
+        sorted.Sort((a, b) => networkId(a).CompareTo(networkId(b)));
+        Dictionary<T, int> ranks = new(sorted.Count);
+        for (int index = 0; index < sorted.Count; index++)
+            ranks[sorted[index]] = index;
+
+        return ranks;
+    }
+
+    /// <summary>
+    /// Exactly half of count objects, picked by a Fisher-Yates shuffle driven by SplitMix64 from seed.
+    /// </summary>
+    public static bool[] CreateSet(int seed, int count)
+    {
+        int[] order = new int[count];
+        for (int index = 0; index < count; index++)
+            order[index] = index;
+
+        ulong state = (ulong)seed * 0x9E3779B97F4A7C15UL;
+        for (int index = count - 1; index > 0; index--)
+        {
+            state += 0x9E3779B97F4A7C15UL;
+            ulong mixed = state;
+            mixed = (mixed ^ (mixed >> 30)) * 0xBF58476D1CE4E5B9UL;
+            mixed = (mixed ^ (mixed >> 27)) * 0x94D049BB133111EBUL;
+            mixed ^= mixed >> 31;
+            int swapIndex = (int)(mixed % (ulong)(index + 1));
+            (order[index], order[swapIndex]) = (order[swapIndex], order[index]);
+        }
+
+        bool[] observed = new bool[count];
+        for (int index = 0; index < count / 2; index++)
+            observed[order[index]] = true;
+
+        return observed;
+    }
+}
+```
 
 :::hint type="info"
 Thank you to Kreyg for providing this CPU logger script.
@@ -349,11 +296,11 @@ public class CpuLogger : MonoBehaviour
     [Tooltip("Label printed with the results, e.g. 'Purr Off 300 showcase'.")]
     private string _label = "run";
     [SerializeField]
-    [Tooltip("Clients that must be connected before the grace period starts, e.g. 50 or 200.")]
+    [Tooltip("Clients that must be connected before the grace period starts, e.g. 50 or 150.")]
     private int _expectedClientCount = 50;
     [SerializeField]
     [Tooltip("Seconds to wait after every client connects before the first window, so spawning and JIT settle.")]
-    private float _graceSeconds = 10f;
+    private float _graceSeconds = 45f;
     [SerializeField]
     [Tooltip("Length of each window, in seconds.")]
     private float _windowSeconds = 30f;

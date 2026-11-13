@@ -35,14 +35,14 @@ _coinComponent.MembersChanged -= OnCoinMembersChanged;
 
 ## Find which member changed
 
-Every `NetworkComponent` gets a generated `[Flags] enum <ComponentName>Flags : ulong`, one value per member in declaration order. Cast `memberFlags` to it and test the bits you need:
+Every `NetworkComponent` gets a generated `[Flags] enum <ComponentName>Flags : ulong`, one value per member in declaration order. The enum is nested inside the component, so a MonoBehaviour names it through the component, as `CoinComponent.CoinComponentFlags`. Cast `memberFlags` to it and test the bits you need:
 
 ```csharp
 private void OnCoinMembersChanged(ulong memberFlags, MemberChangeDirection memberChangeDirection)
 {
-    CoinComponentFlags changed = (CoinComponentFlags)memberFlags;
+    CoinComponent.CoinComponentFlags changed = (CoinComponent.CoinComponentFlags)memberFlags;
 
-    if ((changed & CoinComponentFlags.Collector) != 0)
+    if ((changed & CoinComponent.CoinComponentFlags.Collector) != 0)
     {
         // React to the collector reference changing.
     }
