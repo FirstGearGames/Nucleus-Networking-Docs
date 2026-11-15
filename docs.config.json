@@ -14,8 +14,7 @@
     "/docs/v1/core-api/interest/spawn-pacing": "/docs/v1/core-api/core/object-pacing"
   },
   "announcement": {
-    "text": "See something wrong or missing? File an issue on [GitHub](https://github.com/FirstGearGames/Nucleus-Networking-Docs/issues).",
-    "dismissible": true
+    "text": "See something wrong or missing? File an issue on [GitHub](https://github.com/FirstGearGames/Nucleus-Networking-Docs/issues)."
   },
   "theme": {
     "_comment": "Edit these colors to restyle the entire docs site. All callout boxes, links, and accents derive from these values.",
