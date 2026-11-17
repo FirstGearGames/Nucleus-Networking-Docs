@@ -4,10 +4,10 @@ title: "Seeing Your Own Call: RpcSelfDelivery"
 
 ## RpcSelfDelivery decides whether a sender sees its own call
 
-`RpcSelfDelivery` is the last parameter of `NetworkSystem.TrySendRpc<T0>`. It controls only the sender's own view of the call; `RpcTarget` decides where the call goes.
+`RpcSelfDelivery` is an optional parameter of `NetworkSystem.TrySendRpc<T0>`. It controls only the sender's own view of the call; `RpcTarget` decides where the call goes.
 
 ```csharp
-public bool TrySendRpc<T0>(RpcTarget rpcTarget, Channel channel, T0 rpc, RpcSelfDelivery rpcSelfDelivery = RpcSelfDelivery.None) where T0 : IRpc, new()
+public bool TrySendRpc<T0>(RpcTarget rpcTarget, Channel channel, T0 rpc, RpcSelfDelivery rpcSelfDelivery = RpcSelfDelivery.None, RpcDispatch rpcDispatch = RpcDispatch.OnArrival) where T0 : IRpc, new()
 ```
 
 | Value | The sender's own handlers run |

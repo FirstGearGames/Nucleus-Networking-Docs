@@ -27,6 +27,7 @@ bool sent = TrySendRpc(RpcTarget.Observers, Channel.Reliable, new DamageRpc { Am
 - `RpcTarget` is who the call is for. See [Choosing Who Receives a Call](./rpc-targets.md).
 - `Channel` is kept whatever the call's size. See [Channels and What Is Guaranteed](./channels-and-delivery-guarantees.md).
 - `RpcSelfDelivery` (optional, `None` by default) decides whether this peer sees its own call. See [Seeing Your Own Call: RpcSelfDelivery](./rpc-self-delivery.md).
+- `RpcDispatch` (optional, `OnArrival` by default) decides on which tick the receiver runs the call. See [When a Message or Call Reaches Its Handler](./message-and-call-timing.md).
 
 A client cannot see the server's observers, so `true` from a client means the call was queued, not delivered.
 
