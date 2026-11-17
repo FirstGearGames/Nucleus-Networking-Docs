@@ -7,7 +7,7 @@ components: "LoopbackRelayNetworkTransport"
 
 ## What it runs
 
-While the scene plays, the main editor runs a relay inside its own process, on the loopback address. With host migration on, it also runs a newfarm directory beside it, which finds a session by its id and elects a new host when the old one goes. A ParrelSync clone runs neither and uses the main editor's.
+While the scene plays, the main editor runs a relay inside its own process, on the loopback address. With host migration on, it also runs a newfarm directory beside it, which finds a session by its id and elects a new host when the old one goes. A second editor, either a ParrelSync clone or a Multiplayer Play Mode player, runs neither and uses the main editor's.
 
 No editor listens for another. Every editor connects out to the relay, and the one hosting is the one holding a room. The relay numbers rooms from 1 as it opens them.
 
