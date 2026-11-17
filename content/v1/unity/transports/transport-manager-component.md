@@ -12,7 +12,7 @@ components: "UnityTransportManager"
 | Field | Default | Description |
 |---|---|---|
 | Default Channel | `Channel.Unreliable` | The channel a send takes when it names none. |
-| Automatic Start Mode | `None` | What to start as when play begins: `None`, `Server`, `Client`, `Host` or `Auto`. `Auto` starts as a client in a ParrelSync clone or when another process already holds the server port, and as a host otherwise. The core manager has no equivalent. |
+| Automatic Start Mode | `None` | What to start as when play begins: `None`, `Server`, `Client`, `Host` or `Auto`. `Auto` starts as a client in a ParrelSync clone or a Multiplayer Play Mode player, or when another process already holds the server port, and as a host otherwise. The core manager has no equivalent. |
 | Simulated Network Conditions | off | Latency, jitter and loss to simulate on every transport. See [Simulating a bad connection in the editor](./simulating-bad-connections-unity.md). |
 
 ## Transport components are found for you

@@ -12,9 +12,11 @@ Set **Automatic Start Mode** on `UnityTransportManager`, shown as **Start On Pla
 - `Server`: starts every transport as a server.
 - `Client`: starts every transport as a client, connecting to its configured remote host.
 - `Host`: starts every transport as both a server and a client in one process.
-- `Auto`: starts as a client in a ParrelSync clone or when another process already holds the server port, and as a host otherwise.
+- `Auto`: starts as a client in a second editor, which is a ParrelSync clone or a Multiplayer Play Mode player, or when another process already holds the server port, and as a host otherwise.
 
-To get two editors talking, set one to `Server` or `Host` and the other to `Client`, or set both to `Auto`, and press Play in each.
+To get two editors talking, set one to `Server` or `Host` and the other to `Client`, or set both to `Auto`, and press Play in each. See [Test with two editors](../../start-here/testing-with-two-editors.md).
+
+Your own scripts can ask the same question through `NucleusUnity.IsSecondaryEditor`. It is true in a ParrelSync clone or a Multiplayer Play Mode player, and false in the main editor and in a build.
 
 ## Start from code
 
