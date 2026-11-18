@@ -13,7 +13,7 @@ It lives in `Nucleus.dll`, in the `Nucleus.Integrations.Newfarm` namespace.
 | `LoopbackRelaySessionHost` | The loopback relay, for testing on one machine | `loopback-relay` | The room number. |
 | `SteamSessionHost` | The Steam transport add-on | `steam-id` or `steam-ip` | The hosting account's Steam ID, or an address and port, depending on the transport's addressing. |
 
-The Unity components `LoopbackRelayNetworkTransport` and `SteamTransport` create theirs for you.
+The Unity components `LoopbackRelayHostMigration` and `SteamHostMigration` create theirs for you. To use a session host of your own in Unity, derive from `NetworkHostMigration` and return it from `CreateSessionHost`; see [Testing host migration on one machine](../../unity/transports/relay-sessions.md).
 
 ## Members
 

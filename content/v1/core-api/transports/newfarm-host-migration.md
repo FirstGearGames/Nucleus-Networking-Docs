@@ -2,7 +2,7 @@
 title: "NewfarmHostMigration"
 ---
 
-> **Using Unity?** `LoopbackRelayNetworkTransport` and `SteamTransport` create and poll a `NewfarmHostMigration` for you. See [Testing host migration on one machine](../../unity/transports/relay-sessions.md).
+> **Using Unity?** A host migration component beside the transport, `LoopbackRelayHostMigration` or `SteamHostMigration`, creates and polls a `NewfarmHostMigration` for you. See [Testing host migration on one machine](../../unity/transports/relay-sessions.md).
 
 `NewfarmHostMigration` keeps a session going when the peer hosting it leaves. It registers the session with a newfarm directory, notices when the host goes, and then either takes the session over with the world this peer kept or rejoins the peer that did. Players find the session by a session id that stays the same for its whole life, while the address of whoever hosts it changes at every handover.
 
@@ -11,7 +11,7 @@ It lives in `Nucleus.dll`, in the `Nucleus.Integrations.Newfarm` namespace, and 
 ## What you need
 
 - Pro. With a free `Nucleus.dll`, `StartHostingAsync` and `JoinAsync` refuse: they log an error, raise `Abandoned` and return `false`. `ServerManager.IsHostMigrationAvailable` says which you have.
-- A newfarm directory server that every player can reach. Nucleus does not run one for you. In Unity, the loopback relay component runs one inside the main editor for testing.
+- A newfarm directory server that every player can reach. The public directory at `newfarm.nucleus-networking.com` (UDP port `47778`) is free to use, and it is where Unity's host migration components register by default. You can also run your own.
 - An `ISessionHost` for the service the session runs over.
 - `ClientManager.DisconnectResetMode` set to `DisconnectResetMode.RetainReceivedWorld` on every peer, so a survivor still holds the world when its link drops. Set it before the first link comes up.
 

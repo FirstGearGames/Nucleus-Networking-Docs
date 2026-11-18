@@ -24,6 +24,8 @@ title: "Component Index"
 | --- | --- |
 | `NetworkTransform` | Replicates a GameObject's position, rotation, and scale, in local or world space. |
 | `NetworkAnimator` | Replicates an `Animator`'s parameters, layer weights, and speed. |
+| `NetworkStateMachine` | A networked state machine whose states are components, predicted by the controller or run by the server. |
+| `MachineStateBehaviour` | The base of a state listed in a `NetworkStateMachine`. |
 | `NetworkNavMeshAgent` | Replicates a `NavMeshAgent` as the path leg it is walking rather than as its raw pose. |
 
 ## Scenes
@@ -72,6 +74,8 @@ title: "Component Index"
 | `NetworkTransport` | Base for an Inspector-configurable transport component. |
 | `SynapseTransport` | Inspector-configurable component for the Synapse UDP transport: port, remote host, and timeouts. |
 | `LoopbackRelayNetworkTransport` | Inspector-configurable component for the loopback relay, which the main editor runs so host migration can be tested on one machine. |
+| `NetworkHostMigration` | Base for host migration beside a transport: registers the session with a newfarm directory so it survives losing its host (Pro). |
+| `LoopbackRelayHostMigration` | Host migration over the loopback relay, for testing a handover between editors on one machine. |
 
 ## Bundles
 
