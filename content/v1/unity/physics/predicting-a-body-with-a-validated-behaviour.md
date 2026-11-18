@@ -145,6 +145,15 @@ Every validated behaviour has a **Send Interval** field. Set it before play; it 
 
 Short and Long only pace in Pro. A paced interval still sends on the tick the object's client state changes. If another script on the object has client state that never moves the body, such as a weapon's fire button, list it under **Ignored Behaviours** so its changes no longer send the body's results early.
 
+## Send less while the body moves steadily
+
+A validated transform or body also has a **Transmission Mode** field. Set it before play; it is read when the behaviour links.
+
+- **Interval** (default) sends the position and rotation at the Send Interval, like every other validated value.
+- **Divine** uses less bandwidth while the object moves steadily. On a validated rigidbody it covers the velocities too.
+
+Divine is a Pro feature; a Free build sends the values at the Send Interval whatever this says. The Send Interval still paces the values Transmission Mode does not cover, such as the scale and the sleep state.
+
 ## Let other clients predict the body too
 
 Tick **Predicted By Observers** on the object's `NetworkSystemObject` and observing clients predict it as its controller does, the validated system included. Use it for bodies that players collide with or push, including a server-owned body nobody controls, such as a ball every player can hit. The simulation must call `TryGetLastState` when `stepDelta.IsClientStateMissing` is true, since an observer never has the controller's client state in time. See [Prediction settings on the Unity manager](../control/prediction-settings-in-unity.md).
