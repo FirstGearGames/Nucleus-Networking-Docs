@@ -149,10 +149,10 @@ Short and Long only pace in Pro. A paced interval still sends on the tick the ob
 
 A validated transform or body also has a **Transmission Mode** field. Set it before play; it is read when the behaviour links.
 
-- **Interval** (default) sends the position and rotation at the Send Interval, like every other validated value.
-- **Divine** uses less bandwidth while the object moves steadily. On a validated rigidbody it covers the velocities too.
+- **Divine** (default) uses less bandwidth while the object moves steadily. On a validated rigidbody it covers the velocities too.
+- **Interval** sends the position and rotation at the Send Interval, like every other validated value.
 
-Divine is a Pro feature; a Free build sends the values at the Send Interval whatever this says. The Send Interval still paces the values Transmission Mode does not cover, such as the scale and the sleep state.
+Divine is a Pro feature; a Free build defaults to Interval and sends the values at the Send Interval whatever this says. The Send Interval still paces the values Transmission Mode does not cover, such as the scale and the sleep state.
 
 ## Let other clients predict the body too
 
