@@ -4,11 +4,11 @@ title: "Reconciliation and replay"
 
 > **Using Unity?** See [Replaying a correction in Unity](../../unity/control/reconcile-in-unity.md).
 
-The server orders a reconcile when it finds the controller's predicted result different from its own, when it re-anchors a stalled client, and when game code calls `SendReconcile`. The engine then restores the client's world to the server's values as of one tick, replays every tick since through the same fixed updates that produced them, and reports what changed. You write the simulation once; you do not write the replay.
+A client that predicts a system reconciles when a value the server sends differs from its own prediction for that tick. The server also orders a reconcile when it re-anchors a stalled client, and when game code calls `SendReconcile`. The engine then restores the client's world to the server's values as of one tick, replays every tick since through the same fixed updates that produced them, and reports what changed. You write the simulation once; you do not write the replay.
 
 ## What happens in one reconcile
 
-1. **Detect, on `LateStateUpdate`.** A reconcile the server ordered is recorded against the echoed client state tick as `MismatchCause.ServerOrdered`. An observer predicting a system records its own [compare](./prediction-history-and-predicted-members.md#an-observer-that-predicts-compares-for-itself) the same way. From then on, the server values to restore are fixed, so remote calls and `LateStateUpdate` callbacks that run before the `Reconcile` step cannot move them.
+1. **Detect, on `LateStateUpdate`.** A client predicting a system records its own [compare](./prediction-history-and-predicted-members.md#a-client-that-predicts-compares-the-servers-values-itself) of the server's values. A reconcile the server ordered is recorded against the echoed client state tick as `MismatchCause.ServerOrdered`. From then on, the server values to restore are fixed, so remote calls and `LateStateUpdate` callbacks that run before the `Reconcile` step cannot move them.
 2. **Restore, at the head of the `Reconcile` step,** before its callbacks. The start tick, the earliest tick any member recorded, is one tick for the whole world. Every predicted member of every system this client predicts takes its server value, its later history is cleared, and its value before the restore is kept as its pre-rewind value. A member the server has sent nothing for yet keeps its own history, rewound to the same tick. Systems this client does not control are held at their server values. `ReplayReport` lists the members whose restored value differs from what this client held for the start tick.
 3. **`ReconcileRequired`** is raised with the start tick on each restored system, in system Id order.
 4. **Replay.** `ReplayStarting` is raised on every system the replay covers. Then, for each tick from the start tick plus one to the live tick minus one, every restored system runs its early fixed update and then its late one as `SimulationType.Replayed`, in system Id order.
@@ -81,7 +81,7 @@ public partial class MoverComponent : NetworkComponent
 {
     // Client state: what the player asked for this tick.
     public readonly NetworkMember<Vector2> Direction = new(role: MemberRole.Predict);
-    // The result the controller predicts and the server checks.
+    // The result every peer computes. A predicting client compares it with the server's.
     public readonly NetworkMember<Vector3> Position = new(role: MemberRole.Validate, accuracy: 0.01f, correctionSmoothingTicks: 6);
 
     // Set by the game from the device on the controlling client.
@@ -241,7 +241,7 @@ public void EndReplayTick();
 1. For each tick from `rewoundTick + 1` up to the tick before the current one, call `BeginReplayTick(tick)`, re-simulate, then call `EndReplayTick()`. Inside the bracket, `Validate` members write that tick's value, `Predict` members read its client state, and `NetworkLoopManager.SimulationType` reads `Replayed`, so the refusals above apply.
 2. Apply the current tick's values normally.
 
-A write to a predicted member outside the bracket lands on the live value and breaks the next result check. Systems held for the reconcile stay held until the `Reconcile` step's callbacks have run.
+A write to a predicted member outside the bracket lands on the live value and breaks the next compare with the server's values. Systems held for the reconcile stay held until the `Reconcile` step's callbacks have run.
 
 ## Force a correction with SendReconcile
 
@@ -249,44 +249,10 @@ A write to a predicted member outside the bracket lands on the live value and br
 public void SendReconcile(Connection connection);
 ```
 
-`SendReconcile` pushes a system's complete current state to one connection, rather than waiting for the result check to find a difference. It is queued and sent to that connection at the end of the tick. Asking again for the same system and connection before then queues nothing more.
+`SendReconcile` pushes a system's complete current state to one connection, rather than waiting for the client to find a difference. It is queued and sent to that connection at the end of the tick. Asking again for the same system and connection before then queues nothing more.
 
 Only the server can call it. A client that tries is refused with a logged error, and nothing is queued.
 
-Use it when a gameplay event invalidates the controller's prediction in a way the result check would not catch: a teleport, a respawn, or a member change the client could not have predicted from its own client state. The engine also sends one itself for a `Validate` result that differs and when it re-anchors a stalled client.
+Use it when a gameplay event invalidates the controller's prediction in a way its `Validate` members would not show: a teleport, a respawn, or a member change the client could not have predicted from its own client state. The engine also sends one itself when it re-anchors a stalled client.
 
 On arrival it is recorded as `MismatchCause.ServerOrdered` and restores and replays like any other reconcile. The controller's `Predict` values for the start tick are replaced with the ones the server applied after validation, raising `OnMembersChanged` with `MemberChangeDirection.Correction` when they differ from its own.
-
-## Validate results the server found different
-
-When the server finds a controller's `MemberRole.Validate` result different from its own, it queues the correcting reconcile and raises `NetworkSystem.ResultMismatched` with a `ResultMismatchReport`:
-
-- `Connection`: the controller.
-- `Tick`: the server's tick the difference was found on.
-- `RemoteTick`: the controller's tick it pairs with, for matching what the client logged, never for timing.
-- `Members`: the members that differed, when `AreValuesSent` is true. Each answers `TryGetResultMismatchValues(out controllerValue, out serverValue)` until the tick advances.
-
-The values are available while the controller's `SystemManager.ResultValueSendEnabled` is set, the default. Turning it off in a release build saves bandwidth, and the report then shows only that a mismatch happened. No violation is raised, so what to do about the client is the game's call.
-
-Read the report inside the handler and keep no reference to it after the handler returns:
-
-```csharp
-using System.Numerics;
-using Nucleus.Components;
-using Nucleus.Systems;
-
-public sealed class ResultMismatchLogger
-{
-    // Server: subscribe once the system has started.
-    public void Watch(NetworkSystem networkSystem) => networkSystem.ResultMismatched += OnResultMismatched;
-
-    private void OnResultMismatched(ResultMismatchReport resultMismatchReport)
-    {
-        foreach (NetworkMemberBase networkMember in resultMismatchReport.Members)
-        {
-            if (networkMember is NetworkMember<Vector3> vectorMember && vectorMember.TryGetResultMismatchValues(out Vector3 controllerValue, out Vector3 serverValue))
-                System.Console.WriteLine($"Client {resultMismatchReport.Connection.Id}, its tick {resultMismatchReport.RemoteTick}: {networkMember.MemberName} was {controllerValue}, server had {serverValue}.");
-        }
-    }
-}
-```

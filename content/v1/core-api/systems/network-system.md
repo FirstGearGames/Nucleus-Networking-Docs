@@ -73,4 +73,4 @@ Logger<MyType>.LogInformation($"System: [{system.AsString()}]");
 | Interest | Observer registration and what a connection is served. |
 | RPCs | `IRpcScope`, `RpcSendAccess`, and remote calls scoped to a system. |
 | Client state | `MemberRole.Predict` members, sent by the controlling client every tick. |
-| Reconcile | `ReconcileRequired`, `ResultMismatched`, the simulation callbacks and correcting predicted state. |
+| Reconcile | `ReconcileRequired`, the simulation callbacks and correcting predicted state. |

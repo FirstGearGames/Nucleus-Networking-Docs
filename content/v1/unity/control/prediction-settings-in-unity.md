@@ -16,7 +16,6 @@ Set a value only when the default does not fit. It must cover the worst round tr
 
 - A history that falls short logs a warning once per system saying the server's value was older than its history holds, and every outcome on that system then reconciles with `MismatchCause.HistoryMissing`.
 - Members take their history size when they initialize, so changing the value after objects have spawned does not resize existing members.
-- A member on a paced send interval keeps a longer history of its own, whatever this field says.
 
 ## Cap replay length from code
 
@@ -25,10 +24,6 @@ Set a value only when the default does not fit. It must cover the worst round tr
 ## Hold only nearby objects during a replay
 
 During a replay, every object the client does not control is held at the replay's start tick. **Replay Hold Radius** (`SystemManager.ReplayHoldRadius`) limits that to objects within the radius of a restored object. An object whose position cannot be read is always held, and only Pro reads positions. The default, 0, holds every object, and a negative value is corrected to 0.
-
-## Send Result Values
-
-**Send Result Values** (`SystemManager.ResultValueSendEnabled`, on by default) is read from the controlling client. While it is on, a server that finds a client's `MemberRole.Validate` result different reports which members differed and both values through `NetworkSystem.ResultMismatched`, and a member's `resultTolerance` applies. Off saves bandwidth on every tick, but the report then shows only that a mismatch happened and on which tick, and results are compared exactly. Turn it off for a release build if you do not need the values.
 
 ## Let observers predict an object
 

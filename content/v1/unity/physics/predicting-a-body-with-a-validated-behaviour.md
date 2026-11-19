@@ -4,7 +4,7 @@ title: "Predicting a body with a validated behaviour"
 
 > **Driving the core API directly?** See [Predicted members and prediction history](../../core-api/control/prediction-history-and-predicted-members.md) and [Reconciliation and replay](../../core-api/control/reconciliation.md).
 
-A validated behaviour lets the client that controls an object predict a Unity `Rigidbody`, transform or `CharacterController` from its own client state, while the server runs the same client state and checks the result. When the two disagree, the client is corrected and replays every tick since, physics included. You add the behaviour and write only the client state and the forces.
+A validated behaviour lets the client that controls an object predict a Unity `Rigidbody`, transform or `CharacterController` from its own client state, while the server runs the same client state and keeps its own result. When a value the server sends differs from the prediction, the client is corrected and replays every tick since, physics included. You add the behaviour and write only the client state and the forces.
 
 The `BallRacer` demo under `Demos/Tutorials` is the worked example: a ball a client steers left and right, with a local cheat key the server catches.
 
@@ -29,7 +29,7 @@ The behaviours live in the `Nucleus.Integrations.Unity.Prediction` namespace:
 | `ValidatedCharacterController` | Everything `ValidatedTransform` keeps, plus whether the controller is enabled. | Add `ValidatedCharacterControllerAdvanced` for height, center and radius. A replay does not restore the controller's velocity, grounded flag or collision flags, so keep your own velocity and grounded state as members. |
 | `ValidatedConstantForce`, `ValidatedConstantForce2D` | The force, relative force, torque and relative torque of a `ConstantForce`. | Add it beside the pushed body's `ValidatedRigidbody` or `ValidatedRigidbody2D`. |
 | `ReconciledAnimator` | Every animator parameter and layer weight, on this peer only. | It is a `NetworkAnimator` that also puts back the parameters of the restored tick before a replay, so a mispredicted trigger or bool does not stick. Use it instead of `NetworkAnimator` on a predicted object. A client-authoritative object keeps the plain `NetworkAnimator`. |
-| `ValidatedAnimator` | Up to 16 float, 16 int, 64 bool and 16 trigger parameters, 8 layer weights and the speed. | The server checks them, so use it when a parameter decides gameplay. Set parameters on the animator as usual and fire triggers through `ValidatedAnimator.SetTrigger`. Use it instead of `ReconciledAnimator` or `NetworkAnimator`, not beside them. |
+| `ValidatedAnimator` | Up to 16 float, 16 int, 64 bool and 16 trigger parameters, 8 layer weights and the speed. | The server computes them itself, so use it when a parameter decides gameplay. Set parameters on the animator as usual and fire triggers through `ValidatedAnimator.SetTrigger`. Use it instead of `ReconciledAnimator` or `NetworkAnimator`, not beside them. |
 | `ValidatedAnimatorRootMotion` | The base layer's playback. | It needs a `ReconciledAnimator` or a `ValidatedAnimator`. Use it when root motion decides where a character goes. It is the only one that declares no system of its own: list `ValidatedAnimatorRootMotionComponent` in the composition of the behaviour that sets the animator's parameters. It costs a full animator step for every replayed tick. |
 
 - Add only one of `ValidatedTransform`, `ValidatedRigidbody` or `ValidatedCharacterController` to an object. The body and controller versions already keep the transform's values.
@@ -135,24 +135,14 @@ A replay needs the default **NucleusPerTick** execution mode (see [Physics execu
 
 A held body is not rewound, so a predicted body that pushed it in the past can meet it in a different place.
 
-## Set how often results are sent
-
-Every validated behaviour has a **Send Interval** field. Set it before play; it is read when the behaviour links.
-
-- **Normal** (default) sends every tick. It is the best choice for competitive games.
-- **Short** sends less often, saving bandwidth and CPU at the cost of slightly more corrections.
-- **Long** sends least often, for casual or large-scale games.
-
-Short and Long only pace in Pro. A paced interval still sends on the tick the object's client state changes. If another script on the object has client state that never moves the body, such as a weapon's fire button, list it under **Ignored Behaviours** so its changes no longer send the body's results early.
-
 ## Send less while the body moves steadily
 
 A validated transform or body also has a **Transmission Mode** field. Set it before play; it is read when the behaviour links.
 
 - **Divine** (default) uses less bandwidth while the object moves steadily. On a validated rigidbody it covers the velocities too.
-- **Interval** sends the position and rotation at the Send Interval, like every other validated value.
+- **Interval** sends the position and rotation on every tick they change, like every other validated value.
 
-Divine is a Pro feature; a Free build defaults to Interval and sends the values at the Send Interval whatever this says. The Send Interval still paces the values Transmission Mode does not cover, such as the scale and the sleep state.
+Divine is a Pro feature; a Free build uses Interval whatever this says.
 
 ## Let other clients predict the body too
 
@@ -164,6 +154,6 @@ The body moves once per tick, and a correction moves it again. Put the renderer 
 
 ## Expect a rare correction
 
-The validated behaviours give their position, rotation and velocities a `resultTolerance`: a predicted value that close to the server's does not count as wrong. The server can only measure that distance while the controller's **Send Result Values** is on, which is the default; with it off, results are compared exactly and corrections are more frequent.
+The validated behaviours give their position, rotation and velocities a `resultTolerance`: a predicted value that close to the server's does not count as wrong.
 
-Watch `NetworkSystem.ReconcileCount` on the client and `Connection.ResultMismatchCount` on the server while you play with some latency. A correction now and then is normal. A count that climbs every tick means the client and the server step differently; see [Diagnosing desync](../diagnostics/diagnosing-desync.md).
+Watch `NetworkSystem.ReconcileCount` on the client while you play with some latency. A correction now and then is normal. A count that climbs every tick means the client and the server step differently; see [Diagnosing desync](../diagnostics/diagnosing-desync.md).

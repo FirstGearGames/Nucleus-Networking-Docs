@@ -10,7 +10,7 @@ This guide builds a predicted player: a character that walks and jumps the insta
 
 ## Prediction hides the round trip from the player who is driving
 
-With prediction, the client runs the movement code itself the moment a key is pressed, so the character moves at once instead of a round trip later. The server runs the same code with the same input and checks the client's answer. When they differ, the server sends its values, and Nucleus rewinds the client to the tick that went wrong and replays every tick since with the server's numbers.
+With prediction, the client runs the movement code itself the moment a key is pressed, so the character moves at once instead of a round trip later. The server runs the same code with the same input and sends its own answer. When it differs from the client's, Nucleus rewinds the client to the tick that went wrong and replays every tick since with the server's numbers.
 
 Prediction only helps the player who controls the object; everyone else sees the server's values. Read [When prediction is worth its cost](./when-prediction-is-worth-it.md) before predicting anything other than a player's own character.
 
@@ -21,7 +21,7 @@ Prediction is chosen per `NetworkMember<T0>`, with the `role` constructor argume
 | Role | What it holds | Who writes it |
 | --- | --- | --- |
 | `MemberRole.Predict` | What the player asked for this tick, such as a walk direction or a jump press. This is called client state. | The controlling client, on its live tick. The server receives it every tick. |
-| `MemberRole.Validate` | What the movement code works out from the client state, such as a position or a vertical speed. | Every peer that runs the movement code. The client's value is checked by the server and never trusted. |
+| `MemberRole.Validate` | What the movement code works out from the client state, such as a position or a vertical speed. | Every peer that runs the movement code. The server never takes the client's value; the client compares its own with the server's. |
 | `MemberRole.Replicate` (the default) | Anything only the server decides, such as health. | The server. |
 
 The usual predicted object uses all three. Nearly every prediction bug comes from a value in the wrong role.
@@ -59,7 +59,7 @@ namespace MyGame
 
 Three choices in this declaration matter:
 
-- **The walk direction is whole numbers.** It is a `CodeBoost.Types.Vector2Int` (not Unity's `Vector2Int`) whose axes are each -1, 0 or 1. A normalized float direction would be rounded on its way to the server, so the server would walk slightly differently and report a mismatch every tick. Send client state in a form that arrives exactly as written.
+- **The walk direction is whole numbers.** It is a `CodeBoost.Types.Vector2Int` (not Unity's `Vector2Int`) whose axes are each -1, 0 or 1. A normalized float direction would be rounded on its way to the server, so the server would walk slightly differently and the client would be corrected every tick. Send client state in a form that arrives exactly as written.
 - **The jump press is never carried forward.** `IsJumpPressed` is true only on the tick jump was pressed, and `isCarriedForward: false` keeps it false on a tick whose client state was lost, so the server never jumps twice for one press. A press lost with its packet is simply lost, and the server corrects the jump the client showed.
 - **Each float result has an accuracy.** A `Validate` member is only as precise as its `accuracy`, on both peers. Choose one your movement can tolerate; 0.01 is a centimetre for a position.
 
@@ -309,15 +309,12 @@ For a report of the whole correction, override `OnReplayCompleted` on the behavi
 - **Give the client control of its object.** Prediction runs only on the controller. `NetworkPlayerSpawner` hands each joining client its player; to do it yourself, see [Giving a client control of an object](./transferring-control-in-unity.md).
 - **Do not add a `NetworkTransform`.** The position is a `Validate` member this code replicates itself, and a `NetworkTransform` would fight it.
 - **Check Prediction History Ticks on the system manager.** The default keeps 64 ticks, about a second at 60 ticks per second, which covers most games. Very high latency needs more; see [Prediction settings on the Unity manager](./prediction-settings-in-unity.md).
-- **Turn off Send Result Values for a release build.** It lets the server name exactly what differed, which helps while you develop, but it costs bandwidth every tick.
 
 ## A healthy predicted object is corrected rarely
 
 Run the scene with some latency and watch the counters:
 
 - `NetworkSystem.ReconcileCount` on the client counts the corrections it applied.
-- `Connection.ResultMismatchCount` and `Connection.ReconcileSentCount` on the server count the results it found different and the corrections it ordered for that client.
-- `NetworkSystem.ResultMismatched` on the server reports which members differed and both values, while **Send Result Values** is on.
 
 With no packet loss and no server-only changes, the count should stay at zero while you walk and jump. A count that climbs every tick means the client and the server are not running the same code on the same numbers. Check these causes, most likely first:
 
