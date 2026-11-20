@@ -93,7 +93,7 @@ if (IsStarted(Invoker.Server))
     NetworkSystem.TrySetRpcAccess(RpcSendAccess.AnyClient);
 ```
 
-**Widen access only where every nearby player needs it,** such as a door anyone may open. `MemberWriteAccess.AnyClient` and `TrySetWriteAccess` are Pro. See [Letting clients set members](../../core-api/state/state-write-access.md) and [Who may send a call, and how many](../../core-api/messaging/rpc-send-access.md).
+**Widen access only where every nearby player needs it,** such as a door anyone may open. In Free, a write under `MemberWriteAccess.AnyClient` is a request the server answers a round trip later. See [Letting clients set members](../../core-api/state/state-write-access.md) and [Who may send a call, and how many](../../core-api/messaging/rpc-send-access.md).
 
 ### Validate every value a client is allowed to write
 

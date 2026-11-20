@@ -24,9 +24,9 @@ An id a client writes into a payload is only a claim. The sender a handler is gi
 
 ## Arbitration is not a security boundary
 
-In Pro, `MemberWriteAccess.AnyClient` lets every observer set a system's members, and arbitration picks which of several simultaneous writes wins. The pick is arbitrary but stable, and a client that keeps reconnecting to change its connection id can farm a favorable result. Arbitration does not decide whether a write should have been allowed. Where winning matters, put your own arbiter in game code on top of the access check.
+`MemberWriteAccess.AnyClient` lets every observer set a system's members, and arbitration picks which of several simultaneous writes wins. The pick is arbitrary but stable, and a client that keeps reconnecting to change its connection id can farm a favorable result. Arbitration does not decide whether a write should have been allowed. Where winning matters, put your own arbiter in game code on top of the access check.
 
-A Free build has no `MemberWriteAccess`. Only the controller may set a system's members, so there is nothing to arbitrate.
+This applies in both editions. In Free each such write is a request, and requests from several clients are arbitrated the same way.
 
 ## Nucleus does not encrypt traffic
 

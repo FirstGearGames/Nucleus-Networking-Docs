@@ -20,7 +20,7 @@ Each tick, `NetworkComponent.OnMembersChanged(ulong memberFlags, MemberChangeDir
 
 ## Only the controller writes by default
 
-`MemberWriteAccess.Controller`, the default, lets the server or the single controlling client set a system's members. Letting other observers write too (`MemberWriteAccess.AnyClient`) is a Pro option; see [Letting clients set members](../../core-api/state/state-write-access.md). A Free build has no `MemberWriteAccess` type, and only the controller writes.
+`MemberWriteAccess.Controller`, the default, lets the server or the single controlling client set a system's members. `MemberWriteAccess.AnyClient` lets other observers write too; in Free a non-controlling client's write is a request that lands on it only once the server answers. See [Letting clients set members](../../core-api/state/state-write-access.md).
 
 ## Four settings decide what a change costs
 

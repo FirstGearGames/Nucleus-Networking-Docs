@@ -21,8 +21,12 @@ You turn prediction on per member with the `role` argument of `NetworkMember<T0>
 Most objects need none of this:
 
 - **An uncontrolled object with interpolation.** No history, no result check, no replay. The receiver animates between the values it receives, paced by **State Interpolation** (`SystemManager.StateInterpolation`, at most `MaximumStateInterpolation`). This is the default for anything nobody drives.
-- **A controller-written value with no prediction.** The controller writes the member every tick, but its role stays `MemberRole.Replicate`, so the controller sees its own writes a round trip late, with no replay.
+- **A controller-written value with no prediction.** The controller writes the member every tick, but its role stays `MemberRole.Replicate`. Its writes land on it at once, with no replay, and the server judges each one through an `IMemberWriteValidator<T0>` instead of running the simulation.
 - **A purely local visual.** Particles, camera shake and UI feedback that only need to look right on one machine are not a `NetworkMember<T0>` at all, and cost nothing on the wire.
+
+## See all three side by side
+
+The `SimulationStyles` demo under `Demos/Prediction` drives three cubes from the same keys: one the server alone moves, one the client predicts and the server reconciles, and one the client moves itself while the server only judges each position. Press C to cheat and watch how each one answers.
 
 ## Choose prediction per member
 

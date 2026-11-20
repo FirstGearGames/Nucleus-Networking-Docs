@@ -23,8 +23,20 @@ The core steps no physics itself. An integration steps its physics world on `Sys
 Most objects need none of this. From cheapest:
 
 - **An uncontrolled object with interpolation.** No controller, no history beyond the current and previous values, no result check, no replay. The receiver animates between the values it receives, paced by `SystemManager.StateInterpolation` (0 by default, capped at `MaximumStateInterpolation`). This is the default for anything nobody drives.
-- **A controller-written value with no prediction.** The controller writes the member every tick, but its role stays `MemberRole.Replicate`. The controller sees its own writes a round trip late like everyone else, with no rewind and no replay. This is cheaper than prediction and more responsive than a value only the server writes.
+- **A controller-written value with no prediction.** The controller writes the member every tick, but its role stays `MemberRole.Replicate`. Its own writes land on it at once and reach everyone else a round trip later, with no rewind and no replay. The server never runs the simulation, so it can only judge each value through an `IMemberWriteValidator<T0>`. This is cheaper than prediction and more responsive than a value only the server writes.
 - **A purely local visual that is never replicated.** Particle effects, camera shake and UI feedback that only need to look right on the machine that triggered them are not a `NetworkMember<T0>` at all, cost nothing on the wire and need no reconciliation.
+
+## Compare the three ways to run an object a client drives
+
+| | Server-authoritative | Predicted | Controller-written |
+|---|---|---|---|
+| Members | client state `MemberRole.Predict`, result `MemberRole.Replicate` written by the server | client state `MemberRole.Predict`, result `MemberRole.Validate` | result `MemberRole.Replicate` written by the controller |
+| Who runs the simulation | the server | the controller and the server | the controller |
+| The controller sees its input | a round trip late | at once | at once |
+| A result the server disagrees with | cannot happen: the client sends only client state | reconciled to the server's result | declined by your validator and put back |
+| Server cost | runs the simulation | runs the simulation | runs your validator only |
+
+The Unity demo SimulationStyles runs all three side by side from the same keys, with a key that cheats.
 
 ## Choose prediction per member
 

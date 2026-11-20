@@ -34,6 +34,7 @@ These come from state, spawning, remote calls and lag compensation.
 | `UnauthorizedSpawnViolation` | `SystemId`, `SystemBundleId`, `SystemLocalId` | Whether that id was ever one the server despawned. A client re-sending a spawn the server just despawned raises nothing, so a raise means it was not. |
 | `RpcSendPermissionViolation` | `SystemId` | Whether permission was revoked while calls were still in flight; an honest client reaches this on that race alone. |
 | `RpcFloodViolation` | `ReceivedRpcCount`, `AllowedRpcCount` | `RpcManager.MaximumInboundRpcsPerConnectionPerDrain` against what the client really needs to send in one drain. |
+| `InvalidStateRequestViolation` | `SystemId`, `StateIndex` | Whether the client's build lists the same states as the server's. A client asking a replicated state machine for a state it does not hold raises this; one refused by the machine's request access raises nothing. |
 | `LagCompensationViewClampedViolation` | `ReportedTick`, `ClampedTick` | The shooter's latency against `LagCompensationManager.MaximumRewindMilliseconds`. The shot is still judged at the clamped tick, so only a steady stream from a client on a fast link suggests abuse. The type exists in both editions, but only Pro raises it. |
 
 ## Unreadable client data raises MalformedDataViolation
