@@ -35,23 +35,22 @@ The server checks every incoming write against its own `WriteAccess`. Nothing a 
 
 Every writer, the controller included, must observe the system. Losing interest in a system removes write permission at the same moment.
 
-## Tune how long a contested write shows locally
+## How a client's write lands depends on the edition
 
-So that a client does not see its own write bounce back as a correction, a losing or contested write keeps showing locally for a window before the server's value is accepted. Set the window per system:
+Both editions have `AnyClient`. They differ in what a client that may write, but does not control the system, sees when it sets a member:
 
-```csharp
-public uint MemberWriteConvergenceDeadlineTicks = UnsetConvergenceDeadlineTicks;
+- **Pro:** the value changes on that client at once, and the server corrects it if it disagrees.
+- **Free:** the write is a request. `Value` keeps its old value and no change callback fires on that client. The server applies the request under the same access check and validator as any write, and the result reaches the client like any other change, a round trip later. A request the server declines leaves nothing to undo.
 
-public const uint UnsetConvergenceDeadlineTicks = uint.MaxValue;
-```
+`NetworkSystem.IsMemberWriteRequested` is `true` on a client whose writes are requests. The controller sets its own members at once in both editions. The Unity demo WriteRequests shows which way a client's writes land and how long each answer takes.
 
-Left at `UnsetConvergenceDeadlineTicks`, the window follows the connection's measured round-trip time. Set `NetworkSystem.MemberWriteConvergenceDeadlineTicks` when that feels wrong: a shared UI value and a contested physics object want different windows.
+## A contested write shows locally until the server answers (Pro)
 
-## Write access beyond the controller is Pro
+So that a client does not see its own write bounce back as a correction, a losing or contested write keeps showing locally until the server's answer has had time to arrive, then the server's value is accepted.
 
-`MemberWriteAccess`, `NetworkSystem.WriteAccess`, `NetworkSystem.TrySetWriteAccess` and the convergence window are Pro. In Free, code naming them does not compile, and only the controller writes.
+In Free a requesting client never shows a value the server has not sent, so there is nothing to hold.
 
-Even with Pro:
+## Know these limits
 
 - A system holding a collection member cannot be widened past `Controller`.
 - A client write on a system with more than one possible writer costs more bandwidth than a write from a single controller.

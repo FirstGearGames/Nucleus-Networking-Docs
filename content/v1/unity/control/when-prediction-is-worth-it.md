@@ -12,8 +12,8 @@ With prediction, the controlling client applies its own input at once instead of
 
 You turn prediction on per member with the `role` argument of `NetworkMember<T0>`: client state declared `MemberRole.Predict` and results declared `MemberRole.Validate`. That costs:
 
-- **History.** Every client keeps `SystemManager.PredictionHistoryTicks` of history for a predicted member, or `SystemManager.DefaultPredictionHistoryTicks` (64) when that is unset. A member sent on a slower interval than the tick rate keeps more.
-- **Bandwidth and replays.** A matching result costs a little upstream bandwidth each tick, more while **Send Result Values** (`SystemManager.ResultValueSendEnabled`) is on. A result the server finds different makes the client re-run `OnEarlyFixedUpdate` and `OnLateFixedUpdate` as `SimulationType.Replayed` for every tick since, about a round trip plus the state interpolation in ticks, all in one frame. Physics replays too, so a `ValidatedRigidbody` can be predicted; see [Predicting a body with a validated behaviour](../physics/predicting-a-body-with-a-validated-behaviour.md).
+- **History.** Every client keeps `SystemManager.PredictionHistoryTicks` of history for a predicted member, or `SystemManager.DefaultPredictionHistoryTicks` (64) when that is unset.
+- **Replays.** Nothing about a result travels upstream, because the controller sends only its client state. A server value that differs from the prediction makes the client re-run `OnEarlyFixedUpdate` and `OnLateFixedUpdate` as `SimulationType.Replayed` for every tick since, about a round trip plus the state interpolation in ticks, all in one frame. Physics replays too, so a `ValidatedRigidbody` can be predicted; see [Predicting a body with a validated behaviour](../physics/predicting-a-body-with-a-validated-behaviour.md).
 - **Code that tolerates being re-run.** Anything a replayed tick does happens again. The engine refuses remote calls, messages, predicted spawns, collection and reference writes and `NetworkAnimator` triggers during a replay, but not your own side effects, such as awarding score or writing a static. Gate those on `SimulationType.Forward`, or keep the member that drives them unpredicted. A value that only feeds a display, such as a camera or a resource bar, is safe: at worst the display corrects itself.
 
 ## Use a cheaper option when you can
@@ -21,8 +21,12 @@ You turn prediction on per member with the `role` argument of `NetworkMember<T0>
 Most objects need none of this:
 
 - **An uncontrolled object with interpolation.** No history, no result check, no replay. The receiver animates between the values it receives, paced by **State Interpolation** (`SystemManager.StateInterpolation`, at most `MaximumStateInterpolation`). This is the default for anything nobody drives.
-- **A controller-written value with no prediction.** The controller writes the member every tick, but its role stays `MemberRole.Replicate`, so the controller sees its own writes a round trip late, with no replay.
+- **A controller-written value with no prediction.** The controller writes the member every tick, but its role stays `MemberRole.Replicate`. Its writes land on it at once, with no replay, and the server judges each one through an `IMemberWriteValidator<T0>` instead of running the simulation.
 - **A purely local visual.** Particles, camera shake and UI feedback that only need to look right on one machine are not a `NetworkMember<T0>` at all, and cost nothing on the wire.
+
+## See all three side by side
+
+The `SimulationStyles` demo under `Demos/Prediction` drives three cubes from the same keys: one the server alone moves, one the client predicts and the server reconciles, and one the client moves itself while the server only judges each position. Press C to cheat and watch how each one answers.
 
 ## Choose prediction per member
 

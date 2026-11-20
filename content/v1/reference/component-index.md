@@ -24,6 +24,8 @@ title: "Component Index"
 | --- | --- |
 | `NetworkTransform` | Replicates a GameObject's position, rotation, and scale, in local or world space. |
 | `NetworkAnimator` | Replicates an `Animator`'s parameters, layer weights, and speed. |
+| `NetworkStateMachine` | A networked state machine whose states are components, predicted by the controller or run by the server. |
+| `MachineStateBehaviour` | The base of a state listed in a `NetworkStateMachine`. |
 | `NetworkNavMeshAgent` | Replicates a `NavMeshAgent` as the path leg it is walking rather than as its raw pose. |
 
 ## Scenes
@@ -46,14 +48,14 @@ title: "Component Index"
 
 | Component | Description |
 | --- | --- |
-| `ValidatedTransform` | Keeps a transform's pose, scale, active state and layer in predicted members the server checks. |
+| `ValidatedTransform` | Keeps a transform's pose, scale, active state and layer in predicted members the server's values correct. |
 | `ValidatedRigidbody`, `ValidatedRigidbody2D` | Keeps a body's pose, velocities and sleep state in predicted members, so its controlling client predicts it and a correction replays physics. |
 | `ValidatedRigidbodyAdvanced`, `ValidatedRigidbody2DAdvanced` | Adds the body's kinematic flag, collision detection, constraints and center of mass. |
 | `ValidatedCharacterController` | Keeps a `CharacterController`'s pose and enabled state in predicted members. |
 | `ValidatedCharacterControllerAdvanced` | Adds the controller's height, center and radius. |
 | `ValidatedConstantForce`, `ValidatedConstantForce2D` | Keeps a `ConstantForce`'s forces and torques in predicted members. |
 | `ReconciledAnimator` | A `NetworkAnimator` for a predicted object, which also puts the parameters back before a replay. |
-| `ValidatedAnimator` | Keeps an `Animator`'s parameters, layer weights and speed in predicted members the server checks, for parameters that decide gameplay. |
+| `ValidatedAnimator` | Keeps an `Animator`'s parameters, layer weights and speed in predicted members the server's values correct, for parameters that decide gameplay. |
 | `ValidatedAnimatorRootMotion` | Keeps the base layer's playback in predicted members, for root motion that decides where a character goes. |
 | `GraphicalSmoother` | Glides a child graphic across each tick and each correction while the object stays at its true pose. |
 
@@ -72,6 +74,8 @@ title: "Component Index"
 | `NetworkTransport` | Base for an Inspector-configurable transport component. |
 | `SynapseTransport` | Inspector-configurable component for the Synapse UDP transport: port, remote host, and timeouts. |
 | `LoopbackRelayNetworkTransport` | Inspector-configurable component for the loopback relay, which the main editor runs so host migration can be tested on one machine. |
+| `NetworkHostMigration` | Base for host migration beside a transport: registers the session with a newfarm directory so it survives losing its host (Pro). |
+| `LoopbackRelayHostMigration` | Host migration over the loopback relay, for testing a handover between editors on one machine. |
 
 ## Bundles
 

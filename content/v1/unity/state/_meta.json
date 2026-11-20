@@ -18,5 +18,9 @@
   {
     "slug": "network-animator",
     "title": "NetworkAnimator"
+  },
+  {
+    "slug": "network-state-machine",
+    "title": "NetworkStateMachine"
   }
 ]

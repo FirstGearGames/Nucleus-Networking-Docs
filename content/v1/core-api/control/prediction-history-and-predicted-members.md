@@ -18,43 +18,35 @@ public readonly NetworkMember<ushort> Health = new();
 | --- | --- | --- | --- |
 | `Replicate` | An ordinary member. Inbound values apply as they arrive. | The server, or a client its write access allows. | The value, when it changes and write access allows it |
 | `Predict` | Client state: a per-tick value the simulation reads. | Whoever controls the system, on its live tick. | The value, every tick (see [Client state](./client-state-components.md)) |
-| `Validate` | A predicted result, computed from the client state. | Every peer that simulates the system. | Nothing the server applies. The server checks the controller's result for each tick against its own and orders a correction when they differ |
+| `Validate` | A predicted result, computed from the client state. | Every peer that simulates the system. | Nothing. The server keeps its own value, and each client that predicts the system compares the server's values with its prediction |
 
 Roles are per member, and one component can mix all three. The usual predicted object has `Predict` members for what the player asked, `Validate` members for what the step computes from them, and `Replicate` members for what only the server decides. Nothing turns prediction on for you.
 
 What a predicted role does depends on the peer:
 
-- **The pure-client controller** writes its `Predict` members on its live tick and runs the step at once to compute its `Validate` members.
-- **The server** takes the controller's `Predict` members, simulates the same tick and checks the controller's `Validate` result against its own, without ever applying it.
+- **The pure-client controller** writes its `Predict` members on its live tick and runs the step at once to compute its `Validate` members. It compares each `Validate` value the server sends with its own prediction for that tick.
+- **The server** takes the controller's `Predict` members, simulates the same tick and keeps its own `Validate` values. It never takes or checks the controller's.
 - **Any other client** applies the server's values as they arrive. During a reconcile, a member with a role other than `Replicate` is held at the server's start-tick values while the controlled systems replay. A client that sets `NetworkSystem.ObserverPredictionEnabled` predicts the system as its controller does (see [Predicting another client's object](./reconciliation.md#predicting-another-clients-object)).
 - **A host** applies values as they arrive. It is the server, so nothing it predicts is ever corrected.
 
-## The server checks the controller's result
+## A client that predicts compares the server's values itself
 
-1. The controller runs its live fixed updates and computes that tick's `Validate` results.
-2. The server simulates the same tick of client state and compares its `Validate` results with the controller's. On a difference it counts `Connection.ResultMismatchCount`, orders a reconcile (counted in `ReconcileSentCount`) and raises `NetworkSystem.ResultMismatched`; see [Validate results the server found different](./reconciliation.md#validate-results-the-server-found-different).
-3. Results the controller computed before the correction arrived are passed over rather than ordering a reconcile each. If the controller has not applied the correction within a round trip plus `StateInterpolation`, the server sends the reconcile again (`ReconcileResentCount`), so a lost reconcile costs one round trip. A resend that reaches a controller which already applied the first does not order a second replay.
+Every client that predicts a system, its controller and an observer with `ObserverPredictionEnabled` set, compares each value the server sends for a `Validate` member with its own prediction for that tick:
 
-The controller never judges its own prediction: server values that arrive for a predicted member leave the prediction standing, and only a reconcile the server orders corrects it. So the check catches results that depend on values the client cannot see in time, such as a jump the server refuses because of health only the server drains.
+- **A match** is discarded. The prediction stands and the server's value is not applied.
+- **A value outside the member's tolerance** is recorded with the tick and a `MismatchCause`, and the system keeps predicting until the `Reconcile` step, where the engine restores and replays from that tick (see [Reconciliation and replay](./reconciliation.md)).
+- **A history too shallow** to reach the tick is recorded as `MismatchCause.HistoryMissing`, and the system logs a warning once naming `SystemManager.PredictionHistoryTicks`.
+- **A value the server sent to resynchronize this client** (the first values received, or a resend after loss) is compared like any other, and is recorded as `MismatchCause.Resync` only when it differs.
+
+A difference means the result depended on something the client could not see in time, such as a jump the server refuses because of health only the server drains.
 
 Rules for `Validate` members:
 
 - A value is only as precise as the member's `Accuracy`, the same on both peers. Choose an accuracy the simulation can tolerate.
-- Any `SendInterval` works.
-- For a value a replay cannot reproduce exactly, such as one a physics engine moves, construct the member with `resultTolerance`. A predicted value within that distance of the server's orders no reconcile. It applies only while the controller's `SystemManager.ResultValueSendEnabled` is on, the default; with it off, the result is compared exactly. The Unity validated behaviours set it on their position, rotation and velocities.
-- The system needs `Predict` members. Without client state the server has nothing to check, and its values simply overwrite the prediction.
-- The result check runs after the client state is validated, so a tick your `IMemberWriteValidator<T0>` corrected produces a different result, and the controller is reconciled onto the server's outcome.
-
-## An observer that predicts compares for itself
-
-The server checks only the controller. An observer predicting a system another client controls (`ObserverPredictionEnabled`) compares the server's values for that system's `Validate` members itself, at the tick its own echo names, within each member's `Accuracy`:
-
-- **A match** is discarded. The prediction stands and the server's value is not applied.
-- **A mismatch** is recorded with the tick and a `MismatchCause`, and the system keeps predicting until the `Reconcile` step, where the engine restores and replays (see [Reconciliation and replay](./reconciliation.md)).
-- **A history too shallow** to reach the echoed tick is recorded as `MismatchCause.HistoryMissing`, and the system logs a warning once naming `SystemManager.PredictionHistoryTicks`.
-- **A value the server sent without ordering a reconcile** (the first values received, or a resend after loss) is compared like any other, and is recorded as `MismatchCause.Resync` only when it differs.
-
-A `Validate` member on `SendInterval.Normal` without projection is checked on every new tick the server confirms, against the server value the observer already holds when no new value arrived. A paced or projected member is checked only when a value arrives.
+- A `Validate` member sends on every changed tick, as a `Predict` member does. A send interval set on either is held at `SendInterval.Normal`, so only `Replicate` members can be paced.
+- For a value a replay cannot reproduce exactly, such as one a physics engine moves, construct the member with `resultTolerance`. A server value within that distance of the prediction counts as a match. With no tolerance set, the member compares at its `Accuracy`. The Unity validated behaviours set a tolerance on their position, rotation and velocities.
+- The system needs `Predict` members. Without client state the server cannot simulate the controller's ticks, and its values simply overwrite the prediction.
+- The server simulates a tick after its client state is validated, so a tick your `IMemberWriteValidator<T0>` corrected produces a different result, and the controller replays onto the server's outcome.
 
 ## Set the prediction history depth before systems spawn
 
@@ -64,7 +56,6 @@ A `Validate` member on `SendInterval.Normal` without projection is checked on ev
 - The server never rolls back and keeps the members' own two ticks.
 - When a reconcile starts at a tick older than the history holds, the server's value still lands there and the system replays from it, and a warning naming the shortfall is logged once per system.
 - A member takes the history when it initializes, and a system grows its members to it when this client gains control, so set the value before systems spawn.
-- A member served on an interval widens its own history further, independent of `PredictionHistoryTicks`, so a replay can still address the ticks between its serves.
 
 ## Read past values
 

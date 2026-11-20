@@ -20,7 +20,7 @@ This overload sends to exactly the connections you pass, with no authentication 
 CoreManager.ServerManager.SendMessage(Channel.Reliable, new SomeMessage(), myConnections);
 ```
 
-`myConnections` is an `IReadOnlyCollection<Connection>`.
+`myConnections` is an `IReadOnlyList<Connection>`, such as a `List<Connection>`, or a `HashSet<Connection>`.
 
 ## Send to everyone but one
 

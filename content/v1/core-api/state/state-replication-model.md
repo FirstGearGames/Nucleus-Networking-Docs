@@ -21,7 +21,7 @@ A new observer receives every member's current value, then only changes. There i
 
 ## Only the controller writes by default
 
-Under `MemberWriteAccess.Controller` (the default, value `0`), the server or the single controlling client sets a system's members. `MemberWriteAccess.AnyClient` lets other observers write too; it is Pro, and a Free build has no `MemberWriteAccess` type. See [Letting clients set members](./state-write-access.md).
+Under `MemberWriteAccess.Controller` (the default, value `0`), the server or the single controlling client sets a system's members. `MemberWriteAccess.AnyClient` lets other observers write too. In Free a non-controlling client's write is a request that lands on it only once the server answers. See [Letting clients set members](./state-write-access.md).
 
 ## Four settings decide what a change costs
 

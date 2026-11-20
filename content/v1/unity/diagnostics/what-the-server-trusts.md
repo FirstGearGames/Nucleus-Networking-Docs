@@ -28,9 +28,9 @@ A call the server relays to other observers still carries the original sender's 
 
 ## Arbitration is not a security boundary
 
-`MemberWriteAccess.AnyClient` (Pro) lets every observer set a system's members. A Free build has no `MemberWriteAccess`, so only the controller sets members and nothing needs arbitrating.
+`MemberWriteAccess.AnyClient` lets every observer set a system's members. In Free each such write is a request, so the client only ever sees the result the server sends back.
 
-In Pro, when several observers write to a system at once, arbitration picks a winner that is arbitrary but stable. A client that keeps reconnecting to change its connection id can farm a favorable outcome. Arbitration only chooses between equally legitimate writes; it does not decide whether a write should be allowed. Where winning matters, put your own arbiter in game code on top of the access check.
+When several observers write to a system at once, in either edition, arbitration picks a winner that is arbitrary but stable. A client that keeps reconnecting to change its connection id can farm a favorable outcome. Arbitration only chooses between equally legitimate writes; it does not decide whether a write should be allowed. Where winning matters, put your own arbiter in game code on top of the access check.
 
 ## Nucleus does not encrypt traffic
 

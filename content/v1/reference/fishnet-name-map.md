@@ -23,6 +23,7 @@ A FishNet `NetworkObject` is one networked identity per `GameObject`. A Nucleus 
 | `SyncHashSet<T>` | `NetworkHashSetMember<T0>` |
 | *(no FishNet counterpart)* | `NetworkArrayMember<T0>` |
 | *(no FishNet counterpart)* | `NetworkQueueMember<T0>` |
+| *(no FishNet counterpart)* | `PredictedStateMachineComponent` and `ReplicatedStateMachineComponent`, `NetworkStateMachine` in Unity |
 | `OnChange` (per-member callback) | `NetworkComponent.OnMembersChanged(ulong memberFlags, MemberChangeDirection memberChangeDirection)` |
 
 `OnMembersChanged` fires once per component, with a flag mask of which members changed and a `MemberChangeDirection` (`Write` or `Read`) saying which side the change came from. There is no per-member changed event.

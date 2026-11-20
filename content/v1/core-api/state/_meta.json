@@ -50,5 +50,9 @@
   {
     "slug": "validating-client-writes",
     "title": "Judging and arbitrating client writes"
+  },
+  {
+    "slug": "state-machines",
+    "title": "State machines"
   }
 ]

@@ -115,7 +115,7 @@ Every `NetworkSystem` has two access values. Both default to the safest setting.
 
 ### Leave write access on the controller unless you need more
 
-`MemberWriteAccess.Controller` is the default: only the server and the controlling client may set a system's members. `MemberWriteAccess.AnyClient` (Pro) lets any observer set them. Only the server can change it, through `NetworkSystem.TrySetWriteAccess`. A Free build has no write access setting, so only the controller can write. See [Letting clients set members](../state/state-write-access.md).
+`MemberWriteAccess.Controller` is the default: only the server and the controlling client may set a system's members. `MemberWriteAccess.AnyClient` lets any observer set them; in Free each such write is a request the server answers. Only the server can change it, through `NetworkSystem.TrySetWriteAccess`. See [Letting clients set members](../state/state-write-access.md).
 
 Open `AnyClient` only where every observer genuinely needs to write, and give each such system a validator.
 

@@ -15,6 +15,22 @@ Messages and calls sent in the same frame leave together.
 
 Inbound calls are dispatched on `NetworkLoopSteps.LateStateUpdate`, later than inbound messages. A call addressed to an object that spawned in the same frame finds the system already there.
 
+## Run a call on the tick it was sent on
+
+By default a call runs on the first tick after it arrives. Received state waits for the interpolation before it applies, so a call sent beside the server's state of one tick runs while the receiver is still showing an earlier one. Pass `RpcDispatch.TickAligned` to make the call wait for its tick instead:
+
+```csharp
+TrySendRpc(RpcTarget.Observers, Channel.Unreliable, new ExplosionRpc { Position = position }, rpcDispatch: RpcDispatch.TickAligned);
+```
+
+- A client runs a tick-aligned call from the server right after the server's state of that tick applies, and the server runs one from a client on that client's tick.
+- A call that arrives after its tick has passed runs when it arrives. It is never dropped.
+- On `Channel.Reliable`, calls still run in the order they were sent, so a call sent after a waiting tick-aligned call waits behind it.
+- When the server passes a client's call on to other clients, the call stays tick-aligned.
+- On a host, calls between its own server and client halves run at the send site, as every call between them does.
+
+Use it when a call must line up with replicated state, such as an effect at an object's position. A call that should run as soon as possible, such as a chat line, keeps the default, `RpcDispatch.OnArrival`.
+
 ## Send order holds across message types
 
 A peer's messages reach their handlers in the order they were sent, whatever mix of types they are.

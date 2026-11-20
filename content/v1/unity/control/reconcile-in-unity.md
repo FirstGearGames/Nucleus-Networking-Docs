@@ -102,7 +102,7 @@ namespace MyGame
 }
 ```
 
-The server simulates the same tick from the controller's client state and orders a reconcile when its `Position` differs from the client's. While **Send Result Values** is on (the default), it also reports both values; see [Send Result Values](./prediction-settings-in-unity.md#send-result-values).
+The server simulates the same tick from the controller's client state and keeps its own `Position`. The client compares each `Position` the server sends with its prediction for that tick and reconciles when they differ.
 
 - **Run the same step on a replayed tick.** Read the `Predict` members and write the `Validate` members as usual, but never write the `Predict` members yourself, which is why the example sets `Direction` only on a `Forward` tick.
 - **Give each `Validate` member an accuracy your simulation tolerates.** Its value is only as precise as its `accuracy`, on both peers.
