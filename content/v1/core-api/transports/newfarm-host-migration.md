@@ -8,7 +8,7 @@ title: "NewfarmHostMigration"
 
 It lives in `Nucleus.dll`, in the `Nucleus.Integrations.Newfarm` namespace, and needs Pro. It reaches the service the session runs over through an [`ISessionHost`](./session-hosts.md), so the same coordinator works over any service with one.
 
-## What you need
+## Have these in place first
 
 - Pro. With a free `Nucleus.dll`, `StartHostingAsync` and `JoinAsync` refuse: they log an error, raise `Abandoned` and return `false`. `ServerManager.IsHostMigrationAvailable` says which you have.
 - A newfarm directory server that every player can reach. The public directory at `newfarm.nucleus-networking.com` (UDP port `47778`) is free to use, and it is where Unity's host migration components register by default. You can also run your own.
@@ -45,7 +45,7 @@ When a host should leave without the session ending, call `TrySurrenderHosting()
 
 `Dispose()` releases the directory link. A hosting peer that is disposed surrenders the session rather than closing it, so the others carry on without it.
 
-## Members
+## Call these members
 
 | Member | What it does |
 |---|---|
@@ -59,7 +59,7 @@ When a host should leave without the session ending, call `TrySurrenderHosting()
 | `SessionId` | The session's id, or `UnsetSessionId` (`0`) while this peer holds none. Whoever holds it can join the session or be elected to host it, so share it with the players and nobody else. |
 | `TimeoutMilliseconds` | How long a promotion or a rejoin that this peer runs on its own may take. Defaults to `DefaultTimeoutMilliseconds` (15000). |
 
-## Events
+## React to these events
 
 | Event | When it is raised |
 |---|---|
@@ -68,7 +68,7 @@ When a host should leave without the session ending, call `TrySurrenderHosting()
 | `Rejoined(string credential)` | On a surviving peer once it has rejoined the session where it moved. |
 | `Abandoned(string reason)` | When the session cannot carry on for this peer: the directory refused it or did not answer in time, or this peer failed several times in a row to reach where the directory pointed. |
 
-## States
+## Read what this peer is doing from State
 
 | `NewfarmMigrationState` | Meaning |
 |---|---|
@@ -81,7 +81,7 @@ When a host should leave without the session ending, call `TrySurrenderHosting()
 | `Promoting` | Elected, and standing the session up. |
 | `Abandoned` | No longer part of the session. |
 
-## Things to know
+## Expect these limits
 
 - **The hosting peer runs the server half only.** Hosting and promotion start the server, not a client of it. Drive the host player's own objects as the server, or connect its client half yourself afterwards.
 - **A promoted peer keeps the identifiers the world already had.** Players who rejoin find their objects in place, and controller retention, when it is on, hands each one back.

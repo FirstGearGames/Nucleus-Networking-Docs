@@ -4,7 +4,7 @@ title: "State machines"
 
 A `StateMachine` holds a list of states, one active at a time, and changes state inside the tick. Use one for anything that is in exactly one mode at a time: an ability that is ready, active or cooling down, a match that is waiting, counting down, playing or showing results, a door that is open, closing or locked.
 
-Only a change is sent. An idle machine costs nothing, and a state that lasts a set number of ticks costs one update when it starts and one when it ends.
+Only a change is sent, so an idle machine costs nothing.
 
 ## Choose predicted or replicated
 
@@ -61,7 +61,7 @@ A request does not change the state at once. The machine changes state once per 
 - A request made in a late fixed update takes effect the next tick.
 - On the server, a request made outside a fixed update takes effect at the next one.
 
-Requests that take effect on the same tick are settled the same way whatever order they were made in: a forced request wins, then the higher priority, then the lower state index. The active state's `TrySelectTransition` takes part as a request. Unless the request is forced, the active state's `CanExit` and the new state's `CanEnter` must both allow it.
+When several requests take effect on the same tick, a forced request wins over an ordinary one, and a higher priority over a lower one. The active state's `TrySelectTransition` takes part as a request. Unless the request is forced, the active state's `CanExit` and the new state's `CanEnter` must both allow it.
 
 On a client, a predicted machine takes requests only from a fixed update the client simulates. Anywhere else the request is refused and a warning is logged once.
 

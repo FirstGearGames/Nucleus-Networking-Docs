@@ -9,6 +9,7 @@ title: "NetworkStateMachine"
 1. Add a component deriving from `MachineStateBehaviour` for each state.
 2. Add `NetworkStateMachine` to the same GameObject. It requires a `NetworkSystemObject` at or above it.
 3. List the states in **States**. The first is the default.
+4. Press Play. The inspector shows the active state and how many ticks it has been active.
 
 | Field | Default | Effect |
 |---|---|---|
@@ -54,7 +55,5 @@ networkStateMachine.StateMachine.TryRequestState(1);
 ```
 
 Ask a predicted machine from a fixed update, such as `OnEarlyFixedUpdate` on a `NucleusBehaviour`. A replicated machine can be asked from anywhere; on a client, the request goes to the server and the change shows when the server's state arrives.
-
-In play mode the inspector shows the active state and its ticks in state.
 
 The MatchFlow demo has a replicated match machine and a predicted ability machine side by side.

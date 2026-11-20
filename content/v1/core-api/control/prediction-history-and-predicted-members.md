@@ -38,7 +38,7 @@ Every client that predicts a system, its controller and an observer with `Observ
 - **A history too shallow** to reach the tick is recorded as `MismatchCause.HistoryMissing`, and the system logs a warning once naming `SystemManager.PredictionHistoryTicks`.
 - **A value the server sent to resynchronize this client** (the first values received, or a resend after loss) is compared like any other, and is recorded as `MismatchCause.Resync` only when it differs.
 
-A difference means the result depended on something the client could not see in time, such as a jump the server refuses because of health only the server drains. A `Validate` member without projection is checked on every new tick the server confirms, against the server value the client already holds when no new value arrived. A projected member is checked only when a value arrives.
+A difference means the result depended on something the client could not see in time, such as a jump the server refuses because of health only the server drains.
 
 Rules for `Validate` members:
 

@@ -5,11 +5,9 @@ components: "LoopbackRelayNetworkTransport, LoopbackRelayHostMigration"
 
 `LoopbackRelayNetworkTransport` and `LoopbackRelayHostMigration` let you test host migration with two editors on one machine, with nothing to install or launch. They are for testing only. A shipped game uses the Steam transport instead.
 
-## What it runs
+## The main editor runs the relay
 
 While the scene plays, the main editor runs a relay inside its own process, on the loopback address. A second editor, either a ParrelSync clone or a Multiplayer Play Mode player, runs no relay and uses the main editor's.
-
-No editor listens for another. Every editor connects out to the relay, and the one hosting is the one holding a room. The relay numbers rooms from 1 as it opens them.
 
 `LoopbackRelayNetworkTransport`:
 
@@ -44,6 +42,8 @@ If the relay's port is already taken, for example by another project playing the
 5. Press Play in the main editor first, so the relay is running, then in the clone.
 6. Hand the session over by calling `TrySurrenderHostingSession()` on the host. Once the clone hosts, stopping play in it tests a lost host. Stopping play in the main editor ends the session for everybody instead, because it runs the relay.
 
+When the handover works, the clone hosts the session and keeps every object the main editor had.
+
 ```csharp
 await unityTransportManager.EnsureAddedAsync();
 
@@ -65,7 +65,7 @@ The `RelaySession` demo under `Demos/Transports` does all of this, and hands its
 
 A room closes with the peer that opened it, so the room changes at every handover. The session id stays the same for the life of the session, so it is what players keep and share.
 
-## Without host migration
+## Join a room directly without host migration
 
 Without a `LoopbackRelayHostMigration`, the relay works by room: start the server through the `UnityTransportManager`, and start clients to join the room in **Room Id**. In a Free build the component is there but `StartHostingSessionAsync`, `JoinSessionAsync` and `TrySurrenderHostingSession` refuse with a logged error, and `SessionId` reads `UnsetSessionId` (`0`).
 
@@ -73,6 +73,6 @@ Without a `LoopbackRelayHostMigration`, the relay works by room: start the serve
 
 The loopback relay never leaves this machine, so a shipped game needs a transport its players can reach. The Steam transport add-on, `SteamTransport`, reaches players by Steam ID or IP address. Put a `SteamHostMigration` beside it, which has the same `StartHostingSessionAsync`, `JoinSessionAsync`, `SessionId` and `TrySurrenderHostingSession`. Both compile when Steamworks.NET is installed. Like every host migration component it registers with the public directory by default, and you can point it at your own.
 
-## Another service
+## Carry sessions over another service
 
 Every host migration component derives from `NetworkHostMigration`, which does everything a session needs except reach the service it is carried over. To carry sessions over another service, derive from it and return that service's [session host](../../core-api/transports/session-hosts.md) from `CreateSessionHost`. Override `GetDirectoryAddress` and `GetDirectoryPort` to read the directory from somewhere other than the inspector, and `OnPromoted`, `OnRejoined`, `OnAbandoned` and the other hooks to react to a handover.

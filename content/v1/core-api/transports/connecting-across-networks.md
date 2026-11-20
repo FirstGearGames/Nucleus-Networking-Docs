@@ -31,7 +31,7 @@ The server never reads Remote Host. By default it listens on every address the m
 - **`Disconnected` without `LocalClientAuthenticated`**: the client's packets never reached the server, and it dropped after the idle timeout (`Configuration.ConnectedTimeoutSeconds`, or **Idle Timeout Seconds** on `SynapseTransport`, 15 by default). Check the address, port, firewall and forward. A server that refuses the client drops it at once instead, and `ClientManager.LastAuthenticationDenialReason` holds the reason.
 - **`LocalClientAuthenticated`, then `Disconnected`**: the path worked at least once, then traffic stopped. Look for something intermittent, such as an expired NAT mapping, a selective firewall rule or a real network interruption, not the port or forward.
 
-## When NAT cannot be beaten
+## Host somewhere reachable when NAT cannot be beaten
 
 If the port, firewall and forward are all right and it still fails over the internet, the server is likely behind carrier-grade NAT, which no forward gets through. Host on a machine with a public address, such as a dedicated server, or in Unity use the Steam transport add-on, `SteamTransport`, which reaches players by Steam ID through Valve's relay network with no port to forward.
 

@@ -6,7 +6,7 @@ title: "ISessionHost"
 
 It lives in `Nucleus.dll`, in the `Nucleus.Integrations.Newfarm` namespace.
 
-## Shipped session hosts
+## Use a shipped session host where one exists
 
 | Session host | Service | `AdapterTag` | Credential |
 |---|---|---|---|
@@ -15,7 +15,7 @@ It lives in `Nucleus.dll`, in the `Nucleus.Integrations.Newfarm` namespace.
 
 The Unity components `LoopbackRelayHostMigration` and `SteamHostMigration` create theirs for you. To use a session host of your own in Unity, derive from `NetworkHostMigration` and return it from `CreateSessionHost`; see [Testing host migration on one machine](../../unity/transports/relay-sessions.md).
 
-## Members
+## Implement every member
 
 | Member | What it must do |
 |---|---|
@@ -41,7 +41,7 @@ A credential and an adapter tag can each be at most 64 characters, so check a lo
 
 The difference matters. `CredentialUnreachable` is reported to the directory, which takes it as a sign the host may be gone. A `LocalFailure` is never reported, so a peer whose own setup is broken cannot get a healthy host replaced. When the service says nothing at all, return `LocalFailure`: a host that is truly gone stops answering the directory too.
 
-## Rules every implementation follows
+## Follow these rules in every implementation
 
 1. **The returned tasks never throw.** Report a failure as a `SessionHostResult`. The coordinator reads them from the game loop, and it treats a task that throws anyway as `LocalFailure` and logs it.
 2. **The returned tasks complete on their own.** The coordinator only waits on them, so a handshake that needs polling to advance must drive itself.

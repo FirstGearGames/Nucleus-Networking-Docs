@@ -50,7 +50,7 @@ So that a client does not see its own write bounce back as a correction, a losin
 
 In Free a requesting client never shows a value the server has not sent, so there is nothing to hold.
 
-## Limits
+## Know these limits
 
 - A system holding a collection member cannot be widened past `Controller`.
 - A client write on a system with more than one possible writer costs more bandwidth than a write from a single controller.

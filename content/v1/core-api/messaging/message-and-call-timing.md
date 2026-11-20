@@ -23,12 +23,10 @@ By default a call runs on the first tick after it arrives. Received state waits 
 TrySendRpc(RpcTarget.Observers, Channel.Unreliable, new ExplosionRpc { Position = position }, rpcDispatch: RpcDispatch.TickAligned);
 ```
 
-- A client runs a tick-aligned call from the server right after the server's state of the tick it was sent on has applied.
-- The server runs a tick-aligned call from a client that controls an object right after it simulates that client's tick the call was sent on. From any other client, it runs the call in the tick that applies that client's state of the same tick.
+- A client runs a tick-aligned call from the server right after the server's state of that tick applies, and the server runs one from a client on that client's tick.
 - A call that arrives after its tick has passed runs when it arrives. It is never dropped.
-- On `Channel.Reliable`, calls still run in the order they were sent, so a call sent after a waiting tick-aligned call waits behind it, whichever it asked for.
-- The server waits for a client's call for at most the interpolation plus one tick, and then runs it.
-- When the server passes a client's call on to other clients, the call stays tick-aligned, and each client runs it on the tick the server passed it on.
+- On `Channel.Reliable`, calls still run in the order they were sent, so a call sent after a waiting tick-aligned call waits behind it.
+- When the server passes a client's call on to other clients, the call stays tick-aligned.
 - On a host, calls between its own server and client halves run at the send site, as every call between them does.
 
 Use it when a call must line up with replicated state, such as an effect at an object's position. A call that should run as soon as possible, such as a chat line, keeps the default, `RpcDispatch.OnArrival`.
