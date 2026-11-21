@@ -46,30 +46,6 @@ This peer adopts the world as it last saw it. In `AuthorityAdopted`, correct any
 
 A retained world normally reconciles against the new server: identifiers this peer already holds apply in place, and objects never blink. Set `SystemManager.RespawnWorldOnReconnectEnabled` to drop the world and rebuild it from the server's account instead, at the cost of a spawn per object, without carrying anything over that the server never heard of. With it set, `RetainReceivedWorld` no longer changes how reconnecting behaves.
 
-## Tell survivors where to regroup before the host drops
+## NewfarmHostMigration tells survivors where to regroup
 
-Once the old host drops there is no channel left to tell the other peers where the promoted host is, so tell them beforehand with `SessionDirectoryMessage`:
-
-```csharp
-public struct SessionDirectoryMessage : IMessage
-{
-    public ulong SessionId;
-
-    public const ulong NoSession = 0;
-}
-```
-
-Send it over `Channel.Reliable` once a client authenticates, so every client that joins later gets it too:
-
-```csharp
-coreManager.ServerManager.ClientAuthenticated += connection =>
-{
-    connection.SendMessage(Channel.Reliable, new SessionDirectoryMessage(sessionId));
-};
-```
-
-`SessionId` names the session in whatever directory the game uses, or is `SessionDirectoryMessage.NoSession` when the host is not registered with one. Nucleus carries only the identifier; the directory, address and protocol are up to the game.
-
-Treat `SessionId` as a secret shared only with the players. A directory cannot tell a peer that was told it from one that wasn't, so whoever holds it can generally take the session over.
-
-Reconnecting the survivors to the promoted host is covered in [Choosing a hosting topology](../transports/hosting-topologies.md).
+Once the old host drops, nothing is left to tell the other peers where the promoted host is. [`NewfarmHostMigration`](../transports/newfarm-host-migration.md) tells every client which session it is in while the host is still there, so the survivors can find the promoted host. A game never sends or reads `SessionDirectoryMessage`.
