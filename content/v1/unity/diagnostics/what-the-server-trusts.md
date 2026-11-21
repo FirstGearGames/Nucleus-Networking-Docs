@@ -32,6 +32,10 @@ A call the server relays to other observers still carries the original sender's 
 
 When several observers write to a system at once, in either edition, arbitration picks a winner that is arbitrary but stable. A client that keeps reconnecting to change its connection id can farm a favorable outcome. Arbitration only chooses between equally legitimate writes; it does not decide whether a write should be allowed. Where winning matters, put your own arbiter in game code on top of the access check.
 
+## A controller's movement is taken as sent
+
+`NetworkTransform` and `NetworkRigidbody` take the position their controlling client sends, so a modified client can put its object anywhere. When movement must be fair, use a validated behaviour such as `ValidatedTransform`, `ValidatedCharacterController` or `ValidatedRigidbody`, whose results the server works out for itself, or check the movement on the server. See [Predicting a body with a validated behaviour](../physics/predicting-a-body-with-a-validated-behaviour.md).
+
 ## Nucleus does not encrypt traffic
 
 To encrypt, compress, obfuscate or add an integrity check to the bytes themselves, use the packet-transform layer, `TransportManager.PacketTransform` (Pro). It rewrites every packet's payload on both peers before anything else in the engine sees it.

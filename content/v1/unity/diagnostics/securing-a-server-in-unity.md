@@ -154,6 +154,7 @@ public class ScoreBoard : NucleusBehaviour<ScoreComponent>
 - Only the login message sets `IsAuthenticationRequired` to `false`.
 - Every object on `AnyClient` access is there on purpose.
 - Every component with members a client can write, input included, implements `IMemberWriteValidator<T0>`.
+- Every object a client moves with `NetworkTransform` or `NetworkRigidbody` is one where a cheated position does no harm, and movement that must be fair uses a validated behaviour.
 - Every server call handler that relays between clients returns `Cancel` for anything you would not show other players.
 - Deciding handlers and an `IViolationObserver` are registered on the server build.
 - The server runs a release build of Nucleus. A debug build ignores `MalformedDataViolation` instead of kicking for it.

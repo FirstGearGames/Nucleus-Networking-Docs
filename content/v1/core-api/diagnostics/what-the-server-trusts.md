@@ -28,6 +28,10 @@ An id a client writes into a payload is only a claim. The sender a handler is gi
 
 This applies in both editions. In Free each such write is a request, and requests from several clients are arbitrated the same way.
 
+## A controller's movement is taken as sent
+
+`TransformComponent` takes the position, rotation and scale its controlling client writes, so a modified client can put its object anywhere. When movement must be fair, simulate it in `MemberRole.Validate` members, whose values the server works out for itself, or check the movement on the server. See [Predicted members and prediction history](../control/prediction-history-and-predicted-members.md).
+
 ## Nucleus does not encrypt traffic
 
 To encrypt, compress, obfuscate or integrity-check packets, use the Pro packet transform, `TransportManager.PacketTransform`. See [Packet transforms](../transports/packet-transforms.md).
