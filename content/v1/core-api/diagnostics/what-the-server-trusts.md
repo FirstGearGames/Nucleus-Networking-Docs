@@ -36,7 +36,7 @@ To encrypt, compress, obfuscate or integrity-check packets, use the Pro packet t
 
 Lag compensation (Pro) judges a shot against the moment the client says its screen was showing. A view older than `MaximumRewindMilliseconds`, or newer than anything the server has recorded, is clamped into range, still judged, and raises `LagCompensationViewClampedViolation` (ignored by default). Within the window a client can name any moment, so the window is the limit on how far a shooter is favored.
 
-The ray is the client's claim too. Clip it at walls on the server against the present-time scene. The queries test it only against hitboxes from the server's own history. See [The rewind window and the view clamp](../lag-compensation/the-rewind-window.md).
+The ray is the client's claim too. Clip it at walls on the server against the present-time scene, and refuse an origin far from where the server has the shooter; see [Judging a shot with rewound queries](../lag-compensation/rewound-queries.md). The queries test the ray only against hitboxes from the server's own history. See [The rewind window and the view clamp](../lag-compensation/the-rewind-window.md).
 
 ## Enforcement only happens on the server
 

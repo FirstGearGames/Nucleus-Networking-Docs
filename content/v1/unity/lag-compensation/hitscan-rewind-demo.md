@@ -67,6 +67,8 @@ The first call is the one a game needs. It returns the nearest hit against the h
 
 The hit's `SystemId` leads to the target, and the verdict goes back to the shooter in a reliable message.
 
+Before it judges a client's shot, the server drops one that does not start within a metre of the camera every peer fires from, because the client wrote the origin. See [Judge on the server](./firing-and-judging-a-shot.md#judge-on-the-server).
+
 ## Every hit shows how close the rebuild landed
 
 Every hit leaves a grey copy of the target where the client saw it, a cyan sphere where the client's own raycast hit, and a yellow sphere where the server's rewound raycast hit. When both hit the same target, the server answers with the distance between the two points, usually a few hundredths of a metre.

@@ -11,6 +11,8 @@ Each `LagCompensationManager` query rebuilds every registered hitbox where the s
 - `shooterConnection`: the `Connection` that fired, normally `MessageContext.SenderConnection`. Its view is checked against what the server could have shown it, and hitboxes on any object it controls are skipped, so a shot never hits its own shooter. Pass `null` for a shot the server fires itself.
 - `lagCompensationView`: the view captured when the shot was fired, normally `LagCompensatedShot.View`. An empty view, `default`, means the present.
 
+Check the shot's origin before you pass it to a query. The client wrote it, so a modified client can start the ray inside a target's hitbox, which hits it at once, or past a wall, which your wall check then never meets. Refuse a shot whose origin is more than a short distance from where the server has the shooter's eye or muzzle, allowing for how far the shooter moves in a round trip.
+
 ```csharp
 private void OnShotReceived(in MessageContext messageContext, ShotMessage shotMessage)
 {

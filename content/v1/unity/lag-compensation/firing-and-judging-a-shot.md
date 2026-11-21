@@ -103,6 +103,8 @@ For a shot that is not a ray, such as a melee swing whose volume the server buil
 
 Pass the shot's `View`, `Origin` and `Direction` straight into a query. Pass the sender's `Connection` as the shooter: its own objects are skipped, and its view is checked against what the server could have shown it. Pass `null` for a shot the server fires itself.
 
+Check the shot's origin before you judge it. The client wrote it, so a modified client can start the ray inside a target's hitbox, which hits it at once, or past a wall, which the wall check then never meets. Refuse a shot whose origin is more than a short distance from where the server has the shooter's eye or muzzle, allowing for how far the shooter moves in a round trip, and judge from the origin you checked.
+
 The 3D queries are:
 
 - `TryRaycast` and `RaycastAll` for rays.
