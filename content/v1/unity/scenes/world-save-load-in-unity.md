@@ -29,6 +29,8 @@ worldPersistenceManager.SetWorldStore(jsonWorldStore);
 bool saved = await worldPersistenceManager.SaveAsync();
 ```
 
+With host migration on, a handover can undo the old host's most recent changes, and a save made afterwards records the world without them; see [A handover can undo the old host's most recent changes](../../core-api/transports/newfarm-host-migration.md#a-handover-can-undo-the-old-hosts-most-recent-changes).
+
 ## Load the world without blocking the main thread
 
 A load can only finish while Unity keeps driving the network loop from `Update` on the main thread. Never block the main thread on the load task (`.Wait()`, or `.Result` before it completes): the load deadlocks. Await it from an `async` method, or start it and poll it from `Update`.

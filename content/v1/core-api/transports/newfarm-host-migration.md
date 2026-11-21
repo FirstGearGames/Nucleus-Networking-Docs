@@ -84,5 +84,19 @@ When a host should leave without the session ending, call `TrySurrenderHosting()
 ## Expect these limits
 
 - **The hosting peer runs the server half only.** Hosting and promotion start the server, not a client of it. Drive the host player's own objects as the server, or connect its client half yourself afterwards.
-- **A promoted peer keeps the identifiers the world already had.** Players who rejoin find their objects in place, and controller retention, when it is on, hands each one back.
+- **A promoted peer keeps the identifiers the world already had.** Players who rejoin find every object the new host could see still in place, and controller retention, when it is on, hands each one back.
 - **A survivor stays on the old host's world until it rejoins.** Between the host going and the new host taking over, a client receives nothing, so moving objects stop or drift. How long that lasts depends on how quickly the directory notices the host is gone.
+
+## A handover can undo the old host's most recent changes
+
+The new host carries on from the world as it last saw it.
+
+- Changes that were still on their way to the new host when the old host went are lost.
+- Whatever the old host changed while handling an RPC or a message is lost if that change had not reached the new host.
+- Objects outside the new host's interest are lost. Every inventory that `ControllerOnlyInterestCondition` hides from other players, except the new host's own, is lost this way at every handover.
+
+A handover does not undo what already left the session, such as a save, a purchase or grant on your backend, or a trade recorded elsewhere. A transaction followed by a handover can therefore duplicate or lose items or currency. To keep them safe:
+
+1. Keep the real record of currency and inventories outside the session, on a backend or another service you trust. Never rely on a world a player hosts for anything players can trade or sell.
+2. Make each transaction safe to repeat, so one sent again after a handover is applied only once.
+3. After a handover, correct currency and inventories from that record in your `ServerManager.AuthorityAdopted` handler. See [Adopt a retained world before starting the server](../core/retaining-the-world-across-a-disconnect.md#adopt-a-retained-world-before-starting-the-server).

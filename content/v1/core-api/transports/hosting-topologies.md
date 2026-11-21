@@ -18,14 +18,14 @@ A `CoreManager` can run its server half, its client half, or both. That choice i
 
 ## The server is in charge in every shape
 
-Every shape has exactly one server: one `CoreManager` running the same server logic. A host's server simply runs in a player's process, so decide whether you trust that player.
+Every shape has exactly one server: one `CoreManager` running the same server logic. A host's server simply runs in a player's process, so decide whether you trust that player. With host migration on, any player in the session can become the host, so trust every player as much as you would trust the host. A player who becomes host decides the world from then on, and a modified client can change the world it adopts.
 
 ## Keep a session alive after the host leaves
 
 A plain host's session ends when the host's process does. For a session to survive, pair it with a directory:
 
 - `ISessionHost` is what a directory implementation uses to publish where a session is hosted (`HostedCredential`) and to join wherever the directory points (`JoinAsync`).
-- `NewfarmHostMigration` polls the directory, so a session can hand its hosting role to another peer without clients being told a new address by hand. It is Pro, and it adopts the retained world when it promotes a peer, so the game state survives the handover.
+- `NewfarmHostMigration` polls the directory, so a session can hand its hosting role to another peer without clients being told a new address by hand. It is Pro, and it adopts the retained world when it promotes a peer, so the game state survives the handover as the new host last saw it. See [A handover can undo the old host's most recent changes](./newfarm-host-migration.md#a-handover-can-undo-the-old-hosts-most-recent-changes).
 
 This pairing is not engine-level host migration. In Unity, the loopback relay tests it on one machine and the Steam transport add-on ships it; see [Testing host migration on one machine](../../unity/transports/relay-sessions.md). [`NewfarmHostMigration`](./newfarm-host-migration.md) is the coordinator, and [`ISessionHost`](./session-hosts.md) carries it over another service.
 

@@ -28,6 +28,8 @@ bool saved = await coreManager.WorldPersistenceManager.SaveAsync();
 
 `SaveAsync` writes every open scene and every started system, then awaits the store's own save, which can take any number of ticks. A save always captures the whole world. There is no partial or incremental save.
 
+With host migration on, a handover can undo the old host's most recent changes, and a save made afterwards records the world without them; see [A handover can undo the old host's most recent changes](../transports/newfarm-host-migration.md#a-handover-can-undo-the-old-hosts-most-recent-changes).
+
 ## Load without blocking the loop thread
 
 ```csharp

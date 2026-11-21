@@ -39,7 +39,7 @@ It does not check that the returning peer is the same player. Prove that first, 
 
 - `ControllerRetained`: a record opened for a departing connection. Raised only when at least one object was retained.
 - `ControllerRetentionEnded`: a record stopped being redeemable. Carries the token and a `ControllerRetentionEndReason`.
-- `ControllerRetentionAdopted`: a record standing after this peer adopted a dead host's world. It only means anything under host migration, which is planned but not yet built.
+- `ControllerRetentionAdopted`: a record standing after this peer adopted a dead host's world. It only means anything under host migration, which [`NewfarmHostMigration`](../transports/newfarm-host-migration.md) provides and the Steam transport add-on ships for Unity.
 
 ## Only a reclaim returns the objects
 

@@ -38,6 +38,10 @@ void OnAuthorityAdopted(uint adoptedSystemCount, uint adoptedSceneCount)
 
 On success it raises `AuthorityAdopted(uint adoptedSystemCount, uint adoptedSceneCount)`, so the game can re-attach whatever it only does for objects it owns. Adoption keeps every identifier the world already has, so no object despawns and respawns.
 
+## An adopted world can be missing the old host's last changes
+
+This peer adopts the world as it last saw it. In `AuthorityAdopted`, correct anything players can trade or sell from a record kept outside the session. [A handover can undo the old host's most recent changes](../transports/newfarm-host-migration.md#a-handover-can-undo-the-old-hosts-most-recent-changes) lists what is lost and how to keep currency and inventories safe.
+
 ## Rebuild instead of reconciling on reconnect
 
 A retained world normally reconciles against the new server: identifiers this peer already holds apply in place, and objects never blink. Set `SystemManager.RespawnWorldOnReconnectEnabled` to drop the world and rebuild it from the server's account instead, at the cost of a spawn per object, without carrying anything over that the server never heard of. With it set, `RetainReceivedWorld` no longer changes how reconnecting behaves.

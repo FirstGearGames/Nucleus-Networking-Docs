@@ -42,7 +42,7 @@ If the relay's port is already taken, for example by another project playing the
 5. Press Play in the main editor first, so the relay is running, then in the clone.
 6. Hand the session over by calling `TrySurrenderHostingSession()` on the host. Once the clone hosts, stopping play in it tests a lost host. Stopping play in the main editor ends the session for everybody instead, because it runs the relay.
 
-When the handover works, the clone hosts the session and keeps every object the main editor had.
+When the handover works, the clone hosts the session with every object it was receiving from the main editor.
 
 ```csharp
 await unityTransportManager.EnsureAddedAsync();

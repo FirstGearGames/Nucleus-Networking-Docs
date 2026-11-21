@@ -57,6 +57,7 @@ inventorySystem.AddInterestCondition(controllerOnlyInterestCondition);
 - When control moves, the next evaluation removes the object from the previous controller and spawns it for the new one.
 - A group is answered as one object, so every member is shown to a client that controls any one of them.
 - It holds no state, so one instance can be registered on any number of systems.
+- With host migration on, an object hidden this way is lost when a player other than its controller takes over as host, because that player never held it. Keep the real record of an inventory outside the session too, as [A handover can undo the old host's most recent changes](../transports/newfarm-host-migration.md#a-handover-can-undo-the-old-hosts-most-recent-changes) describes.
 
 **Register it per system, never globally.** Registered with `AddCondition`, it hides every object no client controls, so every server-controlled object disappears from every client.
 
