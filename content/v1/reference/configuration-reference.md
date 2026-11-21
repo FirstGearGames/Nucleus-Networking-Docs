@@ -25,7 +25,7 @@ Every other setting is local: a server and its clients can run different `StateI
 |---|---|---|
 | `StateInterpolation` | 0 | Capped at `MaximumStateInterpolation` (7) when applied. |
 | `GlobalRedundancy` | 0 | Only usable when the transport's default channel is unreliable. Capped at `StateInterpolation` on the server's sends. |
-| `ClientRedundancy` | 3 | Extra resends a pure client adds to everything it sends upstream, on top of `GlobalRedundancy`. Not capped. |
+| `ClientRedundancy` | 2 | Extra resends a pure client adds to everything it sends upstream, on top of `GlobalRedundancy`. Not capped. |
 | `StateRetentionMilliseconds` | 1000 | Capped at `MaximumStateRetentionMilliseconds` (2000). |
 | `PartialStateApplyEnabled` | true | A tick that loses some of its packets applies the ones that arrived. Off, the whole tick is discarded and recovered. The receiver's choice alone. |
 | `PredictionHistoryTicks` | `UnsetPredictionHistoryTicks` (0) | How many ticks of history `Predict` and `Validate` members keep. Unset, every client keeps `DefaultPredictionHistoryTicks` (64) and the server keeps two. |

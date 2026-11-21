@@ -25,7 +25,7 @@ if (systemManager.CanUseRedundancy())
 
 ## Resend client writes with ClientRedundancy
 
-`SystemManager.ClientRedundancy` (default `3`) is how many extra copies a client adds, on top of `GlobalRedundancy`, to its predicted spawns and its own writes. With the defaults, a client sends each upstream tick four times.
+`SystemManager.ClientRedundancy` (default `2`) is how many extra copies a client adds, on top of `GlobalRedundancy`, to its predicted spawns and its own writes. With the defaults, a client sends each upstream tick three times.
 
 It is not limited by `StateInterpolation`: a copy that arrives too late is discarded and costs only its upstream bytes, while one that arrives during a burst of loss is applied. A host's own client does not use it.
 
