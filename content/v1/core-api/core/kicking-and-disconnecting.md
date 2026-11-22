@@ -16,6 +16,8 @@ connection.Kick();
 
 `KickClient` ignores a null `connection`, a `connection` whose `Transport` is already null (it is back in the pool), and a `connection` that already has a kick pending. It does not check that this peer is a server.
 
+A kicked client can connect again straight away. To keep a player out, see [Ban players by their identity, not their address](../diagnostics/securing-a-server.md#ban-players-by-their-identity-not-their-address).
+
 ## KickOptions decides what stops before the kick runs
 
 `KickOptions` is a `[Flags]` enum for what the server stops doing between marking the kick and running it:

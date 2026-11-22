@@ -18,7 +18,7 @@ The server refuses all of the following without any code from you. The offending
 - **Only the controller may set a system's members unless you widen it.** A member value from a client that does not control the system is dropped and raises `UnauthorizedMemberChangeViolation`.
 - **Only permitted clients may send a remote call.** A call from a client the system's `RpcSendAccess` does not admit is dropped and raises `RpcSendPermissionViolation`.
 - **A client cannot pose as someone else.** The sender a handler is given is the connection the transport resolved for the packet, never an id the client wrote into it.
-- **Data the server cannot read gets the client kicked in a release build.** The data is discarded and `MalformedDataViolation` is raised, which defaults to `Kick` in a release build. A debug build ignores it and logs the exception instead, so a serializer you are still writing does not keep kicking you.
+- **Data the server cannot read gets the client kicked in a release build.** The data is discarded and `MalformedDataViolation` is raised, which defaults to `Kick` in a release build. A debug build ignores it and logs the exception instead, so a serializer you are still writing does not keep kicking you, but a client that sends unreadable data on purpose is never kicked either. Deploy servers with a release build of Nucleus.
 - **An unauthenticated client may only send messages that opt out of authentication.** A message type requires authentication unless it sets `IsAuthenticationRequired` to `false`. A client that sends any other message before it is approved is kicked.
 - **A client that never finishes authenticating is dropped.** `ServerManager.AuthenticationTimeoutSeconds` (30 by default) disconnects a client that stays unapproved that long.
 - **Answers the server never asked for get the client kicked.** A client that sends a scene or bundle request, or reports a scene or bundle load the server never requested, raises one of the four protocol-direction violations, which default to `Kick`. See [Violation reference](./violation-reference.md#protocol-direction-violations).
@@ -28,8 +28,6 @@ The server refuses all of the following without any code from you. The offending
 - **Repair traffic is budgeted.** With `SystemManager.RecoveryBudgetEnabled` on (the default), a client that keeps losing packets, or claims to, is not repaired past its budget. `RecoveryBudgetExhaustedViolation` tells you when a client keeps hitting it.
 - **A lag-compensated shot cannot ask for an arbitrarily old world.** In Pro, a shooter's claimed view is clamped to `LagCompensationManager.MaximumRewindMilliseconds` (500 by default) and raises `LagCompensationViewClampedViolation`. See [The rewind window and the view clamp](../lag-compensation/the-rewind-window.md).
 - **Predicted spawns are refused until you allow them.** In Pro, no client can predict a spawn or despawn until the server registers a validator, and the rate is bounded by `SystemManager.PredictedSystemsPerSecond` (100 by default). See [Predicted spawn and despawn requests](../systems/predicted-spawn-requests.md).
-
-The server does not encrypt traffic. For that, use the Pro packet transform layer. See [Packet transforms](../transports/packet-transforms.md).
 
 ## Most violations are silent until you act on them
 
@@ -94,7 +92,20 @@ coreManager.ServerManager.ClientLimits = clientLimits;
 
 ### Cap the number of connections
 
-A server accepts any number of clients until you call `SetMaximumConnections(uint)` on the transport. For Synapse it sets `ServerConfiguration.MaximumConnections`, where `0` (the default) means unlimited. A client beyond the cap is refused during its handshake.
+Call `SetMaximumConnections(uint)` on the transport to cap how many clients the server accepts, and set it to what your server can carry. It can only lower the transport's own maximum, which `Transport.GetMaximumConnectionsCeiling()` reports:
+
+- `0`, the default, uses the transport's own maximum. For Synapse that is 4,096. The Steam and QUIC transport add-ons, `SteamTransport` and `QuicTransport`, have no maximum of their own, so `0` there accepts any number of clients.
+- A number above the transport's own maximum is lowered to it, with a warning.
+
+A client beyond the cap is refused.
+
+## Anyone on the network path can read Synapse traffic
+
+Synapse does not encrypt its packets, so another device on the same network, or any machine the packets pass through, can read them. To keep traffic private, use a transport that encrypts or add your own encryption:
+
+- The QUIC transport add-on, `QuicTransport`, encrypts every connection with TLS.
+- The Steam transport add-on, `SteamTransport`, runs over Steam's networking, which encrypts every connection.
+- In Pro, set `TransportManager.PacketTransform` to add your own encryption on any transport. See [Packet transforms](../transports/packet-transforms.md).
 
 ## Authenticate every client before it can do anything
 
@@ -206,3 +217,13 @@ To log every violation without changing any outcome, register an `IViolationObse
 ## Kick cleanly when you remove a client
 
 `ServerManager.KickClient` and the `Connection.Kick()` shorthand mark a client for removal. Under the default `KickOptions` the server stops sending to the client and stops believing anything it sends, and the link closes at the end of the frame. Pass a notice message to tell the client why; it is sent before the link closes. `ServerManager.KickTimeoutMilliseconds` (500 by default) closes the link outright if the client never acknowledges. See [Kicking and disconnecting a client](../core/kicking-and-disconnecting.md).
+
+## Ban players by their identity, not their address
+
+Nucleus has no ban list of its own, and a kicked client can connect again straight away. Synapse blacklists a client by itself for some faults, such as breaking some of the limits above, but that blacklist is keyed on the address and port the client connected from, so the same player can come back from another port. To keep a player out:
+
+1. Keep your own list of banned identities, such as the account ids your authenticator approves.
+2. In your authenticator, once you know who the player is, call `DenyClient` instead of `ApproveClient` when that identity is on the list.
+3. Kick a banned player who is still connected with `Connection.Kick()`.
+
+See [Authenticating clients](../core/authentication.md).

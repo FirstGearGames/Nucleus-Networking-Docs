@@ -31,7 +31,7 @@ await synapse.ConnectAsync(Invoker.Client);
 | `ConnectedTimeoutSeconds` | `15` | How long a connection waits without hearing from the other side before it times out. Never less than one second. |
 | `ConnectingTimeoutSeconds` | `10` | How long a client waits for the server to answer its connect before returning to `Disconnected`. Zero uses `ConnectedTimeoutSeconds`. Client only. |
 
-Cap how many clients the server accepts with `synapse.SetMaximumConnections(uint)`. It sets `ServerConfiguration.MaximumConnections`, which is read-only to your code. `ServerConfiguration.UnsetMaximumConnections` (`0`, the default) accepts any number. The cap applies the next time the server starts. A client over the cap gets no answer, so it gives up as it would on a server that never replied.
+Cap how many clients the server accepts with `synapse.SetMaximumConnections(uint)`. It sets `ServerConfiguration.MaximumConnections`, which is read-only to your code. Synapse accepts at most 4,096 connections, and the cap can only lower that: `ServerConfiguration.UnsetMaximumConnections` (`0`, the default) uses 4,096, and a higher number is lowered to 4,096 with a warning. The cap applies the next time the server starts. A client over the cap gets no answer, so it gives up as it would on a server that never replied.
 
 ## Finding out why a connection dropped
 
@@ -86,4 +86,6 @@ Turning it on costs bandwidth and CPU for every client:
 - Every packet grows slightly in each direction, so a game that sends more packets pays more bandwidth.
 - The server and each client do a little extra work on every packet they send and receive.
 
-It does not hide traffic from someone who can see it on the way, such as another device on the same network.
+## Synapse does not encrypt traffic
+
+Anyone who can see the packets on the way, such as another device on the same network, can read them, with or without the data session token. See [Anyone on the network path can read Synapse traffic](../diagnostics/securing-a-server.md#anyone-on-the-network-path-can-read-synapse-traffic) for transports that encrypt and for adding your own encryption.

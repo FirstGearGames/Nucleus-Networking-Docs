@@ -23,7 +23,7 @@ A call the server relays to other observers still carries the original sender's 
 ## Connections are not players
 
 - `Connection.RemoteAddress` is where the connection came from, observed by the server, so it can be part of an identity check. It names a location, not a player: clients behind the same NAT share one address.
-- `Connection.Id` is assigned per session and reused once a connection is gone.
+- `Connection.Id` is assigned per session and reused once a connection is gone. Every client is told every other client's `Connection.Id`, so never use one as a secret, such as a password or a join code.
 - To recognize a player across a reconnect, key on `Connection.Identity`, the value your authenticator sets on approval. Matching a returning `Identity` to what it owned before is up to your game code.
 
 ## Arbitration is not a security boundary
@@ -36,9 +36,16 @@ When several observers write to a system at once, in either edition, arbitration
 
 `NetworkTransform` and `NetworkRigidbody` take the position their controlling client sends, so a modified client can put its object anywhere. When movement must be fair, use a validated behaviour such as `ValidatedTransform`, `ValidatedCharacterController` or `ValidatedRigidbody`, whose results the server works out for itself, or check the movement on the server. See [Predicting a body with a validated behaviour](../physics/predicting-a-body-with-a-validated-behaviour.md).
 
-## Nucleus does not encrypt traffic
+## A client can read everything it is sent
 
-To encrypt, compress, obfuscate or add an integrity check to the bytes themselves, use the packet-transform layer, `TransportManager.PacketTransform` (Pro). It rewrites every packet's payload on both peers before anything else in the engine sees it.
+A modified client can read every value the server sends it, whether or not your game shows it, such as the position of an enemy behind a wall. To keep something from a client, never send it:
+
+- Cull the object for that client with an interest rule on **Spawn**, such as **Controller Only** on a [Network Interest Object](../interest/network-interest-object-component.md) for an object only its controller may see. Stopping the object is not enough, because it stays on the client with the last values it was sent. See [Frozen or gone: what a stop does to the object](../interest/stopping-objects-in-unity.md).
+- Keep a value only the server needs off the network with `[ReplicationIgnore]`. See [Keeping a member off the network](../../core-api/state/member-value-types.md#keep-a-member-off-the-wire-with-replicationignore).
+
+## Synapse does not encrypt traffic
+
+Anyone on the network path can read what the Synapse Transport sends. [Securing a server](../../core-api/diagnostics/securing-a-server.md#anyone-on-the-network-path-can-read-synapse-traffic) lists the transports that encrypt and how to add your own encryption.
 
 ## A shooter's view is bounded, not trusted
 

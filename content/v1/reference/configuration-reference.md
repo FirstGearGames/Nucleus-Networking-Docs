@@ -112,4 +112,4 @@ Pro only.
 
 | Field | Default | Notes |
 |---|---|---|
-| `MaximumConnections` | `UnsetMaximumConnections` (0) | 0 accepts any number. Set it with `transport.SetMaximumConnections(uint)`; Synapse applies it at the next server start. |
+| `MaximumConnections` | `UnsetMaximumConnections` (0) | 0 uses the transport's own maximum, which `Transport.GetMaximumConnectionsCeiling()` reports: 4,096 for Synapse, and any number for a transport with no maximum of its own, such as the Steam and QUIC add-ons. Set it with `transport.SetMaximumConnections(uint)`, which can only lower that maximum; a higher number is lowered to it with a warning. Synapse applies it at the next server start. |

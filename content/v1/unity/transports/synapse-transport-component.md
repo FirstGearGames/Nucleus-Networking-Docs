@@ -26,7 +26,7 @@ Under **Timeouts**:
 
 ## Set the hosting options
 
-Under **Hosting**, **Maximum Connections** (`uint`, default `0`) is the most clients the server accepts at once. Zero accepts any number.
+Under **Hosting**, **Maximum Connections** (`uint`, default `0`) is the most clients the server accepts at once. It can only lower Synapse's own maximum of 4,096: zero uses 4,096, and a higher number is lowered to 4,096 with a warning.
 
 **Host Pairing** (default `HostPairing.Local`) sets how the host's server reaches its own client half:
 
@@ -44,7 +44,10 @@ Turning it on costs bandwidth and CPU for every client:
 - Every packet grows slightly in each direction, so a game that sends more packets pays more bandwidth.
 - The server and each client do a little extra work on every packet they send and receive.
 
-It does not hide traffic from someone who can see it on the way, such as another device on the same network.
+## Synapse does not encrypt traffic
+
+Anyone who can see the packets on the way, such as another device on the same network, can read them, with or without the data session token. See [Anyone on the network path can read Synapse traffic](../../core-api/diagnostics/securing-a-server.md#anyone-on-the-network-path-can-read-synapse-traffic) for transports that encrypt and for adding your own encryption.
+
 ## Limit what each client may send
 
 Under **Client Limits**, the server holds each client's datagrams to limits that are on by default. See [Securing a server in Unity](../diagnostics/securing-a-server-in-unity.md#limit-how-much-each-client-can-send) for every field and its default.

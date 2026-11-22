@@ -32,7 +32,7 @@ Zero turns a single limit off. The fields show only while Client Limits Enabled 
 
 The packet rate is the tighter of the two rates by default. If an honest client loses input under load, for example because it controls many objects or the server runs a high tick rate, raise Maximum Packets Per Second first. Dropped datagrams show up as lost client state, not as a kick.
 
-In the **Hosting** section, **Maximum Connections** defaults to `0`, which accepts any number of clients. Set it to what your server can carry.
+In the **Hosting** section, **Maximum Connections** defaults to `0`, which uses Synapse's own maximum of 4,096 clients. It can only lower that maximum. Set it to what your server can carry.
 
 To see what the socket refused, subscribe to `ViolationObserved` on the `Synapse` transport the component built. It reports rate limits, oversized packets, security kicks and timeouts. See [Synapse](../../core-api/transports/synapse-transport.md#finding-out-why-a-connection-dropped) and [SynapseTransport component](../transports/synapse-transport-component.md).
 
@@ -149,8 +149,10 @@ public class ScoreBoard : NucleusBehaviour<ScoreComponent>
 
 - The Synapse Transport's Client Limits Enabled is ticked, with rates that suit your game.
 - Any transport without its own limits is covered by the Unity Server Manager's client limits, with Maximum Packet Bytes set.
-- Maximum Connections on the transport is above zero.
+- Maximum Connections on the transport is set to what your server can carry. On the Steam and QUIC add-ons, zero accepts any number of clients.
+- Traffic that must stay private goes over `QuicTransport` or `SteamTransport`, or through a Pro packet transform that encrypts it, because Synapse does not encrypt.
 - Your own authenticator replaces `AddressClientAuthenticator`, and `AuthenticationTimeoutSeconds` is above zero.
+- Your authenticator refuses banned players by their identity, never by their address. See [Ban players by their identity, not their address](../../core-api/diagnostics/securing-a-server.md#ban-players-by-their-identity-not-their-address).
 - Only the login message sets `IsAuthenticationRequired` to `false`.
 - Every object on `AnyClient` access is there on purpose.
 - Every component with members a client can write, input included, implements `IMemberWriteValidator<T0>`.

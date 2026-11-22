@@ -20,7 +20,7 @@ An id a client writes into a payload is only a claim. The sender a handler is gi
 
 `Connection.RemoteAddress` is observed by the server, so it can be part of an identity check, but several clients behind one NAT share an address.
 
-`Connection.Id` is assigned per session and reused once a connection is gone. To recognize a player across reconnects, key on `Connection.Identity`, which your authenticator sets on approval. Matching a returning `Identity` to what it owned before is up to your game.
+`Connection.Id` is assigned per session and reused once a connection is gone. Every client is told every other client's `Connection.Id`, so never use one as a secret, such as a password or a join code. To recognize a player across reconnects, key on `Connection.Identity`, which your authenticator sets on approval. Matching a returning `Identity` to what it owned before is up to your game.
 
 ## Arbitration is not a security boundary
 
@@ -32,9 +32,16 @@ This applies in both editions. In Free each such write is a request, and request
 
 `TransformComponent` takes the position, rotation and scale its controlling client writes, so a modified client can put its object anywhere. When movement must be fair, simulate it in `PredictionRole.Validate` members, whose values the server works out for itself, or check the movement on the server. See [Predicted members and prediction history](../control/prediction-history-and-predicted-members.md).
 
-## Nucleus does not encrypt traffic
+## A client can read everything it is sent
 
-To encrypt, compress, obfuscate or integrity-check packets, use the Pro packet transform, `TransportManager.PacketTransform`. See [Packet transforms](../transports/packet-transforms.md).
+A modified client can read every value the server sends it, whether or not your game shows it, such as the position of an enemy behind a wall. To keep something from a client, never send it:
+
+- Cull the object for that client with an interest condition on `InterestEffect.Spawn`, such as `ControllerOnlyInterestCondition` for an object only its controller may see, like a hand of cards. Stopping the object with `InterestEffect.Stop` is not enough, because the client keeps it with the last values it was sent. See [Stopping versus culling](../interest/stopping-versus-culling.md).
+- Keep a value only the server needs off the network with `[ReplicationIgnore]`. See [Keeping a member off the network](../state/member-value-types.md#keep-a-member-off-the-wire-with-replicationignore).
+
+## Synapse does not encrypt traffic
+
+Anyone on the network path can read it. [Securing a server](./securing-a-server.md#anyone-on-the-network-path-can-read-synapse-traffic) lists the transports that encrypt and how to add your own encryption.
 
 ## A shooter's view is bounded, not trusted
 

@@ -25,6 +25,7 @@ title: "The Transport contract"
 | `OnApplyCommandLineArguments(CommandLineArguments commandLineArguments)` | Applies `PortArgument` to `Configuration.Port`. | The transport has its own endpoint settings. Call base, then read your flags. |
 | `IsLocalTransport()` | Logs a warning and returns `false`. | The transport only runs locally and offline. Several security checks are disabled while it returns true. |
 | `SetPort(ushort port)` | Logs a warning. | The transport has a port to set. |
+| `GetMaximumConnectionsCeiling()` | Returns `ServerConfiguration.UnsetMaximumConnections` (`0`): no maximum of its own. | The transport cannot hold more than a fixed number of connections. Return that number, so `SetMaximumConnections` can only lower the cap below it. |
 
 ## Derive from SocketPairTransport for a server socket plus a client socket
 
