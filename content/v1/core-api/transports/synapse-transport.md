@@ -76,3 +76,14 @@ The event is raised on the network loop thread. A handler must not block, stop t
 `IsOwnClientConnection(Connection)` reports whether a connection is the host's own client half. `IsLocalTransport()` returns `false`, even under `HostPairing.Local`.
 
 `Synapse.DatagramOverheadBytes` is the socket layer's largest per-datagram header, which comes out of the transmission unit.
+
+## Stop forged data packets with the data session token
+
+`DataSessionTokenEnabled` (default `false`) protects every data packet against forgery. With it on at both the server and the client, someone who is not on the network path between them cannot send data as a player, or end a player's link with a forged packet. A link uses it only when both ends have it on, so set it on the server and on every client, before each connects.
+
+Turning it on costs bandwidth and CPU for every client:
+
+- Every packet grows slightly in each direction, so a game that sends more packets pays more bandwidth.
+- The server and each client do a little extra work on every packet they send and receive.
+
+It does not hide traffic from someone who can see it on the way, such as another device on the same network.

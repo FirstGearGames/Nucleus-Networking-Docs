@@ -35,10 +35,20 @@ Under **Hosting**, **Maximum Connections** (`uint`, default `0`) is the most cli
 
 Pairing only engages for a loopback address. With **Remote Host** pointing at another machine, it changes nothing.
 
+## Stop forged data packets with the data session token
+
+Under **Security**, **Data Session Token Enabled** (`bool`, default off) protects every data packet against forgery. With it on at both the server and the client, someone who is not on the network path between them cannot send data as a player, or end a player's link with a forged packet. A link uses it only when both ends have it on, so turn it on in the server's build and in the client's build.
+
+Turning it on costs bandwidth and CPU for every client:
+
+- Every packet grows slightly in each direction, so a game that sends more packets pays more bandwidth.
+- The server and each client do a little extra work on every packet they send and receive.
+
+It does not hide traffic from someone who can see it on the way, such as another device on the same network.
 ## Limit what each client may send
 
 Under **Client Limits**, the server holds each client's datagrams to limits that are on by default. See [Securing a server in Unity](../diagnostics/securing-a-server-in-unity.md#limit-how-much-each-client-can-send) for every field and its default.
 
 ## Set values from a script
 
-`Port` (`ushort`), `RemoteHost` (`string`) and `HostPairing` are properties over the inspector fields.
+`Port` (`ushort`), `RemoteHost` (`string`), `HostPairing` and `DataSessionTokenEnabled` (`bool`) are properties over the inspector fields.
