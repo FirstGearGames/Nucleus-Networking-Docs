@@ -82,7 +82,7 @@ public partial class MoverComponent : NetworkComponent
     // Client state: what the player asked for this tick.
     public readonly NetworkMember<Vector2> Direction = new(role: MemberRole.Predict);
     // The result every peer computes. A predicting client compares it with the server's.
-    public readonly NetworkMember<Vector3> Position = new(role: MemberRole.Validate, accuracy: 0.01f, correctionSmoothingTicks: 6);
+    public readonly NetworkMember<Vector3> Position = new(role: MemberRole.Validate, accuracy: 0.01f);
 
     // Set by the game from the device on the controlling client.
     public Vector2 IntendedDirection;
@@ -172,12 +172,6 @@ public override void OnMembersChanged(ulong memberFlags, MemberChangeDirection m
 On the controlling client each system also counts `ReconcileCount`, `ReplayedTickCount` and `LastReplayTickCount` since it was rented, and `GetMismatchCount(MismatchCause)` per cause. All of them stay at zero while predictions agree.
 
 ## Smooth a correction
-
-Construct a member with `correctionSmoothingTicks` to have its `InterpolatedValue` glide from the pre-rewind value to the corrected one over that many presented ticks, while `Value` is correct at once. 0, the default, shows the correction at once.
-
-```csharp
-public readonly NetworkMember<Vector3> Position = new(role: MemberRole.Validate, accuracy: 0.01f, correctionSmoothingTicks: 6);
-```
 
 For a physics body, a convergence follower can hide the visual jump a rewind produces by interpolating toward the corrected pose; see [PhysicsConvergence](../physics/physics-convergence.md).
 

@@ -27,7 +27,3 @@ Smoothing the object's own transform is safe for a `CharacterController` or a `R
 ## Follow the graphic with the camera in LateUpdate
 
 Smoothing adds up to one tick of delay to what is drawn, and the slide is applied before your own `LateUpdate` scripts run. Follow the graphic from `LateUpdate`. From `Update`, on a frame that runs a tick, the camera reads the true pose, up to a tick ahead of what is drawn.
-
-## Smooth a member instead when you draw from Update
-
-When you draw an object from a member's value in `Update` instead of placing it each tick, construct the member with `correctionSmoothingTicks` and draw its `InterpolatedValue`. `Value` is corrected at once, while `InterpolatedValue` eases from what was on screen. See [Replaying a correction in Unity](./reconcile-in-unity.md).

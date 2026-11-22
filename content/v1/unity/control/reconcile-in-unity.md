@@ -41,7 +41,7 @@ namespace MyGame
         // Client state: written by the controller each tick.
         public readonly NetworkMember<NumericsVector2> Direction = new(role: MemberRole.Predict);
         // Computed from client state by the server and, ahead of it, by the controlling client.
-        public readonly NetworkMember<NumericsVector3> Position = new(role: MemberRole.Validate, accuracy: 0.01f, correctionSmoothingTicks: 6);
+        public readonly NetworkMember<NumericsVector3> Position = new(role: MemberRole.Validate, accuracy: 0.01f);
     }
 }
 ```
@@ -149,7 +149,7 @@ protected override void OnReplayCompleted(ReplayReport replayReport)
 }
 ```
 
-To glide to a correction instead of jumping, construct the member with `correctionSmoothingTicks: 6` and render `InterpolatedValue`: it eases from the value that was on screen while `Value` is already correct. For an object you place on each tick instead, draw it through a `GraphicalSmoother`; see [Smoothing a predicted object with GraphicalSmoother](./graphical-smoother.md).
+To glide to a correction instead of jumping, draw the object through a `GraphicalSmoother`; see [Smoothing a predicted object with GraphicalSmoother](./graphical-smoother.md).
 
 ## Hold a crowd, or predict other players
 

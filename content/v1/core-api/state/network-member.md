@@ -44,7 +44,6 @@ public NetworkMember(
     SendInterval sendInterval = SendInterval.Normal,
     TransmissionMode transmissionMode = TransmissionMode.Interval,
     bool isExtrapolationEnabled = true,
-    byte correctionSmoothingTicks = 0,
     bool isCarriedForward = true,
     float resultTolerance = 0f);
 ```
@@ -61,7 +60,6 @@ Pass arguments by name at the field declaration, for example `NetworkMember<T> _
 | `sendInterval` | No, see `SetSendInterval` | How often a changed member sends while `TransmissionMode.Interval` is in force. `SendInterval.Normal` sends every tick. Only a `MemberRole.Replicate` member is paced; a `Predict` or `Validate` member stays at `SendInterval.Normal`. |
 | `transmissionMode` | No, see `SetTransmissionMode` | `TransmissionMode.Interval` (default) sends changes paced to `sendInterval`. `TransmissionMode.Divine` (Pro) projects motion instead, for values that move predictably. |
 | `isExtrapolationEnabled` | No, see `SetExtrapolationEnabled` | Whether receivers keep the value moving through the sender's silence, in either mode. `true` (default) favors staying live when an update is lost; `false` holds still until told and favors accuracy. See [How often a member is sent](./send-pacing.md). |
-| `correctionSmoothingTicks` | Yes | On a client that predicts the member, how many ticks `InterpolatedValue` takes to glide from the value shown before a reconcile to the corrected one, while `Value` is already correct. `0` (default) shows the correction at once. |
 | `isCarriedForward` | Yes | For a `MemberRole.Predict` member only. `false` keeps it at its default when `NetworkComponent.TryGetLastState(false)` carries the previous tick's client state across a tick whose client state did not arrive, for a value that must not repeat, such as a jump press. Ignored for other roles. |
 | `resultTolerance` | Yes | For a predicted member only: how far its predicted value may be from the server's before it counts as a misprediction, for a value a replay cannot reproduce exactly, such as one physics moves. `0` (default) compares at `accuracy`. |
 

@@ -240,9 +240,7 @@ if (CoreManager.TransportManager.IsServerStarted)
 
 ## Step 5: Draw the object every frame, and smooth the corrections
 
-The members change once per tick, but the screen draws many frames per tick. There are two ways to draw smoothly between ticks.
-
-The first, which the demo uses, is to place the object each tick and let a `GraphicalSmoother` glide a child graphic between those places. Put the collider and the root on the object, the mesh on a child, add a `GraphicalSmoother`, and place the root in the behaviour's own `OnEarlyFixedUpdate`:
+The members change once per tick, but the screen draws many frames per tick. To draw smoothly between ticks, place the object each tick and let a `GraphicalSmoother` glide a child graphic between those places, as the demo does. Put the collider and the root on the object, the mesh on a child, add a `GraphicalSmoother`, and place the root in the behaviour's own `OnEarlyFixedUpdate`:
 
 ```csharp
 protected override void OnEarlyFixedUpdate(StepDelta stepDelta, SimulationContext simulationContext)
@@ -253,18 +251,6 @@ protected override void OnEarlyFixedUpdate(StepDelta stepDelta, SimulationContex
 ```
 
 The component's step has already run for that tick, because a system runs its components before its behaviours. The smoother also glides across a correction, so a taken-back jump drops smoothly instead of snapping. See [Smoothing a predicted object with GraphicalSmoother](./graphical-smoother.md).
-
-The second is to render `InterpolatedValue` from `Update` and construct the member with `correctionSmoothingTicks`:
-
-```csharp
-public readonly NetworkMember<NumericsVector3> Position = new(role: MemberRole.Validate, accuracy: ValueAccuracy, correctionSmoothingTicks: 6);
-```
-
-```csharp
-private void Update() => transform.position = Component.Position.InterpolatedValue.ToUnity();
-```
-
-`Value` is corrected at once, so the simulation is always right, while `InterpolatedValue` eases from what was on screen over six ticks.
 
 ## Step 6: Play effects once, on the live tick
 
