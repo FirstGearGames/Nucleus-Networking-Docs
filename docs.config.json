@@ -2,6 +2,7 @@
   "title": "Nucleus Networking",
   "description": "Documentation for Nucleus, a .NET networking engine with a Unity integration.",
   "url": "https://nucleus-networking-docs.pages.dev",
+  "image": "/static/share.jpg",
   "logo": "/static/logo.png",
   "versions": ["v1"],
   "defaultVersion": "v1",
