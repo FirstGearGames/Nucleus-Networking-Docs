@@ -17,7 +17,7 @@ Choose a validated behaviour for competitive play where the player's own body mu
 
 ## Add one validated behaviour per Unity component
 
-Each validated behaviour keeps the state of one Unity component in `MemberRole.Validate` members and declares a predicted system of its own for them, so your script does not list it in its composition.
+Each validated behaviour keeps the state of one Unity component in `PredictionRole.Validate` members and declares a predicted system of its own for them, so your script does not list it in its composition.
 
 The behaviours live in the `Nucleus.Integrations.Unity.Prediction` namespace:
 
@@ -37,7 +37,7 @@ The behaviours live in the `Nucleus.Integrations.Unity.Prediction` namespace:
 
 ## Write the client state and push the body
 
-1. Put the client state in a component of `MemberRole.Predict` members:
+1. Put the client state in a component of `PredictionRole.Predict` members:
 
 ```csharp
 using Nucleus.Components;
@@ -47,7 +47,7 @@ namespace MyGame
     public partial class SteerComponent : NetworkComponent
     {
         // -1 left, 0 straight, 1 right. Whole steps, so the server simulates exactly the steer the client did.
-        public readonly NetworkMember<sbyte> Steer = new(role: MemberRole.Predict);
+        public readonly NetworkMember<sbyte> Steer = new(role: PredictionRole.Predict);
     }
 }
 ```

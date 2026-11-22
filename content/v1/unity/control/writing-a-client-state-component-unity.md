@@ -8,7 +8,7 @@ Client state is what the controlling client's player asked for this tick, such a
 
 ## Declare the client state in the component
 
-Declare client state as `NetworkMember<T0>` fields with `role: MemberRole.Predict`, in the object's own `NetworkComponent` beside the members the server computes from them. There is nothing else to add or register.
+Declare client state as `NetworkMember<T0>` fields with `role: PredictionRole.Predict`, in the object's own `NetworkComponent` beside the members the server computes from them. There is nothing else to add or register.
 
 ```csharp
 using Nucleus.Components;
@@ -21,7 +21,7 @@ namespace MyGame
     public partial class MoverComponent : NetworkComponent, IMemberWriteValidator<NumericsVector2>, IMemberWriteValidator<NumericsVector3>
     {
         // Client state: written by the controller on its live tick, sent upstream every tick.
-        public readonly NetworkMember<NumericsVector2> Direction = new(role: MemberRole.Predict);
+        public readonly NetworkMember<NumericsVector2> Direction = new(role: PredictionRole.Predict);
         // A member only the server computes from it.
         public readonly NetworkMember<NumericsVector3> Position = new();
 
@@ -148,4 +148,4 @@ Put this override in `MoverComponent`. Use the callback for presentation or to r
 
 ## Predict the result as well
 
-Here only the server moves the object, so the controller sees its own movement a round trip late. To move it at once, declare `Position` with `role: MemberRole.Validate`, run the step on the controller too, and let the engine replay it when the server's result differs. See [Replaying a correction in Unity](./reconcile-in-unity.md).
+Here only the server moves the object, so the controller sees its own movement a round trip late. To move it at once, declare `Position` with `role: PredictionRole.Validate`, run the step on the controller too, and let the engine replay it when the server's result differs. See [Replaying a correction in Unity](./reconcile-in-unity.md).

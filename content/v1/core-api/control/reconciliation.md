@@ -80,9 +80,9 @@ using Nucleus.Systems;
 public partial class MoverComponent : NetworkComponent
 {
     // Client state: what the player asked for this tick.
-    public readonly NetworkMember<Vector2> Direction = new(role: MemberRole.Predict);
+    public readonly NetworkMember<Vector2> Direction = new(role: PredictionRole.Predict);
     // The result every peer computes. A predicting client compares it with the server's.
-    public readonly NetworkMember<Vector3> Position = new(role: MemberRole.Validate, accuracy: 0.01f);
+    public readonly NetworkMember<Vector3> Position = new(role: PredictionRole.Validate, accuracy: 0.01f);
 
     // Set by the game from the device on the controlling client.
     public Vector2 IntendedDirection;
@@ -116,7 +116,7 @@ public partial class MoverComponent : NetworkComponent
 
 - `Validate` members write the replayed tick's value, and each replayed tick becomes the member's newest, so `Value` reads the last tick replayed and the next live write lands after it.
 - `Predict` members read the client state recorded for the replayed tick.
-- `Replicate` members keep their live value; writes to them land on the live value.
+- Replicated members keep their live value; writes to them land on the live value.
 - Systems this client does not control read the server values that arrived with the start tick, unless the [hold radius](#holding-only-the-systems-near-a-replay) leaves them out.
 - The core steps no physics itself. `SystemManager.ReplayEarlyFixedUpdated` is raised between the early and late fixed update of each replayed tick, so an integration can step its physics world there. The Unity integration does, so a body predicted through its `ValidatedRigidbody` replays.
 
@@ -208,7 +208,7 @@ observedSystem.ObserverPredictionEnabled = true;
 - Its fixed updates then run as `SimulationType.Forward` on every live tick, from the client state the server forwards, which lands on the local tick the server's echo names.
 - On a live tick that client state has not arrived yet, so the step says `StepDelta.IsClientStateMissing`. Carry the last client state forward with `TryGetLastState`, as the server does.
 - The observer compares the server's values for the `Validate` members with its prediction at its own echo, and a reconcile restores and replays the system with the ones the observer controls. Nothing new travels.
-- The observer needs an echo of its own, so it must control a system that sends client state: one with `MemberRole.Predict` members. An observer that controls nothing like that gets no echo, and the server's values land on it directly.
+- The observer needs an echo of its own, so it must control a system that sends client state: one with `PredictionRole.Predict` members. An observer that controls nothing like that gets no echo, and the server's values land on it directly.
 
 ## Replay from ReconcileRequired yourself
 

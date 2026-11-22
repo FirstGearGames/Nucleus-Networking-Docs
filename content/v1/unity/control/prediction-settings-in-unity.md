@@ -8,7 +8,7 @@ The prediction fields sit under **Prediction** on the Unity system manager. Set 
 
 ## Size the prediction history
 
-**Prediction History Ticks** sets `SystemManager.PredictionHistoryTicks`: how many ticks of history `MemberRole.Predict` and `MemberRole.Validate` members keep, so a reconcile can restore a past tick and a replay can read each past tick's client state.
+**Prediction History Ticks** sets `SystemManager.PredictionHistoryTicks`: how many ticks of history `PredictionRole.Predict` and `PredictionRole.Validate` members keep, so a reconcile can restore a past tick and a replay can read each past tick's client state.
 
 The default is 0 (`SystemManager.UnsetPredictionHistoryTicks`). Left at 0, every client keeps `SystemManager.DefaultPredictionHistoryTicks` (64 ticks, about a second at 60 ticks per second) for every object it holds, controlled or not, which covers most games. The server keeps two ticks.
 

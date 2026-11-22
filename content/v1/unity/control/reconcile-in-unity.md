@@ -27,7 +27,7 @@ protected virtual void OnLateFixedUpdate(StepDelta stepDelta, SimulationContext 
 
 Use `RemoteTick` only to pair a log line with what the other end did, never for timing: on the server it is a number the client chose. Time cooldowns and everything else by `stepDelta.Tick`.
 
-With the client state as `MemberRole.Predict` members and the result as `MemberRole.Validate` members, the component looks like this:
+With the client state as `PredictionRole.Predict` members and the result as `PredictionRole.Validate` members, the component looks like this:
 
 ```csharp
 using Nucleus.Components;
@@ -39,9 +39,9 @@ namespace MyGame
     public partial class PredictedMoverComponent : NetworkComponent
     {
         // Client state: written by the controller each tick.
-        public readonly NetworkMember<NumericsVector2> Direction = new(role: MemberRole.Predict);
+        public readonly NetworkMember<NumericsVector2> Direction = new(role: PredictionRole.Predict);
         // Computed from client state by the server and, ahead of it, by the controlling client.
-        public readonly NetworkMember<NumericsVector3> Position = new(role: MemberRole.Validate, accuracy: 0.01f);
+        public readonly NetworkMember<NumericsVector3> Position = new(role: PredictionRole.Validate, accuracy: 0.01f);
     }
 }
 ```

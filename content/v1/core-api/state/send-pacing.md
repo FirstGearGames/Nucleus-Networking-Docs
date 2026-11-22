@@ -23,7 +23,7 @@ Pick `Divine` for a value that moves smoothly, `Interval` otherwise.
 
 Choose `Short` for a value that needs to look live, and `Long` for one that only needs to be right before long.
 
-Only a `MemberRole.Replicate` member is paced. A `Predict` or `Validate` member sends on every changed tick, and a send interval set on one is held at `Normal`.
+Only a replicated member is paced. A predicted member sends on every changed tick: its constructor takes no send interval, and `SetSendInterval` on one is held at `Normal`.
 
 `SendIntervalTicks.Resolve(SendInterval, uint)` converts a span to ticks for a tick rate. It rounds up, so a rate that does not divide the span evenly adds at most one tick of latency rather than sending faster than asked. `Normal` always resolves to one tick.
 

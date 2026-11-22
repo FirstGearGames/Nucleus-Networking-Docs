@@ -8,7 +8,7 @@ Client state is what the controlling client sends the server every tick so the s
 
 ## Declare client state as Predict members
 
-Client state is ordinary `NetworkMember<T0>` fields constructed with `role: MemberRole.Predict`, declared in the system's own `NetworkComponent` beside the members the simulation computes from them. There is no separate class to write and nothing to register.
+Client state is ordinary `NetworkMember<T0>` fields constructed with `role: PredictionRole.Predict`, declared in the system's own `NetworkComponent` beside the members the simulation computes from them. There is no separate class to write and nothing to register.
 
 ```csharp
 using System.Numerics;
@@ -20,9 +20,9 @@ using Nucleus.Systems;
 public partial class MoverComponent : NetworkComponent, IMemberWriteValidator<Vector2>
 {
     // Client state: written by the controller on its live tick, sent upstream every tick.
-    public readonly NetworkMember<Vector2> MoveDirection = new(role: MemberRole.Predict);
+    public readonly NetworkMember<Vector2> MoveDirection = new(role: PredictionRole.Predict);
     // A press that must not repeat when a missing tick is carried forward.
-    public readonly NetworkMember<bool> JumpPressed = new(role: MemberRole.Predict, isCarriedForward: false);
+    public readonly NetworkMember<bool> JumpPressed = new(role: PredictionRole.Predict, isCarriedForward: false);
     // A member the server computes from the client state.
     public readonly NetworkMember<Vector3> Position = new();
 
@@ -64,7 +64,7 @@ public partial class MoverComponent : NetworkComponent, IMemberWriteValidator<Ve
 }
 ```
 
-`Position` here is an ordinary member the server computes, so the controller sees its own movement a round trip late. To have the controller move at once and be corrected only when it is wrong, make the result `MemberRole.Validate` and let both peers run the step; see [Predicted members and prediction history](./prediction-history-and-predicted-members.md).
+`Position` here is an ordinary member the server computes, so the controller sees its own movement a round trip late. To have the controller move at once and be corrected only when it is wrong, make the result `PredictionRole.Validate` and let both peers run the step; see [Predicted members and prediction history](./prediction-history-and-predicted-members.md).
 
 ## Write it in the fixed update on the controller's live tick
 

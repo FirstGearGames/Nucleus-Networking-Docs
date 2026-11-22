@@ -146,7 +146,7 @@ public partial class InventoryComponent : NetworkComponent, IMemberWriteValidato
 - A validator that throws declines the write.
 - A declined write is not a violation. If a value can only come from a modified client, call `writingClientConnection.Kick()` from the validator.
 
-**Validate client state too.** The per-tick input a controlling client sends, in members declared with `MemberRole.Predict`, goes through the same validator. Clamp move directions, check that a jump is allowed, and decline anything a real controller could not produce. See [Judging and arbitrating client writes](../state/validating-client-writes.md) and [Client state components](../control/client-state-components.md).
+**Validate client state too.** The per-tick input a controlling client sends, in members declared with `PredictionRole.Predict`, goes through the same validator. Clamp move directions, check that a jump is allowed, and decline anything a real controller could not produce. See [Judging and arbitrating client writes](../state/validating-client-writes.md) and [Client state components](../control/client-state-components.md).
 
 ## Judge remote calls on the server
 

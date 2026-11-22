@@ -10,7 +10,7 @@ With prediction, the controlling client applies its own input at once instead of
 
 ## Prediction costs memory, bandwidth and replay time
 
-You turn prediction on per member with the `role` argument of `NetworkMember<T0>`: client state declared `MemberRole.Predict` and results declared `MemberRole.Validate`. That costs:
+You turn prediction on per member with the `role` argument of `NetworkMember<T0>`: client state declared `PredictionRole.Predict` and results declared `PredictionRole.Validate`. That costs:
 
 - **History.** Every client keeps `SystemManager.PredictionHistoryTicks` of history for a predicted member, or `SystemManager.DefaultPredictionHistoryTicks` (64) when that is unset.
 - **Replays.** Nothing about a result travels upstream, because the controller sends only its client state. A server value that differs from the prediction makes the client re-run `OnEarlyFixedUpdate` and `OnLateFixedUpdate` as `SimulationType.Replayed` for every tick since, about a round trip plus the state interpolation in ticks, all in one frame. Physics replays too, so a `ValidatedRigidbody` can be predicted; see [Predicting a body with a validated behaviour](../physics/predicting-a-body-with-a-validated-behaviour.md).
@@ -21,7 +21,7 @@ You turn prediction on per member with the `role` argument of `NetworkMember<T0>
 Most objects need none of this:
 
 - **An uncontrolled object with interpolation.** No history, no result check, no replay. The receiver animates between the values it receives, paced by **State Interpolation** (`SystemManager.StateInterpolation`, at most `MaximumStateInterpolation`). This is the default for anything nobody drives.
-- **A controller-written value with no prediction.** The controller writes the member every tick, but its role stays `MemberRole.Replicate`. Its writes land on it at once, with no replay, and the server judges each one through an `IMemberWriteValidator<T0>` instead of running the simulation.
+- **A controller-written value with no prediction.** The controller writes the member every tick, but it stays an ordinary replicated member, built without a role. Its writes land on it at once, with no replay, and the server judges each one through an `IMemberWriteValidator<T0>` instead of running the simulation.
 - **A purely local visual.** Particles, camera shake and UI feedback that only need to look right on one machine are not a `NetworkMember<T0>` at all, and cost nothing on the wire.
 
 ## See all three side by side
@@ -30,8 +30,8 @@ The `SimulationStyles` demo under `Demos/Prediction` drives three cubes from the
 
 ## Choose prediction per member
 
-`role` is set per member, and nothing is predicted by default. A component can predict its position while leaving health or ammo as `MemberRole.Replicate`.
+`role` is set per member, and nothing is predicted by default. A component can predict its position while leaving health or ammo as ordinary replicated members.
 
-The `ValidatedJump` demo under `Demos/Prediction` declares the walk direction and jump press as `MemberRole.Predict` and every movement result as `MemberRole.Validate`. The validated behaviours, such as `ValidatedRigidbody` and `ValidatedTransform`, carry ready-made `Validate` members for a body, transform or character controller, and the `BallRacer` demo under `Demos/Tutorials` predicts a `Rigidbody` with one.
+The `ValidatedJump` demo under `Demos/Prediction` declares the walk direction and jump press as `PredictionRole.Predict` and every movement result as `PredictionRole.Validate`. The validated behaviours, such as `ValidatedRigidbody` and `ValidatedTransform`, carry ready-made `Validate` members for a body, transform or character controller, and the `BallRacer` demo under `Demos/Tutorials` predicts a `Rigidbody` with one.
 
 Predicted members and replays are in every build. Predicted spawning, predicted despawn and spawn compensation are Pro only.

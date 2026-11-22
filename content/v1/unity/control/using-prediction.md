@@ -14,15 +14,15 @@ With prediction, the client runs the movement code itself the moment a key is pr
 
 Prediction only helps the player who controls the object; everyone else sees the server's values. Read [When prediction is worth its cost](./when-prediction-is-worth-it.md) before predicting anything other than a player's own character.
 
-## Every predicted member has one of three roles
+## Every member of a predicted object has one of three jobs
 
-Prediction is chosen per `NetworkMember<T0>`, with the `role` constructor argument:
+Prediction is chosen per `NetworkMember<T0>`, with the `role` constructor argument. A member built without one is replicated:
 
 | Role | What it holds | Who writes it |
 | --- | --- | --- |
-| `MemberRole.Predict` | What the player asked for this tick, such as a walk direction or a jump press. This is called client state. | The controlling client, on its live tick. The server receives it every tick. |
-| `MemberRole.Validate` | What the movement code works out from the client state, such as a position or a vertical speed. | Every peer that runs the movement code. The server never takes the client's value; the client compares its own with the server's. |
-| `MemberRole.Replicate` (the default) | Anything only the server decides, such as health. | The server. |
+| `PredictionRole.Predict` | What the player asked for this tick, such as a walk direction or a jump press. This is called client state. | The controlling client, on its live tick. The server receives it every tick. |
+| `PredictionRole.Validate` | What the movement code works out from the client state, such as a position or a vertical speed. | Every peer that runs the movement code. The server never takes the client's value; the client compares its own with the server's. |
+| No role (a replicated member) | Anything only the server decides, such as health. | The server. |
 
 The usual predicted object uses all three. Nearly every prediction bug comes from a value in the wrong role.
 
@@ -41,13 +41,13 @@ namespace MyGame
     {
         // Client state: what the player asked for this tick.
         // The walk direction: x in X, z in Y.
-        public readonly NetworkMember<Vector2Int> MoveDirection = new(role: MemberRole.Predict);
-        public readonly NetworkMember<bool> IsJumpPressed = new(role: MemberRole.Predict, isCarriedForward: false);
+        public readonly NetworkMember<Vector2Int> MoveDirection = new(role: PredictionRole.Predict);
+        public readonly NetworkMember<bool> IsJumpPressed = new(role: PredictionRole.Predict, isCarriedForward: false);
 
         // Results: what the movement code works out from the client state.
-        public readonly NetworkMember<NumericsVector3> Position = new(role: MemberRole.Validate, accuracy: ValueAccuracy);
-        public readonly NetworkMember<float> VerticalSpeed = new(role: MemberRole.Validate, accuracy: ValueAccuracy);
-        public readonly NetworkMember<bool> IsGrounded = new(role: MemberRole.Validate);
+        public readonly NetworkMember<NumericsVector3> Position = new(role: PredictionRole.Validate, accuracy: ValueAccuracy);
+        public readonly NetworkMember<float> VerticalSpeed = new(role: PredictionRole.Validate, accuracy: ValueAccuracy);
+        public readonly NetworkMember<bool> IsGrounded = new(role: PredictionRole.Validate);
 
         // Only the server changes health, so it keeps the default role. This causes desyncs intentionally, to show prediction validation.
         public readonly NetworkMember<ushort> Health = new();
@@ -273,7 +273,7 @@ During a replayed tick, remote calls, messages, predicted spawns, collection and
 A jump the client played and the server refused has already been seen. To react, for example to cancel a jump sound or show a hit marker as missed, listen for the correction. `OnMembersChanged` on the component reports `MemberChangeDirection.Correction` for the members a correction changed, and `TryGetPreRewindValue` gives the value that was on screen before it:
 
 ```csharp
-public readonly NetworkMember<ushort> JumpCount = new(role: MemberRole.Validate);
+public readonly NetworkMember<ushort> JumpCount = new(role: PredictionRole.Validate);
 
 public override void OnMembersChanged(ulong memberFlags, MemberChangeDirection memberChangeDirection)
 {

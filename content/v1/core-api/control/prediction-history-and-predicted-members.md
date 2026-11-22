@@ -6,27 +6,27 @@ title: "Predicted members and prediction history"
 
 ## A member's role says what it is for
 
-`NetworkMember<T0>` takes a `role` constructor argument, `MemberRole.Replicate` by default, readable afterwards as `NetworkMember<T0>.Role`:
+A predicted `NetworkMember<T0>` takes a `role` constructor argument, readable afterwards as `NetworkMember<T0>.Role`. A member built without one is replicated, and its `Role` reads `null`:
 
 ```csharp
-public readonly NetworkMember<System.Numerics.Vector2> MoveDirection = new(role: MemberRole.Predict);
-public readonly NetworkMember<System.Numerics.Vector3> Position = new(role: MemberRole.Validate, accuracy: 0.01f);
+public readonly NetworkMember<System.Numerics.Vector2> MoveDirection = new(role: PredictionRole.Predict);
+public readonly NetworkMember<System.Numerics.Vector3> Position = new(role: PredictionRole.Validate, accuracy: 0.01f);
 public readonly NetworkMember<ushort> Health = new();
 ```
 
 | Role | What it is | Who writes it | What the controller sends upstream |
 | --- | --- | --- | --- |
-| `Replicate` | An ordinary member. Inbound values apply as they arrive. | The server, or a client its write access allows. | The value, when it changes and write access allows it |
+| None (replicated) | An ordinary member. Inbound values apply as they arrive. | The server, or a client its write access allows. | The value, when it changes and write access allows it |
 | `Predict` | Client state: a per-tick value the simulation reads. | Whoever controls the system, on its live tick. | The value, every tick (see [Client state](./client-state-components.md)) |
 | `Validate` | A predicted result, computed from the client state. | Every peer that simulates the system. | Nothing. The server keeps its own value, and each client that predicts the system compares the server's values with its prediction |
 
-Roles are per member, and one component can mix all three. The usual predicted object has `Predict` members for what the player asked, `Validate` members for what the step computes from them, and `Replicate` members for what only the server decides. Nothing turns prediction on for you.
+Roles are per member, and one component can mix all three. The usual predicted object has `Predict` members for what the player asked, `Validate` members for what the step computes from them, and replicated members for what only the server decides. Nothing turns prediction on for you.
 
 What a predicted role does depends on the peer:
 
 - **The pure-client controller** writes its `Predict` members on its live tick and runs the step at once to compute its `Validate` members. It compares each `Validate` value the server sends with its own prediction for that tick.
 - **The server** takes the controller's `Predict` members, simulates the same tick and keeps its own `Validate` values. It never takes or checks the controller's.
-- **Any other client** applies the server's values as they arrive. During a reconcile, a member with a role other than `Replicate` is held at the server's start-tick values while the controlled systems replay. A client that sets `NetworkSystem.ObserverPredictionEnabled` predicts the system as its controller does (see [Predicting another client's object](./reconciliation.md#predicting-another-clients-object)).
+- **Any other client** applies the server's values as they arrive. During a reconcile, a predicted member is held at the server's start-tick values while the controlled systems replay. A client that sets `NetworkSystem.ObserverPredictionEnabled` predicts the system as its controller does (see [Predicting another client's object](./reconciliation.md#predicting-another-clients-object)).
 - **A host** applies values as they arrive. It is the server, so nothing it predicts is ever corrected.
 
 ## A client that predicts compares the server's values itself
@@ -43,7 +43,7 @@ A difference means the result depended on something the client could not see in 
 Rules for `Validate` members:
 
 - A value is only as precise as the member's `Accuracy`, the same on both peers. Choose an accuracy the simulation can tolerate.
-- A `Validate` member sends on every changed tick, as a `Predict` member does. A send interval set on either is held at `SendInterval.Normal`, so only `Replicate` members can be paced.
+- A `Validate` member sends on every changed tick, as a `Predict` member does. Neither takes a send interval at construction, and `SetSendInterval` on either is held at `SendInterval.Normal`, so only replicated members can be paced.
 - For a value a replay cannot reproduce exactly, such as one a physics engine moves, construct the member with `resultTolerance`. A server value within that distance of the prediction counts as a match. With no tolerance set, the member compares at its `Accuracy`. The Unity validated behaviours set a tolerance on their position, rotation and velocities.
 - The system needs `Predict` members. Without client state the server cannot simulate the controller's ticks, and its values simply overwrite the prediction.
 - The server simulates a tick after its client state is validated, so a tick your `IMemberWriteValidator<T0>` corrected produces a different result, and the controller replays onto the server's outcome.

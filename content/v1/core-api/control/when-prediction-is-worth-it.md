@@ -10,7 +10,7 @@ That is the whole benefit. Prediction does not make an object more accurate, mor
 
 ## Prediction costs memory, bandwidth and replay time
 
-You turn it on per member with the `role` constructor argument of `NetworkMember<T0>` (see [NetworkMember](../state/network-member.md)): a result declared `MemberRole.Validate`, computed from client state declared `MemberRole.Predict`, is predicted by the controller, which compares it with the server's values. That costs:
+You turn it on per member with the `role` constructor argument of `NetworkMember<T0>` (see [NetworkMember](../state/network-member.md)): a result declared `PredictionRole.Validate`, computed from client state declared `PredictionRole.Predict`, is predicted by the controller, which compares it with the server's values. That costs:
 
 - **A history, not just a live value.** Every client keeps `SystemManager.PredictionHistoryTicks` of history for a predicted member, or `SystemManager.DefaultPredictionHistoryTicks` (64) when that is unset. An unpredicted member keeps only its current and previous values.
 - **Replays.** Nothing about a result travels upstream, because the controller sends only its client state. A server value that differs from the prediction starts a reconcile: every system the client predicts is restored to the server's values at the wrong tick, and the engine re-runs `OnEarlyFixedUpdate` and `OnLateFixedUpdate` as `SimulationType.Replayed` for every tick from there to the present. That is about a round trip plus the state interpolation in ticks, all simulated in one frame.
@@ -23,14 +23,14 @@ The core steps no physics itself. An integration steps its physics world on `Sys
 Most objects need none of this. From cheapest:
 
 - **An uncontrolled object with interpolation.** No controller, no history beyond the current and previous values, no result check, no replay. The receiver animates between the values it receives, paced by `SystemManager.StateInterpolation` (0 by default, capped at `MaximumStateInterpolation`). This is the default for anything nobody drives.
-- **A controller-written value with no prediction.** The controller writes the member every tick, but its role stays `MemberRole.Replicate`. Its own writes land on it at once and reach everyone else a round trip later, with no rewind and no replay. The server never runs the simulation, so it can only judge each value through an `IMemberWriteValidator<T0>`. This is cheaper than prediction and more responsive than a value only the server writes.
+- **A controller-written value with no prediction.** The controller writes the member every tick, but it stays an ordinary replicated member, built without a role. Its own writes land on it at once and reach everyone else a round trip later, with no rewind and no replay. The server never runs the simulation, so it can only judge each value through an `IMemberWriteValidator<T0>`. This is cheaper than prediction and more responsive than a value only the server writes.
 - **A purely local visual that is never replicated.** Particle effects, camera shake and UI feedback that only need to look right on the machine that triggered them are not a `NetworkMember<T0>` at all, cost nothing on the wire and need no reconciliation.
 
 ## Compare the three ways to run an object a client drives
 
 | | Server-authoritative | Predicted | Controller-written |
 |---|---|---|---|
-| Members | client state `MemberRole.Predict`, result `MemberRole.Replicate` written by the server | client state `MemberRole.Predict`, result `MemberRole.Validate` | result `MemberRole.Replicate` written by the controller |
+| Members | client state `PredictionRole.Predict`, result replicated, written by the server | client state `PredictionRole.Predict`, result `PredictionRole.Validate` | result replicated, written by the controller |
 | Who runs the simulation | the server | the controller and the server | the controller |
 | The controller sees its input | a round trip late | at once | at once |
 | A result the server disagrees with | cannot happen: the client sends only client state | reconciled to the server's result | declined by your validator and put back |
@@ -40,9 +40,9 @@ The Unity demo SimulationStyles runs all three side by side from the same keys, 
 
 ## Choose prediction per member
 
-`role` is set per member, not per project or per object, and nothing turns prediction on by default. A component can predict its position while leaving its health or ammo count as ordinary `MemberRole.Replicate`.
+`role` is set per member, not per project or per object, and nothing turns prediction on by default. A component can predict its position while leaving its health or ammo count as ordinary replicated members.
 
-The Unity demo ValidatedJump declares the walk direction and jump press of `ValidatedJumpMovementComponent` as `MemberRole.Predict` client state and every movement result as `MemberRole.Validate`. In Unity, the validated behaviours, such as `ValidatedRigidbody` and `ValidatedTransform`, carry ready-made `MemberRole.Validate` members for a body, transform or character controller, and the BallRacer demo predicts a `Rigidbody` with one.
+The Unity demo ValidatedJump declares the walk direction and jump press of `ValidatedJumpMovementComponent` as `PredictionRole.Predict` client state and every movement result as `PredictionRole.Validate`. In Unity, the validated behaviours, such as `ValidatedRigidbody` and `ValidatedTransform`, carry ready-made `PredictionRole.Validate` members for a body, transform or character controller, and the BallRacer demo predicts a `Rigidbody` with one.
 
 ## Predicted spawning is Pro, predicted motion is not
 

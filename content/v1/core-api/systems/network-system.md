@@ -72,5 +72,5 @@ Logger<MyType>.LogInformation($"System: [{system.AsString()}]");
 | Write access | `MemberWriteAccess` and per-member write permissions. |
 | Interest | Observer registration and what a connection is served. |
 | RPCs | `IRpcScope`, `RpcSendAccess`, and remote calls scoped to a system. |
-| Client state | `MemberRole.Predict` members, sent by the controlling client every tick. |
+| Client state | `PredictionRole.Predict` members, sent by the controlling client every tick. |
 | Reconcile | `ReconcileRequired`, the simulation callbacks and correcting predicted state. |
