@@ -34,7 +34,7 @@ When several observers write to a system at once, in either edition, arbitration
 
 ## A controller's movement is taken as sent
 
-`NetworkTransform` and `NetworkRigidbody` take the position their controlling client sends, so a modified client can put its object anywhere. When movement must be fair, use a validated behaviour such as `ValidatedTransform`, `ValidatedCharacterController` or `ValidatedRigidbody`, whose results the server works out for itself, or check the movement on the server. See [Predicting a body with a validated behaviour](../physics/predicting-a-body-with-a-validated-behaviour.md).
+`NetworkTransform` and `NetworkRigidbody` take the position their controlling client sends, so a modified client can put its object anywhere. When movement must be fair, use a validated behaviour such as `ValidatedTransform`, `ValidatedCharacterController` or `ValidatedRigidbody`, whose results the server works out for itself, or check the movement on the server. See [Predicting a body with a validated behaviour](../physics/predicting-a-body-with-a-validated-behaviour.md) and [Validating a client-authoritative NetworkTransform](../state/validating-client-transforms.md).
 
 ## A client can read everything it is sent
 

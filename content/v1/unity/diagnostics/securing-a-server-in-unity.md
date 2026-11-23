@@ -97,7 +97,7 @@ if (IsStarted(Invoker.Server))
 
 ### Validate every value a client is allowed to write
 
-Access decides whether a client may write, not whether the value makes sense. Implement `IMemberWriteValidator<T0>` on the `NetworkComponent` that owns the member and return `MemberWriteAction.Decline` for anything the game should not accept. It runs on the server only, and a validator that throws declines the write. This includes the per-tick input a controlling client sends. See [Using prediction](../control/using-prediction.md) for an input example and [Judging and arbitrating client writes](../../core-api/state/validating-client-writes.md) for the full contract.
+Access decides whether a client may write, not whether the value makes sense. Implement `IMemberWriteValidator<T0>` on the `NetworkComponent` that owns the member and return `MemberWriteAction.Decline` for anything the game should not accept. It runs on the server only, and a validator that throws declines the write. This includes the per-tick input a controlling client sends. For a member of a component you do not own, such as the position of a client-controlled `NetworkTransform`, assign a validator to the member's `WriteValidator` field instead. See [Using prediction](../control/using-prediction.md) for an input example, [Validating a client-authoritative NetworkTransform](../state/validating-client-transforms.md) for a position, and [Judging and arbitrating client writes](../../core-api/state/validating-client-writes.md) for the full contract.
 
 ### Check the sender and arguments of every remote call
 
@@ -155,8 +155,8 @@ public class ScoreBoard : NucleusBehaviour<ScoreComponent>
 - Your authenticator refuses banned players by their identity, never by their address. See [Ban players by their identity, not their address](../../core-api/diagnostics/securing-a-server.md#ban-players-by-their-identity-not-their-address).
 - Only the login message sets `IsAuthenticationRequired` to `false`.
 - Every object on `AnyClient` access is there on purpose.
-- Every component with members a client can write, input included, implements `IMemberWriteValidator<T0>`.
-- Every object a client moves with `NetworkTransform` or `NetworkRigidbody` is one where a cheated position does no harm, and movement that must be fair uses a validated behaviour.
+- Every member a client can write, input included, is judged: its component implements `IMemberWriteValidator<T0>`, or your code assigns a validator to its `WriteValidator` field.
+- Every object a client moves with `NetworkTransform` or `NetworkRigidbody` is one where a cheated position does no harm, and movement that must be fair uses a validated behaviour or a validator on the `NetworkTransform`'s position.
 - Every server call handler that relays between clients returns `Cancel` for anything you would not show other players.
 - Deciding handlers and an `IViolationObserver` are registered on the server build.
 - The server runs a release build of Nucleus. A debug build ignores `MalformedDataViolation` instead of kicking for it.

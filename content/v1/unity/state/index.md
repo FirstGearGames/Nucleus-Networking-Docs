@@ -5,6 +5,7 @@ title: "Replicated State and Change Callbacks"
 Pages in this category:
 
 - [NetworkTransform](./network-transform.md)
+- [Validating a client-authoritative NetworkTransform](./validating-client-transforms.md)
 - [How replicated state works](./state-replication-model.md)
 - [Replicating a value from a Unity script](./replicated-values-in-unity.md)
 - [Reacting to a replicated change in Unity](./reacting-to-changes-in-unity.md)

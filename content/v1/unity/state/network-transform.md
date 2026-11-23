@@ -39,6 +39,10 @@ For an object with several moving pieces, such as a turret and its barrel, list 
 
 To give a part its own settings, put a separate `NetworkTransform` directly on the child. It joins the nearest `NetworkSystemObject` above it. Do not add a second `NetworkSystemObject` to the child: only a prefab's root one is spawned.
 
+## Judge a client's position on the server
+
+A client that controls the object writes its position, and the server takes it. To decline a teleport or a speed hack, subclass `NetworkTransform`, override `OnServerStarted`, and assign a validator to the position member's `WriteValidator` field there. `OnServerStarted` runs each time the server sets the object up, with the transform's members ready. See [Validating a client-authoritative NetworkTransform](./validating-client-transforms.md).
+
 ## Use NetworkRigidbody for a simulated body
 
 `NetworkTransform` makes non-controllers follow a received pose; it does not run local physics on them. For a rigidbody that should simulate locally on every peer and converge toward the server's state, use `NetworkRigidbody`.

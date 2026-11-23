@@ -4,6 +4,10 @@
     "title": "NetworkTransform"
   },
   {
+    "slug": "validating-client-transforms",
+    "title": "Validating a client-authoritative NetworkTransform"
+  },
+  {
     "slug": "state-replication-model",
     "title": "How replicated state works"
   },
