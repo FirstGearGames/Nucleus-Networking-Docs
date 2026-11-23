@@ -14,7 +14,7 @@ Each is a member type you declare on a `NetworkComponent`:
 
 Every method is listed in the [Collection member reference](./collection-member-reference.md).
 
-Use a value type or `string` for elements and dictionary keys. Nothing enforces this, but an element held by reference can be changed without going through the collection, and the collection never sees that change.
+Use a value type or `string` for elements and dictionary keys. Any other class fails the build.
 
 ## Change a collection through its methods
 
