@@ -14,16 +14,16 @@ A class-typed member must be assigned before it is first sent, because `null` ca
 
 ```csharp
 private readonly NetworkMember<float> _health = new();
-private readonly NetworkMember<MyPoolableClass> _payload = new(isAutomaticPoolingEnabled: true);
+private readonly NetworkMember<MyPoolableClass> _payload = new();
 ```
 
 Some types throw `NotImplementedException` when a member holding one sends a change, rather than replicating wrong: `Matrix4x4`, plain arrays, `NetworkSystemGroup`, `Channel` and `NetworkSystem`. For a type with no serializer, register one; see [Writing a Custom Serializer](../wire/custom-serializers.md).
 
-## Turn on automatic pooling for class values
+## Automatic pooling for class values
 
-With `isAutomaticPoolingEnabled: true`, a class-typed `IPoolResettable` value is returned to its pool when the member drops it from its history, and incoming instances are rented from `ResettableObjectPool<T0>` instead of allocated. Rent the instances you assign from `ResettableObjectPool<T0>`, and never keep or change one after assigning it.
+Automatic pooling is on by default: `MemberFlags.AutomaticPooling` is part of `MemberFlagPresets.Default`. A class-typed `IPoolResettable` value is returned to its pool when the member drops it from its history, and incoming instances are rented from `ResettableObjectPool<T0>` instead of allocated. Rent the instances you assign from `ResettableObjectPool<T0>`, and never keep or change one after assigning it. To keep the instances yourself, build the member with `MemberFlagPresets.PoolingDisabled`.
 
-If the type does not implement `IPoolResettable`, or has no pool returner registered (check `NetworkTypePoolReturner<T0>.IsRegistered`), an error is logged once at spawn.
+A type that does not implement `IPoolResettable` ignores pooling. If it does but has no pool returner registered (check `NetworkTypePoolReturner<T0>.IsRegistered`), an error is logged once at spawn.
 
 Pool only flat objects. A nested class-typed field inside a pooled `T0` can end up shared between instances.
 

@@ -41,18 +41,18 @@ The interval applies the same way to every observer. No interval scales with dis
 
 ## Choose what silence means
 
-`isExtrapolationEnabled` applies in both modes:
+`MemberFlags.Extrapolation` applies in both modes:
 
-- `true` (default): receivers keep the value moving through the sender's silence. A lost update can cause a brief overshoot.
-- `false`: receivers hold still until told. A lost update can cause a brief stall.
+- On (part of `MemberFlagPresets.Default`): receivers keep the value moving through the sender's silence. A lost update can cause a brief overshoot.
+- Off (`MemberFlagPresets.ExtrapolationDisabled`): receivers hold still until told. A lost update can cause a brief stall.
 
-Start with `true`, and set it to `false` if a lost update visibly overshoots.
+Start with it on, and turn it off if a lost update visibly overshoots.
 
-Under `Interval`, `true` lets a receiver render up to one send interval ahead of the newest value while it moves, and the sender sends one small extra update when the value stops so receivers settle exactly on it. That costs a tiny overhead on each update plus one update per stop. `false` costs nothing extra, and the receiver never renders past the newest value.
+Under `Interval`, extrapolation lets a receiver render up to one send interval ahead of the newest value while it moves, and the sender sends one small extra update when the value stops so receivers settle exactly on it. That costs a tiny overhead on each update plus one update per stop. Without it there is no extra cost, and the receiver never renders past the newest value.
 
 ## Receivers follow the sender's settings
 
-`TransmissionMode` and `isExtrapolationEnabled` are construction defaults that you can override per instance at runtime. A receiver adopts the sender's mode and extrapolation setting, so the peers do not need to be built with the same values. Set each once rather than changing it mid-stream.
+`TransmissionMode` and `MemberFlags.Extrapolation` are construction defaults that you can override per instance at runtime. A receiver adopts the sender's mode and extrapolation setting, so the peers do not need to be built with the same values. Set each once rather than changing it mid-stream.
 
 ## Free builds send every changed tick
 

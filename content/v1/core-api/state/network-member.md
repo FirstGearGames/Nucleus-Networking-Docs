@@ -37,21 +37,19 @@ Returns the value before the current one and the number of ticks between the two
 ```csharp
 public NetworkMember(
     CompressionLevel deltaCompressionLevel = CompressionLevel.Tight,
-    bool isAutomaticPoolingEnabled = false,
+    MemberFlags flags = MemberFlagPresets.Default,
     float accuracy = float.NaN,
     float interpolationSnapThreshold = float.NaN,
     SendInterval sendInterval = SendInterval.Normal,
-    TransmissionMode transmissionMode = TransmissionMode.Interval,
-    bool isExtrapolationEnabled = true);
+    TransmissionMode transmissionMode = TransmissionMode.Interval);
 
 public NetworkMember(
     PredictionRole role,
     CompressionLevel deltaCompressionLevel = CompressionLevel.Tight,
-    bool isAutomaticPoolingEnabled = false,
+    MemberFlags flags = MemberFlagPresets.Default,
     float accuracy = float.NaN,
     float interpolationSnapThreshold = float.NaN,
     TransmissionMode transmissionMode = TransmissionMode.Interval,
-    bool isExtrapolationEnabled = true,
     bool isCarriedForward = true,
     float resultTolerance = 0f);
 ```
@@ -61,13 +59,12 @@ The first builds a replicated member, whose received values apply as they arrive
 | Argument | Construction-time only? | Meaning |
 | --- | --- | --- |
 | `deltaCompressionLevel` | Yes | The compression level for this member's value. Defaults to `CompressionLevel.Tight`. |
-| `isAutomaticPoolingEnabled` | Yes | Returns dropped `IPoolResettable` past values to their pool. When true, the member owns instances assigned to `Value`: rent them from `ResettableObjectPool<T0>` and never keep or change an instance after assigning it. See [What a member can hold](./member-value-types.md). |
+| `flags` | Extrapolation only, see `SetExtrapolationEnabled` | On or off options, a `MemberFlags` value. `MemberFlags.Extrapolation`: receivers keep the value moving through the sender's silence, in either mode, which favors staying live when an update is lost; without it they hold still until told, which favors accuracy. See [How often a member is sent](./send-pacing.md). `MemberFlags.AutomaticPooling`: returns dropped `IPoolResettable` past values to their pool, so the member owns instances assigned to `Value`: rent them from `ResettableObjectPool<T0>` and never keep or change an instance after assigning it. Other types ignore it. See [What a member can hold](./member-value-types.md). `MemberFlags.ControllerOnly` is not implemented yet. Defaults to `MemberFlagPresets.Default`, which is extrapolation and pooling. `MemberFlagPresets` names the usual combinations: `Default` (pooling and extrapolation), `PoolingDisabled`, `ExtrapolationDisabled`, `ControllerOnly`, `ControllerOnlyPoolingDisabled` and `ControllerOnlyExtrapolationDisabled`. |
 | `role` | Yes | Predicted constructor only. `PredictionRole.Predict`: client state, a per-tick value the simulation reads (a move direction, a jump press), written by whoever controls the system and sent upstream by a controlling client; see [Client state](../control/client-state-components.md). `PredictionRole.Validate`: a predicted result that every peer simulating the system computes; the server keeps its own value, and each client predicting the system compares the server's values with its prediction and replays when they differ. Its value is only as precise as its `accuracy`. On a client that does not control the system, a predicted member is held at the server's values while a reconcile replays. See [Predicted members and prediction history](../control/prediction-history-and-predicted-members.md). |
 | `accuracy` | Construction default only | The accuracy the value is sent at. `float.NaN` (default) uses the type's default accuracy. A per-call accuracy passed to `Initialize` still overrides it. Coarser values save bandwidth on quantities that tolerate more error than position. |
 | `interpolationSnapThreshold` | Yes | The distance beyond which `InterpolatedValue` snaps to `Value` instead of animating. `float.NaN` (default) never snaps. Only for numeric types with a registered tolerance comparer. |
 | `sendInterval` | No, see `SetSendInterval` | How often a changed member sends while `TransmissionMode.Interval` is in force. `SendInterval.Normal` sends every tick. Replicated constructor only. A predicted member sends on every changed tick, and `SetSendInterval` on one is held at `SendInterval.Normal`. |
 | `transmissionMode` | No, see `SetTransmissionMode` | `TransmissionMode.Interval` (default) sends changes paced to `sendInterval`. `TransmissionMode.Divine` (Pro) projects motion instead, for values that move predictably. |
-| `isExtrapolationEnabled` | No, see `SetExtrapolationEnabled` | Whether receivers keep the value moving through the sender's silence, in either mode. `true` (default) favors staying live when an update is lost; `false` holds still until told and favors accuracy. See [How often a member is sent](./send-pacing.md). |
 | `isCarriedForward` | Yes | For a `PredictionRole.Predict` member only. `false` keeps it at its default when `NetworkComponent.TryGetLastState(false)` carries the previous tick's client state across a tick whose client state did not arrive, for a value that must not repeat, such as a jump press. Ignored for `PredictionRole.Validate`. |
 | `resultTolerance` | Yes | For a predicted member only: how far its predicted value may be from the server's before it counts as a misprediction, for a value a replay cannot reproduce exactly, such as one physics moves. `0` (default) compares at `accuracy`. |
 
