@@ -42,7 +42,7 @@ namespace MyGame
         // Client state: what the player asked for this tick.
         // The walk direction: x in X, z in Y.
         public readonly NetworkMember<Vector2Int> MoveDirection = new(role: PredictionRole.Predict);
-        public readonly NetworkMember<bool> IsJumpPressed = new(role: PredictionRole.Predict, isCarriedForward: false);
+        public readonly NetworkTrigger IsJumpPressed = new();
 
         // Results: what the movement code works out from the client state.
         public readonly NetworkMember<NumericsVector3> Position = new(role: PredictionRole.Validate, accuracy: ValueAccuracy);
@@ -60,7 +60,7 @@ namespace MyGame
 Three choices in this declaration matter:
 
 - **The walk direction is whole numbers.** It is a `CodeBoost.Types.Vector2Int` (not Unity's `Vector2Int`) whose axes are each -1, 0 or 1. A normalized float direction would be rounded on its way to the server, so the server would walk slightly differently and the client would be corrected every tick. Send client state in a form that arrives exactly as written.
-- **The jump press is never carried forward.** `IsJumpPressed` is true only on the tick jump was pressed, and `isCarriedForward: false` keeps it false on a tick whose client state was lost, so the server never jumps twice for one press. A press lost with its packet is simply lost, and the server corrects the jump the client showed.
+- **The jump press is a `NetworkTrigger`.** A `NetworkTrigger` is a `Predict` bool for a one-tick press. Calling `Set()` from any update holds the press until the controlling peer's next live tick, which reads it as true and sends it with that tick's client state. It is not carried forward, so it reads false on a tick whose client state was lost and the server never jumps twice for one press. A press lost with its packet is simply lost, and the server corrects the jump the client showed.
 - **Each float result has an accuracy.** A `Validate` member is only as precise as its `accuracy`, on both peers. Choose one your movement can tolerate; 0.01 is a centimetre for a position.
 
 ## Step 2: Write the movement code once, in OnEarlyFixedUpdate
@@ -130,31 +130,20 @@ Follow these rules inside the movement code, or the client and the server will d
 
 ## Step 3: Read the keys in Update and write them on the live tick
 
-Read the device in `Update`, since a key press belongs to a rendered frame. Hand it to the component, and write it into the `Predict` members only on the controlling peer's live tick (`SimulationType.Forward`). A replayed tick reads the client state recorded for it and must never overwrite it.
+Read the device in `Update`, since a key press belongs to a rendered frame. Hand the walk direction to the component, and write it into its `Predict` member only on the controlling peer's live tick (`SimulationType.Forward`). A replayed tick reads the client state recorded for it and must never overwrite it. The jump press needs none of this: `IsJumpPressed.Set()` can be called from `Update`, and the trigger lands the press on the next live tick itself.
 
 Add this to the component:
 
 ```csharp
 public Vector2Int IntendedMoveDirection;
 
-private bool _isJumpPressPending;
-
-public void PressJump() => _isJumpPressPending = true;
-
-private void WriteClientState()
-{
-    MoveDirection.Value = IntendedMoveDirection;
-
-    IsJumpPressed.Value = _isJumpPressPending;
-    _isJumpPressPending = false;
-}
+private void WriteClientState() => MoveDirection.Value = IntendedMoveDirection;
 
 public override void OnReturn()
 {
     base.OnReturn();
 
     IntendedMoveDirection = default;
-    _isJumpPressPending = false;
 }
 ```
 
@@ -187,7 +176,7 @@ namespace MyGame
             Component.IntendedMoveDirection = new(Mathf.RoundToInt(Input.GetAxisRaw("Horizontal")), Mathf.RoundToInt(Input.GetAxisRaw("Vertical")));
 
             if (Input.GetKeyDown(KeyCode.Space))
-                Component.PressJump();
+                Component.IsJumpPressed.Set();
         }
     }
 }

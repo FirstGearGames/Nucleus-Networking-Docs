@@ -123,7 +123,7 @@ The server steps the object on every server tick, one client tick at a time, thr
 
 When a tick's client state never arrived, `stepDelta.IsClientStateMissing` is true and the `Predict` members read their defaults until `TryGetLastState(isEveryMemberCarried)` carries the previous tick's values.
 
-- Declare a press as a bool with `isCarriedForward: false`, so `TryGetLastState(false)` leaves it at its default. A press lost with its packet is simply lost, and the server corrects the jump the client showed.
+- Declare a press as a `NetworkTrigger` and call `Set()` on it from `Update`. It lands on the next live tick, and `TryGetLastState(false)` leaves it at its default. A press lost with its packet is simply lost, and the server corrects the jump the client showed.
 - `TryGetLastState(isEveryMemberCarried, out SimulationContext lastStateSimulationContext)` also reports which tick the carried state came from. On the server, `simulationContext.RemoteTick - lastStateSimulationContext.RemoteTick` is how many ticks it has been carried, for example to stop a character once the client has been silent too long.
 - The controller's `Connection` counts late and dropped ticks as `ClientStateLateCount` and `ClientStateDroppedCount`.
 

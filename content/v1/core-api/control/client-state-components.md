@@ -21,8 +21,8 @@ public partial class MoverComponent : NetworkComponent, IMemberWriteValidator<Ve
 {
     // Client state: written by the controller on its live tick, sent upstream every tick.
     public readonly NetworkMember<Vector2> MoveDirection = new(role: PredictionRole.Predict);
-    // A press that must not repeat when a missing tick is carried forward.
-    public readonly NetworkMember<bool> JumpPressed = new(role: PredictionRole.Predict, isCarriedForward: false);
+    // A one-tick press: JumpPressed.Set() from any update lands it on the next live tick, and it never repeats when a missing tick is carried forward.
+    public readonly NetworkTrigger JumpPressed = new();
     // A member the server computes from the client state.
     public readonly NetworkMember<Vector3> Position = new();
 
@@ -118,7 +118,7 @@ public bool TryGetLastState(bool isEveryMemberCarried)
 ```
 
 - For the rest of the step, the Predict members read their values as they stood at the end of the previous tick: the client's own when that tick's arrived, and otherwise whatever the server's step left in them. A value the server writes into a member is what the next tick carries.
-- Pass `false` to keep members constructed with `isCarriedForward: false` at their defaults, so a jump press never fires twice. A press lost with its packet is lost, and the server corrects the jump the client showed.
+- Pass `false` to keep members constructed with `isCarriedForward: false`, which a `NetworkTrigger` is by default, at their defaults, so a jump press never fires twice. A press lost with its packet is lost, and the server corrects the jump the client showed.
 - It returns `false`, leaving the defaults, before any client state has arrived.
 - Nothing is carried unless you call it, so a game that does not carry is reconciled back to what the server simulated.
 
