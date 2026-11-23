@@ -8,7 +8,6 @@ The source generator reports in the Unity console alongside ordinary compile err
 
 | Id | Severity | Stage |
 |---|---|---|
-| `NETWORKTYPEFINDER00` | Warning | Type discovery |
 | `NETWORKTYPEFINDER01` | Error | Type discovery |
 | `GENERATION000` | Error | Generation: invalid type |
 | `GENERATION001` | Error | Generation: invalid Roslyn type |

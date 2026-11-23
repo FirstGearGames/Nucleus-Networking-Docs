@@ -10,8 +10,7 @@ Each diagnostic has an id, a severity and a message. The id tells you the stage;
 
 | Id | Severity | Stage |
 |---|---|---|
-| `NETWORKTYPEFINDER00` | Warning | Type discovery (walking your networked types and members) |
-| `NETWORKTYPEFINDER01` | Error | Type discovery |
+| `NETWORKTYPEFINDER01` | Error | Type discovery (walking your networked types and members) |
 | `GENERATION000` | Error | Generation, invalid type |
 | `GENERATION001` | Error | Generation, invalid Roslyn type |
 | `GENERATION002` | Error | Generation, comparer or operation stage |

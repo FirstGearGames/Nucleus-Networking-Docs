@@ -8,7 +8,7 @@ A `NetworkMember<T0>` value must be one of:
 
 - a value type;
 - `string`;
-- a class implementing `IPoolResettable`, with automatic pooling.
+- a class implementing `IPoolResettable`. Any other class fails the build.
 
 A class-typed member must be assigned before it is first sent, because `null` cannot be sent.
 
@@ -23,7 +23,7 @@ Some types throw `NotImplementedException` when a member holding one sends a cha
 
 Automatic pooling is on by default: `MemberFlags.AutomaticPooling` is part of `MemberFlagPresets.Default`. A class-typed `IPoolResettable` value is returned to its pool when the member drops it from its history, and incoming instances are rented from `ResettableObjectPool<T0>` instead of allocated. Rent the instances you assign from `ResettableObjectPool<T0>`, and never keep or change one after assigning it. To keep the instances yourself, build the member with `MemberFlagPresets.PoolingDisabled`.
 
-A type that does not implement `IPoolResettable` ignores pooling. If it does but has no pool returner registered (check `NetworkTypePoolReturner<T0>.IsRegistered`), an error is logged once at spawn.
+A struct is never pooled. If a class has no pool returner registered (check `NetworkTypePoolReturner<T0>.IsRegistered`), an error is logged once at spawn.
 
 Pool only flat objects. A nested class-typed field inside a pooled `T0` can end up shared between instances.
 
