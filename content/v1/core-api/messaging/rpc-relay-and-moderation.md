@@ -11,6 +11,10 @@ Every call handler returns an `RpcRelayAction`. On the server, the verdict decid
 
 The verdict is applied on the server before anything is sent onward. Receiving peers are never told it.
 
+## A call type with no server handler travels unread
+
+When the server has no handler for a call's type, it passes the call on to the other observers without reading it, so nothing checks what it carries. Register a handler on the server for every call type whose contents you need to judge.
+
 ## Any one Cancel wins
 
 When a call type has several handlers, every one of them runs, whatever the earlier ones returned. A single `Cancel` settles it, and a later `Relay` cannot undo it.
