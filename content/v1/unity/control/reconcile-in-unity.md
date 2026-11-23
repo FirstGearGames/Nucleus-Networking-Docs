@@ -70,7 +70,7 @@ namespace MyGame
 
             // Replace with your project's input system.
             if (IsController(ControllerType.AnyController))
-                _frameDirection = Vector2.ClampMagnitude(new Vector2(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical")), 1f);
+                _frameDirection = new Vector2(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical"));
 
             transform.position = Component.Position.InterpolatedValue.ToUnity();
         }
@@ -94,6 +94,8 @@ namespace MyGame
 
         private Vector3 Step(Vector3 position, Vector2 direction)
         {
+            // Clamped here, where every peer clamps the same input, rather than before it is sent: -1, 0 and 1 arrive exactly, and a diagonal's 0.707 would not.
+            direction = Vector2.ClampMagnitude(direction, 1f);
             float seconds = 1f / CoreManager.NetworkLoopManager.TickRate;
 
             return position + new Vector3(direction.x, 0f, direction.y) * (_speed * seconds);

@@ -173,7 +173,7 @@ namespace MyGame
                 return;
 
             // Replace with your project's input system.
-            Component.IntendedMoveDirection = new(Mathf.RoundToInt(Input.GetAxisRaw("Horizontal")), Mathf.RoundToInt(Input.GetAxisRaw("Vertical")));
+            Component.IntendedMoveDirection = new((int)Input.GetAxisRaw("Horizontal"), (int)Input.GetAxisRaw("Vertical"));
 
             if (Input.GetKeyDown(KeyCode.Space))
                 Component.IsJumpPressed.Set();
