@@ -14,7 +14,7 @@ Each is a member type you declare on a `NetworkComponent`:
 
 Every method is listed in the [Collection member reference](./collection-member-reference.md).
 
-Use a value type or `string` for elements and dictionary keys. Any other class fails the build.
+Use a value type or `string` for elements and dictionary keys. Any other class fails the build. For text that does not allocate when it arrives, use `NetworkString32` to `NetworkString256`; see [Send text without allocating](./member-value-types.md#send-text-without-allocating).
 
 ## Change a collection through its methods
 

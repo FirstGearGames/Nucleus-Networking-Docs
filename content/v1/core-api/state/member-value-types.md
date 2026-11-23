@@ -8,6 +8,7 @@ A `NetworkMember<T0>` value must be one of:
 
 - a value type;
 - `string`;
+- `NetworkString32`, `NetworkString64`, `NetworkString128` or `NetworkString256`, text held as a value type;
 - a class implementing `IPoolResettable`. Any other class fails the build.
 
 A class-typed member must be assigned before it is first sent, because `null` cannot be sent.
@@ -18,6 +19,21 @@ private readonly NetworkMember<MyPoolableClass> _payload = new();
 ```
 
 Some types throw `NotImplementedException` when a member holding one sends a change, rather than replicating wrong: `Matrix4x4`, plain arrays, `NetworkSystemGroup`, `Channel` and `NetworkSystem`. For a type with no serializer, register one; see [Writing a Custom Serializer](../wire/custom-serializers.md).
+
+## Send text without allocating
+
+Receiving a `string` creates a new one each time. `NetworkString32`, `NetworkString64`, `NetworkString128` and `NetworkString256` hold up to that many UTF-8 bytes as a value type, so sending and receiving them allocates nothing. A larger capacity costs memory, not bandwidth. They also work as collection elements and dictionary keys.
+
+```csharp
+public readonly NetworkListMember<NetworkString32> Tags = new();
+
+Tags.Add("red");                          // converts from a string
+bool isRed = Tags[0] == "red";            // compares without allocating
+int charCount = Tags[0].CopyTo(buffer);   // fills a char buffer without allocating
+string text = Tags[0].ToString();         // allocates
+```
+
+Text longer than the capacity is cut at the last whole character that fits, and an error is logged. ASCII text takes one byte a character; other text takes two to four.
 
 ## Automatic pooling for class values
 
