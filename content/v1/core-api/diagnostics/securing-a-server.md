@@ -55,8 +55,8 @@ The Synapse transport's limits are on `Synapse.ClientLimits`, a `SynapseClientLi
 | `Enabled` | `true` | Turns every limit below on or off. The socket's other checks, such as refusing a datagram wider than the transmission unit, stay on either way. |
 | `MaximumPacketsPerSecond` | `500` | A client sending too many datagrams. The excess is dropped rather than kicked, because a datagram's source address can be forged. |
 | `MaximumBytesPerSecond` | 2 MiB | A client sending too many bytes. Enforced like the packet rate, over the same one-second window. |
-| `MaximumOutOfOrderReliablePackets` | `64` | A client pinning server memory by never filling a gap in its reliable stream. One past the limit kicks and blacklists the client. |
-| `MaximumReassembledPacketSize` | `0` (no limit) | A client declaring a huge split packet. It is checked on the first piece, and a client over it is kicked and blacklisted. |
+| `MaximumOutOfOrderReliablePackets` | `64` | A client pinning server memory by never filling a gap in its reliable stream. One past the limit kicks the client at once, and repeated faults also blacklist it. |
+| `MaximumReassembledPacketSize` | `0` (no limit) | A client declaring a huge split packet. It is checked on the first piece, and a client over it is kicked at once and blacklisted after repeated faults. |
 | `MaximumSegments` | `0` (the protocol's limit of 255) | A packet split into too many pieces. A packet over it is dropped without a violation. It also caps what the server sends. |
 | `MaximumConcurrentAssembliesPerConnection` | `16` | A client opening many split packets at once. One more evicts the oldest unfinished unreliable packet, or is dropped. |
 
@@ -220,7 +220,7 @@ To log every violation without changing any outcome, register an `IViolationObse
 
 ## Ban players by their identity, not their address
 
-Nucleus has no ban list of its own, and a kicked client can connect again straight away. Synapse blacklists a client by itself for some faults, such as breaking some of the limits above, but that blacklist is keyed on the address and port the client connected from, so the same player can come back from another port. To keep a player out:
+Nucleus has no ban list of its own, and a kicked client can connect again straight away. Synapse blacklists a client by itself after repeated faults, such as breaking some of the limits above, but that blacklist is keyed on the address and port the client connected from, so the same player can come back from another port. To keep a player out:
 
 1. Keep your own list of banned identities, such as the account ids your authenticator approves.
 2. In your authenticator, once you know who the player is, call `DenyClient` instead of `ApproveClient` when that identity is on the list.

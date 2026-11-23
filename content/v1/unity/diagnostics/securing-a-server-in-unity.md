@@ -23,8 +23,8 @@ The **Client Limits** section of the `SynapseTransport` inspector is **enabled b
 | Client Limits Enabled | on | Turns every limit below on or off. The socket's other checks, such as refusing a datagram wider than the transmission unit, stay on either way. |
 | Maximum Packets Per Second | `500` | A client sending too many datagrams. The excess is dropped rather than kicked, because the source address of a datagram can be forged. |
 | Maximum Bytes Per Second | `2097152` (2 MiB) | A client sending too many bytes, enforced the same way as the packet rate. |
-| Maximum Out Of Order Reliable Packets | `64` | A client pinning server memory by never filling a gap in its reliable stream. One past the limit kicks and blacklists the client. |
-| Maximum Reassembled Packet Size | `0` (no limit) | A client declaring a huge split packet so the server sets memory aside to rebuild it. A client over it is kicked and blacklisted. |
+| Maximum Out Of Order Reliable Packets | `64` | A client pinning server memory by never filling a gap in its reliable stream. One past the limit kicks the client at once, and repeated faults also blacklist it. |
+| Maximum Reassembled Packet Size | `0` (no limit) | A client declaring a huge split packet so the server sets memory aside to rebuild it. A client over it is kicked at once and blacklisted after repeated faults. |
 | Maximum Segments | `0` (the protocol's limit of 255) | A packet split into too many pieces. A packet over it is dropped. It also caps what the server sends. |
 | Maximum Concurrent Assemblies Per Connection | `16` | A client opening many split packets at once. One more evicts or drops a piece. |
 

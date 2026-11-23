@@ -2,7 +2,7 @@
 title: "Packet transforms"
 ---
 
-A packet transform rewrites the bytes of every packet to and from a transport, so you can add encryption, compression, obfuscation or an integrity check without changing any send or receive code. It is a Pro feature; Free builds have no `IPacketTransform` or the `TransportManager` hooks.
+A packet transform rewrites the bytes of every packet to and from a transport, so you can add encryption, compression, obfuscation or an integrity check without changing any send or receive code. It is a Pro feature. `IPacketTransform` and `TransportManager.PacketTransform` exist in every edition, so the same code compiles in Free, but a Free build ignores a transform you set, logs an error and sends every packet unchanged.
 
 A transform sees everything the engine hands the transport. It does not see packets the transport sends on its own, such as its handshake or keep-alives.
 

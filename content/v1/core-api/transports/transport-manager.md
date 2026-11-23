@@ -52,4 +52,4 @@ Ids and `Connection` instances are reused, so an id kept after its peer left can
 
 `HostLoopbackDelivery` controls how a host delivers a message or call its server half sends to its own client half, or the reverse. From game code it can only be `HostLoopbackDelivery.Immediate`: handlers run before the send call returns. Setting anything else is refused and logged.
 
-`RentInitializedConnection`, `ChangeLocalConnectionState`, `SetRemoteConnectionStateAsConnected` and `SetRemoteConnectionStateAsDisconnected` are for transport implementations; see [The Transport contract](./transport-contract.md).
+`RentInitializedConnection`, `ChangeLocalConnectionState` and `SetRemoteConnectionStateAsConnected` are for transport implementations; see [The Transport contract](./transport-contract.md).

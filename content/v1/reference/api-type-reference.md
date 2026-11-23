@@ -70,4 +70,4 @@ These attributes, from the `CodeBoost.Types` namespace (see [CodeBoost reference
 
 ## Custom transports can live in your own assembly
 
-The transport base types are public, and every member a transport implements is public or protected, so you can write a transport in your own game or package. [The Transport contract](../core-api/transports/transport-contract.md) lists what to implement.
+`SocketPairTransport<TServerSocket, TClientSocket>` and `CommonSocket` are public, and every member a transport implements on them is public or protected, so you can write a transport in your own game or package by deriving from `SocketPairTransport`. [The Transport contract](../core-api/transports/transport-contract.md) lists what to implement.
