@@ -16,6 +16,7 @@ This page gives every player a capsule that they move with WASD. Everyone else s
 
 ```csharp
 using Nucleus.Integrations.Unity.Systems;
+using Nucleus.Managers.NetworkLoop;
 using Nucleus.Systems;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -25,7 +26,7 @@ public class PlayerMover : NucleusBehaviour
     [SerializeField]
     private float _speed = 5f;
 
-    private void Update()
+    protected override void OnVariableUpdate(StepDelta stepDelta)
     {
         // Only the player who controls this capsule moves it.
         if (!IsController(ControllerType.Client))
@@ -47,7 +48,9 @@ public class PlayerMover : NucleusBehaviour
         if (keyboard.aKey.isPressed)
             direction.x -= 1f;
 
-        transform.position += direction.normalized * (_speed * Time.deltaTime);
+        // The normalized delta keeps the distance moved each tick even, which costs far less to send than moving by Time.deltaTime.
+        float seconds = (float)(stepDelta.NormalizedDelta / 1000.0);
+        transform.position += direction.normalized * (_speed * seconds);
     }
 }
 ```
