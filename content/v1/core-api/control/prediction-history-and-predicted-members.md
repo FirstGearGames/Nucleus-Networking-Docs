@@ -17,7 +17,7 @@ public readonly NetworkMember<ushort> Health = new();
 | Role | What it is | Who writes it | What the controller sends upstream |
 | --- | --- | --- | --- |
 | None (replicated) | An ordinary member. Inbound values apply as they arrive. | The server, or a client its write access allows. | The value, when it changes and write access allows it |
-| `Predict` | Client state: a per-tick value the simulation reads. | Whoever controls the system, on its live tick. | The value, every tick (see [Client state](./client-state-components.md)) |
+| `Predict` | Client state: a per-tick value the simulation reads. | Whoever controls the system, on its live tick. | The value (see [Client state](./client-state-components.md)) |
 | `Validate` | A predicted result, computed from the client state. | Every peer that simulates the system. | Nothing. The server keeps its own value, and each client that predicts the system compares the server's values with its prediction |
 
 Roles are per member, and one component can mix all three. The usual predicted object has `Predict` members for what the player asked, `Validate` members for what the step computes from them, and replicated members for what only the server decides. Nothing turns prediction on for you.

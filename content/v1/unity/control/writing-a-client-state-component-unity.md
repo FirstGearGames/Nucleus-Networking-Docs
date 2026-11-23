@@ -4,7 +4,7 @@ title: "Sending client state from Unity"
 
 > **Driving the core API directly?** See [Client state](../../core-api/control/client-state-components.md).
 
-Client state is what the controlling client's player asked for this tick, such as a move direction or a jump press. The client sends it upstream every tick, and the server simulates the object from it. This page sends a direction from a `NucleusBehaviour` and moves the object on the server.
+Client state is what the controlling client's player asked for this tick, such as a move direction or a jump press. The client sends it upstream, and the server simulates the object from it. This page sends a direction from a `NucleusBehaviour` and moves the object on the server.
 
 ## Declare the client state in the component
 
@@ -20,7 +20,7 @@ namespace MyGame
 {
     public partial class MoverComponent : NetworkComponent, IMemberWriteValidator<NumericsVector2>, IMemberWriteValidator<NumericsVector3>
     {
-        // Client state: written by the controller on its live tick, sent upstream every tick.
+        // Client state: written by the controller on its live tick, sent upstream to the server.
         public readonly NetworkMember<NumericsVector2> Direction = new(role: PredictionRole.Predict);
         // A member only the server computes from it.
         public readonly NetworkMember<NumericsVector3> Position = new();

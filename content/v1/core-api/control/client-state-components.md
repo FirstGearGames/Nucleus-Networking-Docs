@@ -4,7 +4,7 @@ title: "Client state"
 
 > **Using Unity?** See [Sending client state from Unity](../../unity/control/writing-a-client-state-component-unity.md).
 
-Client state is what the controlling client sends the server every tick so the server can simulate the object: a move direction, a jump press, an aim angle. The server runs the same step from those values and replicates the result, so it only trusts what the player asked for, never where the player says it ended up.
+Client state is what the controlling client sends the server so the server can simulate the object: a move direction, a jump press, an aim angle. The server runs the same step from those values and replicates the result, so it only trusts what the player asked for, never where the player says it ended up.
 
 ## Declare client state as Predict members
 
@@ -19,7 +19,7 @@ using Nucleus.Systems;
 
 public partial class MoverComponent : NetworkComponent, IMemberWriteValidator<Vector2>
 {
-    // Client state: written by the controller on its live tick, sent upstream every tick.
+    // Client state: written by the controller on its live tick, sent upstream to the server.
     public readonly NetworkMember<Vector2> MoveDirection = new(role: PredictionRole.Predict);
     // A one-tick press: JumpPressed.Set() from any update lands it on the next live tick, and it never repeats when a missing tick is carried forward.
     public readonly NetworkTrigger JumpPressed = new();
@@ -72,7 +72,7 @@ public partial class MoverComponent : NetworkComponent, IMemberWriteValidator<Ve
 - Write them inside the fixed update, from values the game gathered between ticks, so every pass of a tick reads the same numbers.
 - A replay never writes them. It reads each past tick's value from the member's history.
 
-A pure client sends its Predict members to the server every tick, stamped with its tick. A lost tick of client state never breaks the ticks after it.
+A pure client sends its Predict members to the server, stamped with its tick. A lost tick of client state never breaks the ticks after it.
 
 A host playing its own object writes the members in the same process, so nothing travels upstream. Each tick it still puts their values to the same validator a remote controller faces, and a declined value is reported to it as a correction.
 
