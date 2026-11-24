@@ -57,7 +57,7 @@ if (NetworkTypeRegistry.TryCreateSystem(bundleId, localId, out NetworkSystem sys
 
 ## Declared compositions tell a receiver what the build could spawn
 
-A composition is the set of component types named together at one spawn call site. Every distinct composition in the build is registered for you:
+A composition is the set of component types named together at one spawn call site, or required by a script that derives from a typed `NucleusBehaviour`. Every distinct composition in the build is registered for you:
 
 - `RegisterDeclaredComposition(params Type[] componentTypes)`
 - `IsDeclaredComposition(List<uint> sortedComponentIds)`
