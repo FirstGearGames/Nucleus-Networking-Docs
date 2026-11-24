@@ -57,31 +57,9 @@ The host's copy of the player stays where it was, and nothing reaches other play
 
 The position is measured in the transform's **Transform Space**. For a player with no parent, that is the world position.
 
-## Put the client back after a decline
+## The client is put back after a decline
 
-The server keeps its own position, but the client's transform is where every position it sends comes from. Nothing moves it back, so it keeps sending positions measured from where it cheated to, and the server declines every one.
-
-1. Give the player a component of your own with a member for the position the server kept and a count of declines.
-2. In the validator, before returning `MemberWriteAction.Decline`, set the kept position to `networkMember.Value` and add one to the count.
-3. On the client that controls the player, move the transform to the kept position when the count arrives. Watch for it in `OnMembersChanged` under `MemberChangeDirection.Read`.
-
-```csharp
-public partial class PlayerJudgementComponent : NetworkComponent
-{
-    public event System.Action<NumericsVector3> WriteDeclined;
-
-    public readonly NetworkMember<uint> DeclinedWriteCount = new();
-    public readonly NetworkMember<NumericsVector3> KeptPosition = new();
-
-    public override void OnMembersChanged(ulong memberFlags, MemberChangeDirection memberChangeDirection)
-    {
-        if (memberChangeDirection is MemberChangeDirection.Read && (memberFlags & (ulong)PlayerJudgementComponentFlags.DeclinedWriteCount) != 0)
-            WriteDeclined?.Invoke(KeptPosition.Value);
-    }
-}
-```
-
-The script that moves the player subscribes to `WriteDeclined` and, when it controls the player, sets `transform.position` to the kept position, converted with `ToUnity()` from `Nucleus.Integrations.Unity.Serializers`.
+When the server declines a position, the `NetworkTransform` moves the client's player back to the position the server kept, and the client carries on moving from there. You write nothing for this.
 
 ## Leave room for honest movement
 

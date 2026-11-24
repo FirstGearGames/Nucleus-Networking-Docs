@@ -61,7 +61,7 @@ public class PlayerTransform : NetworkTransform
 }
 ```
 
-`PlayerMovementRules` implements `IMemberWriteValidator<System.Numerics.Vector3>` and declines any step longer than the speed your server code allows the player right now, such as a faster speed while the server sees it on a speed pad. [Validating a client-authoritative NetworkTransform](../../unity/state/validating-client-transforms.md) builds it step by step, including putting the client back after a decline.
+`PlayerMovementRules` implements `IMemberWriteValidator<System.Numerics.Vector3>` and declines any step longer than the speed your server code allows the player right now, such as a faster speed while the server sees it on a speed pad. [Validating a client-authoritative NetworkTransform](../../unity/state/validating-client-transforms.md) builds it step by step.
 
 ## Judge references and collections the same way
 
