@@ -10,7 +10,7 @@ All five derive from `NetworkCollectionMemberBase<TChange>` and share:
 - `PreviousValues`: the contents from the most recent tick, before the current one, on which the collection changed.
 - `Count`: the number of items held.
 - `Changes`: an `IReadOnlyList<TChange>` of this tick's operations.
-- A constructor taking `int ringDepth = 2`, the number of snapshots kept, and `bool isControllerOnly = false`, which sends the collection only to the client controlling the system. See [Networked collections](./networked-collections.md).
+- A constructor taking `int ringDepth = 2`, the number of snapshots kept, and `MemberFlags flags = MemberFlagPresets.Default`, the flags a `NetworkMember<T0>` takes. Only `ControllerOnly` applies to a collection: `MemberFlagPresets.ControllerOnly` sends it only to the client controlling the system, and pooling and extrapolation are ignored. See [Networked collections](./networked-collections.md).
 - Protected virtual `GetRingDepth()`, which returns the constructed ring depth, and `GetCurrentTick()`, which returns the network loop's tick, or an unset value when none is running. Override either only to change where a subclass gets those values.
 
 ## NetworkListMember\<T0> is an ordered list
