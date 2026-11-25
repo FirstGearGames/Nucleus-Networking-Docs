@@ -22,7 +22,7 @@ uint requestedCount = coreManager.SceneManager.TryRequestSceneLoad(connections, 
 
 ## Remove a client from a scene
 
-`RequestSceneUnload(Connection connection, uint sceneHandle)` asks a client to release a scene instance it holds or is loading. The client stops receiving that scene's objects at once, not when it confirms.
+`RequestSceneUnload(Connection connection, uint sceneHandle)` asks a client to release a scene instance it holds or is loading. The client stops receiving that scene's objects at once, not when it confirms, and loses control of its objects in that scene.
 
 The boot scene (`NetworkSystem.UnsetSceneHandle`) cannot be released this way.
 

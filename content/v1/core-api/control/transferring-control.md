@@ -13,6 +13,7 @@ public void SetController(Connection controllingClientConnection)
 - Pass a `Connection` to make that client the controller, or `null` to return control to the server.
 - Only a peer with a started server may call it. A client that calls it gets a logged error and nothing happens.
 - Calling it with the current controller, or with `null` when the server already controls the system, does nothing.
+- A client can be given control only of an object in a scene it is in. Giving control to a client that has not loaded the object's scene, or is being asked to leave it, logs an error and does nothing.
 
 Every peer learns of the change through ordinary replication. There is no message to send.
 
