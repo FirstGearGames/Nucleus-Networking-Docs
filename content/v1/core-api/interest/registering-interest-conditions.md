@@ -20,6 +20,8 @@ networkSystem.AddInterestCondition(interestCondition);
 
 Both stack, and every condition can only restrict. `AddCondition` rejects a condition whose `Capabilities` is `InterestEffect.None` and logs an error. Register during setup; a condition registered mid-session reaches already-spawned objects only as they respawn.
 
+A client always holds the objects it controls, so no condition is asked about them for that client. The one exception is scenes: a client is never sent an object from a scene it has not loaded.
+
 ## Remove a condition
 
 `InterestManager.TryRemoveCondition` removes a global condition and returns `true` if it was registered. `NetworkSystem.TryRemoveInterestCondition` does the same for a system's own condition.
