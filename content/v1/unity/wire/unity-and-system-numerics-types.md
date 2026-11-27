@@ -2,40 +2,43 @@
 title: "Unity Types and System.Numerics"
 ---
 
-## Declare members in System.Numerics, not UnityEngine
+## Declare members in Unity types
 
-Declare a networked member as `NetworkMember<System.Numerics.Vector3>`, never `NetworkMember<UnityEngine.Vector3>`. Nucleus applies its vector and rotation handling, such as interpolation and Divine projection, only to the `System.Numerics` types. A UnityEngine member still builds and replicates, but as a plain struct with none of that handling, and a `UnityEngine.Quaternion` member sends more than it needs to. Set to `Divine`, it is sent as `Interval` and logs an error.
+Declare a networked member with the Unity type you already use, such as `NetworkMember<Vector3>`. These Unity types compare, interpolate and project with Divine exactly as their `System.Numerics` and CodeBoost equivalents do, and a `Quaternion` is sent as compactly:
 
-Alias the `System.Numerics` type at the top of the file to avoid clashing with `UnityEngine.Vector3`, as the shipped `UnityNavMeshAgentComponent` does:
+- `Vector2`, `Vector3`, `Vector4`, `Vector2Int`, `Vector3Int` and `Quaternion`
+- The Unity.Mathematics types `float2`, `float3`, `float4`, `int2`, `int3`, `int4` and `quaternion`
+
+```csharp
+using Nucleus.Components;
+using UnityEngine;
+
+public partial class MoverComponent : NetworkComponent
+{
+    public readonly NetworkMember<Vector3> Position = new(role: PredictionRole.Validate, accuracy: 0.01f);
+    public readonly NetworkMember<Quaternion> Rotation = new(role: PredictionRole.Validate);
+}
+```
+
+## Convert where the engine uses System.Numerics
+
+The engine's own API and the shipped components, such as `NetworkTransform`, the validated behaviours and lag compensation, use `System.Numerics` types. `UnityConversionExtensions` in `Nucleus.Integrations.Unity.Serializers` converts with `ToUnity()` and `ToNative()`, for `Vector2`, `Vector3`, `Vector4`, `Quaternion`, `Plane` and `Matrix4x4`:
+
+```csharp
+LagCompensatedShot shot = _coreManager.LagCompensationManager.CaptureShot(ray.origin.ToNative(), ray.direction.ToNative());
+```
+
+Alias the `System.Numerics` type at the top of the file when you need it beside the Unity one:
 
 ```csharp
 using NumericsVector3 = System.Numerics.Vector3;
-
-public partial class UnityNavMeshAgentComponent : NetworkComponent
-{
-    public readonly NetworkMember<NumericsVector3> NextPoint = new(CompressionLevel.Aggressive);
-    public readonly NetworkMember<NumericsVector3> PreviousPoint = new(CompressionLevel.Aggressive);
-}
 ```
-
-## Convert at the Unity boundary
-
-`UnityConversionExtensions` converts with `ToUnity()` (native to Unity) and `ToNative()` (Unity to native), for `Vector2`, `Vector3`, `Vector4`, `Quaternion`, `Plane` and `Matrix4x4`. Convert only where you read a member into a `Transform` or other Unity API, or write one back:
-
-```csharp
-public Vector3 ReplicatedNextPoint
-{
-    get => NextPoint.Value.ToUnity();
-    set => NextPoint.Value = value.ToNative();
-}
-```
-
-Keep the `NetworkComponent` and its `NetworkMember<T0>` fields native, and the `MonoBehaviour`, `Transform` and other Unity APIs in Unity types.
 
 ## These types need no attribute
 
 These already have serializers and work in a `NetworkMember<T>` with no attribute of your own:
 
+- The Unity and Unity.Mathematics types listed above
 - The `System.Numerics` vectors `Vector2`, `Vector3` and `Vector4`
 - The CodeBoost types `Vector2Int`, `Vector3Int32`, `Vector4Int` and `UnifiedColor`
 - Any struct you declare made entirely of serializable fields, as long as a `NetworkMember<T>` reaches it

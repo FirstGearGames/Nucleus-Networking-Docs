@@ -32,7 +32,7 @@ The generator found no serializer for that member's type. Fix it one of two ways
 - **Marker struct.** If the type lives in an assembly you do not control (a `System.Numerics` type, a third-party math type), add it as a field on a marker struct carrying `[NetworkType]`. See [Reaching Types You Cannot Annotate](../../core-api/wire/external-network-types.md).
 - **Hand-written serializer.** If the type needs custom read and write logic. See [Writing a Custom Serializer](../../core-api/wire/custom-serializers.md).
 
-A `UnityEngine` type such as `Vector3` or `Quaternion` does not raise this warning, because it builds as a plain struct. Declare the `System.Numerics` equivalent anyway; see [Unity Types and System.Numerics](./unity-and-system-numerics-types.md).
+A `UnityEngine` type such as `Vector3` or `Quaternion` does not raise this warning; it works in a member as it is. See [Unity Types and System.Numerics](./unity-and-system-numerics-types.md).
 
 `SERIALIZERS000` is the error-level version: a required serializer is missing or malformed so badly the generator cannot continue, for example `A [Write/Read] serializer could not be found for [Type].` or a type over the maximum networked member count. Fix it the same way.
 

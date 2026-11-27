@@ -13,22 +13,21 @@ Declare client state as `NetworkMember<T0>` fields with `role: PredictionRole.Pr
 ```csharp
 using Nucleus.Components;
 using Nucleus.Connections;
-using NumericsVector2 = System.Numerics.Vector2;
-using NumericsVector3 = System.Numerics.Vector3;
+using UnityEngine;
 
 namespace MyGame
 {
-    public partial class MoverComponent : NetworkComponent, IMemberWriteValidator<NumericsVector2>, IMemberWriteValidator<NumericsVector3>
+    public partial class MoverComponent : NetworkComponent, IMemberWriteValidator<Vector2>, IMemberWriteValidator<Vector3>
     {
         // Client state: written by the controller on its live tick, sent upstream to the server.
-        public readonly NetworkMember<NumericsVector2> Direction = new(role: PredictionRole.Predict);
+        public readonly NetworkMember<Vector2> Direction = new(role: PredictionRole.Predict);
         // A member only the server computes from it.
-        public readonly NetworkMember<NumericsVector3> Position = new();
+        public readonly NetworkMember<Vector3> Position = new();
 
         // Runs on the server for each tick of client state it takes. Write the member and decline to keep your own value instead.
-        public MemberWriteAction ValidateMemberWrite(NetworkMember<NumericsVector2> networkMember, NumericsVector2 proposedValue, Connection writingClientConnection)
+        public MemberWriteAction ValidateMemberWrite(NetworkMember<Vector2> networkMember, Vector2 proposedValue, Connection writingClientConnection)
         {
-            float length = proposedValue.Length();
+            float length = proposedValue.magnitude;
 
             if (length <= 1f)
                 return MemberWriteAction.Accept;
@@ -39,7 +38,7 @@ namespace MyGame
         }
 
         // Only the server moves this object, so a client write to the position is declined.
-        public MemberWriteAction ValidateMemberWrite(NetworkMember<NumericsVector3> networkMember, NumericsVector3 proposedValue, Connection writingClientConnection) => MemberWriteAction.Decline;
+        public MemberWriteAction ValidateMemberWrite(NetworkMember<Vector3> networkMember, Vector3 proposedValue, Connection writingClientConnection) => MemberWriteAction.Decline;
     }
 }
 ```
@@ -52,7 +51,6 @@ Read the keys in `Update` into a field, since a held key belongs to the rendered
 
 ```csharp
 using Nucleus.Connections;
-using Nucleus.Integrations.Unity.Serializers;
 using Nucleus.Integrations.Unity.Systems;
 using Nucleus.Managers.NetworkLoop;
 using Nucleus.Systems;
@@ -69,9 +67,9 @@ namespace MyGame
         protected override void OnSystemLinked()
         {
             if (IsStarted(Invoker.Server))
-                Component.Position.Value = transform.position.ToNative();
+                Component.Position.Value = transform.position;
             else
-                transform.position = Component.Position.Value.ToUnity();
+                transform.position = Component.Position.Value;
         }
 
         protected override void OnSystemUnlinked() => _frameDirection = Vector2.zero;
@@ -90,7 +88,7 @@ namespace MyGame
 
             // The controller's live tick: the keys become this tick's client state.
             if (simulationContext.Type is SimulationType.Forward && IsController(ControllerType.Client))
-                Component.Direction.Value = _frameDirection.ToNative();
+                Component.Direction.Value = _frameDirection;
 
             if (!IsStarted(Invoker.Server))
                 return;
@@ -99,10 +97,10 @@ namespace MyGame
             if (stepDelta.IsClientStateMissing)
                 Component.TryGetLastState(isEveryMemberCarried: true);
 
-            Component.Position.Value = Step(Component.Position.Value.ToUnity(), Component.Direction.Value.ToUnity()).ToNative();
+            Component.Position.Value = Step(Component.Position.Value, Component.Direction.Value);
         }
 
-        protected override void OnVariableUpdate(StepDelta stepDelta) => transform.position = Component.Position.InterpolatedValue.ToUnity();
+        protected override void OnVariableUpdate(StepDelta stepDelta) => transform.position = Component.Position.InterpolatedValue;
 
         private Vector3 Step(Vector3 position, Vector2 direction)
         {

@@ -31,9 +31,8 @@ The usual predicted object uses all three. Nearly every prediction bug comes fro
 Put the members and the movement code in a `NetworkComponent`. A component runs on every peer whether or not a scene object is linked to it, so the client and the server both run the code.
 
 ```csharp
-using CodeBoost.Types;
 using Nucleus.Components;
-using NumericsVector3 = System.Numerics.Vector3;
+using UnityEngine;
 
 namespace MyGame
 {
@@ -45,7 +44,7 @@ namespace MyGame
         public readonly NetworkTrigger IsJumpPressed = new();
 
         // Results: what the movement code works out from the client state.
-        public readonly NetworkMember<NumericsVector3> Position = new(role: PredictionRole.Validate, accuracy: ValueAccuracy);
+        public readonly NetworkMember<Vector3> Position = new(role: PredictionRole.Validate, accuracy: ValueAccuracy);
         public readonly NetworkMember<float> VerticalSpeed = new(role: PredictionRole.Validate, accuracy: ValueAccuracy);
         public readonly NetworkMember<bool> IsGrounded = new(role: PredictionRole.Validate);
 
@@ -59,7 +58,7 @@ namespace MyGame
 
 Three choices in this declaration matter:
 
-- **The walk direction is whole numbers.** It is a `CodeBoost.Types.Vector2Int` (not Unity's `Vector2Int`) whose axes are each -1, 0 or 1. A normalized float direction would be rounded on its way to the server, so the server would walk slightly differently and the client would be corrected every tick. Send client state in a form that arrives exactly as written.
+- **The walk direction is whole numbers.** It is a `Vector2Int` whose axes are each -1, 0 or 1. A normalized float direction would be rounded on its way to the server, so the server would walk slightly differently and the client would be corrected every tick. Send client state in a form that arrives exactly as written.
 - **The jump press is a `NetworkTrigger`.** A `NetworkTrigger` is a `Predict` bool for a one-tick press. Calling `Set()` from any update holds the press until the controlling peer's next live tick, which reads it as true and sends it with that tick's client state. It is not carried forward, so it reads false on a tick whose client state was lost and the server never jumps twice for one press. A press lost with its packet is simply lost, and the server corrects the jump the client showed.
 - **Each float result has an accuracy.** A `Validate` member is only as precise as its `accuracy`, on both peers. Choose one your movement can tolerate; 0.01 is a centimetre for a position.
 
@@ -97,20 +96,20 @@ public partial class JumperComponent
     private void Move(float deltaSeconds)
     {
         Vector2Int moveDirection = MoveDirection.Value;
-        NumericsVector3 position = Position.Value;
-        float diagonal = moveDirection.X != 0 && moveDirection.Y != 0 ? 1.41421354f : 1f;
+        Vector3 position = Position.Value;
+        float diagonal = moveDirection.x != 0 && moveDirection.y != 0 ? 1.41421354f : 1f;
 
-        position.X += moveDirection.X / diagonal * MoveSpeed * deltaSeconds;
-        position.Z += moveDirection.Y / diagonal * MoveSpeed * deltaSeconds;
+        position.x += moveDirection.x / diagonal * MoveSpeed * deltaSeconds;
+        position.z += moveDirection.y / diagonal * MoveSpeed * deltaSeconds;
 
         float verticalSpeed = VerticalSpeed.Value - Gravity * deltaSeconds;
-        position.Y += verticalSpeed * deltaSeconds;
+        position.y += verticalSpeed * deltaSeconds;
 
-        bool isGrounded = position.Y <= 0f;
+        bool isGrounded = position.y <= 0f;
 
         if (isGrounded)
         {
-            position.Y = 0f;
+            position.y = 0f;
             verticalSpeed = 0f;
         }
 
@@ -206,9 +205,9 @@ public partial class JumperComponent : NetworkComponent, IMemberWriteValidator<V
 {
     public MemberWriteAction ValidateMemberWrite(NetworkMember<Vector2Int> networkMember, Vector2Int proposedValue, Connection writingClientConnection)
     {
-        Vector2Int clampedValue = new(System.Math.Clamp(proposedValue.X, -1, 1), System.Math.Clamp(proposedValue.Y, -1, 1));
+        Vector2Int clampedValue = new(Mathf.Clamp(proposedValue.x, -1, 1), Mathf.Clamp(proposedValue.y, -1, 1));
 
-        if (clampedValue.X == proposedValue.X && clampedValue.Y == proposedValue.Y)
+        if (clampedValue == proposedValue)
             return MemberWriteAction.Accept;
 
         networkMember.Value = clampedValue;
@@ -234,8 +233,7 @@ The members change once per tick, but the screen draws many frames per tick. To 
 ```csharp
 protected override void OnEarlyFixedUpdate(StepDelta stepDelta, SimulationContext simulationContext)
 {
-    System.Numerics.Vector3 position = Component.Position.Value;
-    transform.position = new(position.X, position.Y, position.Z);
+    transform.position = Component.Position.Value;
 }
 ```
 

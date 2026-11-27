@@ -31,17 +31,16 @@ With the client state as `PredictionRole.Predict` members and the result as `Pre
 
 ```csharp
 using Nucleus.Components;
-using NumericsVector2 = System.Numerics.Vector2;
-using NumericsVector3 = System.Numerics.Vector3;
+using UnityEngine;
 
 namespace MyGame
 {
     public partial class PredictedMoverComponent : NetworkComponent
     {
         // Client state: written by the controller each tick.
-        public readonly NetworkMember<NumericsVector2> Direction = new(role: PredictionRole.Predict);
+        public readonly NetworkMember<Vector2> Direction = new(role: PredictionRole.Predict);
         // Computed from client state by the server and, ahead of it, by the controlling client.
-        public readonly NetworkMember<NumericsVector3> Position = new(role: PredictionRole.Validate, accuracy: 0.01f);
+        public readonly NetworkMember<Vector3> Position = new(role: PredictionRole.Validate, accuracy: 0.01f);
     }
 }
 ```
@@ -49,7 +48,6 @@ namespace MyGame
 Write the step once and let every pass run it:
 
 ```csharp
-using Nucleus.Integrations.Unity.Serializers;
 using Nucleus.Integrations.Unity.Systems;
 using Nucleus.Managers.NetworkLoop;
 using Nucleus.Systems;
@@ -72,7 +70,7 @@ namespace MyGame
             if (IsController(ControllerType.AnyController))
                 _frameDirection = new Vector2(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical"));
 
-            transform.position = Component.Position.InterpolatedValue.ToUnity();
+            transform.position = Component.Position.InterpolatedValue;
         }
 
         protected override void OnEarlyFixedUpdate(StepDelta stepDelta, SimulationContext simulationContext)
@@ -82,14 +80,14 @@ namespace MyGame
 
             // Live tick on the controller: the keys become this tick's client state. A replay re-reads the recorded client state instead.
             if (simulationContext.Type is SimulationType.Forward && IsController(ControllerType.AnyController))
-                Component.Direction.Value = _frameDirection.ToNative();
+                Component.Direction.Value = _frameDirection;
 
             // The server's step for a tick whose client state never arrived: carry the last tick's instead of the defaults.
             if (stepDelta.IsClientStateMissing)
                 Component.TryGetLastState(isEveryMemberCarried: true);
 
             // Runs for the live tick, on the server once per server tick on one of the client's ticks, and again for every replayed tick.
-            Component.Position.Value = Step(Component.Position.Value.ToUnity(), Component.Direction.Value.ToUnity()).ToNative();
+            Component.Position.Value = Step(Component.Position.Value, Component.Direction.Value);
         }
 
         private Vector3 Step(Vector3 position, Vector2 direction)
@@ -127,13 +125,13 @@ The engine does not move your Transform. Override the replay hooks to put the ob
 protected override void OnReplayStarting(ReplayReport replayReport)
 {
     // Controlled: the restored start. Another player's object: its pose as of the start tick.
-    transform.position = Component.Position.Value.ToUnity();
+    transform.position = Component.Position.Value;
 }
 
 protected override void OnReplayCompleted(ReplayReport replayReport)
 {
     // Controlled: the corrected present. Another player's object: back on its latest pose.
-    transform.position = Component.Position.Value.ToUnity();
+    transform.position = Component.Position.Value;
 }
 ```
 
