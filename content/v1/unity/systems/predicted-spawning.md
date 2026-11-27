@@ -39,8 +39,8 @@ if (!NetworkSystemObjectPool.TryRent<NetworkSystem, PredictedProjectileComponent
 
 if (projectileSystem.TryGetComponent(out PredictedProjectileComponent projectileComponent))
 {
-    projectileComponent.Origin.Value = _muzzle.position.ToNative();
-    projectileComponent.Velocity.Value = (direction * _projectileSpeed).ToNative();
+    projectileComponent.Origin.Value = _muzzle.position;
+    projectileComponent.Velocity.Value = direction * _projectileSpeed;
 }
 
 if (NetworkSystemObjectPool.EnsureStartPredicted(marker, projectileSystem, out PredictedSpawnRefusal predictedSpawnRefusal))

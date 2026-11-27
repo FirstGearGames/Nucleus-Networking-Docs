@@ -6,15 +6,15 @@ A client that controls a `NetworkTransform` moves its own object, and the server
 
 ## Judge each position on the server
 
-1. Write the rule in a script on the player prefab. Implement `IMemberWriteValidator<System.Numerics.Vector3>`, and compare the position the server holds, `networkMember.Value`, with the one the client sent. Read only state your server code decides, never a value the client wrote.
+1. Write the rule in a script on the player prefab. Implement `IMemberWriteValidator<Vector3>`, and compare the position the server holds, `networkMember.Value`, with the one the client sent. Read only state your server code decides, never a value the client wrote.
 
     ```csharp
     using Nucleus.Components;
     using Nucleus.Connections;
     using Nucleus.Integrations.Unity.Systems;
-    using NumericsVector3 = System.Numerics.Vector3;
+    using UnityEngine;
 
-    public class PlayerMovementRules : NucleusBehaviour, IMemberWriteValidator<NumericsVector3>
+    public class PlayerMovementRules : NucleusBehaviour, IMemberWriteValidator<Vector3>
     {
         public float WalkSpeed = 4f;
         public float BoostedSpeed = 10f;
@@ -22,12 +22,12 @@ A client that controls a `NetworkTransform` moves its own object, and the server
         // Set by your server code, for example while the server sees the player on a speed pad.
         public bool IsBoosted;
 
-        public MemberWriteAction ValidateMemberWrite(NetworkMember<NumericsVector3> networkMember, NumericsVector3 proposedValue, Connection writingClientConnection)
+        public MemberWriteAction ValidateMemberWrite(NetworkMember<Vector3> networkMember, Vector3 proposedValue, Connection writingClientConnection)
         {
             // Two ticks of movement per write, so a write that arrives a tick late is not refused.
             float maximumStep = (IsBoosted ? BoostedSpeed : WalkSpeed) * 2f / CoreManager.NetworkLoopManager.TickRate;
 
-            return NumericsVector3.Distance(networkMember.Value, proposedValue) <= maximumStep ? MemberWriteAction.Accept : MemberWriteAction.Decline;
+            return Vector3.Distance(networkMember.Value, proposedValue) <= maximumStep ? MemberWriteAction.Accept : MemberWriteAction.Decline;
         }
     }
     ```

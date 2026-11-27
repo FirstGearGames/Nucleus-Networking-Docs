@@ -15,7 +15,7 @@ In Unity, the [NetworkSystemObject](./network-system-object.md) component links 
 `TryGetComponent<T0>` returns the first component of a type, and `ComponentCount` says how many are attached:
 
 ```csharp
-if (system.TryGetComponent<TransformComponent>(out TransformComponent transform))
+if (system.TryGetComponent<UnityTransformComponentBase>(out UnityTransformComponentBase transform))
 {
     // transform is one of the components attached to this system.
 }
@@ -28,7 +28,7 @@ Each component has a component Id: the order it was added in, starting at zero, 
 ```csharp
 for (byte componentId = 0; componentId < system.ComponentCount; componentId++)
 {
-    if (system.TryGetComponent(componentId, out TransformComponent part))
+    if (system.TryGetComponent(componentId, out UnityTransformComponentBase part))
     {
         // part is the component added at position componentId, the same one on every peer.
     }

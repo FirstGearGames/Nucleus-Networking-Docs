@@ -28,7 +28,7 @@ For every correction larger than **Threshold**, it flashes a cross where the mem
 
 In play mode the inspector shows **Flashes**, the number of corrections drawn or logged so far, and **Last Correction (m)**, the size of the most recent position correction. Scripts and tests can read them as `FlashCount` and `LastCorrectionDistance`.
 
-Only a `NetworkMember<System.Numerics.Vector3>` is drawn. A position replicated in a parent's local space is drawn where it would sit unparented. Corrections to other member types still count toward **Flashes** and are logged with **Log Enabled**, but nothing is drawn.
+Only a `Vector3` position member is drawn, such as a `NetworkTransform`'s. A position replicated in a parent's local space is drawn where it would sit unparented. Corrections to other member types still count toward **Flashes** and are logged with **Log Enabled**, but nothing is drawn.
 
 ### Read the lines
 

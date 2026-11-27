@@ -22,7 +22,7 @@ public partial class MoverComponent : NetworkComponent
 
 ## Convert where the engine uses System.Numerics
 
-The engine's own API and the shipped components, such as `NetworkTransform`, the validated behaviours and lag compensation, use `System.Numerics` types. `UnityConversionExtensions` in `Nucleus.Integrations.Unity.Serializers` converts with `ToUnity()` and `ToNative()`, for `Vector2`, `Vector3`, `Vector4`, `Quaternion`, `Plane` and `Matrix4x4`:
+The shipped Unity components, such as `NetworkTransform` and the validated behaviours, declare their members in Unity types too. Some engine API, such as lag compensation and physics bodies, takes `System.Numerics` types. `UnityConversionExtensions` in `Nucleus.Integrations.Unity.Serializers` converts with `ToUnity()` and `ToNative()`, for `Vector2`, `Vector3`, `Vector4`, `Quaternion`, `Plane` and `Matrix4x4`:
 
 ```csharp
 LagCompensatedShot shot = _coreManager.LagCompensationManager.CaptureShot(ray.origin.ToNative(), ray.direction.ToNative());
