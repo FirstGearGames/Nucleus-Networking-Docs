@@ -95,6 +95,7 @@ A readonly struct holding what a save needs beyond member values:
 | `IsSceneObject` | Whether the object is a scene object. A load binds it to the object the scene already placed instead of constructing one. |
 | `SceneHandle` | The scene instance the object lives in. |
 | `GroupId` | The group the object belongs to. |
+| `GroupMemberKey` | Which member of its group the object is. Several systems on one scene object share its `PlatformId`, and a load tells them apart by this. |
 | `ParentId` | The object this one is parented to. |
 | `ComponentTypeNames` | Full names of the object's `NetworkComponent` types, in order, so a load knows which components to add. A scene object's components come from the scene, so for it this list is descriptive only. |
 

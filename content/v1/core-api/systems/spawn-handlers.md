@@ -35,17 +35,18 @@ void OnDynamicSystemSpawned(NetworkSystem networkSystem, ushort prefabBundleId,
 
 ## Look up scene objects by scene and id
 
-A scene object's id is unique only inside its scene, and several live scenes can each hold the same id. `SceneObjectKey` carries both halves; use both to find the object:
+A scene object's id is unique only inside its scene, and several live scenes can each hold the same id. One scene object can also hold several systems, which all share its id. `SceneObjectKey` carries all three parts; use all of them to find the system:
 
 ```csharp
 public readonly struct SceneObjectKey : IEquatable<SceneObjectKey>
 {
     public readonly uint SceneHandle;
     public readonly uint SceneObjectId;
+    public readonly uint GroupMemberKey;
 }
 ```
 
-`SceneHandle` is the live scene instance, or `NetworkSystem.UnsetSceneHandle` for the scene the peer booted into rather than one the server opened. `SceneObjectId` is the id stamped on the object.
+`SceneHandle` is the live scene instance, or `NetworkSystem.UnsetSceneHandle` for the scene the peer booted into rather than one the server opened. `SceneObjectId` is the id stamped on the object. `GroupMemberKey` says which of the object's systems the spawn is for; it is the `NetworkSystem.GroupMemberKey` the server grouped that system under, or `NetworkSystem.UnsetGroupMemberKey` for an ungrouped system.
 
 ## Link a group's members to one instance
 

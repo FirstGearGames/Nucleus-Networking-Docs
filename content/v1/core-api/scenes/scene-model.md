@@ -12,7 +12,7 @@ Keep these apart. Mixing them up is the most common source of confusion.
 
 ## A scene object is named by its handle and its object id
 
-`SceneObjectKey` pairs the scene handle with the scene object id. A `SceneObjectId` alone is ambiguous once two instances of the same scene asset are open, because both instances carry the same ids.
+`SceneObjectKey` pairs the scene handle with the scene object id. A `SceneObjectId` alone is ambiguous once two instances of the same scene asset are open, because both instances carry the same ids. The key also carries a group member key, which tells apart several systems on one scene object.
 
 `NetworkSystem.SceneHandle` reports which instance an object belongs to. `NetworkSystem.UnsetSceneHandle` (zero) means it belongs to no server-opened scene: it is in the scene the peer booted into.
 

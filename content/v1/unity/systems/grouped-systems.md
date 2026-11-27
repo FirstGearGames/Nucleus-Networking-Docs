@@ -8,7 +8,7 @@ title: "Several systems on one object"
 
 One `NetworkSystemObject` can link several `NetworkSystem` instances. Each replicates on its own terms: interest can stop one, such as the transform, for a distant observer, while another whose changes matter at any range keeps replicating. The GameObject stays until every system has left it, so it does not flicker while its parts come and go.
 
-All systems on one marker share one `GroupId`, and a receiver hosts them all on a single GameObject instead of instantiating the prefab again.
+All systems on one marker share one `GroupId`, and a receiver hosts them all on a single GameObject instead of instantiating the prefab again. This works the same for a scene object: each system binds to the matching script on the client's copy of the object.
 
 ## Require a second system from a second script
 
@@ -19,6 +19,8 @@ NetworkSystemObjectPool.RequireSystem<NetworkSystem, UnityAnimatorComponent>(thi
 ```
 
 Each requirement is served once, from a system the marker already links or from a fresh rent, whether the script's `Awake` runs before or after that system links. You never retry or guard against a double rent.
+
+On a scene object, each script may declare one system. Two systems declared from the same script cannot be told apart, and the second one logs "is already parked" on clients and never binds. Declare them from two scripts instead.
 
 `TryRent<TSystem, TComponent0>` is different: each call rents and links another system, so calling it twice for the same need gives you two systems. Use it only when a driver wants its system back at once, at a moment of its own choosing.
 
