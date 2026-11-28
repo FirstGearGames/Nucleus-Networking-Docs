@@ -33,6 +33,7 @@ Add `NetworkAnimator` to the GameObject with the `Animator`. It requires a `Netw
 Turn on **Precise Playback Enabled** for an animated part whose pose must match the authority's, such as a limb carrying hitboxes that a lag-compensated shot is judged against. A follower then stops running its own state machine and places each layer at the authority's playback position, including through transitions. The pose is applied at once, so a raycast in the same frame sees it.
 
 - It costs bandwidth for every layer on every tick, and more during a transition. A state that does not loop is held at its end, so a finished clip stops being sent.
+- Turn on **Loop Time** for every clip in a state that should cycle. Unity treats a blend tree as not looping if any one of its clips has Loop Time off, so a short static pose inside a movement blend tree needs it too. Otherwise followers freeze that state at its last frame.
 - Animation events do not fire on a follower. Fire game logic from replicated state or a remote call instead.
 
 ## Drive the animator through NetworkAnimator
