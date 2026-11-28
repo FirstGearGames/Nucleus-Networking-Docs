@@ -6,6 +6,7 @@
   "logo": "/static/logo.png",
   "versions": ["v1"],
   "defaultVersion": "v1",
+  "versionLinks": [{ "label": "dev", "url": "https://dev.nucleus-networking-docs.pages.dev" }],
   "github": { "repo": "https://github.com/FirstGearGames/nucleus-networking-docs", "branch": "main", "contentDir": "content" },
   "nav": [
     { "label": "Download PDF", "href": "/static/downloads/latest.pdf", "button": true },
