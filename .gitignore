@@ -2,3 +2,5 @@ node_modules/
 .zerodocs/
 out/
 static/component-docs.json
+static/downloads/latest.pdf
+static/downloads/v1.pdf
